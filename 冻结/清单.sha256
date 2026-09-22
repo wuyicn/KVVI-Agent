@@ -1,0 +1,46 @@
+# KVVI Agent PRD v2.5 冻结清单
+# 校验方式：python3 make_manifest.py --verify
+# 条目数：42
+
+972c13768f3d00a681f668c7a6c87078819dcc0a7645469a60eaf9f670d1a556  KVVI-Agent 开发文档 PRD.md
+f47242b6473bb03ee597110553ea964459f59c898db000482d72bc0ff1ec0e4a  评审/v2.1/lenses-round2.json
+97b2ebb3a53e2f229efd5b0fa083d8987e6225f267ed95aa34847f2fdf3eabf5  评审/v2.1/lenses.json
+2ccd145c82bea9825475ebf3d9fbad6bad4b17c26db0ea727d20a3217c32faeb  评审/v2.1/run_codex_review.py
+08d718909572693ec8d68d762997255e292958a604aaab92d9b97c604a1a704e  评审/v2.1/run_deepseek_review.py
+e243a2f10e50c6721037ab71a89dd412f120a0dc356fdf4a7bebe3a2dbd57c37  评审/v2.1/run_review.py
+8e81a6f6f69f0141dbc8ad4103121ba1fef277f53c8223eac1f5d4fa871f5450  评审/v2.1/汇总.md
+21c4afc3388ba80e72675815970cfc0cf11b8d8f561e364b897bbd4153885977  评审/v2.1/证据/评审-deepseek-r1-32b.md
+a468772e2849aa821ee0e45ebcf8c42cc7cc31e8f5a71ac0519af83484ea6172  评审/v2.1/证据/评审-deepseek-r1-32b.record.json
+81b78655fb31cf2364cc04922bd9a5d78ab449b8c86fb2639f919124fd26f927  评审/v2.1/证据/评审-deepseek-v4-pro-逻辑.md
+e7871d3cf7909cb0bb0198ec2ac792667d185fb312427bcca75b8e5337dccf05  评审/v2.1/证据/评审-deepseek-v4-pro-逻辑.record.json
+9841dcc88d325aee446cf0d4748d49085ff158a6b51156e3f8d7a4bb0e45c3b1  评审/v2.1/证据/评审-gemma4-26b.md
+b0a20b857c089cc01f3d03bdc8fb2e75abe053da1f66de5d8b843852de928e3e  评审/v2.1/证据/评审-gemma4-26b.record.json
+eb8d4fc01a06fec62cf83dd5daf26601419435cd6e6e59405e287690ac5ee4d2  评审/v2.1/证据/评审-gpt-5.6-对抗性.md
+960403a9ecde11b50baa75fee904bc606397831d11cb06f0d9a67e1b47eb7d89  评审/v2.1/证据/评审-gpt-5.6-对抗性.record.json
+fb0aa2c02d637710be487670476ce8e6ab9bb5323b559297304dc695966d1eb6  评审/v2.1/证据/评审-qwen3.8-27b.md
+cfc0fa182d36e88b340b1cc5c5a5f76726d5c475562f4c06510fc0b735aa6e06  评审/v2.1/证据/评审-qwen3.8-27b.record.json
+bc2591dcf624dd3244b026edbd315b776c6127be5e7e32ba4040584538c5ce4d  评审/v2.2/lenses-round2.json
+bc2591dcf624dd3244b026edbd315b776c6127be5e7e32ba4040584538c5ce4d  评审/v2.2/lenses.json
+2ccd145c82bea9825475ebf3d9fbad6bad4b17c26db0ea727d20a3217c32faeb  评审/v2.2/run_codex_review.py
+08d718909572693ec8d68d762997255e292958a604aaab92d9b97c604a1a704e  评审/v2.2/run_deepseek_review.py
+60351f8a974130a61991d9d33e717fc3f1e2ea36ca7b4e286f870c457fbff532  评审/v2.2/汇总.md
+c6b6febe9f1742764c50f4bdff7cda2e95bdeccd32437f687b19143166c08b89  评审/v2.2/证据/复评-deepseek-v4-pro-安全设计.md
+f4a37f6de46d64f2954dd35de2485debd8502e9b72c905bc5610e30730ceaa9c  评审/v2.2/证据/复评-deepseek-v4-pro-安全设计.record.json
+257cbc4e305631ac2b99ea956b6f677d7038b115dff0b31310964e2f80e7effc  评审/v2.2/证据/复评-gpt-5.6-逻辑自洽.md
+d1b76a34fd59360e2ff2b06ccff25a9659d1da37b5116ff38cf32dbee99e52d1  评审/v2.2/证据/复评-gpt-5.6-逻辑自洽.record.json
+6d0cd017b88ae0e0f7304408b1a5bcdc6b14fe078fa3cb1410ebe6e32a6ed3f3  评审/v2.3/lenses-round2.json
+6d0cd017b88ae0e0f7304408b1a5bcdc6b14fe078fa3cb1410ebe6e32a6ed3f3  评审/v2.3/lenses.json
+2ccd145c82bea9825475ebf3d9fbad6bad4b17c26db0ea727d20a3217c32faeb  评审/v2.3/run_codex_review.py
+08d718909572693ec8d68d762997255e292958a604aaab92d9b97c604a1a704e  评审/v2.3/run_deepseek_review.py
+b4d364f8f44622625390e3489cd536ea02fc31ad0123e3d8354a1890a8b14bf6  评审/v2.3/汇总.md
+fa5eda40ca2ea30654c2225368ac671769c8c1c400c11a9fb3980d7da91a630f  评审/v2.3/证据/复评3-deepseek-v4-pro-安全设计.md
+5ca91e891d9e92a0925592325c034b9f49922162afb1425896557dc5d1b52cbe  评审/v2.3/证据/复评3-deepseek-v4-pro-安全设计.record.json
+e358c64202878a0ac4fa6fd81deb0e2683d0322fae4dedf48c7a785984f10953  评审/v2.3/证据/复评3-gpt-5.6-逻辑自洽.md
+5c4d0e0455db923f19b5a62d7a9d21c8f5707084a20c032e94c157fd3727da70  评审/v2.3/证据/复评3-gpt-5.6-逻辑自洽.record.json
+2bff7ea7dbf00750216d6f873b0ea9ba6275b6779276c5cf6f5ace68dae93d9d  评审/v2.4/lenses.json
+5a94969b48d5f6b48004bf16c18af215080819add985cfab03de410f60d01945  评审/v2.4/run_kimi_review.py
+5caa7d8630c1f8c903c8e208a43e626997fb3faa993af9f06ba6a41e0a1c4388  评审/v2.4/汇总.md
+baa260828f37f2fed7ddbc31aaacb3f0aab704d2dd948f973dc29e9206f11c61  评审/v2.4/证据/评审-kimi-k3-实现者.md
+eed2d13a514bd4d4963a7a29d4caabec9011c05fa372ace4e06ed4b58ec003e8  评审/v2.4/证据/评审-kimi-k3-实现者.record.json
+8eec646e9e3feb78b2820c33aa90227985d42e71e75e93b8f1cd96a55ba9b159  评审/v2.4/证据/评审-kimi-k3-实现者.思考过程.md
+432816eef8f6cc3be7a3ecf4b6ce1e3f02147c666537b78e743fc766a7c1033c  冻结/PRD-v2.5-冻结记录.md

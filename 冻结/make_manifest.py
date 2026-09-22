@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """生成 PRD 冻结清单：对冻结范围内的所有文件做 SHA-256 指纹。
 
-冻结范围（写死在 FREEZE_SET 里，避免递归时把清单自己也算进去）：
+冻结范围（由 FREEZE_SET 显式枚举，避免递归时把清单自己也算进去）：
   - PRD 正文
-  - 四轮评审的全部证据与汇总
+  - 四轮评审的全部记录：汇总、视角定义、运行器、证据与记录
+
+评审运行器与视角定义一并纳入，是为了让「另一台机器能否复现这次评审」
+成为冻结的一部分——只冻结结论、不冻结复现方式，等于只冻结了一半。
 
 用法：
     python3 make_manifest.py            # 生成/更新 清单.sha256
@@ -13,14 +16,17 @@ import hashlib
 import sys
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent.parent
+HERE = Path(__file__).resolve().parent          # 冻结/
+ROOT = HERE.parent                              # KVVI-Agent/
 MANIFEST = HERE / '清单.sha256'
+PRD_VERSION = 'v2.5'
 
 FREEZE_SET = [
     ROOT / 'KVVI-Agent 开发文档 PRD.md',
-    *sorted((ROOT / '评审').glob('v2.*/*.md')),
-    *sorted((ROOT / '评审').glob('v2.*/证据/*')),
+    # 评审全树：汇总 / lenses.json / run_*.py / 证据/*（含 .record.json）
+    *(p for p in sorted((ROOT / '评审').rglob('*')) if p.is_file()),
+    # 冻结记录本身（但不含 清单.sha256——那会自指）
+    *(p for p in sorted(HERE.glob('*.md')) if p.is_file()),
 ]
 
 
@@ -61,7 +67,7 @@ def main() -> int:
         return 1 if bad else 0
 
     lines = [
-        '# KVVI Agent PRD v2.4 冻结清单',
+        f'# KVVI Agent PRD {PRD_VERSION} 冻结清单',
         '# 校验方式：python3 make_manifest.py --verify',
         f'# 条目数：{len(files)}',
         '',
