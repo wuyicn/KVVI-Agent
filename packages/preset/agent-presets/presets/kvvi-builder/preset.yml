@@ -1,0 +1,3 @@
+name: KVVI 搭建引擎
+description: KVVI 搭建引擎模式。通过自然语言描述业务需求，生成含表单、审批流、数据看板与接口契约的业务系统原型，并以 MetaSchema 为唯一真理源交付。
+order: 5
