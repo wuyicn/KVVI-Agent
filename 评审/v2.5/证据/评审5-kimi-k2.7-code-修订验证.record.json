@@ -1,0 +1,23 @@
+{
+  "runner": "moonshot-api-stream",
+  "model": "kimi-k2.7-code",
+  "family": "moonshot",
+  "lens": "revision",
+  "endpoint": "https://api.moonshot.cn/v1/chat/completions",
+  "temperature": 1,
+  "prd_sha256": "972c13768f3d00a681f668c7a6c87078819dcc0a7645469a60eaf9f670d1a556",
+  "prompt_sha256": "ae043dd91710d801cbf47c0bf21995c7093b3c057db6cd992a24538e60e9bcb6",
+  "answer_sha256": "9cf78c52f74b072199b7e0107dbdc66386a55a4485e80c15446d33591de79180",
+  "answer_chars": 2963,
+  "reasoning_chars": 63687,
+  "stream_chunks": 20375,
+  "elapsed_seconds": 510.1,
+  "usage": {
+    "prompt_tokens": 41068,
+    "completion_tokens": 20374,
+    "total_tokens": 61442,
+    "completion_tokens_details": {
+      "reasoning_tokens": 18507
+    }
+  }
+}
