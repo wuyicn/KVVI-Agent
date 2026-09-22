@@ -1,0 +1,13 @@
+{
+  "runner": "codex-cli",
+  "model": "gpt-5.6-sol",
+  "family": "openai",
+  "lens": "adversarial",
+  "sandbox": "read-only",
+  "ephemeral": true,
+  "prd_sha256": "59683326356d0f941b103c01bdb7c1f49f8941e073bcd7716fb3e65c81b23ff9",
+  "prompt_sha256": "ae96a59503be01ce39c7caac58d558486bce10c5c39941a7a0f7a2958752a24a",
+  "answer_sha256": "eb8d4fc01a06fec62cf83dd5daf26601419435cd6e6e59405e287690ac5ee4d2",
+  "answer_chars": 7467,
+  "elapsed_seconds": 149.5
+}
