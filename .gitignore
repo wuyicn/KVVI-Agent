@@ -50,3 +50,8 @@ Thumbs.db
 
 # ── 探针残留（内容已并入 samples/事项登记/00-需求.md）──
 samples/.kvvi-probe-task.txt
+
+# ── KVVI 自己的运行时目录 ──────────────────────────────────────
+# 从源码启动 KVVI 时使用的独立 DSH_HOME（scripts/kvvi-web.sh 创建）。
+# 与用户的 ~/.dsh 隔离，含会话、设置与 profile，不进版本管理。
+.kvvi-home/
