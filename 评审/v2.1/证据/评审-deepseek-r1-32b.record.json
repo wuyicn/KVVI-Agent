@@ -1,0 +1,9 @@
+{
+  "model": "deepseek-r1:32b",
+  "lens": "logic",
+  "prd_sha256": "59683326356d0f941b103c01bdb7c1f49f8941e073bcd7716fb3e65c81b23ff9",
+  "prompt_sha256": "1d7da53d5a09c11450c04749fa63e35262ac494cd857d7b89bc472ef3258fc35",
+  "answer_sha256": "21c4afc3388ba80e72675815970cfc0cf11b8d8f561e364b897bbd4153885977",
+  "answer_chars": 1399,
+  "elapsed_seconds": 165.9
+}

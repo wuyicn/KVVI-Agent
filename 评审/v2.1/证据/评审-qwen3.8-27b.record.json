@@ -1,0 +1,9 @@
+{
+  "model": "qwen3.8:27b",
+  "lens": "feasibility",
+  "prd_sha256": "59683326356d0f941b103c01bdb7c1f49f8941e073bcd7716fb3e65c81b23ff9",
+  "prompt_sha256": "2205e10ef5ffafb62bc1b69d2da5a44edd9eed3e076db7f3663bab5c84a891dd",
+  "answer_sha256": "fb0aa2c02d637710be487670476ce8e6ab9bb5323b559297304dc695966d1eb6",
+  "answer_chars": 4490,
+  "elapsed_seconds": 521.7
+}

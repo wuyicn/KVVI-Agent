@@ -1,0 +1,9 @@
+{
+  "model": "gemma4:26b",
+  "lens": "completeness",
+  "prd_sha256": "59683326356d0f941b103c01bdb7c1f49f8941e073bcd7716fb3e65c81b23ff9",
+  "prompt_sha256": "b887801279e74ea0f813459608aa05c32aa266eb65e36a45942033d58329149d",
+  "answer_sha256": "9841dcc88d325aee446cf0d4748d49085ff158a6b51156e3f8d7a4bb0e45c3b1",
+  "answer_chars": 2266,
+  "elapsed_seconds": 84.3
+}
