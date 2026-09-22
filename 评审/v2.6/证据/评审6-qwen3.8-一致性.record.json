@@ -1,0 +1,13 @@
+{
+  "model": "qwen3.8:27b",
+  "runner": "ollama",
+  "lens": "consistency",
+  "prd_sha256": "72493e881494c7ab82e02324e93afc06fa90eef46256c6d9d267108ed8336f9d",
+  "prompt_sha256": "4a6a6b13b23317b3e415e792d8c83b6279c14eeeba3f5e105a36e6be1661c9d0",
+  "answer_sha256": "0022a53923194cfad60a75c24365394a3838e389fa286eb04d8fe51b5bfe3bdb",
+  "answer_chars": 2742,
+  "thinking_chars": 43846,
+  "done_reason": "stop",
+  "eval_count": 20299,
+  "elapsed_seconds": 1318.8
+}
