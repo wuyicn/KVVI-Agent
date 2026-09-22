@@ -1,0 +1,24 @@
+import { type SavedWorkflow, type WorkflowDocument, type WorkflowFolder, type WorkflowRunRecord, type WorkflowStatus, type WorkflowVersion } from '../model.js';
+export type DashboardSection = 'workflows' | 'runs' | 'schedules' | 'templates' | 'credentials' | 'variables' | 'audit';
+export declare function WorkflowDashboard({ workflows, folders, loading, section, onSectionChange, onCreate, onOpen, onRun, onCancelRun, onResumeRun, onDuplicate, onDelete, onCreateFolder, onRenameFolder, onDeleteFolder, onMoveToFolder, onRestoreVersion, onStatusChange, onUseTemplate, onExit, }: {
+    workflows: SavedWorkflow[];
+    folders: WorkflowFolder[];
+    loading: boolean;
+    section: DashboardSection;
+    onSectionChange: (section: DashboardSection) => void;
+    onCreate: (folderId?: string) => void;
+    onOpen: (workflow: SavedWorkflow) => void;
+    onRun: (workflow: SavedWorkflow, runId: string, signal: AbortSignal, input?: unknown) => Promise<void>;
+    onCancelRun: (runId: string) => Promise<void>;
+    onResumeRun: (run: Pick<WorkflowRunRecord, 'id'>, runId: string, signal: AbortSignal) => Promise<WorkflowRunRecord>;
+    onDuplicate: (workflow: SavedWorkflow) => Promise<void>;
+    onDelete: (workflow: SavedWorkflow) => Promise<void>;
+    onCreateFolder: (name: string) => Promise<WorkflowFolder>;
+    onRenameFolder: (folder: WorkflowFolder, name: string) => Promise<WorkflowFolder>;
+    onDeleteFolder: (folder: WorkflowFolder, targetFolderId?: string) => Promise<number>;
+    onMoveToFolder: (workflow: SavedWorkflow, folderId?: string) => Promise<void>;
+    onRestoreVersion: (workflow: SavedWorkflow, version: WorkflowVersion, publish: boolean) => Promise<SavedWorkflow>;
+    onStatusChange: (workflow: SavedWorkflow, status: WorkflowStatus) => Promise<void>;
+    onUseTemplate: (name: string, document: WorkflowDocument, folderId?: string) => Promise<void>;
+    onExit: () => void;
+}): import("react").JSX.Element;

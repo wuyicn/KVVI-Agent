@@ -1,0 +1,459 @@
+openapi: 3.1.0
+info:
+  title: 事项登记 API
+  version: 0.1.0
+  description: |
+    KVVI 搭建引擎生成的「事项登记」原型接口契约。
+    对应 05-接口.yml。
+
+    核心约定：
+    - 状态是结果不是入参：每个状态迁移一个动作端点，禁止用 PATCH 改 状态。
+    - 金额一律整数分（本资源当前无金额字段）。
+    - 时间一律 ISO 8601 带时区。
+    - id 是不透明字符串，客户端不得解析其结构。
+    - 无权访问的资源返回 404，不返回 403，避免探测 id 是否存在。
+  x-status: 原型（未验证）
+servers:
+  - url: https://example.invalid/api/v1
+    description: 占位地址，原型未部署
+
+tags:
+  - name: 事项
+  - name: 审批记录
+
+paths:
+  /事项:
+    get:
+      tags: [事项]
+      summary: 事项列表
+      operationId: listItems
+      description: 只返回当前用户可见范围内的数据（申请人看自己的，主管看自己待办的，管理员看全部）。
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: 状态, in: query, schema: { $ref: '#/components/schemas/事项状态' } }
+        - { name: 申请人id, in: query, schema: { type: string } }
+        - { name: 当前审批人id, in: query, schema: { type: string } }
+        - { name: 提交时间起, in: query, schema: { type: string, format: date-time } }
+        - { name: 提交时间止, in: query, schema: { type: string, format: date-time } }
+        - name: 游标
+          in: query
+          description: 游标分页；排序为 提交时间 降序 + id 兜底（稳定排序）
+          schema: { type: string }
+        - name: 每页
+          in: query
+          schema: { type: integer, default: 20, maximum: 100, minimum: 1 }
+      responses:
+        '200':
+          description: 分页列表。包一层 {数据,分页}，不返回裸数组。
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [数据, 分页]
+                properties:
+                  数据:
+                    type: array
+                    items: { $ref: '#/components/schemas/事项摘要' }
+                  分页:
+                    type: object
+                    properties:
+                      下一页游标: { type: [string, 'null'] }
+                      是否有更多: { type: boolean }
+        '401': { $ref: '#/components/responses/未认证' }
+        '500': { $ref: '#/components/responses/服务端错误' }
+    post:
+      tags: [事项]
+      summary: 创建事项（草稿态）
+      operationId: createItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/事项创建请求' }
+      responses:
+        '201':
+          description: 已创建（草稿）
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/事项详情' }
+        '400': { $ref: '#/components/responses/请求格式错误' }
+        '401': { $ref: '#/components/responses/未认证' }
+        '422': { $ref: '#/components/responses/语义校验失败' }
+        '500': { $ref: '#/components/responses/服务端错误' }
+
+  /事项/{id}:
+    parameters:
+      - $ref: '#/components/parameters/事项id'
+    get:
+      tags: [事项]
+      summary: 事项详情
+      operationId: getItem
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 事项详情
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/事项详情' }
+        '404': { $ref: '#/components/responses/不存在或无权' }
+    patch:
+      tags: [事项]
+      summary: 部分更新业务字段（不含状态）
+      operationId: updateItem
+      description: 仅 草稿 与 已驳回 状态可改；状态为 待审批/已通过 时返回 409。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/事项更新请求' }
+      responses:
+        '200':
+          description: 更新后的事项
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/事项详情' }
+        '404': { $ref: '#/components/responses/不存在或无权' }
+        '409': { $ref: '#/components/responses/冲突' }
+        '422': { $ref: '#/components/responses/语义校验失败' }
+    delete:
+      tags: [事项]
+      summary: 删除事项（软删除，仅草稿）
+      operationId: deleteItem
+      security:
+        - bearerAuth: []
+      responses:
+        '204': { description: 已删除 }
+        '404': { $ref: '#/components/responses/不存在或无权' }
+        '409': { $ref: '#/components/responses/冲突' }
+
+  /事项/{id}/提交:
+    parameters:
+      - $ref: '#/components/parameters/事项id'
+    post:
+      tags: [事项]
+      summary: 提交审批（草稿|已驳回 → 待审批）
+      operationId: submitItem
+      description: 服务端解析并快照 当前审批人id。审批人解析失败时返回 approver_unresolved 并告警管理员。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                修改说明: { type: string, maxLength: 500, description: 重新提交时可带一句改了什么 }
+      responses:
+        '200':
+          description: 已提交（幂等：已在待审批时重复调用返回同一结果）
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/事项详情' }
+        '404': { $ref: '#/components/responses/不存在或无权' }
+        '409': { $ref: '#/components/responses/冲突' }
+        '422': { $ref: '#/components/responses/语义校验失败' }
+
+  /事项/{id}/通过:
+    parameters:
+      - $ref: '#/components/parameters/事项id'
+    post:
+      tags: [事项]
+      summary: 审批通过（待审批 → 已通过）
+      operationId: approveItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                意见: { type: string, maxLength: 500, description: 选填 }
+      responses:
+        '200':
+          description: 已通过
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/事项详情' }
+        '404': { $ref: '#/components/responses/不存在或无权' }
+        '409': { $ref: '#/components/responses/冲突' }
+        '422': { $ref: '#/components/responses/语义校验失败' }
+
+  /事项/{id}/驳回:
+    parameters:
+      - $ref: '#/components/parameters/事项id'
+    post:
+      tags: [事项]
+      summary: 审批驳回（待审批 → 已驳回）
+      operationId: rejectItem
+      description: 驳回目标态显式=已驳回（保留驳回痕迹），申请人可修改后重新提交。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [意见]
+              properties:
+                意见: { type: string, minLength: 1, maxLength: 500, description: 驳回理由，必填 }
+      responses:
+        '200':
+          description: 已驳回
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/事项详情' }
+        '404': { $ref: '#/components/responses/不存在或无权' }
+        '409': { $ref: '#/components/responses/冲突' }
+        '422': { $ref: '#/components/responses/语义校验失败' }
+
+  /事项/{id}/撤回:
+    parameters:
+      - $ref: '#/components/parameters/事项id'
+    post:
+      tags: [事项]
+      summary: 撤回（未实现，契约预留）
+      operationId: withdrawItem
+      description: 原话未提撤回（见 00-需求.md Q8），当前返回 501。
+      security:
+        - bearerAuth: []
+      responses:
+        '501':
+          description: 未实现
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/错误体' }
+
+  /事项/{id}/审批记录:
+    parameters:
+      - $ref: '#/components/parameters/事项id'
+    get:
+      tags: [审批记录]
+      summary: 审批时间线
+      operationId: listApprovalRecords
+      description: append-only 审计记录，按 动作时间 升序。不提供任何写入口。
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 审批记录列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [数据]
+                properties:
+                  数据:
+                    type: array
+                    items: { $ref: '#/components/schemas/审批记录' }
+                  分页:
+                    type: object
+                    properties:
+                      下一页游标: { type: [string, 'null'] }
+        '404': { $ref: '#/components/responses/不存在或无权' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    事项id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+      description: 不透明字符串，客户端不得解析其结构
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      schema: { type: string }
+      description: 事项.版本号，用于乐观并发；不匹配返回 409
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string }
+      description: 有副作用的接口必填；重复请求返回首次结果，不重复执行
+
+  responses:
+    请求格式错误:
+      description: 请求体不是合法 JSON
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/错误体' }
+    未认证:
+      description: 无凭据或凭据过期
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/错误体' }
+    不存在或无权:
+      description: 不存在 或 无权看到（刻意不区分，避免探测 id）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/错误体' }
+    冲突:
+      description: 版本冲突或状态已变更
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/错误体' }
+    语义校验失败:
+      description: 字段合法但业务规则不满足（含 自审拦截 / 驳回理由必填 / 审批人解析失败）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/错误体' }
+    服务端错误:
+      description: 服务端错误，必须返回追踪id
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/错误体' }
+
+  schemas:
+    事项状态:
+      type: string
+      enum: [草稿, 待审批, 已通过, 已驳回]
+
+    事项摘要:
+      type: object
+      required: [id, 单号, 标题, 状态, 申请人id, 版本号]
+      properties:
+        id: { type: string }
+        单号: { type: string, pattern: '^SX-\d{8}-\d{4}$' }
+        标题: { type: string, maxLength: 100 }
+        状态: { $ref: '#/components/schemas/事项状态' }
+        申请人id: { type: string }
+        当前审批人id: { type: [string, 'null'] }
+        提交时间: { type: [string, 'null'], format: date-time }
+        审批完成时间: { type: [string, 'null'], format: date-time }
+        最近审批意见: { type: [string, 'null'], maxLength: 500 }
+        版本号: { type: integer, minimum: 1 }
+
+    事项详情:
+      allOf:
+        - $ref: '#/components/schemas/事项摘要'
+        - type: object
+          properties:
+            内容说明: { type: string, maxLength: 2000 }
+            附件:
+              type: array
+              maxItems: 3
+              items:
+                type: object
+                properties:
+                  文件名: { type: string }
+                  大小字节: { type: integer }
+                  地址: { type: string }
+            创建时间: { type: string, format: date-time }
+            更新时间: { type: string, format: date-time }
+
+    事项创建请求:
+      type: object
+      additionalProperties: false
+      required: [标题, 内容说明]
+      properties:
+        申请人id:
+          type: string
+          description: 服务端从登录态填入；客户端传入值须与登录态一致，否则 422
+        标题: { type: string, minLength: 1, maxLength: 100 }
+        内容说明: { type: string, minLength: 1, maxLength: 2000 }
+        附件:
+          type: array
+          maxItems: 3
+          items:
+            type: object
+            properties:
+              文件名: { type: string }
+              大小字节: { type: integer, maximum: 10485760 }
+              地址: { type: string }
+
+    事项更新请求:
+      type: object
+      additionalProperties: false
+      properties:
+        标题: { type: string, minLength: 1, maxLength: 100 }
+        内容说明: { type: string, minLength: 1, maxLength: 2000 }
+        附件:
+          type: array
+          maxItems: 3
+          items:
+            type: object
+            properties:
+              文件名: { type: string }
+              大小字节: { type: integer, maximum: 10485760 }
+              地址: { type: string }
+        版本号:
+          type: integer
+          description: 乐观并发；也可用 If-Match 头传递
+
+    审批记录:
+      type: object
+      required: [id, 事项id, 动作, 操作人id, 操作人角色, 动作时间]
+      properties:
+        id: { type: string }
+        事项id: { type: string }
+        动作: { type: string, enum: [提交, 通过, 驳回] }
+        操作人id: { type: string }
+        操作人角色: { type: string, enum: [申请人, 审批人] }
+        意见: { type: [string, 'null'], maxLength: 500, description: 驳回时必填 }
+        动作时间: { type: string, format: date-time }
+
+    错误体:
+      type: object
+      required: [错误码, 消息, 追踪id]
+      properties:
+        错误码:
+          type: string
+          description: 机器判定的稳定标识
+          enum:
+            - validation_failed
+            - unauthenticated
+            - forbidden
+            - not_found
+            - version_conflict
+            - invalid_state_transition
+            - self_approval_forbidden
+            - rejection_reason_required
+            - approver_unresolved
+            - rate_limited
+            - internal_error
+            - not_implemented
+        消息: { type: string, description: 给人看，说清怎么改 }
+        字段错误:
+          type: array
+          description: 仅校验失败时
+          items:
+            type: object
+            required: [字段, 原因]
+            properties:
+              字段: { type: string }
+              原因: { type: string }
+        追踪id: { type: string, description: 用于对日志，必须返回 }

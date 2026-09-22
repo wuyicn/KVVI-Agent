@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": ".test-dist",
+    "rootDir": ".",
+    "declaration": false,
+    "noEmit": false,
+    "types": ["node"]
+  },
+  "include": ["src/model.ts", "src/workflowProtocol.ts", "src/workflowFolderProtocol.ts", "src/workflowConcurrencyProtocol.ts", "src/credentialStore.ts", "src/httpNode.ts", "src/retryPolicy.ts", "src/runProtocol.ts", "src/resultExpression.ts", "src/subworkflowProtocol.ts", "src/workflowInputProtocol.ts", "src/connectorSdk.ts", "src/builtinConnectors.ts", "src/connectorRegistry.ts", "src/webhookProtocol.ts", "src/waitpointProtocol.ts", "src/pollingTriggerProtocol.ts", "src/projectVariableStore.ts", "src/auditLogProtocol.ts", "src/dataStore.ts", "tests/**/*.test.ts"],
+  "exclude": ["node_modules", "lib", "dist"]
+}
