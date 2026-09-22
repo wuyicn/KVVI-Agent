@@ -1,8 +1,9 @@
-# KVVI Agent PRD v2.5 冻结清单
+# KVVI Agent PRD v2.6 冻结清单
 # 校验方式：python3 make_manifest.py --verify
-# 条目数：42
+# 条目数：60
 
-972c13768f3d00a681f668c7a6c87078819dcc0a7645469a60eaf9f670d1a556  KVVI-Agent 开发文档 PRD.md
+72493e881494c7ab82e02324e93afc06fa90eef46256c6d9d267108ed8336f9d  KVVI-Agent 开发文档 PRD.md
+6d60ffdd443f66158f6b521b8668c73efa3f141c4868ea786e059e48fe087ea7  评审/.DS_Store
 f47242b6473bb03ee597110553ea964459f59c898db000482d72bc0ff1ec0e4a  评审/v2.1/lenses-round2.json
 97b2ebb3a53e2f229efd5b0fa083d8987e6225f267ed95aa34847f2fdf3eabf5  评审/v2.1/lenses.json
 2ccd145c82bea9825475ebf3d9fbad6bad4b17c26db0ea727d20a3217c32faeb  评审/v2.1/run_codex_review.py
@@ -43,4 +44,21 @@ e358c64202878a0ac4fa6fd81deb0e2683d0322fae4dedf48c7a785984f10953  评审/v2.3/�
 baa260828f37f2fed7ddbc31aaacb3f0aab704d2dd948f973dc29e9206f11c61  评审/v2.4/证据/评审-kimi-k3-实现者.md
 eed2d13a514bd4d4963a7a29d4caabec9011c05fa372ace4e06ed4b58ec003e8  评审/v2.4/证据/评审-kimi-k3-实现者.record.json
 8eec646e9e3feb78b2820c33aa90227985d42e71e75e93b8f1cd96a55ba9b159  评审/v2.4/证据/评审-kimi-k3-实现者.思考过程.md
-432816eef8f6cc3be7a3ecf4b6ce1e3f02147c666537b78e743fc766a7c1033c  冻结/PRD-v2.5-冻结记录.md
+ac828f65b9921761255cb8e92d7a90843b0a7d76914be58253615ec81c99b9d8  评审/v2.5/lenses.json
+8e6d1689c9839512ddffaac8dc1bd52d4aabf9d133d4c8dc236c0801149781b1  评审/v2.5/run_codex_review.py
+a73ad3f7de26ab14d46ee16982f26c3cc1ab10b639be8384d7e5a3c27f7a4c1a  评审/v2.5/run_deepseek_review.py
+0ca4c987476984b115ef6dbc258b0105f7259d6030e202adb9f5f3056c2cfe33  评审/v2.5/run_kimi_review.py
+c19536307d934b58cede9ebefc376ace2d4d9c00fc69ed049e075b3f3820b33a  评审/v2.5/run_local_review.py
+0dd6d85197b30cf9a3224e489bd47e404ba86b6a4b4e271d5921f09d5da1ccf7  评审/v2.5/汇总.md
+a8d8ba545e1a441df1e36877867ad6a149b012f7b2228ae0b7776ff635b8e9ca  评审/v2.5/证据/评审5-deepseek-v4-pro-新增章节安全.md
+5ca4f077eae1dfc7bd7e5070b0ff6d602cdcbfe59501b171285493ecb2c30d53  评审/v2.5/证据/评审5-deepseek-v4-pro-新增章节安全.record.json
+e249d1f8e6d6d3a65bbae124e657b91c20377a4e536adf62354370e2ef0bbe15  评审/v2.5/证据/评审5-gpt-5.6-推理链对抗.md
+4b323eed154c751302b76de9debc1c0a3841037631c210794b0c859a47248a6f  评审/v2.5/证据/评审5-gpt-5.6-推理链对抗.record.json
+9cf78c52f74b072199b7e0107dbdc66386a55a4485e80c15446d33591de79180  评审/v2.5/证据/评审5-kimi-k2.7-code-修订验证.md
+84460e2a4a735828a99945275566b4e173a0498a9a8d1b810364f7b58f332ba6  评审/v2.5/证据/评审5-kimi-k2.7-code-修订验证.record.json
+8f1234225140ebe5b2d8d24c6d5e7009622441a4e5ecb7a5221d85cff02c2afe  评审/v2.5/证据/评审5-kimi-k2.7-code-修订验证.思考过程.md
+0c9c2c10512a522014eabb7d7c8c376bac79474d6b6a0b35dec13d00db7b44c8  评审/v2.5/证据/评审5-qwen3.8-完整性.md
+f546c10f0d50a04e606a62193c56e34a113f2d2afbd6776c8602043e34605507  评审/v2.5/证据/评审5-qwen3.8-完整性.record.json
+5d2744532e77c42884abdbaf30b9bee0d1e62e404243fb519a570a79cbd460aa  评审/v2.5/证据/评审5-qwen3.8-完整性.思考过程.md
+8ad0b278496341c4b44256bf1ae4953748a57d89e3d1b08f6622463460a7ebf0  冻结/PRD-v2.5-冻结记录.md
+fcfd7e870a4f02e4a9beaab824c88e8cbba937924b6a77c82bb8c4e83ec9c68f  冻结/清单-v2.5.sha256

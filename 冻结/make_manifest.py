@@ -3,7 +3,9 @@
 
 冻结范围（由 FREEZE_SET 显式枚举，避免递归时把清单自己也算进去）：
   - PRD 正文
-  - 四轮评审的全部记录：汇总、视角定义、运行器、证据与记录
+  - 全部五轮评审的记录：汇总、视角定义、运行器、证据与记录
+  - 历史清单快照（清单-v*.sha256）——旧指纹是历史版本可追溯的唯一依据
+  - 冻结记录（*.md）
 
 评审运行器与视角定义一并纳入，是为了让「另一台机器能否复现这次评审」
 成为冻结的一部分——只冻结结论、不冻结复现方式，等于只冻结了一半。
@@ -19,14 +21,15 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent          # 冻结/
 ROOT = HERE.parent                              # KVVI-Agent/
 MANIFEST = HERE / '清单.sha256'
-PRD_VERSION = 'v2.5'
+PRD_VERSION = 'v2.6'
 
 FREEZE_SET = [
     ROOT / 'KVVI-Agent 开发文档 PRD.md',
     # 评审全树：汇总 / lenses.json / run_*.py / 证据/*（含 .record.json）
     *(p for p in sorted((ROOT / '评审').rglob('*')) if p.is_file()),
-    # 冻结记录本身（但不含 清单.sha256——那会自指）
+    # 冻结记录与历史清单快照（但不含 清单.sha256 自身——那会自指）
     *(p for p in sorted(HERE.glob('*.md')) if p.is_file()),
+    *(p for p in sorted(HERE.glob('清单-v*.sha256')) if p.is_file()),
 ]
 
 
