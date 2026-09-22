@@ -1,8 +1,8 @@
-# KVVI Agent PRD v2.6 冻结清单
+# KVVI Agent PRD v2.7 冻结清单
 # 校验方式：python3 make_manifest.py --verify
-# 条目数：60
+# 条目数：71
 
-72493e881494c7ab82e02324e93afc06fa90eef46256c6d9d267108ed8336f9d  KVVI-Agent 开发文档 PRD.md
+b8f8b4fefe050be9cc39ef45c726a3517bebf1c8f24a38b80f715ebcc2dea833  KVVI-Agent 开发文档 PRD.md
 6d60ffdd443f66158f6b521b8668c73efa3f141c4868ea786e059e48fe087ea7  评审/.DS_Store
 f47242b6473bb03ee597110553ea964459f59c898db000482d72bc0ff1ec0e4a  评审/v2.1/lenses-round2.json
 97b2ebb3a53e2f229efd5b0fa083d8987e6225f267ed95aa34847f2fdf3eabf5  评审/v2.1/lenses.json
@@ -60,5 +60,16 @@ e249d1f8e6d6d3a65bbae124e657b91c20377a4e536adf62354370e2ef0bbe15  评审/v2.5/�
 0c9c2c10512a522014eabb7d7c8c376bac79474d6b6a0b35dec13d00db7b44c8  评审/v2.5/证据/评审5-qwen3.8-完整性.md
 f546c10f0d50a04e606a62193c56e34a113f2d2afbd6776c8602043e34605507  评审/v2.5/证据/评审5-qwen3.8-完整性.record.json
 5d2744532e77c42884abdbaf30b9bee0d1e62e404243fb519a570a79cbd460aa  评审/v2.5/证据/评审5-qwen3.8-完整性.思考过程.md
-8ad0b278496341c4b44256bf1ae4953748a57d89e3d1b08f6622463460a7ebf0  冻结/PRD-v2.5-冻结记录.md
+fbe1f831b94ccfb40111cceee7a5ec49b2f17ea8dd97e5d4d5338c097ecf1bc8  评审/v2.6/lenses.json
+6668fb6caa8ed069108ac84bba19e3b0aef625b8f86080ad1e775ebd24769f2e  评审/v2.6/run_codex_review.py
+107bb944167e73e70905809cc214340a4efc7a6ad2fa237c34af1e9ac9943d0d  评审/v2.6/run_kimi_review.py
+5f7a47055bf3df42780f3647f6608a60d21dbb1e817c2180e0007c0100edeff9  评审/v2.6/run_local_review.py
+a3e83c1c5cb088cf393bac7587143cf5597ba91450a52b7fab7725354cd27afa  评审/v2.6/汇总.md
+2f348e1b1842ad761f89c3c1039ab3a5ae484c140c103a3572f5d3cba5ccdc59  评审/v2.6/证据/评审6-kimi-k3-对抗验证.md
+facdb7caebcdc2eec8b3da56c8d1badcf34f0e8fe23c2b64426ab2a322a8cfa7  评审/v2.6/证据/评审6-kimi-k3-对抗验证.record.json
+9677e036c4748fe3b0e64685c814b727e93e50bcc553e25c6f412050a18977dd  评审/v2.6/证据/评审6-kimi-k3-对抗验证.思考过程.md
+0022a53923194cfad60a75c24365394a3838e389fa286eb04d8fe51b5bfe3bdb  评审/v2.6/证据/评审6-qwen3.8-一致性.md
+6005e805c8a9ec7c1117efecbee2c136fbf7c068efc300d2d4779bb372da89fa  评审/v2.6/证据/评审6-qwen3.8-一致性.record.json
+a2235dec9a9a4c1d8330f0cc48b75980f8f57cb79f8842fd568f448f4da7fa5f  评审/v2.6/证据/评审6-qwen3.8-一致性.思考过程.md
+c152c89501b117ee555912987ba302da010cd8ecd2a79e7b43f159f7c1ca3bb3  冻结/PRD-v2.5-冻结记录.md
 fcfd7e870a4f02e4a9beaab824c88e8cbba937924b6a77c82bb8c4e83ec9c68f  冻结/清单-v2.5.sha256
