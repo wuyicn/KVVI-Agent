@@ -1,0 +1,24 @@
+{
+  "runner": "deepseek-api",
+  "model": "deepseek-v4-pro",
+  "family": "deepseek",
+  "lens": "security",
+  "prd_sha256": "b49627af28d814c24691d7a3efd95a03517891ec68b8ebbfd2577e29004b4e9e",
+  "prompt_sha256": "bc61be70a544f8845f6e8c2e6832364e3112ee11f611b89eb10e675482a45c25",
+  "answer_sha256": "fa5eda40ca2ea30654c2225368ac671769c8c1c400c11a9fb3980d7da91a630f",
+  "answer_chars": 3213,
+  "elapsed_seconds": 208.2,
+  "usage": {
+    "prompt_tokens": 32702,
+    "completion_tokens": 12162,
+    "total_tokens": 44864,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 10171
+    },
+    "prompt_cache_hit_tokens": 0,
+    "prompt_cache_miss_tokens": 32702
+  }
+}
