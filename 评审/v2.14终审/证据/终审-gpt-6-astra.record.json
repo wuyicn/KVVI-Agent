@@ -1,0 +1,13 @@
+{
+  "runner": "codex-cli",
+  "model": "gpt-6-astra",
+  "family": "openai",
+  "lens": "final",
+  "sandbox": "read-only",
+  "ephemeral": true,
+  "prd_sha256": "cd2c5d93bef1f676b6d938b5fd220add01abcca8d76799118f1a78b1b6b47322",
+  "prompt_sha256": "15e0aed7d45e34d164e7bfd5fa436c41af9e7a1ac3953027ffeba95b37b9a23a",
+  "answer_sha256": "8228f61b6129ef4230c3478fe025f9402ae7fca67308d013b3b468a527700e97",
+  "answer_chars": 5824,
+  "elapsed_seconds": 217.9
+}
