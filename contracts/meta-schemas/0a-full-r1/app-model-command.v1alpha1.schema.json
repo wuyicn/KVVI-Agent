@@ -1,0 +1,2167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:meta-schema:0a-full-r1:app-model-command-v1alpha1",
+  "$ref": "#/$defs/Command",
+  "$defs": {
+    "AssetRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/AssetRef"
+    },
+    "CapabilityRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/CapabilityRef"
+    },
+    "Policy": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:permission-spec-v1alpha1#/$defs/Policy"
+    },
+    "Transition": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:workflow-spec-v1alpha1#/$defs/Transition"
+    },
+    "FieldAddArgs": {
+      "type": "object",
+      "properties": {
+        "field_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "nullable": {
+          "type": "boolean"
+        },
+        "default": true,
+        "write_policy": {
+          "enum": [
+            "MUTABLE",
+            "CREATE_ONLY",
+            "SYSTEM"
+          ]
+        },
+        "constraints": {
+          "type": "object"
+        },
+        "type_config": {
+          "type": "object"
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "searchable": {
+              "type": "boolean"
+            },
+            "filterable": {
+              "type": "boolean"
+            },
+            "sortable": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "searchable",
+            "filterable",
+            "sortable"
+          ],
+          "additionalProperties": false
+        },
+        "field_type": {
+          "enum": [
+            "short_text",
+            "long_text",
+            "boolean",
+            "integer",
+            "decimal",
+            "money",
+            "date",
+            "datetime",
+            "single_select",
+            "multi_select"
+          ]
+        }
+      },
+      "required": [
+        "field_code",
+        "field_type",
+        "label",
+        "required"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "field_type": {
+                "const": "short_text"
+              }
+            },
+            "required": [
+              "field_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "min_length": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "max_length": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 255
+                  },
+                  "trim": {
+                    "type": "boolean"
+                  },
+                  "pattern": {
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field_type": {
+                "const": "long_text"
+              }
+            },
+            "required": [
+              "field_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "max_length": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 20000
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field_type": {
+                "const": "boolean"
+              }
+            },
+            "required": [
+              "field_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field_type": {
+                "const": "integer"
+              }
+            },
+            "required": [
+              "field_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "minimum": {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                  },
+                  "maximum": {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field_type": {
+                "const": "decimal"
+              }
+            },
+            "required": [
+              "field_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "minimum": {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/DecimalValue"
+                  },
+                  "maximum": {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/DecimalValue"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {
+                  "precision": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 38
+                  },
+                  "scale": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 12
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/DecimalValue"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field_type": {
+                "const": "money"
+              }
+            },
+            "required": [
+              "field_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "minimum": {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/DecimalValue"
+                  },
+                  "maximum": {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/DecimalValue"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {
+                  "currency_mode": {
+                    "const": "FIXED"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$(?![\\s\\S])"
+                  }
+                },
+                "required": [
+                  "currency_mode",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "default": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "amount": {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/DecimalValue"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$(?![\\s\\S])"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type_config"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field_type": {
+                "const": "date"
+              }
+            },
+            "required": [
+              "field_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "minimum": {
+                    "type": "string"
+                  },
+                  "maximum": {
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field_type": {
+                "const": "datetime"
+              }
+            },
+            "required": [
+              "field_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field_type": {
+                "const": "single_select"
+              }
+            },
+            "required": [
+              "field_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/Option"
+                    },
+                    "minItems": 1,
+                    "maxItems": 200
+                  }
+                },
+                "required": [
+                  "options"
+                ],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type_config"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "field_type": {
+                "const": "multi_select"
+              }
+            },
+            "required": [
+              "field_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "max_items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/Option"
+                    },
+                    "minItems": 1,
+                    "maxItems": 200
+                  }
+                },
+                "required": [
+                  "options"
+                ],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type_config"
+            ]
+          }
+        }
+      ]
+    },
+    "ChangeConstraintArgs": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "constraints": {
+              "type": "object",
+              "properties": {
+                "min_length": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                },
+                "max_length": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 255
+                },
+                "trim": {
+                  "type": "boolean"
+                },
+                "pattern": {
+                  "type": "string"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "type_config": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "constraints"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "constraints": {
+              "type": "object",
+              "properties": {
+                "max_length": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20000
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "type_config": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "constraints"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "constraints": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            },
+            "type_config": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "constraints"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "constraints": {
+              "type": "object",
+              "properties": {
+                "minimum": {
+                  "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                },
+                "maximum": {
+                  "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "type_config": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "constraints"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "constraints": {
+              "type": "object",
+              "properties": {
+                "minimum": {
+                  "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/DecimalValue"
+                },
+                "maximum": {
+                  "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/DecimalValue"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "type_config": {
+              "type": "object",
+              "properties": {
+                "precision": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 38
+                },
+                "scale": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 12
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "constraints"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "constraints": {
+              "type": "object",
+              "properties": {
+                "minimum": {
+                  "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/DecimalValue"
+                },
+                "maximum": {
+                  "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/DecimalValue"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "type_config": {
+              "type": "object",
+              "properties": {
+                "currency_mode": {
+                  "const": "FIXED"
+                },
+                "currency": {
+                  "type": "string",
+                  "pattern": "^[A-Z]{3}$(?![\\s\\S])"
+                }
+              },
+              "required": [
+                "currency_mode",
+                "currency"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "constraints"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "constraints": {
+              "type": "object",
+              "properties": {
+                "minimum": {
+                  "type": "string"
+                },
+                "maximum": {
+                  "type": "string"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "type_config": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "constraints"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "constraints": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            },
+            "type_config": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "constraints"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "constraints": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            },
+            "type_config": {
+              "type": "object",
+              "properties": {
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/Option"
+                  },
+                  "minItems": 1,
+                  "maxItems": 200
+                }
+              },
+              "required": [
+                "options"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "constraints"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "constraints": {
+              "type": "object",
+              "properties": {
+                "max_items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 50
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "type_config": {
+              "type": "object",
+              "properties": {
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/Option"
+                  },
+                  "minItems": 1,
+                  "maxItems": 200
+                }
+              },
+              "required": [
+                "options"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "constraints"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "$comment": "Union closes the ten known field constraints/config shapes. Exact target field type, narrowing risk and cross-field relations require trusted draft context."
+    },
+    "I18nRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:view-schema-lce-safe-v1#/$defs/I18nRef"
+    },
+    "FieldRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+    },
+    "DataBindingRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:view-schema-lce-safe-v1#/$defs/DataBindingRef"
+    },
+    "CommandDataQueryRef": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "DataQueryRef"
+        },
+        "queryRef": {
+          "$ref": "#/$defs/CapabilityRef"
+        },
+        "params": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "type",
+        "queryRef"
+      ],
+      "additionalProperties": false
+    },
+    "SafeExprInner": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "all": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/SafeExprInner"
+              },
+              "minItems": 1,
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/SafeExprInner"
+              },
+              "minItems": 1,
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/SafeExprInner"
+            }
+          },
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "left": {
+              "$ref": "#/$defs/FieldRef"
+            },
+            "operator": {
+              "enum": [
+                "eq",
+                "ne",
+                "gt",
+                "gte",
+                "lt",
+                "lte"
+              ]
+            },
+            "right": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "left",
+            "operator",
+            "right"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "left": {
+              "$ref": "#/$defs/FieldRef"
+            },
+            "operator": {
+              "enum": [
+                "in",
+                "not_in"
+              ]
+            },
+            "right": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "minItems": 1,
+              "maxItems": 200,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "left",
+            "operator",
+            "right"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "left": {
+              "$ref": "#/$defs/FieldRef"
+            },
+            "operator": {
+              "enum": [
+                "is_empty",
+                "not_empty"
+              ]
+            }
+          },
+          "required": [
+            "left",
+            "operator"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "CommandSafeExpression": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "SafeExpression"
+            },
+            "all": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/SafeExprInner"
+              },
+              "minItems": 1,
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "type",
+            "all"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "SafeExpression"
+            },
+            "any": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/SafeExprInner"
+              },
+              "minItems": 1,
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "type",
+            "any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "SafeExpression"
+            },
+            "not": {
+              "$ref": "#/$defs/SafeExprInner"
+            }
+          },
+          "required": [
+            "type",
+            "not"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "SafeExpression"
+            },
+            "left": {
+              "$ref": "#/$defs/FieldRef"
+            },
+            "operator": {
+              "enum": [
+                "eq",
+                "ne",
+                "gt",
+                "gte",
+                "lt",
+                "lte"
+              ]
+            },
+            "right": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "left",
+            "operator",
+            "right"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "SafeExpression"
+            },
+            "left": {
+              "$ref": "#/$defs/FieldRef"
+            },
+            "operator": {
+              "enum": [
+                "in",
+                "not_in"
+              ]
+            },
+            "right": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "minItems": 1,
+              "maxItems": 200,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "type",
+            "left",
+            "operator",
+            "right"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "SafeExpression"
+            },
+            "left": {
+              "$ref": "#/$defs/FieldRef"
+            },
+            "operator": {
+              "enum": [
+                "is_empty",
+                "not_empty"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "left",
+            "operator"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "SafeComponentProps": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/I18nRef"
+            }
+          ]
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "fieldBinding": {
+          "$ref": "#/$defs/FieldRef"
+        },
+        "labelMode": {
+          "const": "BUSINESS_SCHEMA"
+        },
+        "colSpan": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/I18nRef"
+            }
+          ]
+        },
+        "value": {
+          "$ref": "#/$defs/FieldRef"
+        },
+        "data": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/DataBindingRef"
+            },
+            {
+              "$ref": "#/$defs/CommandDataQueryRef"
+            }
+          ]
+        },
+        "disabled": {
+          "$ref": "#/$defs/CommandSafeExpression"
+        }
+      },
+      "required": [],
+      "additionalProperties": false,
+      "$comment": "STRUCTURE_SCOPE finite command envelope only: title,columns,fieldBinding,labelMode,colSpan,text,value,data,disabled; exact component registered props/required keys and all bindings remain L. DataQueryRef params may only be absent/empty in this candidate."
+    },
+    "Command": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "command_version": {
+              "const": "app-model-command/v1alpha1"
+            },
+            "command_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draft_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "base_revision": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "type": {
+              "const": "app.createModule"
+            },
+            "target_ref": {
+              "type": "object",
+              "properties": {
+                "app_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "app_id"
+              ],
+              "additionalProperties": false
+            },
+            "args": {
+              "type": "object",
+              "properties": {
+                "module_code": {
+                  "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              },
+              "required": [
+                "module_code",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command_version",
+            "command_id",
+            "draft_id",
+            "base_revision",
+            "type",
+            "target_ref",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command_version": {
+              "const": "app-model-command/v1alpha1"
+            },
+            "command_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draft_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "base_revision": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "type": {
+              "const": "businessObject.create"
+            },
+            "target_ref": {
+              "type": "object",
+              "properties": {
+                "module_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "module_id"
+              ],
+              "additionalProperties": false
+            },
+            "args": {
+              "type": "object",
+              "properties": {
+                "schema_code": {
+                  "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "field_type_registry_ref": {
+                  "$ref": "#/$defs/AssetRef",
+                  "type": "object",
+                  "properties": {
+                    "asset_type": {
+                      "const": "FIELD_TYPE_REGISTRY"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "schema_code",
+                "name",
+                "field_type_registry_ref"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command_version",
+            "command_id",
+            "draft_id",
+            "base_revision",
+            "type",
+            "target_ref",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command_version": {
+              "const": "app-model-command/v1alpha1"
+            },
+            "command_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draft_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "base_revision": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "type": {
+              "const": "field.add"
+            },
+            "target_ref": {
+              "type": "object",
+              "properties": {
+                "business_object_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "business_object_id"
+              ],
+              "additionalProperties": false
+            },
+            "args": {
+              "$ref": "#/$defs/FieldAddArgs"
+            }
+          },
+          "required": [
+            "command_version",
+            "command_id",
+            "draft_id",
+            "base_revision",
+            "type",
+            "target_ref",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command_version": {
+              "const": "app-model-command/v1alpha1"
+            },
+            "command_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draft_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "base_revision": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "type": {
+              "const": "field.changeConstraint"
+            },
+            "target_ref": {
+              "type": "object",
+              "properties": {
+                "business_object_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "field_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "business_object_id",
+                "field_id"
+              ],
+              "additionalProperties": false
+            },
+            "args": {
+              "$ref": "#/$defs/ChangeConstraintArgs"
+            }
+          },
+          "required": [
+            "command_version",
+            "command_id",
+            "draft_id",
+            "base_revision",
+            "type",
+            "target_ref",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command_version": {
+              "const": "app-model-command/v1alpha1"
+            },
+            "command_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draft_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "base_revision": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "type": {
+              "const": "view.addNode"
+            },
+            "target_ref": {
+              "type": "object",
+              "properties": {
+                "view_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "parent_node_id": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "view_id",
+                "parent_node_id"
+              ],
+              "additionalProperties": false
+            },
+            "args": {
+              "type": "object",
+              "properties": {
+                "componentName": {
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Za-z0-9]{1,63}(?![\\s\\S])"
+                },
+                "props": {
+                  "$ref": "#/$defs/SafeComponentProps"
+                },
+                "position": {
+                  "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+                }
+              },
+              "required": [
+                "componentName",
+                "props",
+                "position"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command_version",
+            "command_id",
+            "draft_id",
+            "base_revision",
+            "type",
+            "target_ref",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command_version": {
+              "const": "app-model-command/v1alpha1"
+            },
+            "command_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draft_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "base_revision": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "type": {
+              "const": "view.moveNode"
+            },
+            "target_ref": {
+              "type": "object",
+              "properties": {
+                "view_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "node_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "view_id",
+                "node_id"
+              ],
+              "additionalProperties": false
+            },
+            "args": {
+              "type": "object",
+              "properties": {
+                "parent_node_id": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "position": {
+                  "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+                }
+              },
+              "required": [
+                "parent_node_id",
+                "position"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command_version",
+            "command_id",
+            "draft_id",
+            "base_revision",
+            "type",
+            "target_ref",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command_version": {
+              "const": "app-model-command/v1alpha1"
+            },
+            "command_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draft_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "base_revision": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "type": {
+              "const": "view.bindField"
+            },
+            "target_ref": {
+              "type": "object",
+              "properties": {
+                "view_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "node_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "view_id",
+                "node_id"
+              ],
+              "additionalProperties": false
+            },
+            "args": {
+              "type": "object",
+              "properties": {
+                "business_object_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "field_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "business_object_id",
+                "field_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command_version",
+            "command_id",
+            "draft_id",
+            "base_revision",
+            "type",
+            "target_ref",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command_version": {
+              "const": "app-model-command/v1alpha1"
+            },
+            "command_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draft_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "base_revision": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "type": {
+              "const": "navigation.addRoute"
+            },
+            "target_ref": {
+              "type": "object",
+              "properties": {
+                "app_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "app_id"
+              ],
+              "additionalProperties": false
+            },
+            "args": {
+              "type": "object",
+              "properties": {
+                "route_code": {
+                  "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+                },
+                "path": {
+                  "type": "string",
+                  "pattern": "^/(?:[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*)?(?![\\s\\S])"
+                },
+                "view_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "route_code",
+                "path",
+                "view_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command_version",
+            "command_id",
+            "draft_id",
+            "base_revision",
+            "type",
+            "target_ref",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command_version": {
+              "const": "app-model-command/v1alpha1"
+            },
+            "command_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draft_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "base_revision": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "type": {
+              "const": "workflow.addTransition"
+            },
+            "target_ref": {
+              "type": "object",
+              "properties": {
+                "workflow_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "workflow_id"
+              ],
+              "additionalProperties": false
+            },
+            "args": {
+              "type": "object",
+              "properties": {
+                "transition": {
+                  "$ref": "#/$defs/Transition"
+                }
+              },
+              "required": [
+                "transition"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command_version",
+            "command_id",
+            "draft_id",
+            "base_revision",
+            "type",
+            "target_ref",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command_version": {
+              "const": "app-model-command/v1alpha1"
+            },
+            "command_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draft_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "base_revision": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "type": {
+              "const": "permission.changeRolePolicy"
+            },
+            "target_ref": {
+              "type": "object",
+              "properties": {
+                "permission_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "permission_id"
+              ],
+              "additionalProperties": false
+            },
+            "args": {
+              "type": "object",
+              "properties": {
+                "policy": {
+                  "$ref": "#/$defs/Policy"
+                }
+              },
+              "required": [
+                "policy"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command_version",
+            "command_id",
+            "draft_id",
+            "base_revision",
+            "type",
+            "target_ref",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command_version": {
+              "const": "app-model-command/v1alpha1"
+            },
+            "command_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draft_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "base_revision": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "type": {
+              "const": "draft.undoCommand"
+            },
+            "target_ref": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            },
+            "args": {
+              "type": "object",
+              "properties": {
+                "target_command_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "target_command_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command_version",
+            "command_id",
+            "draft_id",
+            "base_revision",
+            "type",
+            "target_ref",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command_version": {
+              "const": "app-model-command/v1alpha1"
+            },
+            "command_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draft_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "base_revision": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "type": {
+              "const": "draft.redoCommand"
+            },
+            "target_ref": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            },
+            "args": {
+              "type": "object",
+              "properties": {
+                "target_command_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "target_command_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command_version",
+            "command_id",
+            "draft_id",
+            "base_revision",
+            "type",
+            "target_ref",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command_version": {
+              "const": "app-model-command/v1alpha1"
+            },
+            "command_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draft_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "base_revision": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "type": {
+              "const": "draft.compile"
+            },
+            "target_ref": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            },
+            "args": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command_version",
+            "command_id",
+            "draft_id",
+            "base_revision",
+            "type",
+            "target_ref",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command_version": {
+              "const": "app-model-command/v1alpha1"
+            },
+            "command_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "draft_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "base_revision": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "type": {
+              "const": "draft.submitForApproval"
+            },
+            "target_ref": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            },
+            "args": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command_version",
+            "command_id",
+            "draft_id",
+            "base_revision",
+            "type",
+            "target_ref",
+            "args"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

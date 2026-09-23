@@ -1,0 +1,14 @@
+{
+  "contract_version": "app-spec/v1alpha1",
+  "base_version": 0,
+  "spec": {
+    "app_code": "internal_ops",
+    "name": "内部经营系统",
+    "businessSchemaRefs": [],
+    "viewRefs": [],
+    "navigation": [],
+    "workflowRefs": [],
+    "automationRefs": [],
+    "integrationRefs": []
+  }
+}

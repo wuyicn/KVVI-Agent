@@ -1,0 +1,1856 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:meta-schema:0a-full-r1:migration-plan-v1alpha1",
+  "$comment": "Local review candidate. Structure only; synthetic case digests are placeholders, not recomputed evidence. Cross-record references, registration, authorization, canonical digests and event history require a separate semantic validator. Operation args are a bounded closed-shape subset; unknown registered operation shapes require a reviewed schema revision.",
+  "$ref": "#/$defs/Record",
+  "$defs": {
+    "AssetRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/AssetRef"
+    },
+    "BusinessRef": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/AssetRef"
+        },
+        {
+          "properties": {
+            "asset_type": {
+              "const": "BUSINESS_SCHEMA"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "Code": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+    },
+    "SchemaBinding": {
+      "type": "object",
+      "properties": {
+        "schema_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        }
+      },
+      "required": [
+        "schema_id",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "PendingCleanup": {
+      "type": "object",
+      "properties": {
+        "item_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "resource_ref": {
+          "$ref": "#/$defs/BusinessRef"
+        },
+        "subresource_type": {
+          "enum": [
+            "FIELD",
+            "INDEX",
+            "SCHEMA_VERSION"
+          ]
+        },
+        "subresource_code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "deferred_action": {
+          "enum": [
+            "RETAIN_PREVIOUS_FIELD",
+            "RETAIN_PREVIOUS_INDEX",
+            "RETAIN_PREVIOUS_SCHEMA"
+          ]
+        },
+        "minimum_retained_versions": {
+          "const": 2
+        },
+        "release_condition": {
+          "const": "SEPARATE_APPROVAL_AFTER_COMPATIBILITY_WINDOW"
+        }
+      },
+      "required": [
+        "item_id",
+        "resource_ref",
+        "subresource_type",
+        "subresource_code",
+        "deferred_action",
+        "minimum_retained_versions",
+        "release_condition"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "subresource_type": {
+                "enum": [
+                  "FIELD"
+                ]
+              }
+            },
+            "required": [
+              "subresource_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "subresource_code": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+              },
+              "deferred_action": {
+                "const": "RETAIN_PREVIOUS_FIELD"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subresource_type": {
+                "enum": [
+                  "INDEX"
+                ]
+              }
+            },
+            "required": [
+              "subresource_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "subresource_code": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+              },
+              "deferred_action": {
+                "const": "RETAIN_PREVIOUS_INDEX"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subresource_type": {
+                "enum": [
+                  "SCHEMA_VERSION"
+                ]
+              }
+            },
+            "required": [
+              "subresource_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "subresource_code": {
+                "type": "null"
+              },
+              "deferred_action": {
+                "const": "RETAIN_PREVIOUS_SCHEMA"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "StaticValue": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+        },
+        {
+          "type": "string",
+          "maxLength": 20000
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "minItems": 0,
+          "maxItems": 50,
+          "uniqueItems": true
+        },
+        {
+          "type": "object",
+          "properties": {
+            "amount": {
+              "type": "string",
+              "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$(?![\\s\\S])"
+            },
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$(?![\\s\\S])"
+            }
+          },
+          "required": [
+            "amount",
+            "currency"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "FieldDiff": {
+      "type": "object",
+      "properties": {
+        "base_schema_ref": {
+          "$ref": "#/$defs/BusinessRef"
+        },
+        "target_schema_ref": {
+          "$ref": "#/$defs/BusinessRef"
+        },
+        "field_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "change": {
+          "enum": [
+            "ADD_OPTIONAL_FIELD",
+            "ADD_REQUIRED_WITH_DEFAULT",
+            "WIDEN_DECIMAL",
+            "SET_CREATE_ONLY"
+          ]
+        }
+      },
+      "required": [
+        "base_schema_ref",
+        "target_schema_ref",
+        "field_code",
+        "change"
+      ],
+      "additionalProperties": false
+    },
+    "BackfillRule": {
+      "type": "object",
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "target_schema_ref": {
+          "$ref": "#/$defs/BusinessRef"
+        },
+        "field_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "selection": {
+          "const": "MISSING_ONLY"
+        },
+        "value": {
+          "$ref": "#/$defs/StaticValue"
+        }
+      },
+      "required": [
+        "rule_id",
+        "target_schema_ref",
+        "field_code",
+        "selection",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "IndexChange": {
+      "type": "object",
+      "properties": {
+        "base_schema_ref": {
+          "$ref": "#/$defs/BusinessRef"
+        },
+        "target_schema_ref": {
+          "$ref": "#/$defs/BusinessRef"
+        },
+        "index_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "change": {
+          "enum": [
+            "CREATE_NORMAL",
+            "CREATE_UNIQUE"
+          ]
+        },
+        "build_mode": {
+          "enum": [
+            "REGULAR",
+            "CONCURRENT"
+          ]
+        }
+      },
+      "required": [
+        "base_schema_ref",
+        "target_schema_ref",
+        "index_code",
+        "change",
+        "build_mode"
+      ],
+      "additionalProperties": false
+    },
+    "Impact": {
+      "type": "object",
+      "properties": {
+        "data_origin": {
+          "const": "SYNTHETIC"
+        },
+        "affected_records": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+        },
+        "risk_flags": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "BACKFILL",
+              "UNIQUE_CONSTRAINT",
+              "LOCKING",
+              "PRECISION_CHANGE",
+              "WRITE_POLICY_CHANGE"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 5,
+          "uniqueItems": true
+        },
+        "affected_schema_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BusinessRef"
+          },
+          "minItems": 1,
+          "maxItems": 256
+        }
+      },
+      "required": [
+        "data_origin",
+        "affected_records",
+        "risk_flags",
+        "affected_schema_refs"
+      ],
+      "additionalProperties": false
+    },
+    "Backup": {
+      "type": "object",
+      "properties": {
+        "backup_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "base_artifact_digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        },
+        "retention_versions": {
+          "const": 2
+        },
+        "restore_mode": {
+          "const": "CHECKPOINT_PRESERVE_NEW_DATA"
+        }
+      },
+      "required": [
+        "backup_code",
+        "base_artifact_digest",
+        "retention_versions",
+        "restore_mode"
+      ],
+      "additionalProperties": false
+    },
+    "VerifyQuery": {
+      "type": "object",
+      "properties": {
+        "query_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "query_code": {
+          "enum": [
+            "ROW_COUNT_EQUALS",
+            "FIELD_NON_NULL",
+            "INDEX_VALID",
+            "CONTRACT_SET_COMPATIBLE"
+          ]
+        },
+        "resource_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BusinessRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "field_code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "index_code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_count": {
+          "anyOf": [
+            {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "query_id",
+        "query_code",
+        "resource_ref",
+        "field_code",
+        "index_code",
+        "expected_count"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "query_code": {
+                "enum": [
+                  "ROW_COUNT_EQUALS"
+                ]
+              }
+            },
+            "required": [
+              "query_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "resource_ref": {
+                "$ref": "#/$defs/BusinessRef"
+              },
+              "field_code": {
+                "type": "null"
+              },
+              "index_code": {
+                "type": "null"
+              },
+              "expected_count": {
+                "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "query_code": {
+                "enum": [
+                  "FIELD_NON_NULL"
+                ]
+              }
+            },
+            "required": [
+              "query_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "resource_ref": {
+                "$ref": "#/$defs/BusinessRef"
+              },
+              "field_code": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+              },
+              "index_code": {
+                "type": "null"
+              },
+              "expected_count": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "query_code": {
+                "enum": [
+                  "INDEX_VALID"
+                ]
+              }
+            },
+            "required": [
+              "query_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "resource_ref": {
+                "$ref": "#/$defs/BusinessRef"
+              },
+              "field_code": {
+                "type": "null"
+              },
+              "index_code": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+              },
+              "expected_count": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "query_code": {
+                "enum": [
+                  "CONTRACT_SET_COMPATIBLE"
+                ]
+              }
+            },
+            "required": [
+              "query_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "resource_ref": {
+                "type": "null"
+              },
+              "field_code": {
+                "type": "null"
+              },
+              "index_code": {
+                "type": "null"
+              },
+              "expected_count": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "Condition": {
+      "type": "object",
+      "properties": {
+        "condition_code": {
+          "enum": [
+            "BASE_ARTIFACT_MATCH",
+            "TARGET_CONTRACT_SET_MATCH",
+            "PRIOR_STEPS_COMPLETE",
+            "CHECKPOINT_AVAILABLE",
+            "NO_INDEX_CONFLICT",
+            "RESTORE_PRESERVES_NEW_DATA"
+          ]
+        },
+        "resource_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BusinessRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "subresource_code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "condition_code",
+        "resource_ref",
+        "subresource_code"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "condition_code": {
+                "enum": [
+                  "NO_INDEX_CONFLICT"
+                ]
+              }
+            },
+            "required": [
+              "condition_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "resource_ref": {
+                "$ref": "#/$defs/BusinessRef"
+              },
+              "subresource_code": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+              }
+            },
+            "type": "object"
+          },
+          "else": {
+            "properties": {
+              "resource_ref": {
+                "type": "null"
+              },
+              "subresource_code": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "CleanupPolicy": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "const": "DEFERRED"
+        },
+        "compatibility": {
+          "const": "N_AND_N_MINUS_1"
+        },
+        "destructive_cleanup_allowed": {
+          "const": false
+        },
+        "retention_versions": {
+          "const": 2
+        }
+      },
+      "required": [
+        "mode",
+        "compatibility",
+        "destructive_cleanup_allowed",
+        "retention_versions"
+      ],
+      "additionalProperties": false
+    },
+    "PlanAudit": {
+      "type": "object",
+      "properties": {
+        "created_by": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:[0-5]\\d(?:\\.\\d+)?Z$(?![\\s\\S])"
+        },
+        "trace_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "created_by",
+        "created_at",
+        "trace_id"
+      ],
+      "additionalProperties": false
+    },
+    "StepCheckpoint": {
+      "type": "object",
+      "properties": {
+        "before_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "after_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        }
+      },
+      "required": [
+        "before_code",
+        "after_code"
+      ],
+      "additionalProperties": false
+    },
+    "SnapshotArgs": {
+      "type": "object",
+      "properties": {
+        "backup_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        }
+      },
+      "required": [
+        "backup_code"
+      ],
+      "additionalProperties": false
+    },
+    "FieldArgs": {
+      "type": "object",
+      "properties": {
+        "target_schema_ref": {
+          "$ref": "#/$defs/BusinessRef"
+        },
+        "field_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        }
+      },
+      "required": [
+        "target_schema_ref",
+        "field_code"
+      ],
+      "additionalProperties": false
+    },
+    "IndexArgs": {
+      "type": "object",
+      "properties": {
+        "target_schema_ref": {
+          "$ref": "#/$defs/BusinessRef"
+        },
+        "index_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        }
+      },
+      "required": [
+        "target_schema_ref",
+        "index_code"
+      ],
+      "additionalProperties": false
+    },
+    "NoWorkArgs": {
+      "type": "object",
+      "properties": {
+        "phase": {
+          "enum": [
+            "EXPAND",
+            "BACKFILL"
+          ]
+        }
+      },
+      "required": [
+        "phase"
+      ],
+      "additionalProperties": false
+    },
+    "BackfillArgs": {
+      "type": "object",
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        }
+      },
+      "required": [
+        "rule_id"
+      ],
+      "additionalProperties": false
+    },
+    "VerifyArgs": {
+      "type": "object",
+      "properties": {
+        "query_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+          },
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "query_ids"
+      ],
+      "additionalProperties": false
+    },
+    "ActivateArgs": {
+      "type": "object",
+      "properties": {
+        "target_contract_set_digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        }
+      },
+      "required": [
+        "target_contract_set_digest"
+      ],
+      "additionalProperties": false
+    },
+    "CleanupArgs": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PendingCleanup"
+          },
+          "minItems": 1,
+          "maxItems": 256
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "RestoreArgs": {
+      "type": "object",
+      "properties": {
+        "checkpoint_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "preserve_new_data": {
+          "const": true
+        }
+      },
+      "required": [
+        "checkpoint_code",
+        "preserve_new_data"
+      ],
+      "additionalProperties": false
+    },
+    "InspectArgs": {
+      "type": "object",
+      "properties": {
+        "checkpoint_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        }
+      },
+      "required": [
+        "checkpoint_code"
+      ],
+      "additionalProperties": false
+    },
+    "ReconcileArgs": {
+      "type": "object",
+      "properties": {
+        "target_schema_ref": {
+          "$ref": "#/$defs/BusinessRef"
+        },
+        "index_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "checkpoint_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "policy": {
+          "const": "RETAIN_AND_DISABLE_INVALID"
+        }
+      },
+      "required": [
+        "target_schema_ref",
+        "index_code",
+        "checkpoint_code",
+        "policy"
+      ],
+      "additionalProperties": false
+    },
+    "Recovery": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "COMPENSATE",
+            "MANUAL"
+          ]
+        },
+        "operation_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*){1,7}$(?![\\s\\S])",
+          "minLength": 3,
+          "maxLength": 128
+        },
+        "version": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/PositiveSafeInteger"
+        },
+        "schema_binding": {
+          "$ref": "#/$defs/SchemaBinding"
+        },
+        "args": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RestoreArgs"
+            },
+            {
+              "$ref": "#/$defs/InspectArgs"
+            },
+            {
+              "$ref": "#/$defs/ReconcileArgs"
+            }
+          ]
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300000
+        }
+      },
+      "required": [
+        "mode",
+        "operation_code",
+        "version",
+        "schema_binding",
+        "args",
+        "timeout_ms"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.recovery.restore_checkpoint"
+                ]
+              }
+            },
+            "required": [
+              "operation_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "$ref": "#/$defs/RestoreArgs"
+              },
+              "version": {
+                "const": 1
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.recovery.inspect_no_effect"
+                ]
+              }
+            },
+            "required": [
+              "operation_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "$ref": "#/$defs/InspectArgs"
+              },
+              "version": {
+                "const": 1
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.recovery.reconcile_index"
+                ]
+              }
+            },
+            "required": [
+              "operation_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "$ref": "#/$defs/ReconcileArgs"
+              },
+              "version": {
+                "const": 1
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "not": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.prepare.snapshot",
+                  "fake.expand.add_field",
+                  "fake.expand.widen_decimal",
+                  "fake.expand.create_index",
+                  "fake.expand.set_create_only",
+                  "fake.phase.check_no_work",
+                  "fake.backfill.static_default",
+                  "fake.verify.check",
+                  "fake.activate.contract_set",
+                  "fake.cleanup.defer"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "Step": {
+      "type": "object",
+      "properties": {
+        "step_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "phase": {
+          "enum": [
+            "PREPARE",
+            "EXPAND",
+            "BACKFILL",
+            "VERIFY",
+            "ACTIVATE",
+            "CLEANUP"
+          ]
+        },
+        "operation_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*){1,7}$(?![\\s\\S])",
+          "minLength": 3,
+          "maxLength": 128
+        },
+        "version": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/PositiveSafeInteger"
+        },
+        "schema_binding": {
+          "$ref": "#/$defs/SchemaBinding"
+        },
+        "args": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SnapshotArgs"
+            },
+            {
+              "$ref": "#/$defs/FieldArgs"
+            },
+            {
+              "$ref": "#/$defs/IndexArgs"
+            },
+            {
+              "$ref": "#/$defs/NoWorkArgs"
+            },
+            {
+              "$ref": "#/$defs/BackfillArgs"
+            },
+            {
+              "$ref": "#/$defs/VerifyArgs"
+            },
+            {
+              "$ref": "#/$defs/ActivateArgs"
+            },
+            {
+              "$ref": "#/$defs/CleanupArgs"
+            }
+          ]
+        },
+        "preconditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "minItems": 1,
+          "maxItems": 32,
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "condition_code": {
+                    "const": "PRIOR_STEPS_COMPLETE"
+                  }
+                },
+                "required": [
+                  "condition_code"
+                ]
+              },
+              "minContains": 1,
+              "type": "array"
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "condition_code": {
+                    "const": "TARGET_CONTRACT_SET_MATCH"
+                  }
+                },
+                "required": [
+                  "condition_code"
+                ]
+              },
+              "minContains": 1,
+              "type": "array"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "checkpoint": {
+          "$ref": "#/$defs/StepCheckpoint"
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300000
+        },
+        "max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "recovery": {
+          "$ref": "#/$defs/Recovery"
+        }
+      },
+      "required": [
+        "step_id",
+        "phase",
+        "operation_code",
+        "version",
+        "schema_binding",
+        "args",
+        "preconditions",
+        "idempotency_key",
+        "checkpoint",
+        "timeout_ms",
+        "max_retries",
+        "recovery"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.prepare.snapshot"
+                ]
+              }
+            },
+            "required": [
+              "operation_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "$ref": "#/$defs/SnapshotArgs"
+              },
+              "phase": {
+                "enum": [
+                  "PREPARE"
+                ]
+              },
+              "version": {
+                "const": 1
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.expand.add_field"
+                ]
+              }
+            },
+            "required": [
+              "operation_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "$ref": "#/$defs/FieldArgs"
+              },
+              "phase": {
+                "enum": [
+                  "EXPAND"
+                ]
+              },
+              "version": {
+                "const": 1
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.expand.widen_decimal"
+                ]
+              }
+            },
+            "required": [
+              "operation_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "$ref": "#/$defs/FieldArgs"
+              },
+              "phase": {
+                "enum": [
+                  "EXPAND"
+                ]
+              },
+              "version": {
+                "const": 1
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.expand.create_index"
+                ]
+              }
+            },
+            "required": [
+              "operation_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "$ref": "#/$defs/IndexArgs"
+              },
+              "phase": {
+                "enum": [
+                  "EXPAND"
+                ]
+              },
+              "version": {
+                "const": 1
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.expand.set_create_only"
+                ]
+              }
+            },
+            "required": [
+              "operation_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "$ref": "#/$defs/FieldArgs"
+              },
+              "phase": {
+                "enum": [
+                  "EXPAND"
+                ]
+              },
+              "version": {
+                "const": 1
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.phase.check_no_work"
+                ]
+              }
+            },
+            "required": [
+              "operation_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "$ref": "#/$defs/NoWorkArgs"
+              },
+              "phase": {
+                "enum": [
+                  "EXPAND",
+                  "BACKFILL"
+                ]
+              },
+              "version": {
+                "const": 1
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.backfill.static_default"
+                ]
+              }
+            },
+            "required": [
+              "operation_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "$ref": "#/$defs/BackfillArgs"
+              },
+              "phase": {
+                "enum": [
+                  "BACKFILL"
+                ]
+              },
+              "version": {
+                "const": 1
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.verify.check"
+                ]
+              }
+            },
+            "required": [
+              "operation_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "$ref": "#/$defs/VerifyArgs"
+              },
+              "phase": {
+                "enum": [
+                  "VERIFY"
+                ]
+              },
+              "version": {
+                "const": 1
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.activate.contract_set"
+                ]
+              }
+            },
+            "required": [
+              "operation_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "$ref": "#/$defs/ActivateArgs"
+              },
+              "phase": {
+                "enum": [
+                  "ACTIVATE"
+                ]
+              },
+              "version": {
+                "const": 1
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.cleanup.defer"
+                ]
+              }
+            },
+            "required": [
+              "operation_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "$ref": "#/$defs/CleanupArgs"
+              },
+              "phase": {
+                "enum": [
+                  "CLEANUP"
+                ]
+              },
+              "version": {
+                "const": 1
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "not": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.recovery.restore_checkpoint",
+                  "fake.recovery.inspect_no_effect",
+                  "fake.recovery.reconcile_index"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation_code": {
+                "enum": [
+                  "fake.phase.check_no_work"
+                ]
+              }
+            },
+            "required": [
+              "operation_code"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "phase": {
+                      "enum": [
+                        "EXPAND"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "phase"
+                  ],
+                  "type": "object"
+                },
+                "then": {
+                  "properties": {
+                    "args": {
+                      "properties": {
+                        "phase": {
+                          "const": "EXPAND"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "phase": {
+                      "enum": [
+                        "BACKFILL"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "phase"
+                  ],
+                  "type": "object"
+                },
+                "then": {
+                  "properties": {
+                    "args": {
+                      "properties": {
+                        "phase": {
+                          "const": "BACKFILL"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "recovery": {
+                "properties": {
+                  "operation_code": {
+                    "const": "fake.recovery.reconcile_index"
+                  }
+                },
+                "required": [
+                  "operation_code"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "recovery"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "phase": {
+                "const": "EXPAND"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "Record": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "migration-plan/v1alpha1"
+        },
+        "migration_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "base_artifact_digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        },
+        "target_contract_set_digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        },
+        "canonicalization_profile": {
+          "const": "kvvi-json-c14n/v1"
+        },
+        "field_diffs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FieldDiff"
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "backfill_rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BackfillRule"
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "index_changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IndexChange"
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "impact": {
+          "$ref": "#/$defs/Impact"
+        },
+        "backup": {
+          "$ref": "#/$defs/Backup"
+        },
+        "verification_queries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/VerifyQuery"
+          },
+          "minItems": 1,
+          "maxItems": 256
+        },
+        "rollback_conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "minItems": 1,
+          "maxItems": 32,
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "condition_code": {
+                    "const": "CHECKPOINT_AVAILABLE"
+                  }
+                },
+                "required": [
+                  "condition_code"
+                ]
+              },
+              "minContains": 1,
+              "type": "array"
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "condition_code": {
+                    "const": "RESTORE_PRESERVES_NEW_DATA"
+                  }
+                },
+                "required": [
+                  "condition_code"
+                ]
+              },
+              "minContains": 1,
+              "type": "array"
+            }
+          ]
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Step"
+          },
+          "minItems": 6,
+          "maxItems": 256,
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "const": "PREPARE"
+                  }
+                },
+                "required": [
+                  "phase"
+                ]
+              },
+              "minContains": 1,
+              "type": "array"
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "const": "EXPAND"
+                  }
+                },
+                "required": [
+                  "phase"
+                ]
+              },
+              "minContains": 1,
+              "type": "array"
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "const": "BACKFILL"
+                  }
+                },
+                "required": [
+                  "phase"
+                ]
+              },
+              "minContains": 1,
+              "type": "array"
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "const": "VERIFY"
+                  }
+                },
+                "required": [
+                  "phase"
+                ]
+              },
+              "minContains": 1,
+              "type": "array"
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "const": "ACTIVATE"
+                  }
+                },
+                "required": [
+                  "phase"
+                ]
+              },
+              "minContains": 1,
+              "type": "array"
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "const": "CLEANUP"
+                  }
+                },
+                "required": [
+                  "phase"
+                ]
+              },
+              "minContains": 1,
+              "type": "array"
+            }
+          ]
+        },
+        "cleanup_policy": {
+          "$ref": "#/$defs/CleanupPolicy"
+        },
+        "audit": {
+          "$ref": "#/$defs/PlanAudit"
+        },
+        "plan_digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        }
+      },
+      "required": [
+        "contract_version",
+        "migration_id",
+        "base_artifact_digest",
+        "target_contract_set_digest",
+        "canonicalization_profile",
+        "field_diffs",
+        "backfill_rules",
+        "index_changes",
+        "impact",
+        "backup",
+        "verification_queries",
+        "rollback_conditions",
+        "steps",
+        "cleanup_policy",
+        "audit",
+        "plan_digest"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

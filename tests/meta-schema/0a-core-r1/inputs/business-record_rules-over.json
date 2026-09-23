@@ -1,0 +1,439 @@
+{
+  "schema_code": "general_item",
+  "name": "通用事项",
+  "field_type_registry_ref": {
+    "scope_type": "PLATFORM_CONTROL",
+    "scope_id": "kvvi-platform",
+    "app_id": null,
+    "module_id": null,
+    "asset_type": "FIELD_TYPE_REGISTRY",
+    "asset_id": "fake-business-types",
+    "version": 1,
+    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "fields": [
+    {
+      "field_code": "title",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    }
+  ],
+  "record_rules": [
+    {
+      "rule_code": "rule_0",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_1",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_2",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_3",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_4",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_5",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_6",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_7",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_8",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_9",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_10",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_11",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_12",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_13",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_14",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_15",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_16",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_17",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_18",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_19",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_20",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_21",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_22",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_23",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_24",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_25",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_26",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_27",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_28",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_29",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_30",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_31",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_32",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_33",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_34",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_35",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_36",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_37",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_38",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_39",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_40",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_41",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_42",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_43",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_44",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_45",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_46",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_47",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_48",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_49",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    },
+    {
+      "rule_code": "rule_50",
+      "message": "检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    }
+  ]
+}

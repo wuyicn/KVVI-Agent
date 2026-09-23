@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:meta-schema:0a-full-r1:view-schema-lce-safe-v1",
+  "$ref": "#/$defs/CompiledDraft",
+  "$defs": {
+    "AssetRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/AssetRef"
+    },
+    "CapabilityRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/CapabilityRef"
+    },
+    "Code": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{2,63}(?![\\s\\S])"
+    },
+    "BusinessRef": {
+      "$ref": "#/$defs/AssetRef",
+      "type": "object",
+      "properties": { "asset_type": { "const": "BUSINESS_SCHEMA" } }
+    },
+    "ComponentRef": {
+      "$ref": "#/$defs/AssetRef",
+      "type": "object",
+      "properties": { "asset_type": { "const": "COMPONENT_REGISTRY" } }
+    },
+    "FieldRef": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "FieldRef" },
+        "fieldRef": { "type": "string", "minLength": 1 }
+      },
+      "required": ["type", "fieldRef"],
+      "additionalProperties": false
+    },
+    "I18nRef": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "I18nRef" },
+        "key": { "type": "string", "minLength": 1, "maxLength": 128 }
+      },
+      "required": ["type", "key"],
+      "additionalProperties": false
+    },
+    "ExprBody": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "SafeExpression" },
+        "left": { "$ref": "#/$defs/FieldRef" },
+        "operator": {
+          "enum": [
+            "eq",
+            "ne",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "in",
+            "not_in",
+            "is_empty",
+            "not_empty"
+          ]
+        },
+        "right": {},
+        "all": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/Expr" }
+        },
+        "any": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/Expr" }
+        },
+        "not": { "$ref": "#/$defs/Expr" }
+      },
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": ["all"],
+          "properties": {
+            "all": {},
+            "any": false,
+            "not": false,
+            "left": false,
+            "operator": false,
+            "right": false
+          }
+        },
+        {
+          "required": ["any"],
+          "properties": {
+            "any": {},
+            "all": false,
+            "not": false,
+            "left": false,
+            "operator": false,
+            "right": false
+          }
+        },
+        {
+          "required": ["not"],
+          "properties": {
+            "not": {},
+            "all": false,
+            "any": false,
+            "left": false,
+            "operator": false,
+            "right": false
+          }
+        },
+        {
+          "required": ["left", "operator"],
+          "properties": {
+            "left": {},
+            "operator": {},
+            "all": false,
+            "any": false,
+            "not": false
+          },
+          "if": {
+            "properties": { "operator": { "enum": ["is_empty", "not_empty"] } }
+          },
+          "then": { "properties": { "right": false } },
+          "else": { "properties": { "right": {} }, "required": ["right"] }
+        }
+      ]
+    },
+    "Expr": {
+      "$ref": "#/$defs/ExprBody",
+      "type": "object",
+      "properties": { "type": { "not": {} } }
+    },
+    "SafeExpression": {
+      "$ref": "#/$defs/ExprBody",
+      "type": "object",
+      "properties": { "type": { "const": "SafeExpression" } },
+      "required": ["type"]
+    },
+    "ActionRef": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "ActionRef" },
+        "actionRef": { "$ref": "#/$defs/CapabilityRef" },
+        "input": { "type": "object" }
+      },
+      "required": ["type", "actionRef"],
+      "additionalProperties": false
+    },
+    "DataQueryRef": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "DataQueryRef" },
+        "queryRef": { "$ref": "#/$defs/CapabilityRef" },
+        "params": { "type": "object" }
+      },
+      "required": ["type", "queryRef"],
+      "additionalProperties": false
+    },
+    "DataBindingRef": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "DataBindingRef" },
+        "queryCode": { "$ref": "#/$defs/Code" },
+        "itemKey": { "type": "string", "minLength": 1 },
+        "maxItems": { "type": "integer", "minimum": 1, "maximum": 200 }
+      },
+      "required": ["type", "queryCode", "itemKey", "maxItems"],
+      "additionalProperties": false
+    },
+    "ViewNode": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{2,127}(?![\\s\\S])"
+        },
+        "componentName": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]{1,63}(?![\\s\\S])"
+        },
+        "props": { "type": "object" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ViewNode" }
+        },
+        "condition": { "$ref": "#/$defs/SafeExpression" },
+        "loop": { "$ref": "#/$defs/DataBindingRef" },
+        "loopArgs": { "const": ["item", "index"] },
+        "actions": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/ActionRef" }
+        }
+      },
+      "required": ["id", "componentName"],
+      "additionalProperties": false
+    },
+    "Spec": {
+      "type": "object",
+      "properties": {
+        "view_code": { "$ref": "#/$defs/Code" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "view_type": { "enum": ["FORM", "LIST", "DETAIL"] },
+        "businessSchemaRef": { "$ref": "#/$defs/BusinessRef" },
+        "componentRegistryRef": { "$ref": "#/$defs/ComponentRef" },
+        "componentsTree": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "$ref": "#/$defs/ViewNode" }
+        },
+        "queries": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "properties": {
+              "query_code": { "$ref": "#/$defs/Code" },
+              "query": { "$ref": "#/$defs/DataQueryRef" }
+            },
+            "required": ["query_code", "query"],
+            "additionalProperties": false
+          }
+        },
+        "i18n": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": { "type": "string", "maxLength": 5000 }
+          }
+        },
+        "meta": {
+          "type": "object",
+          "properties": {
+            "description": { "type": "string" },
+            "tags": { "type": "array", "items": { "type": "string" } },
+            "preview_note": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "view_code",
+        "name",
+        "view_type",
+        "businessSchemaRef",
+        "componentRegistryRef",
+        "componentsTree"
+      ],
+      "additionalProperties": false
+    },
+    "CompiledDraft": {
+      "type": "object",
+      "properties": {
+        "contract_version": { "const": "view-schema/lce-safe-v1" },
+        "base_version": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+        },
+        "spec": { "$ref": "#/$defs/Spec" }
+      },
+      "required": ["contract_version", "base_version", "spec"],
+      "additionalProperties": false
+    },
+    "RegisteredContract": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/RegisteredBase",
+      "type": "object",
+      "properties": {
+        "contract_version": { "const": "view-schema/lce-safe-v1" },
+        "view_id": { "type": "string", "format": "uuid" },
+        "spec": { "$ref": "#/$defs/Spec" }
+      },
+      "required": ["contract_version", "view_id", "spec"],
+      "unevaluatedProperties": false
+    }
+  }
+}

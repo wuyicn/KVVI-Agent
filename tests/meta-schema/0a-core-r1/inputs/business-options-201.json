@@ -1,0 +1,1239 @@
+{
+  "schema_code": "general_item",
+  "name": "通用事项",
+  "field_type_registry_ref": {
+    "scope_type": "PLATFORM_CONTROL",
+    "scope_id": "kvvi-platform",
+    "app_id": null,
+    "module_id": null,
+    "asset_type": "FIELD_TYPE_REGISTRY",
+    "asset_id": "fake-business-types",
+    "version": 1,
+    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "fields": [
+    {
+      "field_code": "title",
+      "label": "字段",
+      "type": "single_select",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      },
+      "type_config": {
+        "options": [
+          {
+            "code": "0",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "1",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "2",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "3",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "4",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "5",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "6",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "7",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "8",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "9",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "10",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "11",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "12",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "13",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "14",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "15",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "16",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "17",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "18",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "19",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "20",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "21",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "22",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "23",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "24",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "25",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "26",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "27",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "28",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "29",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "30",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "31",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "32",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "33",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "34",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "35",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "36",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "37",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "38",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "39",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "40",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "41",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "42",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "43",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "44",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "45",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "46",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "47",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "48",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "49",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "50",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "51",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "52",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "53",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "54",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "55",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "56",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "57",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "58",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "59",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "60",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "61",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "62",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "63",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "64",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "65",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "66",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "67",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "68",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "69",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "70",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "71",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "72",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "73",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "74",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "75",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "76",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "77",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "78",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "79",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "80",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "81",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "82",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "83",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "84",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "85",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "86",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "87",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "88",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "89",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "90",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "91",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "92",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "93",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "94",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "95",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "96",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "97",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "98",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "99",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "100",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "101",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "102",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "103",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "104",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "105",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "106",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "107",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "108",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "109",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "110",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "111",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "112",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "113",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "114",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "115",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "116",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "117",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "118",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "119",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "120",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "121",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "122",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "123",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "124",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "125",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "126",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "127",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "128",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "129",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "130",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "131",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "132",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "133",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "134",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "135",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "136",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "137",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "138",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "139",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "140",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "141",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "142",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "143",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "144",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "145",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "146",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "147",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "148",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "149",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "150",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "151",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "152",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "153",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "154",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "155",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "156",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "157",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "158",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "159",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "160",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "161",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "162",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "163",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "164",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "165",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "166",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "167",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "168",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "169",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "170",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "171",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "172",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "173",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "174",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "175",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "176",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "177",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "178",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "179",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "180",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "181",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "182",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "183",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "184",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "185",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "186",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "187",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "188",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "189",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "190",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "191",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "192",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "193",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "194",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "195",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "196",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "197",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "198",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "199",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "200",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          }
+        ]
+      }
+    }
+  ]
+}

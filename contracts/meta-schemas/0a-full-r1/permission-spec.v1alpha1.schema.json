@@ -1,0 +1,415 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:meta-schema:0a-full-r1:permission-spec-v1alpha1",
+  "$ref": "#/$defs/CompiledDraft",
+  "$defs": {
+    "AssetRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/AssetRef"
+    },
+    "CapabilityRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/CapabilityRef"
+    },
+    "RoleRef": {
+      "type": "object",
+      "properties": {
+        "permission_ref": {
+          "$ref": "#/$defs/AssetRef",
+          "type": "object",
+          "properties": {
+            "asset_type": {
+              "const": "PERMISSION"
+            }
+          }
+        },
+        "subresource": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "ROLE"
+            },
+            "code": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+            }
+          },
+          "required": [
+            "type",
+            "code"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "permission_ref",
+        "subresource"
+      ],
+      "additionalProperties": false
+    },
+    "Role": {
+      "type": "object",
+      "properties": {
+        "role_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "role_code",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "FormPolicy": {
+      "type": "object",
+      "properties": {
+        "policy_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "role_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "role_ref": {
+          "$ref": "#/$defs/RoleRef"
+        },
+        "dimension": {
+          "const": "FORM"
+        },
+        "resource_ref": {
+          "$ref": "#/$defs/AssetRef",
+          "type": "object",
+          "properties": {
+            "asset_type": {
+              "const": "BUSINESS_SCHEMA"
+            }
+          }
+        },
+        "effect": {
+          "enum": [
+            "ALLOW",
+            "DENY"
+          ]
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "read",
+              "create",
+              "update",
+              "delete",
+              "import",
+              "export",
+              "approve",
+              "admin"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true
+        },
+        "capability_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CapabilityRef"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "policy_code",
+        "role_code",
+        "role_ref",
+        "dimension",
+        "resource_ref",
+        "effect",
+        "actions",
+        "capability_refs"
+      ],
+      "additionalProperties": false
+    },
+    "FieldPolicy": {
+      "type": "object",
+      "properties": {
+        "policy_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "role_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "role_ref": {
+          "$ref": "#/$defs/RoleRef"
+        },
+        "dimension": {
+          "const": "FIELD"
+        },
+        "resource_ref": {
+          "$ref": "#/$defs/AssetRef",
+          "type": "object",
+          "properties": {
+            "asset_type": {
+              "const": "BUSINESS_SCHEMA"
+            }
+          }
+        },
+        "subresource": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "FIELD"
+            },
+            "code": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+            }
+          },
+          "required": [
+            "type",
+            "code"
+          ],
+          "additionalProperties": false
+        },
+        "field_mode": {
+          "enum": [
+            "DENY",
+            "HIDDEN",
+            "MASKED",
+            "READ_ONLY",
+            "EDITABLE"
+          ]
+        }
+      },
+      "required": [
+        "policy_code",
+        "role_code",
+        "role_ref",
+        "dimension",
+        "resource_ref",
+        "subresource",
+        "field_mode"
+      ],
+      "additionalProperties": false
+    },
+    "DataPolicy": {
+      "type": "object",
+      "properties": {
+        "policy_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "role_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "role_ref": {
+          "$ref": "#/$defs/RoleRef"
+        },
+        "dimension": {
+          "const": "DATA"
+        },
+        "resource_ref": {
+          "$ref": "#/$defs/AssetRef",
+          "type": "object",
+          "properties": {
+            "asset_type": {
+              "const": "BUSINESS_SCHEMA"
+            }
+          }
+        },
+        "data_scopes": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "SELF",
+              "STORE",
+              "DEPARTMENT",
+              "DEPARTMENT_AND_CHILDREN",
+              "COMPANY"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "policy_code",
+        "role_code",
+        "role_ref",
+        "dimension",
+        "resource_ref",
+        "data_scopes"
+      ],
+      "additionalProperties": false
+    },
+    "FlowPolicy": {
+      "type": "object",
+      "properties": {
+        "policy_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "role_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "role_ref": {
+          "$ref": "#/$defs/RoleRef"
+        },
+        "dimension": {
+          "const": "FLOW"
+        },
+        "resource_ref": {
+          "$ref": "#/$defs/AssetRef",
+          "type": "object",
+          "properties": {
+            "asset_type": {
+              "const": "WORKFLOW"
+            }
+          }
+        },
+        "effect": {
+          "enum": [
+            "ALLOW",
+            "DENY"
+          ]
+        },
+        "subresource": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "STATE"
+            },
+            "code": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+            }
+          },
+          "required": [
+            "type",
+            "code"
+          ],
+          "additionalProperties": false
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "INITIATE",
+              "SUBMIT",
+              "WITHDRAW",
+              "APPROVE",
+              "REJECT",
+              "CLOSE",
+              "REOPEN"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 7,
+          "uniqueItems": true
+        },
+        "capability_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CapabilityRef"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "policy_code",
+        "role_code",
+        "role_ref",
+        "dimension",
+        "resource_ref",
+        "effect",
+        "subresource",
+        "actions",
+        "capability_refs"
+      ],
+      "additionalProperties": false
+    },
+    "Policy": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/FormPolicy"
+        },
+        {
+          "$ref": "#/$defs/FieldPolicy"
+        },
+        {
+          "$ref": "#/$defs/DataPolicy"
+        },
+        {
+          "$ref": "#/$defs/FlowPolicy"
+        }
+      ]
+    },
+    "Spec": {
+      "type": "object",
+      "properties": {
+        "roles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Role"
+          },
+          "minItems": 0,
+          "maxItems": 100
+        },
+        "policies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Policy"
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        }
+      },
+      "required": [
+        "roles",
+        "policies"
+      ],
+      "additionalProperties": false
+    },
+    "CompiledDraft": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "permission-spec/v1alpha1"
+        },
+        "base_version": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+        },
+        "spec": {
+          "$ref": "#/$defs/Spec"
+        }
+      },
+      "required": [
+        "contract_version",
+        "base_version",
+        "spec"
+      ],
+      "additionalProperties": false
+    },
+    "RegisteredContract": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/RegisteredBase",
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "permission-spec/v1alpha1"
+        },
+        "permission_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "spec": {
+          "$ref": "#/$defs/Spec"
+        }
+      },
+      "required": [
+        "contract_version",
+        "permission_id",
+        "spec"
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

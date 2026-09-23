@@ -1,0 +1,108 @@
+{
+  "fixture": true,
+  "suite_revision": "0a-core-r1",
+  "business": {
+    "enabled_types": [
+      "short_text",
+      "long_text",
+      "boolean",
+      "integer",
+      "decimal",
+      "money",
+      "date",
+      "datetime",
+      "single_select",
+      "multi_select"
+    ],
+    "generators": [],
+    "index_capabilities": {
+      "short_text": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "long_text": [
+        "NORMAL"
+      ],
+      "boolean": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "integer": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "decimal": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "money": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "date": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "datetime": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "single_select": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "multi_select": []
+    },
+    "money_rules": {
+      "CNY": {
+        "precision": 38,
+        "scale": 2
+      },
+      "JPY": {
+        "precision": 38,
+        "scale": 0
+      }
+    },
+    "history": {
+      "previous_spec": {
+        "schema_code": "general_item",
+        "name": "通用事项",
+        "field_type_registry_ref": {
+          "scope_type": "PLATFORM_CONTROL",
+          "scope_id": "kvvi-platform",
+          "app_id": null,
+          "module_id": null,
+          "asset_type": "FIELD_TYPE_REGISTRY",
+          "asset_id": "fake-business-types",
+          "version": 1,
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "fields": [
+          {
+            "field_code": "title",
+            "label": "字段",
+            "type": "short_text",
+            "required": false,
+            "nullable": true,
+            "write_policy": "MUTABLE",
+            "query": {
+              "searchable": false,
+              "filterable": false,
+              "sortable": false
+            }
+          }
+        ]
+      },
+      "used_fields": [],
+      "used_options": {},
+      "deleted_field_codes": [],
+      "value_samples": {},
+      "field_identity_changes": [
+        {
+          "previous_code": "title",
+          "current_code": "renamed"
+        }
+      ]
+    }
+  }
+}

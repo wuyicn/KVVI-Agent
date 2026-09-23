@@ -1,0 +1,28 @@
+{
+  "schema_code": "general_item",
+  "name": "通用事项",
+  "field_type_registry_ref": {
+    "scope_type": "PLATFORM_CONTROL",
+    "scope_id": "kvvi-platform",
+    "app_id": null,
+    "module_id": null,
+    "asset_type": "FIELD_TYPE_REGISTRY",
+    "asset_id": "fake-business-types",
+    "version": 1,
+    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "fields": [
+    {
+      "field_code": "title",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false
+      }
+    }
+  ]
+}

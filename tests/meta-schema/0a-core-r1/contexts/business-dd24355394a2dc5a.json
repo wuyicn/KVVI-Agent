@@ -1,0 +1,379 @@
+{
+  "fixture": true,
+  "suite_revision": "0a-core-r1",
+  "business": {
+    "enabled_types": [
+      "short_text",
+      "long_text",
+      "boolean",
+      "integer",
+      "decimal",
+      "money",
+      "date",
+      "datetime",
+      "single_select",
+      "multi_select"
+    ],
+    "generators": [],
+    "index_capabilities": {
+      "short_text": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "long_text": [
+        "NORMAL"
+      ],
+      "boolean": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "integer": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "decimal": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "money": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "date": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "datetime": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "single_select": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "multi_select": []
+    },
+    "money_rules": {
+      "CNY": {
+        "precision": 38,
+        "scale": 2
+      },
+      "JPY": {
+        "precision": 38,
+        "scale": 0
+      }
+    },
+    "history": {
+      "previous_spec": {
+        "schema_code": "general_item",
+        "name": "通用事项",
+        "field_type_registry_ref": {
+          "scope_type": "PLATFORM_CONTROL",
+          "scope_id": "kvvi-platform",
+          "app_id": null,
+          "module_id": null,
+          "asset_type": "FIELD_TYPE_REGISTRY",
+          "asset_id": "fake-business-types",
+          "version": 1,
+          "digest": "sha256:a36716610e06b202ea165484cd58fef645905408aac7534ebdb47791c17649d2"
+        },
+        "fields": [
+          {
+            "field_code": "title",
+            "label": "字段",
+            "type": "decimal",
+            "required": false,
+            "nullable": true,
+            "write_policy": "MUTABLE",
+            "query": {
+              "searchable": false,
+              "filterable": false,
+              "sortable": false
+            },
+            "type_config": {
+              "precision": 8,
+              "scale": 2
+            }
+          }
+        ]
+      },
+      "used_fields": [],
+      "used_options": {},
+      "deleted_field_codes": [],
+      "value_samples": {
+        "title": [
+          "123.00"
+        ]
+      }
+    }
+  },
+  "fake_assets": [
+    {
+      "ref": {
+        "scope_type": "PLATFORM_CONTROL",
+        "scope_id": "kvvi-platform",
+        "app_id": null,
+        "module_id": null,
+        "asset_type": "FIELD_TYPE_REGISTRY",
+        "asset_id": "fake-business-types",
+        "version": 1,
+        "digest": "sha256:a36716610e06b202ea165484cd58fef645905408aac7534ebdb47791c17649d2"
+      },
+      "content": {
+        "fixture": true,
+        "types": [
+          "short_text",
+          "long_text",
+          "boolean",
+          "integer",
+          "decimal",
+          "money",
+          "date",
+          "datetime",
+          "single_select",
+          "multi_select"
+        ],
+        "index_capabilities": {
+          "short_text": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "long_text": [
+            "NORMAL"
+          ],
+          "boolean": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "integer": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "decimal": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "money": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "date": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "datetime": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "single_select": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "multi_select": []
+        },
+        "generators": [],
+        "money_rules": {
+          "CNY": {
+            "precision": 38,
+            "scale": 2
+          },
+          "JPY": {
+            "precision": 38,
+            "scale": 0
+          }
+        }
+      }
+    },
+    {
+      "ref": {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "22222222-2222-4222-8222-222222222222",
+        "module_id": "33333333-3333-4333-8333-333333333333",
+        "asset_type": "BUSINESS_SCHEMA",
+        "asset_id": "general_item",
+        "version": 1,
+        "digest": "sha256:13b1931d86593b7d2b985b448733f9e5acee48b219fb6a5d320b9f7ca7695613"
+      },
+      "content": {
+        "schema_code": "general_item",
+        "name": "通用事项",
+        "field_type_registry_ref": {
+          "scope_type": "PLATFORM_CONTROL",
+          "scope_id": "kvvi-platform",
+          "app_id": null,
+          "module_id": null,
+          "asset_type": "FIELD_TYPE_REGISTRY",
+          "asset_id": "fake-business-types",
+          "version": 1,
+          "digest": "sha256:a36716610e06b202ea165484cd58fef645905408aac7534ebdb47791c17649d2"
+        },
+        "fields": [
+          {
+            "field_code": "title",
+            "label": "字段",
+            "type": "decimal",
+            "required": false,
+            "nullable": true,
+            "write_policy": "MUTABLE",
+            "query": {
+              "searchable": false,
+              "filterable": false,
+              "sortable": false
+            },
+            "type_config": {
+              "precision": 8,
+              "scale": 2
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "current": {
+    "scope_type": "TENANT",
+    "scope_id": "11111111-1111-4111-8111-111111111111",
+    "app_id": "22222222-2222-4222-8222-222222222222",
+    "module_id": "33333333-3333-4333-8333-333333333333",
+    "asset_type": "BUSINESS_SCHEMA",
+    "asset_id": "general_item",
+    "stable_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "active_version": 1,
+    "purpose": "compose"
+  },
+  "snapshots": [
+    {
+      "ref": {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "22222222-2222-4222-8222-222222222222",
+        "module_id": "33333333-3333-4333-8333-333333333333",
+        "asset_type": "BUSINESS_SCHEMA",
+        "asset_id": "general_item",
+        "version": 1,
+        "digest": "sha256:13b1931d86593b7d2b985b448733f9e5acee48b219fb6a5d320b9f7ca7695613"
+      },
+      "registered": {
+        "contract_version": "business-schema/v1",
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "base_version": 0,
+        "lifecycle": "PUBLISHED",
+        "canonicalization_profile": "kvvi-json-c14n/v1",
+        "checksum": "sha256:13b1931d86593b7d2b985b448733f9e5acee48b219fb6a5d320b9f7ca7695613",
+        "audit": {
+          "created_by": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "created_at": "2026-09-08T00:00:00Z",
+          "approved_by": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "approved_at": "2026-09-08T00:00:01Z",
+          "published_by": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "published_at": "2026-09-08T00:00:02Z",
+          "trace_id": "fake-trace"
+        },
+        "spec": {
+          "schema_code": "general_item",
+          "name": "通用事项",
+          "field_type_registry_ref": {
+            "scope_type": "PLATFORM_CONTROL",
+            "scope_id": "kvvi-platform",
+            "app_id": null,
+            "module_id": null,
+            "asset_type": "FIELD_TYPE_REGISTRY",
+            "asset_id": "fake-business-types",
+            "version": 1,
+            "digest": "sha256:a36716610e06b202ea165484cd58fef645905408aac7534ebdb47791c17649d2"
+          },
+          "fields": [
+            {
+              "field_code": "title",
+              "label": "字段",
+              "type": "decimal",
+              "required": false,
+              "nullable": true,
+              "write_policy": "MUTABLE",
+              "query": {
+                "searchable": false,
+                "filterable": false,
+                "sortable": false
+              },
+              "type_config": {
+                "precision": 8,
+                "scale": 2
+              }
+            }
+          ]
+        },
+        "schema_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "source_ref": null
+      }
+    }
+  ],
+  "histories": [
+    {
+      "target": {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "22222222-2222-4222-8222-222222222222",
+        "module_id": "33333333-3333-4333-8333-333333333333",
+        "asset_type": "BUSINESS_SCHEMA",
+        "asset_id": "general_item"
+      },
+      "previous_ref": {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "22222222-2222-4222-8222-222222222222",
+        "module_id": "33333333-3333-4333-8333-333333333333",
+        "asset_type": "BUSINESS_SCHEMA",
+        "asset_id": "general_item",
+        "version": 1,
+        "digest": "sha256:13b1931d86593b7d2b985b448733f9e5acee48b219fb6a5d320b9f7ca7695613"
+      },
+      "business_history": {
+        "previous_spec": {
+          "schema_code": "general_item",
+          "name": "通用事项",
+          "field_type_registry_ref": {
+            "scope_type": "PLATFORM_CONTROL",
+            "scope_id": "kvvi-platform",
+            "app_id": null,
+            "module_id": null,
+            "asset_type": "FIELD_TYPE_REGISTRY",
+            "asset_id": "fake-business-types",
+            "version": 1,
+            "digest": "sha256:a36716610e06b202ea165484cd58fef645905408aac7534ebdb47791c17649d2"
+          },
+          "fields": [
+            {
+              "field_code": "title",
+              "label": "字段",
+              "type": "decimal",
+              "required": false,
+              "nullable": true,
+              "write_policy": "MUTABLE",
+              "query": {
+                "searchable": false,
+                "filterable": false,
+                "sortable": false
+              },
+              "type_config": {
+                "precision": 8,
+                "scale": 2
+              }
+            }
+          ]
+        },
+        "used_fields": [],
+        "used_options": {},
+        "deleted_field_codes": [],
+        "value_samples": {
+          "title": [
+            "123.00"
+          ]
+        }
+      },
+      "deleted_node_ids": []
+    }
+  ],
+  "grants": []
+}

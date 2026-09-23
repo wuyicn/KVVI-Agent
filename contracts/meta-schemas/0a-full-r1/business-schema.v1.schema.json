@@ -1,0 +1,1088 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1",
+  "$ref": "#/$defs/CompiledDraft",
+  "$defs": {
+    "AssetRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/AssetRef"
+    },
+    "MachineCode": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{2,63}$(?![\\s\\S])"
+    },
+    "DecimalValue": {
+      "type": "string",
+      "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$(?![\\s\\S])"
+    },
+    "Option": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$(?![\\s\\S])"
+        },
+        "label": {
+          "type": "string"
+        },
+        "order": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "label",
+        "order",
+        "enabled"
+      ],
+      "additionalProperties": false
+    },
+    "Field": {
+      "type": "object",
+      "properties": {
+        "field_code": {
+          "$ref": "#/$defs/MachineCode"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "type": {
+          "enum": [
+            "short_text",
+            "long_text",
+            "boolean",
+            "integer",
+            "decimal",
+            "money",
+            "date",
+            "datetime",
+            "single_select",
+            "multi_select"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "nullable": {
+          "type": "boolean"
+        },
+        "default": true,
+        "write_policy": {
+          "enum": [
+            "MUTABLE",
+            "CREATE_ONLY",
+            "SYSTEM"
+          ]
+        },
+        "constraints": {
+          "type": "object"
+        },
+        "type_config": {
+          "type": "object"
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "searchable": {
+              "type": "boolean"
+            },
+            "filterable": {
+              "type": "boolean"
+            },
+            "sortable": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "searchable",
+            "filterable",
+            "sortable"
+          ],
+          "additionalProperties": false
+        },
+        "deprecated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "field_code",
+        "label",
+        "type",
+        "required",
+        "nullable",
+        "write_policy",
+        "query"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "short_text"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "min_length": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "max_length": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 255
+                  },
+                  "trim": {
+                    "type": "boolean"
+                  },
+                  "pattern": {
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "long_text"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "max_length": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 20000
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "boolean"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "integer"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "minimum": {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                  },
+                  "maximum": {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "decimal"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "minimum": {
+                    "$ref": "#/$defs/DecimalValue"
+                  },
+                  "maximum": {
+                    "$ref": "#/$defs/DecimalValue"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {
+                  "precision": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 38
+                  },
+                  "scale": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 12
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/DecimalValue"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "money"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "minimum": {
+                    "$ref": "#/$defs/DecimalValue"
+                  },
+                  "maximum": {
+                    "$ref": "#/$defs/DecimalValue"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {
+                  "currency_mode": {
+                    "const": "FIXED"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$(?![\\s\\S])"
+                  }
+                },
+                "required": [
+                  "currency_mode",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "default": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "amount": {
+                    "$ref": "#/$defs/DecimalValue"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$(?![\\s\\S])"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type_config"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "date"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "minimum": {
+                    "type": "string"
+                  },
+                  "maximum": {
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "datetime"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "single_select"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Option"
+                    },
+                    "minItems": 1,
+                    "maxItems": 200
+                  }
+                },
+                "required": [
+                  "options"
+                ],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type_config"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "multi_select"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "max_items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "type_config": {
+                "type": "object",
+                "properties": {
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Option"
+                    },
+                    "minItems": 1,
+                    "maxItems": 200
+                  }
+                },
+                "required": [
+                  "options"
+                ],
+                "additionalProperties": false
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type_config"
+            ]
+          }
+        }
+      ]
+    },
+    "Expr": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "$ref": "#/$defs/MachineCode"
+            },
+            "operator": {
+              "enum": [
+                "eq",
+                "ne",
+                "gt",
+                "gte",
+                "lt",
+                "lte",
+                "in",
+                "not_in"
+              ]
+            },
+            "value": true
+          },
+          "required": [
+            "field",
+            "operator",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "$ref": "#/$defs/MachineCode"
+            },
+            "operator": {
+              "enum": [
+                "is_empty",
+                "not_empty"
+              ]
+            }
+          },
+          "required": [
+            "field",
+            "operator"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "all": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Expr"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Expr"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/Expr"
+            }
+          },
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "RecordRule": {
+      "type": "object",
+      "properties": {
+        "rule_code": {
+          "$ref": "#/$defs/MachineCode"
+        },
+        "when": {
+          "$ref": "#/$defs/Expr"
+        },
+        "assert": {
+          "$ref": "#/$defs/Expr"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule_code",
+        "assert",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "LayoutItem": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "field",
+            "description"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "field"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "field"
+              },
+              "field_code": {
+                "$ref": "#/$defs/LayoutFieldCode"
+              },
+              "col_span": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4
+              }
+            },
+            "required": [
+              "kind",
+              "field_code",
+              "col_span"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "description"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "description"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "text"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ]
+    },
+    "Section": {
+      "type": "object",
+      "properties": {
+        "section_code": {
+          "$ref": "#/$defs/MachineCode"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LayoutItem"
+          }
+        }
+      },
+      "required": [
+        "section_code",
+        "title",
+        "columns",
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "Index": {
+      "type": "object",
+      "properties": {
+        "index_code": {
+          "$ref": "#/$defs/MachineCode"
+        },
+        "kind": {
+          "enum": [
+            "NORMAL",
+            "UNIQUE"
+          ]
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MachineCode"
+          },
+          "minItems": 1,
+          "maxItems": 4
+        }
+      },
+      "required": [
+        "index_code",
+        "kind",
+        "fields"
+      ],
+      "additionalProperties": false
+    },
+    "RecordNumber": {
+      "type": "object",
+      "properties": {
+        "field_code": {
+          "$ref": "#/$defs/MachineCode"
+        },
+        "label": {
+          "type": "string"
+        },
+        "sequence_policy_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/AssetRef"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "asset_type": {
+                  "const": "SEQUENCE_POLICY"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "field_code",
+        "label",
+        "sequence_policy_ref"
+      ],
+      "additionalProperties": false
+    },
+    "Spec": {
+      "type": "object",
+      "properties": {
+        "schema_code": {
+          "$ref": "#/$defs/MachineCode"
+        },
+        "field_type_registry_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/AssetRef"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "asset_type": {
+                  "const": "FIELD_TYPE_REGISTRY"
+                }
+              }
+            }
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "record_number": {
+          "$ref": "#/$defs/RecordNumber"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Field"
+          },
+          "minItems": 1,
+          "maxItems": 100
+        },
+        "indexes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Index"
+          },
+          "maxItems": 20
+        },
+        "record_rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecordRule"
+          },
+          "maxItems": 50
+        },
+        "layout": {
+          "type": "object",
+          "properties": {
+            "sections": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Section"
+              },
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "sections"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_code",
+        "field_type_registry_ref",
+        "name",
+        "fields"
+      ],
+      "additionalProperties": false
+    },
+    "CompiledDraft": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "business-schema/v1"
+        },
+        "base_version": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+        },
+        "spec": {
+          "$ref": "#/$defs/Spec"
+        }
+      },
+      "required": [
+        "contract_version",
+        "base_version",
+        "spec"
+      ],
+      "additionalProperties": false
+    },
+    "RegisteredContract": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/RegisteredBase",
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "business-schema/v1"
+        },
+        "schema_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "source_ref": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/AssetRef"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "scope_type": {
+                      "const": "TEMPLATE"
+                    },
+                    "asset_type": {
+                      "const": "BUSINESS_SCHEMA"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "spec": {
+          "$ref": "#/$defs/Spec"
+        }
+      },
+      "required": [
+        "contract_version",
+        "schema_id",
+        "source_ref",
+        "spec"
+      ],
+      "unevaluatedProperties": false
+    },
+    "LayoutFieldCode": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MachineCode"
+        },
+        {
+          "enum": [
+            "id",
+            "tenant_id",
+            "form_code",
+            "schema_version",
+            "status",
+            "owner_id",
+            "created_by",
+            "updated_by",
+            "created_at",
+            "updated_at"
+          ]
+        }
+      ]
+    }
+  }
+}

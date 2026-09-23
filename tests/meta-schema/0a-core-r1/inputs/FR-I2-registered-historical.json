@@ -1,0 +1,51 @@
+{
+  "contract_version": "view-schema/lce-safe-v1",
+  "scope_type": "TENANT",
+  "scope_id": "11111111-1111-4111-8111-111111111111",
+  "version": 1,
+  "base_version": 0,
+  "lifecycle": "PUBLISHED",
+  "canonicalization_profile": "kvvi-json-c14n/v1",
+  "checksum": "sha256:3cfab676fee495b54dbac90a1533e7a914ef81e4b16c85581dc7ea6b4b282315",
+  "audit": {
+    "created_by": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    "created_at": "2026-09-08T00:00:00Z",
+    "approved_by": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    "approved_at": "2026-09-08T00:00:01Z",
+    "published_by": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    "published_at": "2026-09-08T00:00:02Z",
+    "trace_id": "fake-trace"
+  },
+  "spec": {
+    "view_code": "general_item_form",
+    "name": "测试页面",
+    "view_type": "FORM",
+    "businessSchemaRef": {
+      "scope_type": "TENANT",
+      "scope_id": "11111111-1111-4111-8111-111111111111",
+      "app_id": "22222222-2222-4222-8222-222222222222",
+      "module_id": "33333333-3333-4333-8333-333333333333",
+      "asset_type": "BUSINESS_SCHEMA",
+      "asset_id": "general_item",
+      "version": 1,
+      "digest": "sha256:fb95a732896daab4542ab29b8d1f2af301ead67951c7b76e02cb78c918d490eb"
+    },
+    "componentRegistryRef": {
+      "scope_type": "PLATFORM_CONTROL",
+      "scope_id": "kvvi-platform",
+      "app_id": null,
+      "module_id": null,
+      "asset_type": "COMPONENT_REGISTRY",
+      "asset_id": "vue_element_approved",
+      "version": 1,
+      "digest": "sha256:09b78fdd43ca6556a626e7b532ab05f5bf87ab8012ba4d9a018386af808c34f5"
+    },
+    "componentsTree": [
+      {
+        "id": "page_root",
+        "componentName": "FormPage"
+      }
+    ]
+  },
+  "view_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+}

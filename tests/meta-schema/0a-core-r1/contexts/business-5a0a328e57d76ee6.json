@@ -1,0 +1,30 @@
+{
+  "fixture": true,
+  "suite_revision": "0a-core-r1",
+  "business": {
+    "enabled_types": [
+      "short_text",
+      "long_text",
+      "boolean",
+      "integer",
+      "decimal",
+      "money",
+      "date",
+      "datetime",
+      "single_select",
+      "multi_select"
+    ],
+    "generators": [],
+    "money_rules": {
+      "CNY": {
+        "precision": 38,
+        "scale": 2
+      },
+      "JPY": {
+        "precision": 38,
+        "scale": 0
+      }
+    },
+    "history": null
+  }
+}

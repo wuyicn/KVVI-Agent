@@ -1,0 +1,1330 @@
+{
+  "closed_positions": {
+    "common AssetRef": [
+      "unit:test_bundle.SharedDefinitionTests.test_asset_ref_rejects_unknown_key_before_generic_shape_errors"
+    ],
+    "common CapabilityRef": [
+      "unit:test_bundle.SharedDefinitionTests.test_capability_ref_replaces_asset_id_without_widening_shape"
+    ],
+    "common Audit": [
+      "C03-app-audit-unknown-property"
+    ],
+    "Business CompiledDraft": [
+      "T5-closed-business-draft"
+    ],
+    "View CompiledDraft": [
+      "T5-closed-view-draft"
+    ],
+    "App CompiledDraft": [
+      "T5-closed-app-root"
+    ],
+    "Business RegisteredContract": [
+      "T5-registered-schema_id-unknown"
+    ],
+    "View RegisteredContract": [
+      "T5-registered-view_id-unknown"
+    ],
+    "App RegisteredContract": [
+      "unit:test_bundle.EnvelopeShapeTests.test_registered_base_is_shared_and_unclosed_until_final_entry"
+    ],
+    "Business Spec": [
+      "B-unknown-control-226",
+      "B-unknown-control-227",
+      "B-unknown-control-228"
+    ],
+    "App Spec": [
+      "T5-closed-app-spec"
+    ],
+    "App Route": [
+      "T5-closed-app-route"
+    ],
+    "Business money default": [
+      "B-money-unknown-default"
+    ],
+    "Business LayoutItem description": [
+      "T5-closed-description-layout-item"
+    ],
+    "View meta": [
+      "V-meta-permission"
+    ],
+    "View registered props and action/query parameters": [
+      "V-unknown-prop",
+      "I-r4-query-wrong-member-shape-direct",
+      "I-r4-query-wrong-member-shape-recursive",
+      "I-r4-action-wrong-member-shape-direct",
+      "I-r4-action-wrong-member-shape-recursive"
+    ],
+    "B-closed-fields[0]": [
+      "B-closed-fields[0]"
+    ],
+    "B-closed-fields[0].query": [
+      "B-closed-fields[0].query"
+    ],
+    "B-closed-fields[0].type_config.options[0]": [
+      "B-closed-fields[0].type_config.options[0]"
+    ],
+    "B-closed-indexes[0]": [
+      "B-closed-indexes[0]"
+    ],
+    "B-closed-layout": [
+      "B-closed-layout"
+    ],
+    "B-closed-layout.sections[0]": [
+      "B-closed-layout.sections[0]"
+    ],
+    "B-closed-layout.sections[0].items[0]": [
+      "B-closed-layout.sections[0].items[0]"
+    ],
+    "B-closed-record_number": [
+      "B-closed-record_number"
+    ],
+    "B-closed-record_rules[0]": [
+      "B-closed-record_rules[0]"
+    ],
+    "V-extended-closed-FieldRef": [
+      "V-extended-closed-FieldRef"
+    ],
+    "V-extended-closed-I18nRef": [
+      "V-extended-closed-I18nRef"
+    ],
+    "V-extended-closed-SafeExpression": [
+      "V-extended-closed-SafeExpression"
+    ],
+    "V-extended-closed-ActionRef": [
+      "V-extended-closed-ActionRef"
+    ],
+    "V-extended-closed-DataQueryRef": [
+      "V-extended-closed-DataQueryRef"
+    ],
+    "V-extended-closed-DataBindingRef": [
+      "V-extended-closed-DataBindingRef"
+    ],
+    "V-extended-closed-object-root": [
+      "V-extended-closed-object-root"
+    ],
+    "V-extended-closed-object-node": [
+      "V-extended-closed-object-node"
+    ],
+    "V-extended-closed-object-query": [
+      "V-extended-closed-object-query"
+    ],
+    "T5-expr-branch-0-unknown": [
+      "T5-expr-branch-0-unknown"
+    ],
+    "T5-expr-branch-1-unknown": [
+      "T5-expr-branch-1-unknown"
+    ],
+    "T5-expr-branch-2-unknown": [
+      "T5-expr-branch-2-unknown"
+    ],
+    "T5-expr-branch-3-unknown": [
+      "T5-expr-branch-3-unknown"
+    ],
+    "T5-expr-branch-4-unknown": [
+      "T5-expr-branch-4-unknown"
+    ],
+    "Business short_text constraints": [
+      "B-unknown-short_text-constraints"
+    ],
+    "Business short_text type_config": [
+      "B-unknown-short_text-type_config"
+    ],
+    "Business long_text constraints": [
+      "B-unknown-long_text-constraints"
+    ],
+    "Business long_text type_config": [
+      "B-unknown-long_text-type_config"
+    ],
+    "Business boolean constraints": [
+      "B-unknown-boolean-constraints"
+    ],
+    "Business boolean type_config": [
+      "B-unknown-boolean-type_config"
+    ],
+    "Business integer constraints": [
+      "B-unknown-integer-constraints"
+    ],
+    "Business integer type_config": [
+      "B-unknown-integer-type_config"
+    ],
+    "Business decimal constraints": [
+      "B-unknown-decimal-constraints"
+    ],
+    "Business decimal type_config": [
+      "B-unknown-decimal-type_config"
+    ],
+    "Business money constraints": [
+      "B-unknown-money-constraints"
+    ],
+    "Business money type_config": [
+      "B-unknown-money-type_config"
+    ],
+    "Business date constraints": [
+      "B-unknown-date-constraints"
+    ],
+    "Business date type_config": [
+      "B-unknown-date-type_config"
+    ],
+    "Business datetime constraints": [
+      "B-unknown-datetime-constraints"
+    ],
+    "Business datetime type_config": [
+      "B-unknown-datetime-type_config"
+    ],
+    "Business single_select constraints": [
+      "B-unknown-single_select-constraints"
+    ],
+    "Business single_select type_config": [
+      "B-unknown-single_select-type_config"
+    ],
+    "Business multi_select constraints": [
+      "B-unknown-multi_select-constraints"
+    ],
+    "Business multi_select type_config": [
+      "B-unknown-multi_select-type_config"
+    ]
+  },
+  "boundaries": {
+    "safe integers +/-9007199254740991": [
+      "T5-safe-integer--9007199254740991",
+      "T5-safe-integer-9007199254740991",
+      "T5-raw-out-of-range"
+    ],
+    "nonnegative base 0/max/-1": [
+      "T5-base-version--1",
+      "T5-base-version-0",
+      "T5-base-version-9007199254740991"
+    ],
+    "positive reference version 1/max/0": [
+      "T5-ref-version-0",
+      "T5-ref-version-1",
+      "T5-ref-version-9007199254740991"
+    ],
+    "stable ID nonempty": [
+      "T5-stable-id-length-0",
+      "T5-stable-id-length-1"
+    ],
+    "digest 71 chars": [
+      "T5-ref-digest-length-70",
+      "T5-ref-digest-length-71",
+      "T5-ref-digest-length-72"
+    ],
+    "audit trace nonempty": [
+      "T5-trace-length-0",
+      "T5-trace-length-1"
+    ],
+    "business name 1..80": [
+      "T5-business-name-length-0",
+      "T5-business-name-length-1",
+      "B-root-name-max",
+      "B-root-name-over"
+    ],
+    "business description 500": [
+      "B-root-description-max",
+      "B-root-description-over"
+    ],
+    "business machine code 3..64": [
+      "B-schema-code-3",
+      "B-schema-code-64",
+      "B-schema-code-2",
+      "B-schema-code-65"
+    ],
+    "field machine code 3..64": [
+      "T5-field-code-boundary-3",
+      "T5-field-code-boundary-64",
+      "B-field-code-2",
+      "B-field-code-65"
+    ],
+    "field label 1..80": [
+      "B-field-label-max",
+      "B-field-label-over",
+      "B-field-label-empty-still-invalid",
+      "T5-field-label-boundary-1",
+      "T5-field-label-boundary-80"
+    ],
+    "field description 300": [
+      "B-field-description-max",
+      "B-field-description-over"
+    ],
+    "field count 1..100": [
+      "B-fields-limit",
+      "B-fields-over",
+      "B-fields-empty"
+    ],
+    "index count 20": [
+      "B-indexes-limit",
+      "B-indexes-over"
+    ],
+    "rule count 50": [
+      "B-record_rules-limit",
+      "B-record_rules-over"
+    ],
+    "short text length 1..255": [
+      "B-short_text-length-1",
+      "B-short_text-length-255",
+      "B-short_text-length-0",
+      "B-short_text-length-256"
+    ],
+    "short min length 0..255": [
+      "T5-short-min-length--1",
+      "T5-short-min-length-0",
+      "T5-short-min-length-255",
+      "T5-short-min-length-256"
+    ],
+    "long text length 1..20000": [
+      "B-long_text-length-1",
+      "B-long_text-length-20000",
+      "B-long_text-length-0",
+      "B-long_text-length-20001"
+    ],
+    "pattern length 200": [
+      "T5-pattern-length-200",
+      "T5-pattern-length-201"
+    ],
+    "decimal precision 1..38": [
+      "T5-decimal-precision-0",
+      "T5-decimal-precision-1",
+      "T5-decimal-precision-38",
+      "T5-decimal-precision-39"
+    ],
+    "decimal scale 0..12": [
+      "T5-decimal-scale--1",
+      "T5-decimal-scale-0",
+      "T5-decimal-scale-12",
+      "T5-decimal-scale-13"
+    ],
+    "single options 1..200": [
+      "B-options-1",
+      "B-options-200",
+      "B-options-0",
+      "B-options-201",
+      "B-options-duplicate",
+      "B-options-default-180",
+      "B-options-default-181",
+      "B-options-default-182",
+      "B-options-disabled"
+    ],
+    "multi options 1..200": [
+      "T5-multi-options-0",
+      "T5-multi-options-1",
+      "T5-multi-options-200",
+      "T5-multi-options-201"
+    ],
+    "multi maximum 1..50 and default 20": [
+      "B-multi-limit-1",
+      "B-multi-limit-50",
+      "B-multi-limit-51",
+      "B-multi-default-21",
+      "T5-multi-max-zero"
+    ],
+    "section count 20": [
+      "B-sections-20",
+      "B-sections-21"
+    ],
+    "section columns 1..4": [
+      "B-layout-columns-1",
+      "B-layout-columns-4",
+      "B-layout-columns-5",
+      "T5-columns-zero"
+    ],
+    "field col_span 1..4": [
+      "T5-col-span-0",
+      "T5-col-span-1",
+      "T5-col-span-4",
+      "T5-col-span-5"
+    ],
+    "index fields 1..4": [
+      "B-index-fields-4",
+      "B-index-fields-5",
+      "B-index-empty-fields",
+      "T5-index-one-field"
+    ],
+    "record number label string without inherited length bounds": [
+      "T5-record-number-label-0",
+      "T5-record-number-label-1",
+      "T5-record-number-label-80",
+      "T5-record-number-label-81",
+      "FX2-number-label-0",
+      "FX2-number-label-81",
+      "FX2-number-label-160"
+    ],
+    "business all/any nonempty": [
+      "B-rule-shape-213",
+      "T5-expr-any-empty",
+      "T5-expr-branch-2-positive",
+      "T5-expr-branch-3-positive"
+    ],
+    "business predicates 20 and depth 3": [
+      "B-rule-20",
+      "B-rule-21",
+      "B-rule-depth-3",
+      "B-rule-depth-4"
+    ],
+    "View roots exactly 1": [
+      "V-roots-zero",
+      "V-roots-two",
+      "V-shape-page-FORM"
+    ],
+    "View nodes 500": [
+      "V-nodes-500",
+      "V-nodes-501",
+      "T5-complete-500-nodes"
+    ],
+    "View depth 20": [
+      "V-depth-20",
+      "V-depth-21"
+    ],
+    "View UTF8 spec bytes 1048576": [
+      "V-bytes-False-1048576",
+      "V-bytes-False-1048577",
+      "V-bytes-True-1048576",
+      "V-bytes-True-1048577"
+    ],
+    "View name 1..80": [
+      "V-extended-name-length-0",
+      "V-extended-name-length-1",
+      "V-extended-name-length-80",
+      "V-extended-name-length-81"
+    ],
+    "View id 3..128": [
+      "V-extended-node-id-length-2",
+      "V-extended-node-id-length-3",
+      "V-extended-node-id-length-128",
+      "V-extended-node-id-length-129"
+    ],
+    "FieldRef nonempty": [
+      "T5-fieldref-length-0",
+      "T5-fieldref-length-1"
+    ],
+    "I18nRef key 1..128": [
+      "T5-i18n-ref-key-0",
+      "T5-i18n-ref-key-1",
+      "T5-i18n-ref-key-128",
+      "T5-i18n-ref-key-129"
+    ],
+    "i18n dictionary key 128/value 5000": [
+      "V-i18n-key-128",
+      "V-i18n-key-129",
+      "V-i18n-value-5000",
+      "V-i18n-value-5001"
+    ],
+    "queries 20": [
+      "V-queries-20",
+      "V-queries-21"
+    ],
+    "View all/any nonempty": [
+      "T5-view-expr-all-0",
+      "T5-view-expr-all-1",
+      "T5-view-expr-any-0",
+      "T5-view-expr-any-1"
+    ],
+    "View predicates 20/depth 3": [
+      "V-predicates-20",
+      "V-predicates-21",
+      "V-expression-depth-3",
+      "V-expression-depth-4",
+      "V-expression-depth-50"
+    ],
+    "DataBinding itemKey nonempty": [
+      "T5-binding-itemkey-length-0",
+      "T5-binding-itemkey-length-1"
+    ],
+    "DataBinding maxItems 1..200": [
+      "V-loop-max-1",
+      "V-loop-max-200",
+      "V-loop-max-201",
+      "V-loop-max-0"
+    ],
+    "Fake query pageSize 1..200": [
+      "V-extended-query-page-size-1",
+      "V-extended-query-page-size-200",
+      "V-extended-query-page-size-201",
+      "V-extended-query-page-size-0"
+    ],
+    "App name 1..80": [
+      "T5-app-name-0",
+      "T5-app-name-1",
+      "T5-app-name-80",
+      "T5-app-name-81"
+    ],
+    "App automation/integration empty": [
+      "I-empty-closed",
+      "I-reserved-automationRefs",
+      "I-reserved-integrationRefs"
+    ],
+    "App and route codes 3..64": [
+      "T5-app-app_code-length-2",
+      "T5-app-app_code-length-3",
+      "T5-app-app_code-length-64",
+      "T5-app-app_code-length-65",
+      "T5-app-route_code-length-2",
+      "T5-app-route_code-length-3",
+      "T5-app-route_code-length-64",
+      "T5-app-route_code-length-65"
+    ],
+    "View and query codes 3..64": [
+      "T5-view-view_code-length-2",
+      "T5-view-view_code-length-3",
+      "T5-view-view_code-length-64",
+      "T5-view-view_code-length-65",
+      "T5-view-query_code-length-2",
+      "T5-view-query_code-length-3",
+      "T5-view-query_code-length-64",
+      "T5-view-query_code-length-65"
+    ],
+    "option stable code 1..64": [
+      "B-option-code-1",
+      "B-option-code-64",
+      "B-option-code-65"
+    ]
+  },
+  "field_types": {
+    "short_text": [
+      "B-type-short_text",
+      "B-wrong-default-short_text"
+    ],
+    "long_text": [
+      "B-type-long_text",
+      "B-wrong-default-long_text"
+    ],
+    "boolean": [
+      "B-type-boolean",
+      "B-wrong-default-boolean"
+    ],
+    "integer": [
+      "B-type-integer",
+      "B-wrong-default-integer"
+    ],
+    "decimal": [
+      "B-type-decimal",
+      "B-wrong-default-decimal"
+    ],
+    "money": [
+      "B-type-money",
+      "B-wrong-default-money"
+    ],
+    "date": [
+      "B-type-date",
+      "B-wrong-default-date"
+    ],
+    "datetime": [
+      "B-type-datetime",
+      "B-wrong-default-datetime"
+    ],
+    "single_select": [
+      "B-type-single_select",
+      "B-wrong-default-single_select"
+    ],
+    "multi_select": [
+      "B-type-multi_select",
+      "B-wrong-default-multi_select"
+    ]
+  },
+  "page_types": {
+    "FORM": [
+      "V-page-FORM",
+      "V-shape-page-FORM"
+    ],
+    "LIST": [
+      "V-page-LIST",
+      "V-shape-page-LIST"
+    ],
+    "DETAIL": [
+      "V-page-DETAIL",
+      "V-shape-page-DETAIL"
+    ]
+  },
+  "error_codes": {
+    "APPSPEC_INVALID": [
+      "I-route-2",
+      "I-route-3",
+      "I-route-4",
+      "I-route-5",
+      "I-route-6",
+      "I-route-7",
+      "I-route-8",
+      "I-route-9",
+      "I-route-10",
+      "I-route-11",
+      "I-duplicate-version-1",
+      "I-duplicate-version-2",
+      "I-navigation-member",
+      "I-view-business-member",
+      "I-r1-lf-route_code",
+      "T5-app-route_code-length-2",
+      "T5-app-route_code-length-65"
+    ],
+    "ARBITRARY_EXPRESSION_FORBIDDEN": [
+      "B-rule-shape-213",
+      "B-rule-shape-214",
+      "B-rule-shape-215",
+      "B-rule-shape-216",
+      "B-description-html",
+      "B-layout-html",
+      "B-review-joint-mixed-budget-20",
+      "B-review-shallow-mixed-all-not",
+      "B-review-shallow-mixed-any-not",
+      "B-review-shallow-mixed-all-any",
+      "B-review-shallow-mixed-triple",
+      "T5-expr-branch-0-unknown",
+      "T5-expr-branch-1-unknown",
+      "T5-expr-branch-2-unknown",
+      "T5-expr-branch-3-unknown",
+      "T5-expr-branch-4-unknown",
+      "T5-expr-any-empty"
+    ],
+    "BASE_VERSION_CONFLICT": [
+      "I-base-conflict"
+    ],
+    "BREAKING_CHANGE_FORBIDDEN": [
+      "B-history-field-removal-used",
+      "B-history-type-changed",
+      "B-history-shrink-truncates-short_text",
+      "B-history-shrink-truncates-decimal",
+      "B-history-used-option-delete",
+      "I-r1-history-type-change"
+    ],
+    "CANON_DUPLICATE_KEY": [
+      "C01-duplicate-key"
+    ],
+    "CANON_INVALID_UNICODE": [
+      "T5-raw-invalid-unicode",
+      "T5-raw-invalid-utf8"
+    ],
+    "CANON_JSON_INVALID": [
+      "C01-nan-token",
+      "T5-raw-bom"
+    ],
+    "CANON_NUMBER_OUT_OF_RANGE": [
+      "T5-raw-out-of-range"
+    ],
+    "CANON_NUMBER_UNSUPPORTED": [
+      "C01-non-integer-number"
+    ],
+    "CONSTRAINT_INCOMPATIBLE": [
+      "B-wrong-default-short_text",
+      "B-null-forbidden-short_text",
+      "B-wrong-default-long_text",
+      "B-null-forbidden-long_text",
+      "B-wrong-default-boolean",
+      "B-null-forbidden-boolean",
+      "B-wrong-default-integer",
+      "B-null-forbidden-integer",
+      "B-wrong-default-decimal",
+      "B-null-forbidden-decimal",
+      "B-wrong-default-money",
+      "B-null-forbidden-money",
+      "B-wrong-default-date",
+      "B-null-forbidden-date",
+      "B-wrong-default-datetime",
+      "B-null-forbidden-datetime",
+      "B-wrong-default-single_select",
+      "B-null-forbidden-single_select",
+      "B-wrong-default-multi_select",
+      "B-null-forbidden-multi_select",
+      "B-required-nullable",
+      "B-system-unbound",
+      "B-short_text-length-0",
+      "B-short_text-length-256",
+      "B-long_text-length-0",
+      "B-long_text-length-20001",
+      "B-text-min-max",
+      "B-unicode-length-over",
+      "B-long-default-over-effective",
+      "B-pattern-invalid-131",
+      "B-pattern-invalid-132",
+      "B-pattern-invalid-133",
+      "B-pattern-invalid-134",
+      "B-pattern-invalid-135",
+      "B-pattern-invalid-136",
+      "B-pattern-invalid-137",
+      "B-pattern-invalid-138",
+      "B-pattern-nomatch",
+      "B-integer-reverse",
+      "B-integer-range",
+      "B-decimal-lexical-146",
+      "B-decimal-lexical-147",
+      "B-decimal-lexical-148",
+      "B-decimal-lexical-149",
+      "B-decimal-lexical-150",
+      "B-decimal-config-151",
+      "B-decimal-config-152",
+      "B-decimal-config-153",
+      "B-decimal-scale-precision",
+      "B-decimal-39-digits",
+      "B-decimal-lexical-trap",
+      "B-decimal-bounds-reverse",
+      "B-decimal-fraction-over",
+      "B-money-invalid-160",
+      "B-money-invalid-161",
+      "B-money-range",
+      "B-date-invalid-2023-02-29",
+      "B-date-invalid-2024-02-30",
+      "B-date-invalid-0000-01-01",
+      "B-date-invalid-2024-13-01",
+      "B-date-bounds-reverse",
+      "B-date-range",
+      "B-datetime-invalid-170",
+      "B-datetime-invalid-171",
+      "B-datetime-invalid-172",
+      "B-datetime-invalid-173",
+      "B-datetime-invalid-174",
+      "B-options-0",
+      "B-options-201",
+      "B-options-duplicate",
+      "B-options-default-180",
+      "B-options-default-181",
+      "B-options-default-182",
+      "B-options-disabled",
+      "B-multi-limit-51",
+      "B-multi-default-21",
+      "B-search-integer",
+      "B-search-boolean",
+      "B-search-decimal",
+      "B-search-money",
+      "B-search-date",
+      "B-search-datetime",
+      "B-sort-long_text",
+      "B-sort-multi_select",
+      "B-layout-unknown",
+      "B-layout-span",
+      "B-layout-repeat",
+      "B-index-invalid-204",
+      "B-index-invalid-205",
+      "B-index-invalid-206",
+      "B-long-unique",
+      "B-rule-21",
+      "B-rule-depth-4",
+      "B-rule-typed-217",
+      "B-rule-typed-218",
+      "B-rule-typed-219",
+      "B-rule-typed-220",
+      "B-rule-typed-221",
+      "B-rule-typed-222",
+      "B-rule-unknown-constructor",
+      "B-decimal-terminal-control-283",
+      "B-decimal-terminal-control-284",
+      "B-decimal-terminal-control-285",
+      "B-terminal-newline-date",
+      "B-terminal-newline-datetime",
+      "B-rule-decimal-terminal-newline",
+      "B-pattern-not-whitespace-133",
+      "B-pattern-not-whitespace-8203",
+      "B-index-code-duplicate",
+      "B-rule-code-duplicate",
+      "B-money-dynamic-mode",
+      "B-option-code-65",
+      "B-multi-index-not-enabled-NORMAL",
+      "B-multi-index-not-enabled-UNIQUE",
+      "B-review-plain-deep-control",
+      "B-review-mixed-all-any-deep",
+      "B-review-mixed-all-not-deep",
+      "B-review-mixed-any-all-deep",
+      "B-review-mixed-any-not-deep",
+      "B-review-mixed-not-all-deep",
+      "B-review-mixed-not-any-deep",
+      "B-review-triple-all-deep",
+      "B-review-triple-any-deep",
+      "B-review-triple-not-deep",
+      "B-review-hidden-wide-all-any",
+      "B-review-hidden-wide-any-all",
+      "B-review-hidden-wide-all-not",
+      "B-review-hidden-wide-any-not",
+      "B-review-joint-mixed-budget-21",
+      "B-review-triple-all-wide",
+      "B-review-triple-any-wide",
+      "B-review-triple-not-wide",
+      "B-option-label-source-nonstring",
+      "T5-short-min-length--1",
+      "T5-short-min-length-256",
+      "T5-decimal-precision-0",
+      "T5-decimal-precision-39",
+      "T5-decimal-scale--1",
+      "T5-decimal-scale-13",
+      "T5-multi-options-0",
+      "T5-multi-options-201",
+      "T5-pattern-length-201",
+      "T5-multi-max-zero",
+      "FX2-pattern-anchored"
+    ],
+    "CONTRACT_CHECKSUM_MISMATCH": [
+      "I-registered-checksum"
+    ],
+    "CONTRACT_SHAPE_INVALID": [
+      "C02-app-compiled-missing-base",
+      "C03-app-registered-published-null-approval",
+      "C03-app-published-invalid-approved-by-uuid",
+      "C03-app-published-invalid-approved-at-utc",
+      "C03-app-published-invalid-published-by-uuid",
+      "C03-app-published-invalid-published-at-utc",
+      "C03-app-draft-approval-id-only",
+      "C03-app-draft-approval-time-only",
+      "C03-app-published-publisher-id-only",
+      "C03-app-published-publisher-time-only",
+      "C03-app-draft-carries-approval-and-publication",
+      "B01-business-empty-spec-required",
+      "E01-view-placeholder-fails-closed",
+      "B-root-name-over",
+      "B-root-description-over",
+      "B-field-label-over",
+      "B-field-description-over",
+      "B-query-missing-searchable",
+      "B-query-missing-filterable",
+      "B-query-missing-sortable",
+      "B-root-missing-schema_code",
+      "B-root-missing-field_type_registry_ref",
+      "B-root-missing-name",
+      "B-root-missing-fields",
+      "B-fields-over",
+      "B-indexes-over",
+      "B-record_rules-over",
+      "B-fields-empty",
+      "B-sections-21",
+      "B-index-fields-5",
+      "B-layout-columns-5",
+      "B-index-empty-fields",
+      "B-option-missing-code",
+      "B-option-missing-label",
+      "B-option-missing-order",
+      "B-option-missing-enabled",
+      "B-query-wrong-bool-searchable",
+      "B-query-wrong-bool-filterable",
+      "B-query-wrong-bool-sortable",
+      "B-money-default-missing-amount",
+      "B-money-default-missing-currency",
+      "B-field-label-empty-still-invalid",
+      "V-roots-zero",
+      "V-roots-two",
+      "V-unknown-page-type",
+      "V-extended-i18n-type-key-44",
+      "V-extended-i18n-type-key-45",
+      "V-extended-i18n-type-key-46",
+      "V-extended-i18n-type-key-47",
+      "V-extended-bad-loop-args-64",
+      "V-extended-bad-loop-args-65",
+      "V-extended-terminal-lf-view_code",
+      "V-extended-terminal-lf-id",
+      "V-extended-terminal-lf-componentName",
+      "V-extended-terminal-lf-query_code",
+      "V-extended-name-length-0",
+      "V-extended-name-length-81",
+      "V-extended-code-length-2",
+      "V-extended-code-length-65",
+      "V-extended-node-id-length-2",
+      "V-extended-node-id-length-129",
+      "V-extended-component-name-length-1",
+      "V-extended-component-name-length-65",
+      "I-missing-app_code",
+      "I-missing-name",
+      "I-missing-businessSchemaRefs",
+      "I-missing-viewRefs",
+      "I-missing-navigation",
+      "I-missing-workflowRefs",
+      "I-missing-permissionRefs",
+      "I-missing-automationRefs",
+      "I-missing-integrationRefs",
+      "I-reserved-automationRefs",
+      "I-reserved-integrationRefs",
+      "I-r1-lf-app_code",
+      "I-r2-query-invalid-body",
+      "I-r2-action-invalid-body",
+      "T5-app-name-0",
+      "T5-app-name-81",
+      "T5-col-span-0",
+      "T5-col-span-5",
+      "T5-base-version--1",
+      "T5-trace-length-0",
+      "T5-business-name-length-0",
+      "T5-i18n-ref-key-0",
+      "T5-i18n-ref-key-129",
+      "T5-fieldref-length-0",
+      "T5-binding-itemkey-length-0",
+      "T5-columns-zero",
+      "T5-app-app_code-length-2",
+      "T5-view-view_code-length-2",
+      "T5-view-query_code-length-2",
+      "T5-app-app_code-length-65",
+      "T5-view-view_code-length-65",
+      "T5-view-query_code-length-65"
+    ],
+    "CONTRACT_VERSION_UNSUPPORTED": [
+      "C02-contract-version-unsupported"
+    ],
+    "DEPENDENCY_VALIDATOR_UNAVAILABLE": [
+      "B-money-no-rule",
+      "B-index-capabilities-missing",
+      "I-unavailable-WORKFLOW",
+      "I-unavailable-PERMISSION"
+    ],
+    "FIELD_CODE_DUPLICATE": [
+      "B-duplicate-field"
+    ],
+    "FIELD_CODE_INVALID": [
+      "B-field-code-2",
+      "B-field-code-65",
+      "B-reserved-id",
+      "B-reserved-tenant_id",
+      "B-reserved-form_code",
+      "B-reserved-schema_version",
+      "B-reserved-status",
+      "B-reserved-owner_id",
+      "B-reserved-created_by",
+      "B-reserved-updated_by",
+      "B-reserved-created_at",
+      "B-reserved-updated_at",
+      "B-reserved-data",
+      "B-reserved-record_no",
+      "B-history-field-known-rename",
+      "B-history-field-reused",
+      "B-number-collision",
+      "B-number-platform-reserved"
+    ],
+    "FIELD_TYPE_UNREGISTERED": [
+      "B-type-disabled-file",
+      "B-type-disabled-subtable",
+      "B-type-disabled-single_relation"
+    ],
+    "MIGRATION_REQUIRED": [
+      "B-history-field-removal-unused",
+      "B-history-field-removal-unknown",
+      "B-history-migration-required",
+      "B-history-migration-nullable",
+      "B-history-migration-default",
+      "B-history-migration-create-only",
+      "B-history-required-added",
+      "B-history-unique-index",
+      "B-history-shrink-unproven-short_text",
+      "B-history-shrink-unproven-decimal",
+      "B-history-decimal-expand",
+      "I-r1-history-usage-unknown"
+    ],
+    "PERMISSION_DECLARATION_FORBIDDEN": [
+      "FX2-permission-tenant_id",
+      "FX2-permission-role_permissions",
+      "FX2-permission-user_permissions",
+      "FX2-permission-authorization",
+      "FX2-permission-data_scope",
+      "FX2-permission-approvers"
+    ],
+    "REFERENCE_DIGEST_MISMATCH": [
+      "I-identity-digest",
+      "I-r2-query-digest",
+      "I-r2-action-digest",
+      "I-r4-query-matched-digest-direct",
+      "I-r4-query-matched-digest-recursive",
+      "I-r4-action-matched-digest-direct",
+      "I-r4-action-matched-digest-recursive"
+    ],
+    "REFERENCE_INVALID": [
+      "B-registry-wrong-type",
+      "B-registry-missing-app-id",
+      "I-registered-base_version",
+      "I-registered-version",
+      "I-registered-app_id",
+      "I-registered-audit",
+      "I-r1-history-missing",
+      "I-r1-history-null",
+      "I-r1-shell-scope",
+      "I-r1-current-module",
+      "I-r1-duplicate-code-BUSINESS_SCHEMA",
+      "I-r1-duplicate-code-VIEW_SCHEMA",
+      "I-r2-query-shape",
+      "I-r2-action-shape",
+      "I-r4-query-matched-shape-direct",
+      "I-r4-query-matched-shape-recursive",
+      "I-r4-action-matched-shape-direct",
+      "I-r4-action-matched-shape-recursive",
+      "T5-ref-version-0",
+      "T5-ref-digest-length-70",
+      "T5-ref-digest-length-72",
+      "T5-stable-id-length-0",
+      "FR-I2-missing",
+      "FR-I2-other-view",
+      "FR-I2-wrong-digest"
+    ],
+    "REFERENCE_NOT_FOUND": [
+      "I-identity-module_id",
+      "I-identity-asset_id",
+      "I-identity-version",
+      "I-r2-query-missing",
+      "I-r2-action-missing"
+    ],
+    "REFERENCE_OUT_OF_SCOPE": [
+      "I-identity-scope_id",
+      "I-identity-app_id",
+      "I-r2-query-scope",
+      "I-r2-action-scope",
+      "I-r2-nested-query-scope",
+      "I-r3-declared-direct",
+      "I-r3-declared-alias",
+      "I-r3-declared-allOf",
+      "I-r3-declared-items",
+      "I-r3-declared-unevaluated-scope",
+      "I-r4-query-matched-scope-direct",
+      "I-r4-query-matched-scope-recursive",
+      "I-r4-action-matched-scope-direct",
+      "I-r4-action-matched-scope-recursive"
+    ],
+    "SCHEMA_CODE_INVALID": [
+      "B-schema-code-2",
+      "B-schema-code-65",
+      "B-history-schema-renamed",
+      "B-code-terminal-newline"
+    ],
+    "SECRET_DETECTED": [
+      "FX2-secret-private-key",
+      "FX2-secret-rsa-private-key",
+      "FX2-secret-openssh-private-key",
+      "FX2-secret-credential-uri",
+      "FX2-secret-credential-uri-uppercase",
+      "FX2-secret-credential-uri-percent",
+      "FX2-secret-password-assignment",
+      "FX2-secret-token-assignment",
+      "FX2-secret-quoted-assignment",
+      "FX2-secret-bearer",
+      "FX2-secret-position-field",
+      "FX2-secret-position-default",
+      "FX2-secret-position-label",
+      "FX2-secret-position-layout",
+      "FX2-secret-view-meta",
+      "FX2-secret-view-i18n-value",
+      "FX2-secret-view-input",
+      "FX2-secret-view-params",
+      "FX2-secret-app-name",
+      "FX2-secret-business-compiled-draft",
+      "FX2-secret-business-registered",
+      "FX2-secret-path-redaction",
+      "FX2-secret-path-redaction-tab",
+      "FX2-secret-path-redaction-quoted",
+      "FX2-secret-dependency-business"
+    ],
+    "TRUSTED_CONTEXT_REQUIRED": [
+      "T5-missing-context"
+    ],
+    "UNKNOWN_PROPERTY": [
+      "C02-app-compiled-envelope-injection",
+      "C02-app-compiled-version-injection",
+      "C02-app-compiled-lifecycle-injection",
+      "C02-app-compiled-checksum-injection",
+      "C02-app-compiled-audit-injection",
+      "C02-app-compiled-source-ref-injection",
+      "C02-app-compiled-profile-injection",
+      "C02-app-compiled-alias-profile-injection",
+      "C03-app-audit-unknown-property",
+      "B-unknown-short_text-constraints",
+      "B-unknown-short_text-type_config",
+      "B-unknown-long_text-constraints",
+      "B-unknown-long_text-type_config",
+      "B-unknown-boolean-constraints",
+      "B-unknown-boolean-type_config",
+      "B-unknown-integer-constraints",
+      "B-unknown-integer-type_config",
+      "B-unknown-decimal-constraints",
+      "B-unknown-decimal-type_config",
+      "B-unknown-money-constraints",
+      "B-unknown-money-type_config",
+      "B-unknown-date-constraints",
+      "B-unknown-date-type_config",
+      "B-unknown-datetime-constraints",
+      "B-unknown-datetime-type_config",
+      "B-unknown-single_select-constraints",
+      "B-unknown-single_select-type_config",
+      "B-unknown-multi_select-constraints",
+      "B-unknown-multi_select-type_config",
+      "B-unknown-control-226",
+      "B-unknown-control-227",
+      "B-unknown-control-228",
+      "B-closed-fields[0]",
+      "B-closed-fields[0].query",
+      "B-closed-fields[0].type_config.options[0]",
+      "B-closed-indexes[0]",
+      "B-closed-layout",
+      "B-closed-layout.sections[0]",
+      "B-closed-layout.sections[0].items[0]",
+      "B-closed-record_number",
+      "B-closed-record_rules[0]",
+      "B-money-unknown-default",
+      "B-misplaced-decimal-precision",
+      "B-misplaced-integer-options",
+      "B-misplaced-money-currency",
+      "V-unknown-root",
+      "V-node-unknown",
+      "V-meta-permission",
+      "V-extended-closed-FieldRef",
+      "V-extended-closed-I18nRef",
+      "V-extended-closed-SafeExpression",
+      "V-extended-closed-ActionRef",
+      "V-extended-closed-DataQueryRef",
+      "V-extended-closed-DataBindingRef",
+      "V-extended-closed-object-root",
+      "V-extended-closed-object-node",
+      "V-extended-closed-object-query",
+      "T5-closed-app-root",
+      "T5-closed-business-draft",
+      "T5-closed-view-draft",
+      "T5-closed-app-spec",
+      "T5-closed-app-route",
+      "T5-closed-description-layout-item",
+      "T5-registered-schema_id-unknown",
+      "T5-registered-view_id-unknown",
+      "FX2-permission-unknown-control"
+    ],
+    "VIEW_ACTION_FORBIDDEN": [
+      "V-query-as-action",
+      "V-event-unregistered",
+      "V-extended-action-input-33",
+      "V-extended-action-input-34",
+      "V-extended-action-input-35",
+      "V-extended-action-input-36",
+      "V-extended-action-input-37",
+      "I-r4-action-missing-member-direct",
+      "I-r4-action-missing-member-recursive",
+      "I-r4-action-empty-array-direct",
+      "I-r4-action-empty-array-recursive",
+      "I-r4-action-short-array-direct",
+      "I-r4-action-short-array-recursive",
+      "I-r4-action-wrong-array-shape-direct",
+      "I-r4-action-wrong-array-shape-recursive",
+      "I-r4-action-wrong-member-shape-direct",
+      "I-r4-action-wrong-member-shape-recursive",
+      "I-r4-action-wrong-reference-shape-direct",
+      "I-r4-action-wrong-reference-shape-recursive"
+    ],
+    "VIEW_CAPABILITY_DIGEST_MISMATCH": [
+      "V-capability-digest",
+      "V-extended-capability-asset-tamper-content",
+      "V-extended-snapshot-member-digest"
+    ],
+    "VIEW_CAPABILITY_REF_INVALID": [
+      "V-capability-definition",
+      "V-capability-snapshot",
+      "V-capability-member",
+      "V-extended-missing-capability-scope_type",
+      "V-extended-missing-capability-scope_id",
+      "V-extended-missing-capability-app_id",
+      "V-extended-missing-capability-module_id",
+      "V-extended-missing-capability-asset_type",
+      "V-extended-missing-capability-capability_code",
+      "V-extended-missing-capability-version",
+      "V-extended-missing-capability-digest",
+      "V-extended-capability-asset-version",
+      "V-extended-capability-asset-missing-output",
+      "V-extended-capability-asset-missing-error"
+    ],
+    "VIEW_CHILD_NOT_ALLOWED": [
+      "V-forbidden-child",
+      "V-extended-registry-maxChildren",
+      "V-extended-registry-parents"
+    ],
+    "VIEW_COMPONENT_UNREGISTERED": [
+      "V-unregistered-MissingWidget",
+      "V-unregistered-RelationField",
+      "V-wrong-page-component",
+      "V-extended-registry-state",
+      "V-extended-registry-version",
+      "V-extended-registry-missing-definition"
+    ],
+    "VIEW_DATA_SOURCE_FORBIDDEN": [
+      "V-duplicate-query",
+      "V-loop-queryCode",
+      "V-loop-itemKey",
+      "V-query-param-113",
+      "V-query-param-114",
+      "V-query-param-115",
+      "V-query-param-116",
+      "V-query-param-117",
+      "V-query-param-118",
+      "V-unsafe-root-url",
+      "V-unsafe-props-url",
+      "V-unsafe-meta-url",
+      "V-unsafe-right-url",
+      "V-unsafe-input-url",
+      "V-unsafe-params-url",
+      "V-unsafe-root-headers",
+      "V-unsafe-props-headers",
+      "V-unsafe-meta-headers",
+      "V-unsafe-right-headers",
+      "V-unsafe-input-headers",
+      "V-unsafe-params-headers",
+      "V-unsafe-root-sql",
+      "V-unsafe-props-sql",
+      "V-unsafe-meta-sql",
+      "V-unsafe-right-sql",
+      "V-unsafe-input-sql",
+      "V-unsafe-params-sql",
+      "V-unsafe-root-graphql",
+      "V-unsafe-props-graphql",
+      "V-unsafe-meta-graphql",
+      "V-unsafe-right-graphql",
+      "V-unsafe-input-graphql",
+      "V-unsafe-params-graphql",
+      "V-extended-query-page-size-201",
+      "V-extended-query-page-size-0",
+      "V-extended-query-business-version",
+      "V-extended-action-as-query",
+      "V-extended-string-code-query-sql",
+      "V-extended-string-code-query-url",
+      "I-r4-query-missing-member-direct",
+      "I-r4-query-missing-member-recursive",
+      "I-r4-query-empty-array-direct",
+      "I-r4-query-empty-array-recursive",
+      "I-r4-query-short-array-direct",
+      "I-r4-query-short-array-recursive",
+      "I-r4-query-wrong-array-shape-direct",
+      "I-r4-query-wrong-array-shape-recursive",
+      "I-r4-query-wrong-member-shape-direct",
+      "I-r4-query-wrong-member-shape-recursive",
+      "I-r4-query-wrong-reference-shape-direct",
+      "I-r4-query-wrong-reference-shape-recursive",
+      "FR-I4-position-10-params",
+      "FR-I4-position-13-params"
+    ],
+    "VIEW_EXPRESSION_UNSAFE": [
+      "V-predicates-21",
+      "V-expression-depth-4",
+      "V-expression-depth-50",
+      "V-hidden-expression-all",
+      "V-hidden-expression-any",
+      "V-hidden-expression-not",
+      "V-expression-no-coercion",
+      "V-extended-ast-empty-all",
+      "V-extended-ast-mixed",
+      "V-extended-ast-inner-type",
+      "V-extended-ast-unknown-op",
+      "V-extended-ast-right-for-empty",
+      "V-extended-missing-root-type-deep-condition",
+      "V-extended-missing-root-type-deep-props",
+      "V-extended-invalid-operand-25",
+      "V-extended-invalid-operand-26",
+      "V-extended-invalid-operand-27",
+      "V-extended-invalid-operand-28",
+      "V-extended-invalid-operand-29",
+      "T5-view-expr-all-0",
+      "T5-view-expr-any-0"
+    ],
+    "VIEW_FIELD_REF_INVALID": [
+      "V-unknown-field-missing",
+      "V-unknown-field-标题",
+      "V-wrong-field-type"
+    ],
+    "VIEW_LIMIT_EXCEEDED": [
+      "V-nodes-501",
+      "V-depth-21",
+      "V-bytes-False-1048577",
+      "V-bytes-True-1048577",
+      "V-i18n-key-129",
+      "V-i18n-value-5001",
+      "V-queries-21",
+      "V-loop-max-201",
+      "V-loop-max-0"
+    ],
+    "VIEW_NODE_ID_DUPLICATE": [
+      "V-duplicate-id",
+      "V-deleted-id",
+      "FR-I2-deleted"
+    ],
+    "VIEW_PROP_INVALID": [
+      "V-unknown-prop",
+      "V-prop-key-41",
+      "V-prop-key-42",
+      "V-prop-key-43",
+      "V-prop-key-44",
+      "V-prop-key-45",
+      "V-prop-key-46",
+      "V-bad-locale-",
+      "V-bad-locale-en_US",
+      "V-bad-locale-en-",
+      "V-bad-locale-e-US",
+      "V-bad-locale-en-u",
+      "V-bad-locale-x",
+      "V-bad-locale-en-abcdefghi",
+      "V-bad-locale-en-a-aa-a-bb",
+      "V-bad-locale-sl-rozaj-rozaj",
+      "V-i18n-missing",
+      "V-loop-args-alone",
+      "V-loop-unsupported",
+      "V-extended-unregistered-binding-fieldBinding",
+      "V-extended-unregistered-binding-text",
+      "V-extended-unregistered-binding-disabled",
+      "V-extended-bcp47-invalid-57",
+      "V-extended-bcp47-invalid-58",
+      "V-extended-bcp47-invalid-59",
+      "V-extended-bcp47-invalid-60",
+      "V-extended-bcp47-invalid-61",
+      "V-extended-bcp47-invalid-62",
+      "V-extended-bcp47-invalid-63",
+      "V-extended-prop-error-order",
+      "V-extended-registry-binding-position",
+      "V-extended-fake-columns-5",
+      "V-extended-fake-columns-0"
+    ],
+    "VIEW_RAW_CODE_FORBIDDEN": [
+      "V-unsafe-root-css",
+      "V-unsafe-props-css",
+      "V-unsafe-meta-css",
+      "V-unsafe-right-css",
+      "V-unsafe-input-css",
+      "V-unsafe-params-css",
+      "V-unsafe-root-lifeCycles",
+      "V-unsafe-props-lifeCycles",
+      "V-unsafe-meta-lifeCycles",
+      "V-unsafe-right-lifeCycles",
+      "V-unsafe-input-lifeCycles",
+      "V-unsafe-params-lifeCycles",
+      "V-unsafe-root-methods",
+      "V-unsafe-props-methods",
+      "V-unsafe-meta-methods",
+      "V-unsafe-right-methods",
+      "V-unsafe-input-methods",
+      "V-unsafe-params-methods",
+      "V-unsafe-root-npm",
+      "V-unsafe-props-npm",
+      "V-unsafe-meta-npm",
+      "V-unsafe-right-npm",
+      "V-unsafe-input-npm",
+      "V-unsafe-params-npm",
+      "V-markup-173",
+      "V-markup-174",
+      "V-markup-175",
+      "V-extended-JSExpression-props",
+      "V-extended-JSExpression-input",
+      "V-extended-JSExpression-params",
+      "V-extended-JSExpression-right",
+      "V-extended-JSFunction-props",
+      "V-extended-JSFunction-input",
+      "V-extended-JSFunction-params",
+      "V-extended-JSFunction-right",
+      "V-extended-security-priority",
+      "V-extended-string-code-arrow",
+      "V-extended-string-code-function",
+      "V-extended-string-code-eval",
+      "V-extended-i18n-executable-object-JSExpression",
+      "V-extended-i18n-executable-object-JSFunction",
+      "FR-I4-text-ascii-call",
+      "FR-I4-text-punctuation-prefix",
+      "FR-I4-text-ideographic-space-prefix",
+      "FR-I4-text-uri-feff",
+      "FR-I4-text-uri-nbsp",
+      "FR-I4-text-uri-line-separator",
+      "FR-I4-text-uri-uppercase",
+      "FR-I4-text-html-ascii",
+      "FR-I4-text-named-function",
+      "FR-I4-text-function-feff",
+      "FR-I4-text-function-constructor",
+      "FR-I4-text-import-call",
+      "FR-I4-text-arrow",
+      "FR-I4-position-5-meta",
+      "FR-I4-position-6-i18n-value",
+      "FR-I4-position-7-input"
+    ],
+    "VIEW_REFERENCE_VERSION_CONFLICT": [
+      "V-extended-business-version-unresolved"
+    ]
+  },
+  "excluded_runtime_only": [
+    "B16",
+    "V15",
+    "A08",
+    "E04"
+  ]
+}

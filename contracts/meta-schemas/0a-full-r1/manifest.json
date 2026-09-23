@@ -1,0 +1,100 @@
+{
+  "suite_revision": "0a-full-r1",
+  "validation_scope": "structure",
+  "baseline": {
+    "path": "docs/PRD-AI无代码平台设计-v1.11.md",
+    "sha256": "d517617a0c500713897e7d6c88b5894d4c802e6362ecf68631ba88776750993b"
+  },
+  "sources": [
+    {
+      "path": "docs/superpowers/specs/2026-09-11-0a-5-meta-schemas-design.md",
+      "sha256": "242bc72a9ef4b52b59e81695fe56c868900d50d50cfc4508e0ff3f10a4f27515"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-11-0a-5-shared-dictionary.md",
+      "sha256": "b17e71ea5b43734c222583c21e7bb22334215595ec1dd4624743beb0a16f8a3a"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-11-0a-5-permission-workflow-dictionary.md",
+      "sha256": "836f339ba51c2b3f6f395ebd2a25c189e024cd781f4eec821ae7ec639c9756c7"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-11-0a-5-command-tool-dictionary.md",
+      "sha256": "45899097378bbf881449ee280ae6aaf16db4c2873afa077c994f15faa4b87c7b"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-11-0a-5-migration-dictionary.md",
+      "sha256": "c391531c4376e2e76597e9c5d6195fc23aae7116cfd299dec7bdfccf1904679a"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-11-0a-5-release-dictionary.md",
+      "sha256": "5060f88b720845597fecaf6ac225515ecb08ee54f01722eef3022ac277f5c659"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-15-0a-5-machine-delivery-scope.md",
+      "sha256": "470011ffab5619c4a9d10324fa70800276e049debb713b09d6280bfd1bd49cfc"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-09-15-0a-5-uuid-profile-r1.md",
+      "sha256": "6b08d6f874e5e58ce2e64b9cb5efe33f47c9d9295924f7de51d2fceab0c21123"
+    }
+  ],
+  "resources": {
+    "app-model-command.v1alpha1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-full-r1:app-model-command-v1alpha1",
+      "sha256": "9bb276d548c3bf1c09f0fdb13e7a2088a20c59781f4732c2d90c3eac41fced9d"
+    },
+    "app-spec.v1alpha1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-full-r1:app-spec-v1alpha1",
+      "sha256": "4f2910a835389ef59fba3d7d4236a5685f019ca5c767867b6258e9442e3d2a63"
+    },
+    "approval-attestation.v1alpha1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-full-r1:approval-attestation-v1alpha1",
+      "sha256": "0009131bc15d57b0989974d4abddfd532191e6cfefdca2b814331bac15d0da07"
+    },
+    "artifact-manifest.v1alpha1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-full-r1:artifact-manifest-v1alpha1",
+      "sha256": "a29dd183fcdecdbb3fc2157332d9163bb3acc7ce9aedbb2ebdcbd48c5b5f3203"
+    },
+    "business-schema.v1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1",
+      "sha256": "f3ab0740c255f7a4064c74ade8784eb6143d2f9d2e65c20bca43141614b0d369"
+    },
+    "common.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-full-r1:common",
+      "sha256": "bc8102d886ea2a9c18b399f3b18f2ca143fb4e9425665dfdf0ec7d4664adf1a1"
+    },
+    "evidence-bundle.v1alpha1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-full-r1:evidence-bundle-v1alpha1",
+      "sha256": "bf8f14139ee50ce6300a0f6bdf234a9b865b449e7d28842b439a26eea902e8ee"
+    },
+    "migration-plan.v1alpha1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-full-r1:migration-plan-v1alpha1",
+      "sha256": "19e5b926acf27d769116d80b3b17e77d9e53103a458053e0ed76ceb0315f910b"
+    },
+    "migration-run-event.v1alpha1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-full-r1:migration-run-event-v1alpha1",
+      "sha256": "59f0aa70c6b51371f759825a60216c16bc3e8c51bd9df3779db8f4ab1ce0f3a8"
+    },
+    "permission-spec.v1alpha1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-full-r1:permission-spec-v1alpha1",
+      "sha256": "0e19b4f7fc3bc17fca3ec60b8ef564967d484ea4c22d5079427f4d16a6156d00"
+    },
+    "promotion-record.v1alpha1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-full-r1:promotion-record-v1alpha1",
+      "sha256": "fb497a9ce7ccd414419408feef438ae01e59e7f3d9cce98c686fe5243c9213bd"
+    },
+    "tool-spec.v1alpha1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-full-r1:tool-spec-v1alpha1",
+      "sha256": "779d3e1bb43564691ad77cfa70f77a746060d51ffebe5d7e85f4871a8780e0ec"
+    },
+    "view-schema.lce-safe-v1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-full-r1:view-schema-lce-safe-v1",
+      "sha256": "c5535b1903debab954ca3a6ee244381594a3c95de6f74d2e9619c00cc7f63085"
+    },
+    "workflow-spec.v1alpha1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-full-r1:workflow-spec-v1alpha1",
+      "sha256": "097c919b16bfcc1581ebca40b94c3d5f913ac8a4fb1a1629db8a6559798e622f"
+    }
+  }
+}

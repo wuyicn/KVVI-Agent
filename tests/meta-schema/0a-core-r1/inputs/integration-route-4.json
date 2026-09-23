@@ -1,0 +1,52 @@
+{
+  "contract_version": "app-spec/v1alpha1",
+  "base_version": 0,
+  "spec": {
+    "app_code": "internal_ops",
+    "name": "内部经营系统",
+    "businessSchemaRefs": [
+      {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "22222222-2222-4222-8222-222222222222",
+        "module_id": "33333333-3333-4333-8333-333333333333",
+        "asset_type": "BUSINESS_SCHEMA",
+        "asset_id": "general_item",
+        "version": 1,
+        "digest": "sha256:fb95a732896daab4542ab29b8d1f2af301ead67951c7b76e02cb78c918d490eb"
+      }
+    ],
+    "viewRefs": [
+      {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "22222222-2222-4222-8222-222222222222",
+        "module_id": "33333333-3333-4333-8333-333333333333",
+        "asset_type": "VIEW_SCHEMA",
+        "asset_id": "general_item_form",
+        "version": 1,
+        "digest": "sha256:3cfab676fee495b54dbac90a1533e7a914ef81e4b16c85581dc7ea6b4b282315"
+      }
+    ],
+    "navigation": [
+      {
+        "route_code": "general_items_new",
+        "path": "/x/",
+        "viewRef": {
+          "scope_type": "TENANT",
+          "scope_id": "11111111-1111-4111-8111-111111111111",
+          "app_id": "22222222-2222-4222-8222-222222222222",
+          "module_id": "33333333-3333-4333-8333-333333333333",
+          "asset_type": "VIEW_SCHEMA",
+          "asset_id": "general_item_form",
+          "version": 1,
+          "digest": "sha256:3cfab676fee495b54dbac90a1533e7a914ef81e4b16c85581dc7ea6b4b282315"
+        }
+      }
+    ],
+    "workflowRefs": [],
+    "permissionRefs": [],
+    "automationRefs": [],
+    "integrationRefs": []
+  }
+}

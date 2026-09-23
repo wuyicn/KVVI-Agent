@@ -1,0 +1,89 @@
+{
+  "schema_code": "general_item",
+  "name": "通用事项",
+  "field_type_registry_ref": {
+    "scope_type": "PLATFORM_CONTROL",
+    "scope_id": "kvvi-platform",
+    "app_id": null,
+    "module_id": null,
+    "asset_type": "FIELD_TYPE_REGISTRY",
+    "asset_id": "fake-business-types",
+    "version": 1,
+    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "fields": [
+    {
+      "field_code": "title",
+      "label": "字段",
+      "type": "single_select",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      },
+      "type_config": {
+        "options": [
+          {
+            "code": "one",
+            "label": "相同标签",
+            "order": 0,
+            "enabled": true
+          }
+        ]
+      }
+    }
+  ],
+  "indexes": [
+    {
+      "index_code": "idx_one",
+      "kind": "NORMAL",
+      "fields": [
+        "title"
+      ]
+    }
+  ],
+  "layout": {
+    "sections": [
+      {
+        "section_code": "basic",
+        "title": "基本",
+        "columns": 2,
+        "items": [
+          {
+            "kind": "field",
+            "field_code": "title",
+            "col_span": 1,
+            "unregistered": true
+          }
+        ]
+      }
+    ]
+  },
+  "record_rules": [
+    {
+      "rule_code": "rule_one",
+      "message": "请检查",
+      "assert": {
+        "field": "title",
+        "operator": "not_empty"
+      }
+    }
+  ],
+  "record_number": {
+    "field_code": "record_no",
+    "label": "编号",
+    "sequence_policy_ref": {
+      "scope_type": "PLATFORM_CONTROL",
+      "scope_id": "kvvi-platform",
+      "app_id": null,
+      "module_id": null,
+      "asset_type": "SEQUENCE_POLICY",
+      "asset_id": "fake-business-types",
+      "version": 1,
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  }
+}

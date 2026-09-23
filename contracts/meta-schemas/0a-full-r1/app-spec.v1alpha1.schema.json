@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:meta-schema:0a-full-r1:app-spec-v1alpha1",
+  "$ref": "#/$defs/CompiledDraft",
+  "$defs": {
+    "AssetRef": {"$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/AssetRef"},
+    "Spec": {
+      "type": "object",
+      "properties": {
+        "app_code": {"type": "string", "pattern": "^[a-z][a-z0-9_]{2,63}$(?![\\s\\S])"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 80},
+        "businessSchemaRefs": {"type": "array", "items": {"$ref": "#/$defs/BusinessRef"}},
+        "viewRefs": {"type": "array", "items": {"$ref": "#/$defs/ViewRef"}},
+        "navigation": {"type": "array", "items": {"$ref": "#/$defs/Route"}},
+        "workflowRefs": {"type": "array", "items": {"$ref": "#/$defs/WorkflowRef"}},
+        "permissionRefs": {"type": "array", "items": {"$ref": "#/$defs/PermissionRef"}},
+        "automationRefs": {"type": "array", "maxItems": 0},
+        "integrationRefs": {"type": "array", "maxItems": 0}
+      },
+      "required": ["app_code", "name", "businessSchemaRefs", "viewRefs", "navigation", "workflowRefs", "permissionRefs", "automationRefs", "integrationRefs"],
+      "additionalProperties": false
+    },
+    "BusinessRef": {"$ref": "#/$defs/AssetRef", "type": "object", "properties": {"asset_type": {"const": "BUSINESS_SCHEMA"}}},
+    "ViewRef": {"$ref": "#/$defs/AssetRef", "type": "object", "properties": {"asset_type": {"const": "VIEW_SCHEMA"}}},
+    "WorkflowRef": {"$ref": "#/$defs/AssetRef", "type": "object", "properties": {"asset_type": {"const": "WORKFLOW"}}},
+    "PermissionRef": {"$ref": "#/$defs/AssetRef", "type": "object", "properties": {"asset_type": {"const": "PERMISSION"}}},
+    "Route": {
+      "type": "object", "properties": {
+        "route_code": {"type": "string", "pattern": "^[a-z][a-z0-9_]{2,63}$(?![\\s\\S])"},
+        "path": {"type": "string", "pattern": "^/(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*)?$(?![\\s\\S])"},
+        "viewRef": {"$ref": "#/$defs/ViewRef"}
+      }, "required": ["route_code", "path", "viewRef"], "additionalProperties": false
+    },
+    "CompiledDraft": {
+      "type": "object",
+      "properties": {
+        "contract_version": {"const": "app-spec/v1alpha1"},
+        "base_version": {"$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"},
+        "spec": {"$ref": "#/$defs/Spec"}
+      },
+      "required": ["contract_version", "base_version", "spec"],
+      "additionalProperties": false
+    },
+    "RegisteredContract": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/RegisteredBase",
+      "type": "object",
+      "properties": {
+        "contract_version": {"const": "app-spec/v1alpha1"},
+        "app_id": {"type": "string", "format": "uuid"},
+        "spec": {"$ref": "#/$defs/Spec"}
+      },
+      "required": ["contract_version", "app_id", "spec"],
+      "unevaluatedProperties": false
+    }
+  }
+}

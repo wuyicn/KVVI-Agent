@@ -1,0 +1,40 @@
+{
+  "view_code": "general_item_form",
+  "name": "测试页面",
+  "view_type": "FORM",
+  "businessSchemaRef": {
+    "scope_type": "TENANT",
+    "scope_id": "11111111-1111-4111-8111-111111111111",
+    "app_id": "22222222-2222-4222-8222-222222222222",
+    "module_id": "33333333-3333-4333-8333-333333333333",
+    "asset_type": "BUSINESS_SCHEMA",
+    "asset_id": "general_item",
+    "version": 1,
+    "digest": "sha256:fb95a732896daab4542ab29b8d1f2af301ead67951c7b76e02cb78c918d490eb"
+  },
+  "componentRegistryRef": {
+    "scope_type": "PLATFORM_CONTROL",
+    "scope_id": "kvvi-platform",
+    "app_id": null,
+    "module_id": null,
+    "asset_type": "COMPONENT_REGISTRY",
+    "asset_id": "vue_element_approved",
+    "version": 1,
+    "digest": "sha256:09b78fdd43ca6556a626e7b532ab05f5bf87ab8012ba4d9a018386af808c34f5"
+  },
+  "componentsTree": [
+    {
+      "id": "page_root",
+      "componentName": "FormPage",
+      "children": [
+        {
+          "id": "node_text",
+          "componentName": "Text",
+          "props": {
+            "text": "function named_1$("
+          }
+        }
+      ]
+    }
+  ]
+}

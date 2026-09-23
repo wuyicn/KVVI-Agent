@@ -1,0 +1,412 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:meta-schema:0a-full-r1:tool-spec-v1alpha1",
+  "$ref": "#/$defs/RegisteredContract",
+  "$defs": {
+    "AssetRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/AssetRef"
+    },
+    "CapabilityRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/CapabilityRef"
+    },
+    "SchemaBinding": {
+      "type": "object",
+      "properties": {
+        "schema_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        }
+      },
+      "required": [
+        "schema_id",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "RateLimit": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "const": "SLIDING_WINDOW"
+        },
+        "subject": {
+          "enum": [
+            "TENANT_TOOL",
+            "TENANT_ACTOR_TOOL"
+          ]
+        },
+        "window_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400000
+        },
+        "max_requests": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "burst_policy": {
+          "const": "WITHIN_QUOTA"
+        }
+      },
+      "required": [
+        "algorithm",
+        "subject",
+        "window_ms",
+        "max_requests",
+        "burst_policy"
+      ],
+      "additionalProperties": false
+    },
+    "Spec": {
+      "type": "object",
+      "properties": {
+        "tool_code": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+(?![\\s\\S])"
+        },
+        "tool_version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?![\\s\\S])"
+        },
+        "gateway": {
+          "enum": [
+            "USER_GATEWAY",
+            "BUILDER_GATEWAY"
+          ]
+        },
+        "implementation_digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        },
+        "input_schema": {
+          "$ref": "#/$defs/SchemaBinding"
+        },
+        "output_schema": {
+          "$ref": "#/$defs/SchemaBinding"
+        },
+        "error_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "contains": {
+            "const": "TOOL_RATE_LIMITED"
+          }
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "timeout_ms": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/PositiveSafeInteger"
+            },
+            "max_input_bytes": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/PositiveSafeInteger"
+            },
+            "max_output_bytes": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/PositiveSafeInteger"
+            },
+            "max_items": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/PositiveSafeInteger"
+            }
+          },
+          "required": [
+            "timeout_ms",
+            "max_input_bytes",
+            "max_output_bytes",
+            "max_items"
+          ],
+          "additionalProperties": false
+        },
+        "rate_limit": {
+          "$ref": "#/$defs/RateLimit"
+        },
+        "required_permissions": {
+          "type": "object",
+          "properties": {
+            "builder_permissions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0,
+              "uniqueItems": true
+            },
+            "form_actions": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "read",
+                  "create",
+                  "update",
+                  "delete",
+                  "import",
+                  "export",
+                  "approve",
+                  "admin"
+                ]
+              },
+              "minItems": 0,
+              "maxItems": 8,
+              "uniqueItems": true
+            },
+            "field_filter": {
+              "type": "boolean"
+            },
+            "data_scope": {
+              "type": "boolean"
+            },
+            "flow_actions": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "INITIATE",
+                  "SUBMIT",
+                  "WITHDRAW",
+                  "APPROVE",
+                  "REJECT",
+                  "CLOSE",
+                  "REOPEN"
+                ]
+              },
+              "minItems": 0,
+              "maxItems": 7,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "builder_permissions",
+            "form_actions",
+            "field_filter",
+            "data_scope",
+            "flow_actions"
+          ],
+          "additionalProperties": false
+        },
+        "scope_policy": {
+          "type": "object",
+          "properties": {
+            "allowed_scope_types": {
+              "type": "array",
+              "items": {
+                "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/ScopeType"
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "uniqueItems": true
+            },
+            "app_refs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/AssetRef",
+                "type": "object",
+                "properties": {
+                  "asset_type": {
+                    "const": "APP_SPEC"
+                  }
+                }
+              },
+              "minItems": 0,
+              "uniqueItems": true
+            },
+            "module_codes": {
+              "type": "array",
+              "items": {
+                "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+              },
+              "minItems": 0,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "allowed_scope_types",
+            "app_refs",
+            "module_codes"
+          ],
+          "additionalProperties": false
+        },
+        "risk_level": {
+          "enum": [
+            "READ",
+            "WRITE",
+            "STRUCTURE_CHANGE",
+            "RELEASE"
+          ]
+        },
+        "data_access": {
+          "enum": [
+            "NONE",
+            "SYNTHETIC",
+            "AUTHORIZED_BUSINESS"
+          ]
+        },
+        "confirmation": {
+          "type": "object",
+          "properties": {
+            "immediate": {
+              "type": "boolean"
+            },
+            "human_approval": {
+              "type": "boolean"
+            },
+            "dual_approval_declared": {
+              "type": "boolean"
+            },
+            "dual_approval_enabled": {
+              "const": false
+            }
+          },
+          "required": [
+            "immediate",
+            "human_approval",
+            "dual_approval_declared",
+            "dual_approval_enabled"
+          ],
+          "additionalProperties": false
+        },
+        "reliability": {
+          "type": "object",
+          "properties": {
+            "idempotency": {
+              "enum": [
+                "READ_ONLY",
+                "KEY_REQUIRED"
+              ]
+            },
+            "max_retries": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+            },
+            "retry_on": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0,
+              "uniqueItems": true
+            },
+            "compensation_ref": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CapabilityRef"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "idempotency",
+            "max_retries",
+            "retry_on",
+            "compensation_ref"
+          ],
+          "additionalProperties": false
+        },
+        "audit_policy": {
+          "type": "object",
+          "properties": {
+            "parameter_digest": {
+              "const": true
+            },
+            "result": {
+              "const": true
+            },
+            "rejection_reason": {
+              "const": true
+            },
+            "trace_id": {
+              "const": true
+            },
+            "retention_days": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/PositiveSafeInteger"
+            }
+          },
+          "required": [
+            "parameter_digest",
+            "result",
+            "rejection_reason",
+            "trace_id",
+            "retention_days"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "tool_code",
+        "tool_version",
+        "gateway",
+        "implementation_digest",
+        "input_schema",
+        "output_schema",
+        "error_codes",
+        "limits",
+        "rate_limit",
+        "required_permissions",
+        "scope_policy",
+        "risk_level",
+        "data_access",
+        "confirmation",
+        "reliability",
+        "audit_policy"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "gateway": {
+                "const": "BUILDER_GATEWAY"
+              }
+            },
+            "required": [
+              "gateway"
+            ]
+          },
+          "then": {
+            "properties": {
+              "data_access": {
+                "enum": [
+                  "NONE",
+                  "SYNTHETIC"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "RegisteredContract": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/RegisteredBase",
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "tool-spec/v1alpha1"
+        },
+        "tool_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "spec": {
+          "$ref": "#/$defs/Spec"
+        },
+        "scope_type": {
+          "const": "PLATFORM_CONTROL"
+        }
+      },
+      "required": [
+        "contract_version",
+        "tool_id",
+        "spec"
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema_code": "general_item",
+  "name": "通用事项",
+  "fields": [
+    {
+      "field_code": "title",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    }
+  ]
+}

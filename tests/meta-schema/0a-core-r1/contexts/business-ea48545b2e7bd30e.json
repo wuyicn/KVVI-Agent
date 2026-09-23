@@ -1,0 +1,68 @@
+{
+  "fixture": true,
+  "suite_revision": "0a-core-r1",
+  "business": {
+    "enabled_types": [
+      "short_text",
+      "long_text",
+      "boolean",
+      "integer",
+      "decimal",
+      "money",
+      "date",
+      "datetime",
+      "single_select",
+      "multi_select"
+    ],
+    "generators": [],
+    "index_capabilities": {
+      "short_text": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "long_text": [
+        "NORMAL"
+      ],
+      "boolean": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "integer": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "decimal": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "money": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "date": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "datetime": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "single_select": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "multi_select": []
+    },
+    "money_rules": {
+      "CNY": {
+        "precision": 38,
+        "scale": 2
+      },
+      "JPY": {
+        "precision": 38,
+        "scale": 0
+      }
+    },
+    "history": null
+  }
+}

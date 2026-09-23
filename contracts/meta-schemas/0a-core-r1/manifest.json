@@ -1,0 +1,37 @@
+{
+  "suite_revision": "0a-core-r1",
+  "schema_dialect": "https://json-schema.org/draft/2020-12/schema",
+  "baseline": {
+    "path": "docs/PRD-AI无代码平台设计-v1.11.md",
+    "sha256": "d517617a0c500713897e7d6c88b5894d4c802e6362ecf68631ba88776750993b"
+  },
+  "design": {
+    "path": "docs/superpowers/specs/2026-09-08-0a-meta-schema-core-design.md",
+    "sha256": "6b3f0eea5a0cd8874c2d509bf446edb0402513efb6c3c6b00c26674fdecbe4c0"
+  },
+  "resources": {
+    "common.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-core-r1:common",
+      "sha256": "39ec930dba1549e873227f6f5ad971ed5427b2435c0336b245b813d51d160380",
+      "dependencies": []
+    },
+    "business-schema.v1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-core-r1:business-schema-v1",
+      "contract_version": "business-schema/v1",
+      "sha256": "eedd5df0b2a4a22f8346f4182aa9c0ab23283c622f15bcb99b7f646a7ab9d87e",
+      "dependencies": ["urn:kvvi:meta-schema:0a-core-r1:common"]
+    },
+    "view-schema.lce-safe-v1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1",
+      "contract_version": "view-schema/lce-safe-v1",
+      "sha256": "5ef0cdcfe3670446b9bfcc87877bc0821e4c3547a2f478763d531d4aa2297c52",
+      "dependencies": ["urn:kvvi:meta-schema:0a-core-r1:common"]
+    },
+    "app-spec.v1alpha1.schema.json": {
+      "id": "urn:kvvi:meta-schema:0a-core-r1:app-spec-v1alpha1",
+      "contract_version": "app-spec/v1alpha1",
+      "sha256": "f79f6d9be15f28aa681b628a4f05e23acd8adeba3983ffffc53e4638da3be7fd",
+      "dependencies": ["urn:kvvi:meta-schema:0a-core-r1:common"]
+    }
+  }
+}

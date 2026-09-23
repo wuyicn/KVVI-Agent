@@ -1,0 +1,159 @@
+{
+  "schema_code": "general_item",
+  "name": "通用事项",
+  "field_type_registry_ref": {
+    "scope_type": "PLATFORM_CONTROL",
+    "scope_id": "kvvi-platform",
+    "app_id": null,
+    "module_id": null,
+    "asset_type": "FIELD_TYPE_REGISTRY",
+    "asset_id": "fake-business-types",
+    "version": 1,
+    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "fields": [
+    {
+      "field_code": "title",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    }
+  ],
+  "layout": {
+    "sections": [
+      {
+        "section_code": "sec_0",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_1",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_2",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_3",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_4",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_5",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_6",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_7",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_8",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_9",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_10",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_11",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_12",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_13",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_14",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_15",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_16",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_17",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_18",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_19",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      },
+      {
+        "section_code": "sec_20",
+        "title": "基本",
+        "columns": 2,
+        "items": []
+      }
+    ]
+  }
+}

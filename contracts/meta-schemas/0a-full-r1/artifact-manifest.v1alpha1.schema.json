@@ -1,0 +1,714 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:meta-schema:0a-full-r1:artifact-manifest-v1alpha1",
+  "$comment": "0A-5 structure candidate. Synthetic tests do not establish complete validation, digest recomputation, signature verification, approval or deployment. Cross-record equality, indexed uniqueness/order, trusted source and history checks remain L/R responsibilities.",
+  "$ref": "#/$defs/Record",
+  "$defs": {
+    "AssetRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/AssetRef"
+    },
+    "Id": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/StableId"
+    },
+    "Digest": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+    },
+    "UInt": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+    },
+    "PosInt": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/PositiveSafeInteger"
+    },
+    "Uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "Time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$(?![\\s\\S])"
+    },
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "Code": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$(?![\\s\\S])"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$(?![\\s\\S])"
+    },
+    "PrincipalRef": {
+      "type": "object",
+      "properties": {
+        "scope_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "principal_id": {
+          "$ref": "#/$defs/Uuid"
+        }
+      },
+      "required": [
+        "scope_id",
+        "principal_id"
+      ],
+      "additionalProperties": false
+    },
+    "AuditStamp": {
+      "type": "object",
+      "properties": {
+        "actor": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/Time"
+        },
+        "trace_id": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "required": [
+        "actor",
+        "recorded_at",
+        "trace_id"
+      ],
+      "additionalProperties": false
+    },
+    "AttestationRef": {
+      "type": "object",
+      "properties": {
+        "attestation_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "attestation_digest"
+      ],
+      "additionalProperties": false
+    },
+    "EvidenceRef": {
+      "type": "object",
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "record_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "record_digest"
+      ],
+      "additionalProperties": false
+    },
+    "PromotionRef": {
+      "type": "object",
+      "properties": {
+        "promotion_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "sequence": {
+          "$ref": "#/$defs/PosInt"
+        },
+        "record_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "promotion_id",
+        "sequence",
+        "record_digest"
+      ],
+      "additionalProperties": false
+    },
+    "ContentBinding": {
+      "type": "object",
+      "properties": {
+        "content_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "media_type": {
+          "enum": [
+            "application/json",
+            "text/plain",
+            "application/pdf",
+            "image/png"
+          ]
+        }
+      },
+      "required": [
+        "content_id",
+        "digest",
+        "media_type"
+      ],
+      "additionalProperties": false
+    },
+    "AttachmentRef": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/ContentBinding"
+        },
+        "byte_length": {
+          "$ref": "#/$defs/UInt"
+        }
+      },
+      "required": [
+        "content",
+        "byte_length"
+      ],
+      "additionalProperties": false
+    },
+    "StructuredError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/Code"
+        },
+        "category": {
+          "enum": [
+            "RETRYABLE",
+            "MANUAL_REQUIRED",
+            "FATAL"
+          ]
+        },
+        "message": {
+          "$ref": "#/$defs/Text"
+        }
+      },
+      "required": [
+        "code",
+        "category",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "Environment": {
+      "enum": [
+        "DEVELOPMENT",
+        "TEST",
+        "PRODUCTION"
+      ]
+    },
+    "ContractEntry": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "asset_ref": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/AssetRef"
+                },
+                {
+                  "properties": {
+                    "asset_type": {
+                      "const": "BUSINESS_SCHEMA"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            },
+            "contract_version": {
+              "const": "business-schema/v1"
+            },
+            "spec": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/Spec"
+            }
+          },
+          "required": [
+            "asset_ref",
+            "contract_version",
+            "spec"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "asset_ref": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/AssetRef"
+                },
+                {
+                  "properties": {
+                    "asset_type": {
+                      "const": "VIEW_SCHEMA"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            },
+            "contract_version": {
+              "const": "view-schema/lce-safe-v1"
+            },
+            "spec": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:view-schema-lce-safe-v1#/$defs/Spec"
+            }
+          },
+          "required": [
+            "asset_ref",
+            "contract_version",
+            "spec"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "asset_ref": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/AssetRef"
+                },
+                {
+                  "properties": {
+                    "asset_type": {
+                      "const": "APP_SPEC"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            },
+            "contract_version": {
+              "const": "app-spec/v1alpha1"
+            },
+            "spec": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:app-spec-v1alpha1#/$defs/Spec"
+            }
+          },
+          "required": [
+            "asset_ref",
+            "contract_version",
+            "spec"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "asset_ref": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/AssetRef"
+                },
+                {
+                  "properties": {
+                    "asset_type": {
+                      "const": "WORKFLOW"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            },
+            "contract_version": {
+              "const": "workflow-spec/v1alpha1"
+            },
+            "spec": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:workflow-spec-v1alpha1#/$defs/Spec"
+            }
+          },
+          "required": [
+            "asset_ref",
+            "contract_version",
+            "spec"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "asset_ref": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/AssetRef"
+                },
+                {
+                  "properties": {
+                    "asset_type": {
+                      "const": "PERMISSION"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            },
+            "contract_version": {
+              "const": "permission-spec/v1alpha1"
+            },
+            "spec": {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:permission-spec-v1alpha1#/$defs/Spec"
+            }
+          },
+          "required": [
+            "asset_ref",
+            "contract_version",
+            "spec"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "RegistryRefs": {
+      "type": "object",
+      "properties": {
+        "field_type": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/AssetRef"
+            },
+            {
+              "properties": {
+                "asset_type": {
+                  "const": "FIELD_TYPE_REGISTRY"
+                }
+              },
+              "type": "object"
+            }
+          ]
+        },
+        "component": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/AssetRef"
+            },
+            {
+              "properties": {
+                "asset_type": {
+                  "const": "COMPONENT_REGISTRY"
+                }
+              },
+              "type": "object"
+            }
+          ]
+        },
+        "material": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/AssetRef"
+            },
+            {
+              "properties": {
+                "asset_type": {
+                  "const": "MATERIAL_REGISTRY"
+                }
+              },
+              "type": "object"
+            }
+          ]
+        },
+        "capability": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/AssetRef"
+            },
+            {
+              "properties": {
+                "asset_type": {
+                  "const": "CAPABILITY_REGISTRY"
+                }
+              },
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "required": [
+        "field_type",
+        "component",
+        "material",
+        "capability"
+      ],
+      "additionalProperties": false
+    },
+    "Compatibility": {
+      "type": "object",
+      "properties": {
+        "implementation_code": {
+          "$ref": "#/$defs/Code"
+        },
+        "accepted_versions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SemVer"
+          },
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "implementation_code",
+        "accepted_versions"
+      ],
+      "additionalProperties": false
+    },
+    "GraphSnapshot": {
+      "type": "object",
+      "properties": {
+        "snapshot_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "snapshot_id",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "LicenseDeclaration": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "SPDX",
+            "LICENSE_REF"
+          ]
+        },
+        "identifier": {
+          "$ref": "#/$defs/Code"
+        },
+        "text_attachment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AttachmentRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "identifier",
+        "text_attachment"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "SPDX"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "text_attachment": {
+                "const": null
+              }
+            },
+            "type": "object"
+          },
+          "else": {
+            "properties": {
+              "identifier": {
+                "pattern": "^LicenseRef-",
+                "type": "string"
+              },
+              "text_attachment": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/AttachmentRef"
+                  },
+                  {
+                    "properties": {
+                      "content": {
+                        "properties": {
+                          "media_type": {
+                            "const": "text/plain"
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "type": "object"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "SbomEntry": {
+      "type": "object",
+      "properties": {
+        "component_id": {
+          "$ref": "#/$defs/Code"
+        },
+        "version": {
+          "$ref": "#/$defs/Text"
+        },
+        "content_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "license": {
+          "$ref": "#/$defs/LicenseDeclaration"
+        }
+      },
+      "required": [
+        "component_id",
+        "version",
+        "content_digest",
+        "license"
+      ],
+      "additionalProperties": false
+    },
+    "Record": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "artifact-manifest/v1alpha1"
+        },
+        "canonicalization_profile": {
+          "const": "kvvi-json-c14n/v1"
+        },
+        "app_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/AssetRef"
+            },
+            {
+              "properties": {
+                "asset_type": {
+                  "const": "APP_SPEC"
+                }
+              },
+              "type": "object"
+            }
+          ]
+        },
+        "contract_set": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ContractEntry"
+          },
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true
+        },
+        "registry_refs": {
+          "$ref": "#/$defs/RegistryRefs"
+        },
+        "policy_ruleset_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/AssetRef"
+            },
+            {
+              "properties": {
+                "asset_type": {
+                  "const": "POLICY_RULESET"
+                }
+              },
+              "type": "object"
+            }
+          ]
+        },
+        "contract_set_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "compiler_requirements": {
+          "$ref": "#/$defs/Compatibility"
+        },
+        "runtime_requirements": {
+          "$ref": "#/$defs/Compatibility"
+        },
+        "app_context_graph": {
+          "$ref": "#/$defs/GraphSnapshot"
+        },
+        "runtime_tool_refs": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/AssetRef"
+              },
+              {
+                "properties": {
+                  "asset_type": {
+                    "const": "TOOL_SPEC"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 10000,
+          "uniqueItems": true
+        },
+        "migration_plan_refs": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/AssetRef"
+              },
+              {
+                "properties": {
+                  "asset_type": {
+                    "const": "MIGRATION_PLAN"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1000,
+          "uniqueItems": true
+        },
+        "sbom": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SbomEntry"
+          },
+          "minItems": 0,
+          "maxItems": 10000,
+          "uniqueItems": true
+        },
+        "artifact_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "contract_version",
+        "canonicalization_profile",
+        "app_ref",
+        "contract_set",
+        "registry_refs",
+        "policy_ruleset_ref",
+        "contract_set_digest",
+        "compiler_requirements",
+        "runtime_requirements",
+        "app_context_graph",
+        "runtime_tool_refs",
+        "migration_plan_refs",
+        "sbom",
+        "artifact_digest"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

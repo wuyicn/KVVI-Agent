@@ -1,0 +1,712 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:meta-schema:0a-full-r1:promotion-record-v1alpha1",
+  "$comment": "0A-5 structure candidate. Synthetic tests do not establish complete validation, digest recomputation, signature verification, approval or deployment. Cross-record equality, indexed uniqueness/order, trusted source and history checks remain L/R responsibilities.",
+  "$ref": "#/$defs/Record",
+  "$defs": {
+    "AssetRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/AssetRef"
+    },
+    "Id": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/StableId"
+    },
+    "Digest": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+    },
+    "UInt": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+    },
+    "PosInt": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/PositiveSafeInteger"
+    },
+    "Uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "Time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$(?![\\s\\S])"
+    },
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "Code": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$(?![\\s\\S])"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$(?![\\s\\S])"
+    },
+    "PrincipalRef": {
+      "type": "object",
+      "properties": {
+        "scope_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "principal_id": {
+          "$ref": "#/$defs/Uuid"
+        }
+      },
+      "required": [
+        "scope_id",
+        "principal_id"
+      ],
+      "additionalProperties": false
+    },
+    "AuditStamp": {
+      "type": "object",
+      "properties": {
+        "actor": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/Time"
+        },
+        "trace_id": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "required": [
+        "actor",
+        "recorded_at",
+        "trace_id"
+      ],
+      "additionalProperties": false
+    },
+    "AttestationRef": {
+      "type": "object",
+      "properties": {
+        "attestation_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "attestation_digest"
+      ],
+      "additionalProperties": false
+    },
+    "EvidenceRef": {
+      "type": "object",
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "record_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "record_digest"
+      ],
+      "additionalProperties": false
+    },
+    "PromotionRef": {
+      "type": "object",
+      "properties": {
+        "promotion_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "sequence": {
+          "$ref": "#/$defs/PosInt"
+        },
+        "record_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "promotion_id",
+        "sequence",
+        "record_digest"
+      ],
+      "additionalProperties": false
+    },
+    "ContentBinding": {
+      "type": "object",
+      "properties": {
+        "content_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "media_type": {
+          "enum": [
+            "application/json",
+            "text/plain",
+            "application/pdf",
+            "image/png"
+          ]
+        }
+      },
+      "required": [
+        "content_id",
+        "digest",
+        "media_type"
+      ],
+      "additionalProperties": false
+    },
+    "AttachmentRef": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/ContentBinding"
+        },
+        "byte_length": {
+          "$ref": "#/$defs/UInt"
+        }
+      },
+      "required": [
+        "content",
+        "byte_length"
+      ],
+      "additionalProperties": false
+    },
+    "StructuredError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/Code"
+        },
+        "category": {
+          "enum": [
+            "RETRYABLE",
+            "MANUAL_REQUIRED",
+            "FATAL"
+          ]
+        },
+        "message": {
+          "$ref": "#/$defs/Text"
+        }
+      },
+      "required": [
+        "code",
+        "category",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "Environment": {
+      "enum": [
+        "DEVELOPMENT",
+        "TEST",
+        "PRODUCTION"
+      ]
+    },
+    "ConfigRef": {
+      "type": "object",
+      "properties": {
+        "binding_code": {
+          "$ref": "#/$defs/Code"
+        },
+        "reference_code": {
+          "$ref": "#/$defs/Code"
+        },
+        "reference_version": {
+          "$ref": "#/$defs/PosInt"
+        }
+      },
+      "required": [
+        "binding_code",
+        "reference_code",
+        "reference_version"
+      ],
+      "additionalProperties": false
+    },
+    "ConfigBinding": {
+      "type": "object",
+      "properties": {
+        "bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConfigRef"
+          },
+          "minItems": 0,
+          "maxItems": 1000,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "bindings"
+      ],
+      "additionalProperties": false
+    },
+    "RollbackTarget": {
+      "type": "object",
+      "properties": {
+        "artifact_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "verified_promotion_ref": {
+          "$ref": "#/$defs/PromotionRef"
+        },
+        "approval_attestation_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AttestationRef"
+          },
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "config_binding": {
+          "$ref": "#/$defs/ConfigBinding"
+        },
+        "config_binding_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "migration_plan_refs": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/AssetRef"
+              },
+              {
+                "properties": {
+                  "asset_type": {
+                    "const": "MIGRATION_PLAN"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1000,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "artifact_digest",
+        "verified_promotion_ref",
+        "approval_attestation_refs",
+        "config_binding",
+        "config_binding_digest",
+        "migration_plan_refs"
+      ],
+      "additionalProperties": false
+    },
+    "MigrationRunRef": {
+      "type": "object",
+      "properties": {
+        "migration_run_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "sequence": {
+          "$ref": "#/$defs/PosInt"
+        },
+        "record_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "migration_run_id",
+        "sequence",
+        "record_digest"
+      ],
+      "additionalProperties": false
+    },
+    "PromotionResult": {
+      "type": "object",
+      "properties": {
+        "active_artifact_digest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "migration_run_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MigrationRunRef"
+          },
+          "minItems": 0,
+          "maxItems": 1000,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "active_artifact_digest",
+        "migration_run_refs"
+      ],
+      "additionalProperties": false
+    },
+    "Record": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "promotion-record/v1alpha1"
+        },
+        "canonicalization_profile": {
+          "const": "kvvi-json-c14n/v1"
+        },
+        "promotion_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "sequence": {
+          "$ref": "#/$defs/PosInt"
+        },
+        "previous_record_digest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "artifact_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "environment": {
+          "$ref": "#/$defs/Environment"
+        },
+        "config_binding": {
+          "$ref": "#/$defs/ConfigBinding"
+        },
+        "config_binding_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "approval_attestation_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AttestationRef"
+          },
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "predecessor_environment_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PromotionRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rollback_target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RollbackTarget"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "event_type": {
+          "enum": [
+            "PLANNED",
+            "STARTED",
+            "SUCCEEDED",
+            "FAILED",
+            "ROLLBACK_STARTED",
+            "ROLLED_BACK",
+            "ROLLBACK_FAILED"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PromotionResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StructuredError"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "audit": {
+          "$ref": "#/$defs/AuditStamp"
+        },
+        "record_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "contract_version",
+        "canonicalization_profile",
+        "promotion_id",
+        "sequence",
+        "previous_record_digest",
+        "artifact_digest",
+        "environment",
+        "config_binding",
+        "config_binding_digest",
+        "approval_attestation_refs",
+        "predecessor_environment_ref",
+        "rollback_target",
+        "event_type",
+        "result",
+        "error",
+        "audit",
+        "record_digest"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "sequence": {
+                "const": 1
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "previous_record_digest": {
+                "const": null
+              },
+              "event_type": {
+                "const": "PLANNED"
+              }
+            },
+            "type": "object"
+          },
+          "else": {
+            "properties": {
+              "previous_record_digest": {
+                "$ref": "#/$defs/Digest"
+              },
+              "event_type": {
+                "not": {
+                  "const": "PLANNED"
+                }
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "environment": {
+                "const": "DEVELOPMENT"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "predecessor_environment_ref": {
+                "const": null
+              }
+            },
+            "type": "object"
+          },
+          "else": {
+            "properties": {
+              "predecessor_environment_ref": {
+                "$ref": "#/$defs/PromotionRef"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "environment": {
+                "const": "PRODUCTION"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "rollback_target": {
+                "$ref": "#/$defs/RollbackTarget"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "PLANNED",
+                  "STARTED",
+                  "ROLLBACK_STARTED"
+                ]
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "const": null
+              },
+              "error": {
+                "const": null
+              }
+            },
+            "type": "object"
+          },
+          "else": {
+            "properties": {
+              "result": {
+                "$ref": "#/$defs/PromotionResult"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "FAILED",
+                  "ROLLBACK_FAILED"
+                ]
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "$ref": "#/$defs/StructuredError"
+              }
+            },
+            "type": "object"
+          },
+          "else": {
+            "properties": {
+              "error": {
+                "const": null
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "ROLLBACK_STARTED",
+                  "ROLLED_BACK",
+                  "ROLLBACK_FAILED"
+                ]
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "rollback_target": {
+                "$ref": "#/$defs/RollbackTarget"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "SUCCEEDED",
+                  "ROLLED_BACK",
+                  "ROLLBACK_FAILED"
+                ]
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "active_artifact_digest": {
+                    "$ref": "#/$defs/Digest"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "const": "FAILED"
+              },
+              "rollback_target": {
+                "const": null
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "active_artifact_digest": {
+                    "const": null
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "const": "FAILED"
+              },
+              "rollback_target": {
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "result": {
+                "properties": {
+                  "active_artifact_digest": {
+                    "$ref": "#/$defs/Digest"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    }
+  }
+}

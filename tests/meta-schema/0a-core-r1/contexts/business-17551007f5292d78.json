@@ -1,0 +1,186 @@
+{
+  "fixture": true,
+  "suite_revision": "0a-core-r1",
+  "business": {
+    "enabled_types": [
+      "short_text",
+      "long_text",
+      "boolean",
+      "integer",
+      "decimal",
+      "money",
+      "date",
+      "datetime",
+      "single_select",
+      "multi_select"
+    ],
+    "generators": [
+      {
+        "schema_code": "general_item",
+        "field_code": "title",
+        "type": "short_text"
+      }
+    ],
+    "index_capabilities": {
+      "short_text": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "long_text": [
+        "NORMAL"
+      ],
+      "boolean": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "integer": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "decimal": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "money": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "date": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "datetime": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "single_select": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "multi_select": []
+    },
+    "money_rules": {
+      "CNY": {
+        "precision": 38,
+        "scale": 2
+      },
+      "JPY": {
+        "precision": 38,
+        "scale": 0
+      }
+    },
+    "history": null
+  },
+  "fake_assets": [
+    {
+      "ref": {
+        "scope_type": "PLATFORM_CONTROL",
+        "scope_id": "kvvi-platform",
+        "app_id": null,
+        "module_id": null,
+        "asset_type": "FIELD_TYPE_REGISTRY",
+        "asset_id": "fake-business-types",
+        "version": 1,
+        "digest": "sha256:033ec9b8595a98d5321160ee243e410031f37b8405fda158aa8a72df558208d1"
+      },
+      "content": {
+        "fixture": true,
+        "types": [
+          "short_text",
+          "long_text",
+          "boolean",
+          "integer",
+          "decimal",
+          "money",
+          "date",
+          "datetime",
+          "single_select",
+          "multi_select"
+        ],
+        "index_capabilities": {
+          "short_text": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "long_text": [
+            "NORMAL"
+          ],
+          "boolean": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "integer": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "decimal": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "money": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "date": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "datetime": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "single_select": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "multi_select": []
+        },
+        "generators": [
+          {
+            "schema_code": "general_item",
+            "field_code": "title",
+            "type": "short_text"
+          }
+        ],
+        "money_rules": {
+          "CNY": {
+            "precision": 38,
+            "scale": 2
+          },
+          "JPY": {
+            "precision": 38,
+            "scale": 0
+          }
+        }
+      }
+    }
+  ],
+  "current": {
+    "scope_type": "TENANT",
+    "scope_id": "11111111-1111-4111-8111-111111111111",
+    "app_id": "22222222-2222-4222-8222-222222222222",
+    "module_id": "33333333-3333-4333-8333-333333333333",
+    "asset_type": "BUSINESS_SCHEMA",
+    "asset_id": "general_item",
+    "stable_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "active_version": 0,
+    "purpose": "compose"
+  },
+  "snapshots": [],
+  "histories": [
+    {
+      "target": {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "22222222-2222-4222-8222-222222222222",
+        "module_id": "33333333-3333-4333-8333-333333333333",
+        "asset_type": "BUSINESS_SCHEMA",
+        "asset_id": "general_item"
+      },
+      "previous_ref": null,
+      "business_history": null,
+      "deleted_node_ids": []
+    }
+  ],
+  "grants": []
+}

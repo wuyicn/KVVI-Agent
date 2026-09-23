@@ -1,0 +1,3007 @@
+{
+  "fixture": true,
+  "suite_revision": "0a-core-r1",
+  "business": {
+    "enabled_types": [
+      "short_text",
+      "long_text",
+      "boolean",
+      "integer",
+      "decimal",
+      "money",
+      "date",
+      "datetime",
+      "single_select",
+      "multi_select"
+    ],
+    "generators": [],
+    "index_capabilities": {
+      "short_text": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "long_text": [
+        "NORMAL"
+      ],
+      "boolean": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "integer": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "decimal": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "money": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "date": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "datetime": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "single_select": [
+        "NORMAL",
+        "UNIQUE"
+      ],
+      "multi_select": []
+    },
+    "money_rules": {
+      "CNY": {
+        "precision": 38,
+        "scale": 2
+      },
+      "JPY": {
+        "precision": 38,
+        "scale": 0
+      }
+    },
+    "history": null
+  },
+  "fake_assets": [
+    {
+      "ref": {
+        "scope_type": "PLATFORM_CONTROL",
+        "scope_id": "kvvi-platform",
+        "app_id": null,
+        "module_id": null,
+        "asset_type": "FIELD_TYPE_REGISTRY",
+        "asset_id": "business-field-types-core",
+        "version": 1,
+        "digest": "sha256:a36716610e06b202ea165484cd58fef645905408aac7534ebdb47791c17649d2"
+      },
+      "content": {
+        "fixture": true,
+        "types": [
+          "short_text",
+          "long_text",
+          "boolean",
+          "integer",
+          "decimal",
+          "money",
+          "date",
+          "datetime",
+          "single_select",
+          "multi_select"
+        ],
+        "index_capabilities": {
+          "short_text": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "long_text": [
+            "NORMAL"
+          ],
+          "boolean": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "integer": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "decimal": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "money": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "date": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "datetime": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "single_select": [
+            "NORMAL",
+            "UNIQUE"
+          ],
+          "multi_select": []
+        },
+        "generators": [],
+        "money_rules": {
+          "CNY": {
+            "precision": 38,
+            "scale": 2
+          },
+          "JPY": {
+            "precision": 38,
+            "scale": 0
+          }
+        }
+      }
+    },
+    {
+      "ref": {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "22222222-2222-4222-8222-222222222222",
+        "module_id": "33333333-3333-4333-8333-333333333333",
+        "asset_type": "SEQUENCE_POLICY",
+        "asset_id": "general_item_no",
+        "version": 1,
+        "digest": "sha256:70a87c366be01435b75dfd7bc35444ea7e232022ddfb0cecf3e7042853bf81bc"
+      },
+      "content": {
+        "fixture": true,
+        "policy": "fake-only-no-generation"
+      }
+    },
+    {
+      "ref": {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "22222222-2222-4222-8222-222222222222",
+        "module_id": "33333333-3333-4333-8333-333333333333",
+        "asset_type": "BUSINESS_SCHEMA",
+        "asset_id": "general_item",
+        "version": 1,
+        "digest": "sha256:fb95a732896daab4542ab29b8d1f2af301ead67951c7b76e02cb78c918d490eb"
+      },
+      "content": {
+        "schema_code": "general_item",
+        "field_type_registry_ref": {
+          "scope_type": "PLATFORM_CONTROL",
+          "scope_id": "kvvi-platform",
+          "app_id": null,
+          "module_id": null,
+          "asset_type": "FIELD_TYPE_REGISTRY",
+          "asset_id": "business-field-types-core",
+          "version": 1,
+          "digest": "sha256:a36716610e06b202ea165484cd58fef645905408aac7534ebdb47791c17649d2"
+        },
+        "name": "通用事项登记",
+        "description": "用于验证 BusinessSchema v1 和通用 CRUD 运行时",
+        "record_number": {
+          "field_code": "record_no",
+          "label": "事项编号",
+          "sequence_policy_ref": {
+            "scope_type": "TENANT",
+            "scope_id": "11111111-1111-4111-8111-111111111111",
+            "app_id": "22222222-2222-4222-8222-222222222222",
+            "module_id": "33333333-3333-4333-8333-333333333333",
+            "asset_type": "SEQUENCE_POLICY",
+            "asset_id": "general_item_no",
+            "version": 1,
+            "digest": "sha256:70a87c366be01435b75dfd7bc35444ea7e232022ddfb0cecf3e7042853bf81bc"
+          }
+        },
+        "fields": [
+          {
+            "field_code": "title",
+            "label": "标题",
+            "description": "事项的简短名称",
+            "type": "short_text",
+            "required": true,
+            "nullable": false,
+            "write_policy": "MUTABLE",
+            "constraints": {
+              "min_length": 1,
+              "max_length": 120,
+              "trim": true
+            },
+            "query": {
+              "searchable": true,
+              "filterable": true,
+              "sortable": true
+            },
+            "deprecated": false
+          },
+          {
+            "field_code": "category",
+            "label": "分类",
+            "type": "single_select",
+            "required": true,
+            "nullable": false,
+            "write_policy": "MUTABLE",
+            "type_config": {
+              "options": [
+                {
+                  "code": "general",
+                  "label": "一般",
+                  "order": 1,
+                  "enabled": true
+                },
+                {
+                  "code": "urgent",
+                  "label": "紧急",
+                  "order": 2,
+                  "enabled": true
+                }
+              ]
+            },
+            "query": {
+              "searchable": true,
+              "filterable": true,
+              "sortable": true
+            },
+            "deprecated": false
+          },
+          {
+            "field_code": "quantity",
+            "label": "数量",
+            "type": "integer",
+            "required": true,
+            "nullable": false,
+            "default": 1,
+            "write_policy": "MUTABLE",
+            "constraints": {
+              "minimum": 1,
+              "maximum": 1000000
+            },
+            "query": {
+              "searchable": false,
+              "filterable": true,
+              "sortable": true
+            },
+            "deprecated": false
+          },
+          {
+            "field_code": "amount",
+            "label": "预计金额",
+            "type": "money",
+            "required": false,
+            "nullable": true,
+            "write_policy": "MUTABLE",
+            "type_config": {
+              "currency_mode": "FIXED",
+              "currency": "CNY"
+            },
+            "constraints": {
+              "minimum": "0.00"
+            },
+            "query": {
+              "searchable": false,
+              "filterable": true,
+              "sortable": true
+            },
+            "deprecated": false
+          },
+          {
+            "field_code": "due_date",
+            "label": "截止日期",
+            "type": "date",
+            "required": false,
+            "nullable": true,
+            "write_policy": "MUTABLE",
+            "query": {
+              "searchable": false,
+              "filterable": true,
+              "sortable": true
+            },
+            "deprecated": false
+          },
+          {
+            "field_code": "notes",
+            "label": "说明",
+            "type": "long_text",
+            "required": false,
+            "nullable": true,
+            "write_policy": "MUTABLE",
+            "constraints": {
+              "max_length": 5000
+            },
+            "query": {
+              "searchable": true,
+              "filterable": false,
+              "sortable": false
+            },
+            "deprecated": false
+          }
+        ],
+        "indexes": [
+          {
+            "index_code": "idx_category_due_date",
+            "kind": "NORMAL",
+            "fields": [
+              "category",
+              "due_date"
+            ]
+          }
+        ],
+        "record_rules": [
+          {
+            "rule_code": "large_quantity_requires_notes",
+            "when": {
+              "field": "quantity",
+              "operator": "gt",
+              "value": 100
+            },
+            "assert": {
+              "field": "notes",
+              "operator": "not_empty"
+            },
+            "message": "数量超过 100 时必须填写说明"
+          }
+        ],
+        "layout": {
+          "sections": [
+            {
+              "section_code": "basic",
+              "title": "基本信息",
+              "description": "填写事项的基础内容",
+              "columns": 2,
+              "items": [
+                {
+                  "kind": "field",
+                  "field_code": "title",
+                  "col_span": 2
+                },
+                {
+                  "kind": "field",
+                  "field_code": "category",
+                  "col_span": 1
+                },
+                {
+                  "kind": "field",
+                  "field_code": "quantity",
+                  "col_span": 1
+                },
+                {
+                  "kind": "field",
+                  "field_code": "amount",
+                  "col_span": 1
+                },
+                {
+                  "kind": "field",
+                  "field_code": "due_date",
+                  "col_span": 1
+                },
+                {
+                  "kind": "field",
+                  "field_code": "notes",
+                  "col_span": 2
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "ref": {
+        "scope_type": "PLATFORM_CONTROL",
+        "scope_id": "kvvi-platform",
+        "app_id": null,
+        "module_id": null,
+        "asset_type": "COMPONENT_REGISTRY",
+        "asset_id": "vue_element_approved",
+        "version": 1,
+        "digest": "sha256:09b78fdd43ca6556a626e7b532ab05f5bf87ab8012ba4d9a018386af808c34f5"
+      },
+      "content": {
+        "fixture": true,
+        "version": 1,
+        "state": "PUBLISHED",
+        "components": [
+          {
+            "componentName": "FormPage",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/I18nRef"
+                    }
+                  ]
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "title": [
+                "I18nRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [],
+            "allowedChildren": [
+              "Section",
+              "Grid",
+              "ShortTextField",
+              "LongTextField",
+              "BooleanField",
+              "IntegerField",
+              "DecimalField",
+              "MoneyField",
+              "DateField",
+              "DateTimeField",
+              "SingleSelectField",
+              "MultiSelectField",
+              "Table",
+              "Text",
+              "Description",
+              "StatusBadge",
+              "SaveDraftButton",
+              "SubmitButton",
+              "CancelButton",
+              "OpenRecordLink"
+            ],
+            "maxChildren": 500,
+            "viewTypes": [
+              "FORM"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:1517074df29dc9642fc18ca7f0f1bd280d222a08e73a8de947f15c4a40637196"
+            }
+          },
+          {
+            "componentName": "ListPage",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/I18nRef"
+                    }
+                  ]
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "title": [
+                "I18nRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [],
+            "allowedChildren": [
+              "Section",
+              "Grid",
+              "ShortTextField",
+              "LongTextField",
+              "BooleanField",
+              "IntegerField",
+              "DecimalField",
+              "MoneyField",
+              "DateField",
+              "DateTimeField",
+              "SingleSelectField",
+              "MultiSelectField",
+              "Table",
+              "Text",
+              "Description",
+              "StatusBadge",
+              "SaveDraftButton",
+              "SubmitButton",
+              "CancelButton",
+              "OpenRecordLink"
+            ],
+            "maxChildren": 500,
+            "viewTypes": [
+              "LIST"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:d6359ebcc54cb1d306bc25c0ab57bec4ea99cf100230b828a891a73aac76e8bf"
+            }
+          },
+          {
+            "componentName": "DetailPage",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/I18nRef"
+                    }
+                  ]
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "title": [
+                "I18nRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [],
+            "allowedChildren": [
+              "Section",
+              "Grid",
+              "ShortTextField",
+              "LongTextField",
+              "BooleanField",
+              "IntegerField",
+              "DecimalField",
+              "MoneyField",
+              "DateField",
+              "DateTimeField",
+              "SingleSelectField",
+              "MultiSelectField",
+              "Table",
+              "Text",
+              "Description",
+              "StatusBadge",
+              "SaveDraftButton",
+              "SubmitButton",
+              "CancelButton",
+              "OpenRecordLink"
+            ],
+            "maxChildren": 500,
+            "viewTypes": [
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:1976a1a97c6bdc8f060885deb9c70f1e1f88bf1c17172612c9ed0b700b5baf0c"
+            }
+          },
+          {
+            "componentName": "Section",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/I18nRef"
+                    }
+                  ]
+                },
+                "columns": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "title": [
+                "I18nRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [
+              "Section",
+              "Grid",
+              "ShortTextField",
+              "LongTextField",
+              "BooleanField",
+              "IntegerField",
+              "DecimalField",
+              "MoneyField",
+              "DateField",
+              "DateTimeField",
+              "SingleSelectField",
+              "MultiSelectField",
+              "Table",
+              "Text",
+              "Description",
+              "StatusBadge",
+              "SaveDraftButton",
+              "SubmitButton",
+              "CancelButton",
+              "OpenRecordLink"
+            ],
+            "maxChildren": 500,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": true,
+            "fieldTypes": [],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:abe9b71c5828ad81dbb549b6edb531cbf422249c452f40fa45e61e6b64a2487c"
+            }
+          },
+          {
+            "componentName": "Grid",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/I18nRef"
+                    }
+                  ]
+                },
+                "columns": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "title": [
+                "I18nRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [
+              "Section",
+              "Grid",
+              "ShortTextField",
+              "LongTextField",
+              "BooleanField",
+              "IntegerField",
+              "DecimalField",
+              "MoneyField",
+              "DateField",
+              "DateTimeField",
+              "SingleSelectField",
+              "MultiSelectField",
+              "Table",
+              "Text",
+              "Description",
+              "StatusBadge",
+              "SaveDraftButton",
+              "SubmitButton",
+              "CancelButton",
+              "OpenRecordLink"
+            ],
+            "maxChildren": 500,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": true,
+            "fieldTypes": [],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:723d799cca11729e9be4ba35df10a1c65859626d5daac5c50c59c6da5bb0187f"
+            }
+          },
+          {
+            "componentName": "ShortTextField",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "fieldBinding": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                },
+                "labelMode": {
+                  "const": "BUSINESS_SCHEMA"
+                },
+                "colSpan": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [
+                "fieldBinding"
+              ],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "fieldBinding": [
+                "FieldRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [
+              "short_text"
+            ],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:45f3d5ded24d52c98bc606c73db4b535b55703416eea934607d3d677a415f92c"
+            }
+          },
+          {
+            "componentName": "LongTextField",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "fieldBinding": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                },
+                "labelMode": {
+                  "const": "BUSINESS_SCHEMA"
+                },
+                "colSpan": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [
+                "fieldBinding"
+              ],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "fieldBinding": [
+                "FieldRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [
+              "long_text"
+            ],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:d2d9c555c02b285513b70e2655436c087dcab299633cfe380446aff47db253b0"
+            }
+          },
+          {
+            "componentName": "BooleanField",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "fieldBinding": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                },
+                "labelMode": {
+                  "const": "BUSINESS_SCHEMA"
+                },
+                "colSpan": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [
+                "fieldBinding"
+              ],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "fieldBinding": [
+                "FieldRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [
+              "boolean"
+            ],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:ceabf61d384947256333eefb8a6e54b0a4689a4e9d80d8cade02b48d3e2a184f"
+            }
+          },
+          {
+            "componentName": "IntegerField",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "fieldBinding": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                },
+                "labelMode": {
+                  "const": "BUSINESS_SCHEMA"
+                },
+                "colSpan": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [
+                "fieldBinding"
+              ],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "fieldBinding": [
+                "FieldRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [
+              "integer"
+            ],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:8da3d82fcd91a0677afa7985316dcd8a3486af42f2697f560fa7196bcbe5f0d9"
+            }
+          },
+          {
+            "componentName": "DecimalField",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "fieldBinding": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                },
+                "labelMode": {
+                  "const": "BUSINESS_SCHEMA"
+                },
+                "colSpan": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [
+                "fieldBinding"
+              ],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "fieldBinding": [
+                "FieldRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [
+              "decimal"
+            ],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:1c9667ab5622f2516906c07eca545e2109e9af8a40762abc7e4a68d7926b4b9c"
+            }
+          },
+          {
+            "componentName": "MoneyField",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "fieldBinding": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                },
+                "labelMode": {
+                  "const": "BUSINESS_SCHEMA"
+                },
+                "colSpan": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [
+                "fieldBinding"
+              ],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "fieldBinding": [
+                "FieldRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [
+              "money"
+            ],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:166d7a5ba2fbc25879f9a3397edf062e14bae8035488b2b6d0de28fa73b95877"
+            }
+          },
+          {
+            "componentName": "DateField",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "fieldBinding": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                },
+                "labelMode": {
+                  "const": "BUSINESS_SCHEMA"
+                },
+                "colSpan": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [
+                "fieldBinding"
+              ],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "fieldBinding": [
+                "FieldRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [
+              "date"
+            ],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:eea714dd524b6fa59358c87eda833f547814550799d1ba8b9fe32ed4db81d66e"
+            }
+          },
+          {
+            "componentName": "DateTimeField",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "fieldBinding": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                },
+                "labelMode": {
+                  "const": "BUSINESS_SCHEMA"
+                },
+                "colSpan": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [
+                "fieldBinding"
+              ],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "fieldBinding": [
+                "FieldRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [
+              "datetime"
+            ],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:39fff2dbe3b4b813ddf4c4cb414e23d436199c8de573e6460183cbc3b6212c20"
+            }
+          },
+          {
+            "componentName": "SingleSelectField",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "fieldBinding": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                },
+                "labelMode": {
+                  "const": "BUSINESS_SCHEMA"
+                },
+                "colSpan": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [
+                "fieldBinding"
+              ],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "fieldBinding": [
+                "FieldRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [
+              "single_select"
+            ],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:2c8ee802136193e414f0de3b7626d2460b44f59b350cf68efc537935d0802a00"
+            }
+          },
+          {
+            "componentName": "MultiSelectField",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "fieldBinding": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                },
+                "labelMode": {
+                  "const": "BUSINESS_SCHEMA"
+                },
+                "colSpan": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [
+                "fieldBinding"
+              ],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "fieldBinding": [
+                "FieldRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [
+              "multi_select"
+            ],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:72b1a22d17d8e2310ac898173d587444b92d4b8c9a21d72c7773f4d006958f9d"
+            }
+          },
+          {
+            "componentName": "Table",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/I18nRef"
+                    }
+                  ]
+                },
+                "value": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                },
+                "data": {
+                  "anyOf": [
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/DataBindingRef"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/DataQueryRef"
+                    }
+                  ]
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "text": [
+                "I18nRef"
+              ],
+              "value": [
+                "FieldRef"
+              ],
+              "data": [
+                "DataBindingRef",
+                "DataQueryRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:262f4401e62027fa41f30c6c55213a253f10e39e90e16eba58334ccfa2d9b251"
+            }
+          },
+          {
+            "componentName": "Text",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/I18nRef"
+                    }
+                  ]
+                },
+                "value": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "text": [
+                "I18nRef"
+              ],
+              "value": [
+                "FieldRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": true,
+            "fieldTypes": [],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:a5ed756c9ef9c2cd2b7a3b9c902b969b781c9ded4be6de71e82c8ec1547049bf"
+            }
+          },
+          {
+            "componentName": "Description",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/I18nRef"
+                    }
+                  ]
+                },
+                "value": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "text": [
+                "I18nRef"
+              ],
+              "value": [
+                "FieldRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:87111b9e57c9d5fe1a0f3b6b65387f571673ee42761b8bc9fb3db781ea65477f"
+            }
+          },
+          {
+            "componentName": "StatusBadge",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/I18nRef"
+                    }
+                  ]
+                },
+                "value": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "text": [
+                "I18nRef"
+              ],
+              "value": [
+                "FieldRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [],
+            "events": {},
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:c8be51da5605bd296642c40667f90c12c9451ce7b210f6bb5135731617af7eab"
+            }
+          },
+          {
+            "componentName": "SaveDraftButton",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/I18nRef"
+                    }
+                  ]
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "text": [
+                "I18nRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [],
+            "events": {
+              "onClick": [
+                "form.save_draft"
+              ]
+            },
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:85f1dd123d3be52f3e10ac8db36755e47ea062cac5993f1f8478ba8b483f1268"
+            }
+          },
+          {
+            "componentName": "SubmitButton",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/I18nRef"
+                    }
+                  ]
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "text": [
+                "I18nRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [],
+            "events": {
+              "onClick": [
+                "form.submit"
+              ]
+            },
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:9c500a7a9f53ed10394391b7a641918e822d39e2d8a20824941b9effd4f0f0bc"
+            }
+          },
+          {
+            "componentName": "CancelButton",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/I18nRef"
+                    }
+                  ]
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "text": [
+                "I18nRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [],
+            "events": {
+              "onClick": [
+                "form.cancel"
+              ]
+            },
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:e0ba615514064aa737349db4c7916da174f230c1295b11bce31da571747c68bd"
+            }
+          },
+          {
+            "componentName": "OpenRecordLink",
+            "version": 1,
+            "state": "PUBLISHED",
+            "description": "固定 Fake 组件，不渲染",
+            "propsSchema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/I18nRef"
+                    }
+                  ]
+                },
+                "disabled": {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/SafeExpression"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "bindingPositions": {
+              "text": [
+                "I18nRef"
+              ],
+              "disabled": [
+                "SafeExpression"
+              ]
+            },
+            "allowedParents": [
+              "FormPage",
+              "ListPage",
+              "DetailPage",
+              "Section",
+              "Grid"
+            ],
+            "allowedChildren": [],
+            "maxChildren": 0,
+            "viewTypes": [
+              "FORM",
+              "LIST",
+              "DETAIL"
+            ],
+            "loopSupported": false,
+            "fieldTypes": [],
+            "events": {
+              "onClick": [
+                "navigation.open_record"
+              ]
+            },
+            "adapter": {
+              "fixture": true,
+              "implementation": "no-renderer",
+              "digest": "sha256:c2b91971c40efae6d18d310e7bd2600c6599281b25fffeafc1e1df14d3cd6731"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "ref": {
+        "scope_type": "PLATFORM_CONTROL",
+        "scope_id": "kvvi-platform",
+        "app_id": null,
+        "module_id": null,
+        "asset_type": "CAPABILITY",
+        "capability_code": "form.save_draft",
+        "version": 1,
+        "digest": "sha256:03f09a796f74884bd287353fa33943da86edefea1f5dd0a2217db6c07c6bf823"
+      },
+      "content": {
+        "fixture": true,
+        "capability_code": "form.save_draft",
+        "version": 1,
+        "state": "PUBLISHED",
+        "category": "ACTION",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "note": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+                }
+              ]
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ok"
+          ],
+          "additionalProperties": false
+        },
+        "errorSchema": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "FAKE_REJECTED"
+              ]
+            },
+            "retryable": {
+              "const": false
+            }
+          },
+          "required": [
+            "code",
+            "retryable"
+          ],
+          "additionalProperties": false
+        },
+        "authorization": [
+          "FAKE_ONLY"
+        ],
+        "scope": "current_business",
+        "sideEffects": false,
+        "idempotency": "fixture-no-write",
+        "retry": "never",
+        "runtimeDigest": "sha256:fbf0e7c12fb36c83a16458f7da566a69244b7af44839b66715842605f3527634",
+        "timeoutMs": 1000,
+        "rateLimit": 1,
+        "maxResults": 0,
+        "itemKeys": [],
+        "recovery": "return-fixed-error",
+        "auditEvents": [
+          "fake.validation"
+        ]
+      }
+    },
+    {
+      "ref": {
+        "scope_type": "PLATFORM_CONTROL",
+        "scope_id": "kvvi-platform",
+        "app_id": null,
+        "module_id": null,
+        "asset_type": "CAPABILITY",
+        "capability_code": "form.submit",
+        "version": 1,
+        "digest": "sha256:802fe0555495345cc1fec01c809c47348db11009b962129e50b2e77fae5d9b32"
+      },
+      "content": {
+        "fixture": true,
+        "capability_code": "form.submit",
+        "version": 1,
+        "state": "PUBLISHED",
+        "category": "ACTION",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ok"
+          ],
+          "additionalProperties": false
+        },
+        "errorSchema": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "FAKE_REJECTED"
+              ]
+            },
+            "retryable": {
+              "const": false
+            }
+          },
+          "required": [
+            "code",
+            "retryable"
+          ],
+          "additionalProperties": false
+        },
+        "authorization": [
+          "FAKE_ONLY"
+        ],
+        "scope": "current_business",
+        "sideEffects": false,
+        "idempotency": "fixture-no-write",
+        "retry": "never",
+        "runtimeDigest": "sha256:d4703bd758c19f40561f52e5caba6e8bf4521c04d042c50678d881ce709f19d4",
+        "timeoutMs": 1000,
+        "rateLimit": 1,
+        "maxResults": 0,
+        "itemKeys": [],
+        "recovery": "return-fixed-error",
+        "auditEvents": [
+          "fake.validation"
+        ]
+      }
+    },
+    {
+      "ref": {
+        "scope_type": "PLATFORM_CONTROL",
+        "scope_id": "kvvi-platform",
+        "app_id": null,
+        "module_id": null,
+        "asset_type": "CAPABILITY",
+        "capability_code": "form.cancel",
+        "version": 1,
+        "digest": "sha256:18fe5241b373a9eac42380e9f01eac164e02c91d86d46bf6242b306b4cf272d5"
+      },
+      "content": {
+        "fixture": true,
+        "capability_code": "form.cancel",
+        "version": 1,
+        "state": "PUBLISHED",
+        "category": "ACTION",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ok"
+          ],
+          "additionalProperties": false
+        },
+        "errorSchema": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "FAKE_REJECTED"
+              ]
+            },
+            "retryable": {
+              "const": false
+            }
+          },
+          "required": [
+            "code",
+            "retryable"
+          ],
+          "additionalProperties": false
+        },
+        "authorization": [
+          "FAKE_ONLY"
+        ],
+        "scope": "current_business",
+        "sideEffects": false,
+        "idempotency": "fixture-no-write",
+        "retry": "never",
+        "runtimeDigest": "sha256:8a4b42c2d5659c4c41af093ff8aa92af48d7418f4c5d98766cb8cbcbe2c7be18",
+        "timeoutMs": 1000,
+        "rateLimit": 1,
+        "maxResults": 0,
+        "itemKeys": [],
+        "recovery": "return-fixed-error",
+        "auditEvents": [
+          "fake.validation"
+        ]
+      }
+    },
+    {
+      "ref": {
+        "scope_type": "PLATFORM_CONTROL",
+        "scope_id": "kvvi-platform",
+        "app_id": null,
+        "module_id": null,
+        "asset_type": "CAPABILITY",
+        "capability_code": "navigation.open_record",
+        "version": 1,
+        "digest": "sha256:b0d4250c238167a98d709bfe807ce9b788d42f2464542496f3d1f3baaab8acc2"
+      },
+      "content": {
+        "fixture": true,
+        "capability_code": "navigation.open_record",
+        "version": 1,
+        "state": "PUBLISHED",
+        "category": "ACTION",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "recordId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "recordId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "ok"
+          ],
+          "additionalProperties": false
+        },
+        "errorSchema": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "FAKE_REJECTED"
+              ]
+            },
+            "retryable": {
+              "const": false
+            }
+          },
+          "required": [
+            "code",
+            "retryable"
+          ],
+          "additionalProperties": false
+        },
+        "authorization": [
+          "FAKE_ONLY"
+        ],
+        "scope": "current_business",
+        "sideEffects": false,
+        "idempotency": "fixture-no-write",
+        "retry": "never",
+        "runtimeDigest": "sha256:ac72871fd60d2ee99479c547c5ea50f302aff6fe8f5ea8fa151b11d2e8c06bc3",
+        "timeoutMs": 1000,
+        "rateLimit": 1,
+        "maxResults": 0,
+        "itemKeys": [],
+        "recovery": "return-fixed-error",
+        "auditEvents": [
+          "fake.validation"
+        ]
+      }
+    },
+    {
+      "ref": {
+        "scope_type": "PLATFORM_CONTROL",
+        "scope_id": "kvvi-platform",
+        "app_id": null,
+        "module_id": null,
+        "asset_type": "CAPABILITY",
+        "capability_code": "records.list",
+        "version": 1,
+        "digest": "sha256:96d68a1bbdb24f66b36822cef987d3fc372e9d1c53770b20882139c67e126753"
+      },
+      "content": {
+        "fixture": true,
+        "capability_code": "records.list",
+        "version": 1,
+        "state": "PUBLISHED",
+        "category": "QUERY",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "businessSchemaRef": {
+              "const": {
+                "scope_type": "TENANT",
+                "scope_id": "11111111-1111-4111-8111-111111111111",
+                "app_id": "22222222-2222-4222-8222-222222222222",
+                "module_id": "33333333-3333-4333-8333-333333333333",
+                "asset_type": "BUSINESS_SCHEMA",
+                "asset_id": "general_item",
+                "version": 1,
+                "digest": "sha256:fb95a732896daab4542ab29b8d1f2af301ead67951c7b76e02cb78c918d490eb"
+              }
+            },
+            "pageSize": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          "required": [
+            "businessSchemaRef"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 200
+            }
+          },
+          "required": [
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "errorSchema": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "FAKE_REJECTED"
+              ]
+            },
+            "retryable": {
+              "const": false
+            }
+          },
+          "required": [
+            "code",
+            "retryable"
+          ],
+          "additionalProperties": false
+        },
+        "authorization": [
+          "FAKE_ONLY"
+        ],
+        "scope": "current_business",
+        "sideEffects": false,
+        "idempotency": "fixture-no-write",
+        "retry": "never",
+        "runtimeDigest": "sha256:44c77a79e5f0434b78e40ebd9670645ea1362ee273a6a9ed5605f1bb6a737b34",
+        "timeoutMs": 1000,
+        "rateLimit": 1,
+        "maxResults": 200,
+        "itemKeys": [
+          "id"
+        ],
+        "recovery": "return-fixed-error",
+        "auditEvents": [
+          "fake.validation"
+        ]
+      }
+    },
+    {
+      "ref": {
+        "scope_type": "PLATFORM_CONTROL",
+        "scope_id": "kvvi-platform",
+        "app_id": null,
+        "module_id": null,
+        "asset_type": "CAPABILITY",
+        "capability_code": "records.get",
+        "version": 1,
+        "digest": "sha256:6fff74a353d8b269b23b4506005b2fe94a066eb3512dd72f784bec783373845f"
+      },
+      "content": {
+        "fixture": true,
+        "capability_code": "records.get",
+        "version": 1,
+        "state": "PUBLISHED",
+        "category": "QUERY",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "businessSchemaRef": {
+              "const": {
+                "scope_type": "TENANT",
+                "scope_id": "11111111-1111-4111-8111-111111111111",
+                "app_id": "22222222-2222-4222-8222-222222222222",
+                "module_id": "33333333-3333-4333-8333-333333333333",
+                "asset_type": "BUSINESS_SCHEMA",
+                "asset_id": "general_item",
+                "version": 1,
+                "digest": "sha256:fb95a732896daab4542ab29b8d1f2af301ead67951c7b76e02cb78c918d490eb"
+              }
+            },
+            "recordId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "businessSchemaRef",
+            "recordId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 200
+            }
+          },
+          "required": [
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "errorSchema": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "FAKE_REJECTED"
+              ]
+            },
+            "retryable": {
+              "const": false
+            }
+          },
+          "required": [
+            "code",
+            "retryable"
+          ],
+          "additionalProperties": false
+        },
+        "authorization": [
+          "FAKE_ONLY"
+        ],
+        "scope": "current_business",
+        "sideEffects": false,
+        "idempotency": "fixture-no-write",
+        "retry": "never",
+        "runtimeDigest": "sha256:3957601fbdd0d397cde5202e5b2565b29753d2b83e31790fe52fb48b320a9f16",
+        "timeoutMs": 1000,
+        "rateLimit": 1,
+        "maxResults": 200,
+        "itemKeys": [
+          "id"
+        ],
+        "recovery": "return-fixed-error",
+        "auditEvents": [
+          "fake.validation"
+        ]
+      }
+    },
+    {
+      "ref": {
+        "scope_type": "PLATFORM_CONTROL",
+        "scope_id": "kvvi-platform",
+        "app_id": null,
+        "module_id": null,
+        "asset_type": "CAPABILITY",
+        "capability_code": "options.list",
+        "version": 1,
+        "digest": "sha256:e880c3fd8db43ca3dc4c5ac2a0c79da2732fc63c408caf9eee1dfa1212d19f08"
+      },
+      "content": {
+        "fixture": true,
+        "capability_code": "options.list",
+        "version": 1,
+        "state": "PUBLISHED",
+        "category": "QUERY",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "businessSchemaRef": {
+              "const": {
+                "scope_type": "TENANT",
+                "scope_id": "11111111-1111-4111-8111-111111111111",
+                "app_id": "22222222-2222-4222-8222-222222222222",
+                "module_id": "33333333-3333-4333-8333-333333333333",
+                "asset_type": "BUSINESS_SCHEMA",
+                "asset_id": "general_item",
+                "version": 1,
+                "digest": "sha256:fb95a732896daab4542ab29b8d1f2af301ead67951c7b76e02cb78c918d490eb"
+              }
+            },
+            "field": {
+              "$ref": "urn:kvvi:meta-schema:0a-core-r1:view-schema-lce-safe-v1#/$defs/FieldRef"
+            }
+          },
+          "required": [
+            "businessSchemaRef",
+            "field"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 200
+            }
+          },
+          "required": [
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "errorSchema": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "FAKE_REJECTED"
+              ]
+            },
+            "retryable": {
+              "const": false
+            }
+          },
+          "required": [
+            "code",
+            "retryable"
+          ],
+          "additionalProperties": false
+        },
+        "authorization": [
+          "FAKE_ONLY"
+        ],
+        "scope": "current_business",
+        "sideEffects": false,
+        "idempotency": "fixture-no-write",
+        "retry": "never",
+        "runtimeDigest": "sha256:0ae17d6c0fde85a60a82be7515490ebf0f4daed52bc690e3c59878cc4f36c26e",
+        "timeoutMs": 1000,
+        "rateLimit": 1,
+        "maxResults": 200,
+        "itemKeys": [
+          "id"
+        ],
+        "recovery": "return-fixed-error",
+        "auditEvents": [
+          "fake.validation"
+        ]
+      }
+    },
+    {
+      "ref": {
+        "scope_type": "PLATFORM_CONTROL",
+        "scope_id": "kvvi-platform",
+        "app_id": null,
+        "module_id": null,
+        "asset_type": "CAPABILITY_REGISTRY",
+        "asset_id": "fake-capabilities",
+        "version": 1,
+        "digest": "sha256:bd6bd5f61b4cc166b493a986dbc7b2c454aeebdcf6bada58f8cf9f45a6f10327"
+      },
+      "content": {
+        "fixture": true,
+        "version": 1,
+        "state": "PUBLISHED",
+        "members": [
+          {
+            "scope_type": "PLATFORM_CONTROL",
+            "scope_id": "kvvi-platform",
+            "app_id": null,
+            "module_id": null,
+            "asset_type": "CAPABILITY",
+            "capability_code": "form.save_draft",
+            "version": 1,
+            "digest": "sha256:03f09a796f74884bd287353fa33943da86edefea1f5dd0a2217db6c07c6bf823"
+          },
+          {
+            "scope_type": "PLATFORM_CONTROL",
+            "scope_id": "kvvi-platform",
+            "app_id": null,
+            "module_id": null,
+            "asset_type": "CAPABILITY",
+            "capability_code": "form.submit",
+            "version": 1,
+            "digest": "sha256:802fe0555495345cc1fec01c809c47348db11009b962129e50b2e77fae5d9b32"
+          },
+          {
+            "scope_type": "PLATFORM_CONTROL",
+            "scope_id": "kvvi-platform",
+            "app_id": null,
+            "module_id": null,
+            "asset_type": "CAPABILITY",
+            "capability_code": "form.cancel",
+            "version": 1,
+            "digest": "sha256:18fe5241b373a9eac42380e9f01eac164e02c91d86d46bf6242b306b4cf272d5"
+          },
+          {
+            "scope_type": "PLATFORM_CONTROL",
+            "scope_id": "kvvi-platform",
+            "app_id": null,
+            "module_id": null,
+            "asset_type": "CAPABILITY",
+            "capability_code": "navigation.open_record",
+            "version": 1,
+            "digest": "sha256:b0d4250c238167a98d709bfe807ce9b788d42f2464542496f3d1f3baaab8acc2"
+          },
+          {
+            "scope_type": "PLATFORM_CONTROL",
+            "scope_id": "kvvi-platform",
+            "app_id": null,
+            "module_id": null,
+            "asset_type": "CAPABILITY",
+            "capability_code": "records.list",
+            "version": 1,
+            "digest": "sha256:96d68a1bbdb24f66b36822cef987d3fc372e9d1c53770b20882139c67e126753"
+          },
+          {
+            "scope_type": "PLATFORM_CONTROL",
+            "scope_id": "kvvi-platform",
+            "app_id": null,
+            "module_id": null,
+            "asset_type": "CAPABILITY",
+            "capability_code": "records.get",
+            "version": 1,
+            "digest": "sha256:6fff74a353d8b269b23b4506005b2fe94a066eb3512dd72f784bec783373845f"
+          },
+          {
+            "scope_type": "PLATFORM_CONTROL",
+            "scope_id": "kvvi-platform",
+            "app_id": null,
+            "module_id": null,
+            "asset_type": "CAPABILITY",
+            "capability_code": "options.list",
+            "version": 1,
+            "digest": "sha256:e880c3fd8db43ca3dc4c5ac2a0c79da2732fc63c408caf9eee1dfa1212d19f08"
+          }
+        ]
+      }
+    },
+    {
+      "ref": {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "22222222-2222-4222-8222-222222222222",
+        "module_id": "33333333-3333-4333-8333-333333333333",
+        "asset_type": "VIEW_SCHEMA",
+        "asset_id": "general_item_form",
+        "version": 1,
+        "digest": "sha256:3cfab676fee495b54dbac90a1533e7a914ef81e4b16c85581dc7ea6b4b282315"
+      },
+      "content": {
+        "view_code": "general_item_form",
+        "name": "测试页面",
+        "view_type": "FORM",
+        "businessSchemaRef": {
+          "scope_type": "TENANT",
+          "scope_id": "11111111-1111-4111-8111-111111111111",
+          "app_id": "22222222-2222-4222-8222-222222222222",
+          "module_id": "33333333-3333-4333-8333-333333333333",
+          "asset_type": "BUSINESS_SCHEMA",
+          "asset_id": "general_item",
+          "version": 1,
+          "digest": "sha256:fb95a732896daab4542ab29b8d1f2af301ead67951c7b76e02cb78c918d490eb"
+        },
+        "componentRegistryRef": {
+          "scope_type": "PLATFORM_CONTROL",
+          "scope_id": "kvvi-platform",
+          "app_id": null,
+          "module_id": null,
+          "asset_type": "COMPONENT_REGISTRY",
+          "asset_id": "vue_element_approved",
+          "version": 1,
+          "digest": "sha256:09b78fdd43ca6556a626e7b532ab05f5bf87ab8012ba4d9a018386af808c34f5"
+        },
+        "componentsTree": [
+          {
+            "id": "page_root",
+            "componentName": "FormPage"
+          }
+        ]
+      }
+    }
+  ],
+  "view": {
+    "capability_registry_ref": {
+      "scope_type": "PLATFORM_CONTROL",
+      "scope_id": "kvvi-platform",
+      "app_id": null,
+      "module_id": null,
+      "asset_type": "CAPABILITY_REGISTRY",
+      "asset_id": "fake-capabilities",
+      "version": 1,
+      "digest": "sha256:bd6bd5f61b4cc166b493a986dbc7b2c454aeebdcf6bada58f8cf9f45a6f10327"
+    },
+    "deleted_node_ids": []
+  },
+  "current": {
+    "scope_type": "TENANT",
+    "scope_id": "11111111-1111-4111-8111-111111111111",
+    "app_id": "22222222-2222-4222-8222-222222222222",
+    "module_id": "33333333-3333-4333-8333-333333333333",
+    "asset_type": "VIEW_SCHEMA",
+    "asset_id": "general_item_form",
+    "stable_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "active_version": 0,
+    "purpose": "compose"
+  },
+  "snapshots": [
+    {
+      "ref": {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "22222222-2222-4222-8222-222222222222",
+        "module_id": "33333333-3333-4333-8333-333333333333",
+        "asset_type": "BUSINESS_SCHEMA",
+        "asset_id": "general_item",
+        "version": 1,
+        "digest": "sha256:fb95a732896daab4542ab29b8d1f2af301ead67951c7b76e02cb78c918d490eb"
+      },
+      "registered": {
+        "contract_version": "business-schema/v1",
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "base_version": 0,
+        "lifecycle": "PUBLISHED",
+        "canonicalization_profile": "kvvi-json-c14n/v1",
+        "checksum": "sha256:fb95a732896daab4542ab29b8d1f2af301ead67951c7b76e02cb78c918d490eb",
+        "audit": {
+          "created_by": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "created_at": "2026-09-08T00:00:00Z",
+          "approved_by": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "approved_at": "2026-09-08T00:00:01Z",
+          "published_by": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "published_at": "2026-09-08T00:00:02Z",
+          "trace_id": "fake-trace"
+        },
+        "spec": {
+          "schema_code": "general_item",
+          "field_type_registry_ref": {
+            "scope_type": "PLATFORM_CONTROL",
+            "scope_id": "kvvi-platform",
+            "app_id": null,
+            "module_id": null,
+            "asset_type": "FIELD_TYPE_REGISTRY",
+            "asset_id": "business-field-types-core",
+            "version": 1,
+            "digest": "sha256:a36716610e06b202ea165484cd58fef645905408aac7534ebdb47791c17649d2"
+          },
+          "name": "通用事项登记",
+          "description": "用于验证 BusinessSchema v1 和通用 CRUD 运行时",
+          "record_number": {
+            "field_code": "record_no",
+            "label": "事项编号",
+            "sequence_policy_ref": {
+              "scope_type": "TENANT",
+              "scope_id": "11111111-1111-4111-8111-111111111111",
+              "app_id": "22222222-2222-4222-8222-222222222222",
+              "module_id": "33333333-3333-4333-8333-333333333333",
+              "asset_type": "SEQUENCE_POLICY",
+              "asset_id": "general_item_no",
+              "version": 1,
+              "digest": "sha256:70a87c366be01435b75dfd7bc35444ea7e232022ddfb0cecf3e7042853bf81bc"
+            }
+          },
+          "fields": [
+            {
+              "field_code": "title",
+              "label": "标题",
+              "description": "事项的简短名称",
+              "type": "short_text",
+              "required": true,
+              "nullable": false,
+              "write_policy": "MUTABLE",
+              "constraints": {
+                "min_length": 1,
+                "max_length": 120,
+                "trim": true
+              },
+              "query": {
+                "searchable": true,
+                "filterable": true,
+                "sortable": true
+              },
+              "deprecated": false
+            },
+            {
+              "field_code": "category",
+              "label": "分类",
+              "type": "single_select",
+              "required": true,
+              "nullable": false,
+              "write_policy": "MUTABLE",
+              "type_config": {
+                "options": [
+                  {
+                    "code": "general",
+                    "label": "一般",
+                    "order": 1,
+                    "enabled": true
+                  },
+                  {
+                    "code": "urgent",
+                    "label": "紧急",
+                    "order": 2,
+                    "enabled": true
+                  }
+                ]
+              },
+              "query": {
+                "searchable": true,
+                "filterable": true,
+                "sortable": true
+              },
+              "deprecated": false
+            },
+            {
+              "field_code": "quantity",
+              "label": "数量",
+              "type": "integer",
+              "required": true,
+              "nullable": false,
+              "default": 1,
+              "write_policy": "MUTABLE",
+              "constraints": {
+                "minimum": 1,
+                "maximum": 1000000
+              },
+              "query": {
+                "searchable": false,
+                "filterable": true,
+                "sortable": true
+              },
+              "deprecated": false
+            },
+            {
+              "field_code": "amount",
+              "label": "预计金额",
+              "type": "money",
+              "required": false,
+              "nullable": true,
+              "write_policy": "MUTABLE",
+              "type_config": {
+                "currency_mode": "FIXED",
+                "currency": "CNY"
+              },
+              "constraints": {
+                "minimum": "0.00"
+              },
+              "query": {
+                "searchable": false,
+                "filterable": true,
+                "sortable": true
+              },
+              "deprecated": false
+            },
+            {
+              "field_code": "due_date",
+              "label": "截止日期",
+              "type": "date",
+              "required": false,
+              "nullable": true,
+              "write_policy": "MUTABLE",
+              "query": {
+                "searchable": false,
+                "filterable": true,
+                "sortable": true
+              },
+              "deprecated": false
+            },
+            {
+              "field_code": "notes",
+              "label": "说明",
+              "type": "long_text",
+              "required": false,
+              "nullable": true,
+              "write_policy": "MUTABLE",
+              "constraints": {
+                "max_length": 5000
+              },
+              "query": {
+                "searchable": true,
+                "filterable": false,
+                "sortable": false
+              },
+              "deprecated": false
+            }
+          ],
+          "indexes": [
+            {
+              "index_code": "idx_category_due_date",
+              "kind": "NORMAL",
+              "fields": [
+                "category",
+                "due_date"
+              ]
+            }
+          ],
+          "record_rules": [
+            {
+              "rule_code": "large_quantity_requires_notes",
+              "when": {
+                "field": "quantity",
+                "operator": "gt",
+                "value": 100
+              },
+              "assert": {
+                "field": "notes",
+                "operator": "not_empty"
+              },
+              "message": "数量超过 100 时必须填写说明"
+            }
+          ],
+          "layout": {
+            "sections": [
+              {
+                "section_code": "basic",
+                "title": "基本信息",
+                "description": "填写事项的基础内容",
+                "columns": 2,
+                "items": [
+                  {
+                    "kind": "field",
+                    "field_code": "title",
+                    "col_span": 2
+                  },
+                  {
+                    "kind": "field",
+                    "field_code": "category",
+                    "col_span": 1
+                  },
+                  {
+                    "kind": "field",
+                    "field_code": "quantity",
+                    "col_span": 1
+                  },
+                  {
+                    "kind": "field",
+                    "field_code": "amount",
+                    "col_span": 1
+                  },
+                  {
+                    "kind": "field",
+                    "field_code": "due_date",
+                    "col_span": 1
+                  },
+                  {
+                    "kind": "field",
+                    "field_code": "notes",
+                    "col_span": 2
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "schema_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "source_ref": null
+      }
+    },
+    {
+      "ref": {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "22222222-2222-4222-8222-222222222222",
+        "module_id": "33333333-3333-4333-8333-333333333333",
+        "asset_type": "VIEW_SCHEMA",
+        "asset_id": "general_item_form",
+        "version": 1,
+        "digest": "sha256:3cfab676fee495b54dbac90a1533e7a914ef81e4b16c85581dc7ea6b4b282315"
+      },
+      "registered": {
+        "contract_version": "view-schema/lce-safe-v1",
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "version": 1,
+        "base_version": 0,
+        "lifecycle": "PUBLISHED",
+        "canonicalization_profile": "kvvi-json-c14n/v1",
+        "checksum": "sha256:3cfab676fee495b54dbac90a1533e7a914ef81e4b16c85581dc7ea6b4b282315",
+        "audit": {
+          "created_by": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "created_at": "2026-09-08T00:00:00Z",
+          "approved_by": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "approved_at": "2026-09-08T00:00:01Z",
+          "published_by": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "published_at": "2026-09-08T00:00:02Z",
+          "trace_id": "fake-trace"
+        },
+        "spec": {
+          "view_code": "general_item_form",
+          "name": "测试页面",
+          "view_type": "FORM",
+          "businessSchemaRef": {
+            "scope_type": "TENANT",
+            "scope_id": "11111111-1111-4111-8111-111111111111",
+            "app_id": "22222222-2222-4222-8222-222222222222",
+            "module_id": "33333333-3333-4333-8333-333333333333",
+            "asset_type": "BUSINESS_SCHEMA",
+            "asset_id": "general_item",
+            "version": 1,
+            "digest": "sha256:fb95a732896daab4542ab29b8d1f2af301ead67951c7b76e02cb78c918d490eb"
+          },
+          "componentRegistryRef": {
+            "scope_type": "PLATFORM_CONTROL",
+            "scope_id": "kvvi-platform",
+            "app_id": null,
+            "module_id": null,
+            "asset_type": "COMPONENT_REGISTRY",
+            "asset_id": "vue_element_approved",
+            "version": 1,
+            "digest": "sha256:09b78fdd43ca6556a626e7b532ab05f5bf87ab8012ba4d9a018386af808c34f5"
+          },
+          "componentsTree": [
+            {
+              "id": "page_root",
+              "componentName": "FormPage"
+            }
+          ]
+        },
+        "view_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+      }
+    }
+  ],
+  "histories": [],
+  "grants": []
+}

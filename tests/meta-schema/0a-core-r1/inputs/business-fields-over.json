@@ -1,0 +1,1329 @@
+{
+  "schema_code": "general_item",
+  "name": "通用事项",
+  "field_type_registry_ref": {
+    "scope_type": "PLATFORM_CONTROL",
+    "scope_id": "kvvi-platform",
+    "app_id": null,
+    "module_id": null,
+    "asset_type": "FIELD_TYPE_REGISTRY",
+    "asset_id": "fake-business-types",
+    "version": 1,
+    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "fields": [
+    {
+      "field_code": "f_0",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_1",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_2",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_3",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_4",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_5",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_6",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_7",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_8",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_9",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_10",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_11",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_12",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_13",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_14",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_15",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_16",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_17",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_18",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_19",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_20",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_21",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_22",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_23",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_24",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_25",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_26",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_27",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_28",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_29",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_30",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_31",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_32",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_33",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_34",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_35",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_36",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_37",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_38",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_39",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_40",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_41",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_42",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_43",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_44",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_45",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_46",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_47",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_48",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_49",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_50",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_51",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_52",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_53",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_54",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_55",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_56",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_57",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_58",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_59",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_60",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_61",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_62",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_63",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_64",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_65",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_66",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_67",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_68",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_69",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_70",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_71",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_72",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_73",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_74",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_75",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_76",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_77",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_78",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_79",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_80",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_81",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_82",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_83",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_84",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_85",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_86",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_87",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_88",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_89",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_90",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_91",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_92",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_93",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_94",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_95",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_96",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_97",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_98",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_99",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "f_100",
+      "label": "字段",
+      "type": "short_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": false,
+        "sortable": false
+      }
+    }
+  ]
+}

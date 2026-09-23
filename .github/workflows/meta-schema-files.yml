@@ -1,0 +1,33 @@
+name: Meta-Schema machine files
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  structural:
+    name: 13 protocol structural acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install existing locked validators
+        run: |
+          npm ci --prefix tools/meta-schema/node --ignore-scripts
+          python -m pip install --require-hashes -r tools/meta-schema/python/requirements.lock
+      - name: Verify frozen baseline and reference protocol
+        run: |
+          sha256sum -c docs/baselines/prd-v1.11-go0.sha256
+          PYTHONDONTWRITEBYTECODE=1 python protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/tests/test_conformance.py
+      - name: Validate all 13 protocol machine files
+        run: python tests/meta-schema-full/0a-full-r1/test_structure.py

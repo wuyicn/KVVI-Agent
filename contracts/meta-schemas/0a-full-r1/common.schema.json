@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:meta-schema:0a-full-r1:common",
+  "$defs": {
+    "SafeInteger": {
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "NonNegativeSafeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "PositiveSafeInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "ScopeType": {
+      "enum": ["TENANT", "TEMPLATE", "PLATFORM_CONTROL"]
+    },
+    "StableId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "minLength": 71,
+      "maxLength": 71
+    },
+    "AssetType": {
+      "enum": [
+        "BUSINESS_SCHEMA",
+        "VIEW_SCHEMA",
+        "APP_SPEC",
+        "WORKFLOW",
+        "PERMISSION",
+        "TOOL_SPEC",
+        "POLICY_RULESET",
+        "COMPONENT",
+        "COMPONENT_REGISTRY",
+        "MATERIAL_REGISTRY",
+        "CAPABILITY",
+        "CAPABILITY_REGISTRY",
+        "FIELD_TYPE_REGISTRY",
+        "SEQUENCE_POLICY",
+        "MIGRATION_PLAN"
+      ]
+    },
+    "AssetRef": {
+      "type": "object",
+      "properties": {
+        "scope_type": {"$ref": "#/$defs/ScopeType"},
+        "scope_id": {"$ref": "#/$defs/StableId"},
+        "app_id": {"anyOf": [{"$ref": "#/$defs/StableId"}, {"type": "null"}]},
+        "module_id": {"anyOf": [{"$ref": "#/$defs/StableId"}, {"type": "null"}]},
+        "asset_type": {"$ref": "#/$defs/AssetType"},
+        "asset_id": {"$ref": "#/$defs/StableId"},
+        "version": {"$ref": "#/$defs/PositiveSafeInteger"},
+        "digest": {"$ref": "#/$defs/Digest"}
+      },
+      "required": ["scope_type", "scope_id", "app_id", "module_id", "asset_type", "asset_id", "version", "digest"],
+      "additionalProperties": false
+    },
+    "CapabilityRef": {
+      "type": "object",
+      "properties": {
+        "scope_type": {"$ref": "#/$defs/ScopeType"},
+        "scope_id": {"$ref": "#/$defs/StableId"},
+        "app_id": {"anyOf": [{"$ref": "#/$defs/StableId"}, {"type": "null"}]},
+        "module_id": {"anyOf": [{"$ref": "#/$defs/StableId"}, {"type": "null"}]},
+        "asset_type": {"const": "CAPABILITY"},
+        "capability_code": {"$ref": "#/$defs/StableId"},
+        "version": {"$ref": "#/$defs/PositiveSafeInteger"},
+        "digest": {"$ref": "#/$defs/Digest"}
+      },
+      "required": ["scope_type", "scope_id", "app_id", "module_id", "asset_type", "capability_code", "version", "digest"],
+      "additionalProperties": false
+    },
+    "Audit": {
+      "type": "object",
+      "properties": {
+        "created_by": {"type": "string", "format": "uuid"},
+        "created_at": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$", "format": "date-time"},
+        "approved_by": {"anyOf": [{"type": "string", "format": "uuid"}, {"type": "null"}]},
+        "approved_at": {"anyOf": [{"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$", "format": "date-time"}, {"type": "null"}]},
+        "published_by": {"anyOf": [{"type": "string", "format": "uuid"}, {"type": "null"}]},
+        "published_at": {"anyOf": [{"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$", "format": "date-time"}, {"type": "null"}]},
+        "trace_id": {"type": "string", "minLength": 1}
+      },
+      "required": ["created_by", "created_at", "approved_by", "approved_at", "published_by", "published_at", "trace_id"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "oneOf": [
+            {"properties": {"approved_by": {"type": "null"}, "approved_at": {"type": "null"}}},
+            {"properties": {"approved_by": {"type": "string"}, "approved_at": {"type": "string"}}}
+          ]
+        },
+        {
+          "oneOf": [
+            {"properties": {"published_by": {"type": "null"}, "published_at": {"type": "null"}}},
+            {"properties": {"published_by": {"type": "string"}, "published_at": {"type": "string"}}}
+          ]
+        }
+      ]
+    },
+    "RegisteredBase": {
+      "type": "object",
+      "properties": {
+        "scope_type": {"$ref": "#/$defs/ScopeType"},
+        "scope_id": {"$ref": "#/$defs/StableId"},
+        "version": {"$ref": "#/$defs/PositiveSafeInteger"},
+        "base_version": {"$ref": "#/$defs/NonNegativeSafeInteger"},
+        "lifecycle": {"enum": ["DRAFT", "PENDING_APPROVAL", "REJECTED", "PUBLISHED", "SUPERSEDED"]},
+        "canonicalization_profile": {"const": "kvvi-json-c14n/v1"},
+        "checksum": {"$ref": "#/$defs/Digest"},
+        "audit": {"$ref": "#/$defs/Audit"}
+      },
+      "required": ["scope_type", "scope_id", "version", "base_version", "lifecycle", "canonicalization_profile", "checksum", "audit"],
+      "allOf": [
+        {
+          "if": {"type": "object", "properties": {"lifecycle": {"enum": ["PUBLISHED", "SUPERSEDED"]}}, "required": ["lifecycle"]},
+          "then": {"properties": {"audit": {"type": "object", "properties": {"approved_by": {"type": "string"}, "approved_at": {"type": "string"}, "published_by": {"type": "string"}, "published_at": {"type": "string"}}}}},
+          "else": {"properties": {"audit": {"type": "object", "properties": {"approved_by": {"type": "null"}, "approved_at": {"type": "null"}, "published_by": {"type": "null"}, "published_at": {"type": "null"}}}}}
+        }
+      ]
+    }
+  }
+}

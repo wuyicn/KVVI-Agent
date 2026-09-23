@@ -1,0 +1,1493 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:meta-schema:0a-full-r1:evidence-bundle-v1alpha1",
+  "$comment": "0A-5 structure candidate. Synthetic tests do not establish complete validation, digest recomputation, signature verification, approval or deployment. Cross-record equality, indexed uniqueness/order, trusted source and history checks remain L/R responsibilities.",
+  "$ref": "#/$defs/Record",
+  "$defs": {
+    "AssetRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/AssetRef"
+    },
+    "Id": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/StableId"
+    },
+    "Digest": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+    },
+    "UInt": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+    },
+    "PosInt": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/PositiveSafeInteger"
+    },
+    "Uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "Time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$(?![\\s\\S])"
+    },
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "Code": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$(?![\\s\\S])"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$(?![\\s\\S])"
+    },
+    "PrincipalRef": {
+      "type": "object",
+      "properties": {
+        "scope_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "principal_id": {
+          "$ref": "#/$defs/Uuid"
+        }
+      },
+      "required": [
+        "scope_id",
+        "principal_id"
+      ],
+      "additionalProperties": false
+    },
+    "AuditStamp": {
+      "type": "object",
+      "properties": {
+        "actor": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/Time"
+        },
+        "trace_id": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "required": [
+        "actor",
+        "recorded_at",
+        "trace_id"
+      ],
+      "additionalProperties": false
+    },
+    "AttestationRef": {
+      "type": "object",
+      "properties": {
+        "attestation_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "attestation_digest"
+      ],
+      "additionalProperties": false
+    },
+    "EvidenceRef": {
+      "type": "object",
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "record_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "record_digest"
+      ],
+      "additionalProperties": false
+    },
+    "PromotionRef": {
+      "type": "object",
+      "properties": {
+        "promotion_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "sequence": {
+          "$ref": "#/$defs/PosInt"
+        },
+        "record_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "promotion_id",
+        "sequence",
+        "record_digest"
+      ],
+      "additionalProperties": false
+    },
+    "ContentBinding": {
+      "type": "object",
+      "properties": {
+        "content_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "media_type": {
+          "enum": [
+            "application/json",
+            "text/plain",
+            "application/pdf",
+            "image/png"
+          ]
+        }
+      },
+      "required": [
+        "content_id",
+        "digest",
+        "media_type"
+      ],
+      "additionalProperties": false
+    },
+    "AttachmentRef": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/ContentBinding"
+        },
+        "byte_length": {
+          "$ref": "#/$defs/UInt"
+        }
+      },
+      "required": [
+        "content",
+        "byte_length"
+      ],
+      "additionalProperties": false
+    },
+    "StructuredError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/Code"
+        },
+        "category": {
+          "enum": [
+            "RETRYABLE",
+            "MANUAL_REQUIRED",
+            "FATAL"
+          ]
+        },
+        "message": {
+          "$ref": "#/$defs/Text"
+        }
+      },
+      "required": [
+        "code",
+        "category",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "Environment": {
+      "enum": [
+        "DEVELOPMENT",
+        "TEST",
+        "PRODUCTION"
+      ]
+    },
+    "Producer": {
+      "type": "object",
+      "properties": {
+        "source_id": {
+          "$ref": "#/$defs/Code"
+        },
+        "run_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "method_version": {
+          "$ref": "#/$defs/Text"
+        },
+        "execution_kind": {
+          "enum": [
+            "FAKE",
+            "REFERENCE",
+            "INTEGRATION"
+          ]
+        },
+        "dataset_kind": {
+          "enum": [
+            "SYNTHETIC",
+            "NONE"
+          ]
+        }
+      },
+      "required": [
+        "source_id",
+        "run_id",
+        "method_version",
+        "execution_kind",
+        "dataset_kind"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyFinding": {
+      "type": "object",
+      "properties": {
+        "rule_code": {
+          "$ref": "#/$defs/Code"
+        },
+        "rule_version": {
+          "$ref": "#/$defs/PosInt"
+        },
+        "severity": {
+          "enum": [
+            "INFO",
+            "WARNING",
+            "ERROR",
+            "BLOCKER"
+          ]
+        },
+        "subject_ref": {
+          "$ref": "#/$defs/AssetRef"
+        },
+        "message": {
+          "$ref": "#/$defs/Text"
+        }
+      },
+      "required": [
+        "rule_code",
+        "rule_version",
+        "severity",
+        "subject_ref",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "MonitorCheck": {
+      "type": "object",
+      "properties": {
+        "check_code": {
+          "$ref": "#/$defs/Code"
+        },
+        "observed_value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UInt"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "threshold_value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UInt"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unit": {
+          "enum": [
+            "COUNT",
+            "MILLISECONDS",
+            "BASIS_POINTS",
+            "BOOLEAN"
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "INCOMPLETE"
+          ]
+        }
+      },
+      "required": [
+        "check_code",
+        "observed_value",
+        "threshold_value",
+        "unit",
+        "outcome"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "enum": [
+                  "PASS",
+                  "FAIL"
+                ]
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "observed_value": {
+                "$ref": "#/$defs/UInt"
+              },
+              "threshold_value": {
+                "$ref": "#/$defs/UInt"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "unit": {
+                "const": "BOOLEAN"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "observed_value": {
+                "enum": [
+                  null,
+                  0,
+                  1
+                ]
+              },
+              "threshold_value": {
+                "enum": [
+                  null,
+                  0,
+                  1
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "unit": {
+                "const": "BASIS_POINTS"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "observed_value": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "threshold_value": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "PromptProvenance": {
+      "type": "object",
+      "properties": {
+        "prompt_code": {
+          "$ref": "#/$defs/Code"
+        },
+        "version": {
+          "$ref": "#/$defs/Text"
+        },
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "prompt_code",
+        "version",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "ModelProvenance": {
+      "type": "object",
+      "properties": {
+        "provider_code": {
+          "$ref": "#/$defs/Code"
+        },
+        "model_code": {
+          "$ref": "#/$defs/Code"
+        },
+        "version": {
+          "$ref": "#/$defs/Text"
+        }
+      },
+      "required": [
+        "provider_code",
+        "model_code",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "TestReport": {
+      "type": "object",
+      "properties": {
+        "report_attachment_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "test_kind": {
+          "enum": [
+            "BASELINE",
+            "GOLDEN",
+            "SECURITY_NEGATIVE",
+            "INTEGRATION",
+            "PERMISSION_NEGATIVE",
+            "PERFORMANCE"
+          ]
+        },
+        "suite_code": {
+          "$ref": "#/$defs/Code"
+        },
+        "suite_version": {
+          "$ref": "#/$defs/Text"
+        },
+        "passed": {
+          "$ref": "#/$defs/UInt"
+        },
+        "failed": {
+          "$ref": "#/$defs/UInt"
+        },
+        "skipped": {
+          "$ref": "#/$defs/UInt"
+        },
+        "outcome": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "INCOMPLETE"
+          ]
+        }
+      },
+      "required": [
+        "report_attachment_id",
+        "test_kind",
+        "suite_code",
+        "suite_version",
+        "passed",
+        "failed",
+        "skipped",
+        "outcome"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "properties": {
+                "passed": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "failed": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "properties": {
+                "skipped": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            }
+          ]
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "PASS"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "failed": {
+                "const": 0
+              },
+              "skipped": {
+                "const": 0
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "FAIL"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "failed": {
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "INCOMPLETE"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "failed": {
+                "const": 0
+              },
+              "skipped": {
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "DryRun": {
+      "type": "object",
+      "properties": {
+        "report_attachment_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "run_kind": {
+          "enum": [
+            "DATA_MIGRATION",
+            "PERMISSION",
+            "PERFORMANCE"
+          ]
+        },
+        "migration_plan_ref": {
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/AssetRef"
+                },
+                {
+                  "properties": {
+                    "asset_type": {
+                      "const": "MIGRATION_PLAN"
+                    }
+                  },
+                  "type": "object"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "affected_record_count": {
+          "$ref": "#/$defs/UInt"
+        },
+        "outcome": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "INCOMPLETE"
+          ]
+        }
+      },
+      "required": [
+        "report_attachment_id",
+        "run_kind",
+        "migration_plan_ref",
+        "affected_record_count",
+        "outcome"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "run_kind": {
+                "const": "DATA_MIGRATION"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "migration_plan_ref": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/AssetRef"
+                  },
+                  {
+                    "properties": {
+                      "asset_type": {
+                        "const": "MIGRATION_PLAN"
+                      }
+                    },
+                    "type": "object"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          },
+          "else": {
+            "properties": {
+              "migration_plan_ref": {
+                "const": null
+              },
+              "affected_record_count": {
+                "const": 0
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "PolicyReport": {
+      "type": "object",
+      "properties": {
+        "report_attachment_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "policy_ruleset_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/AssetRef"
+            },
+            {
+              "properties": {
+                "asset_type": {
+                  "const": "POLICY_RULESET"
+                }
+              },
+              "type": "object"
+            }
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PolicyFinding"
+          },
+          "minItems": 0,
+          "maxItems": 10000,
+          "uniqueItems": true
+        },
+        "outcome": {
+          "enum": [
+            "PASS",
+            "FAIL"
+          ]
+        }
+      },
+      "required": [
+        "report_attachment_id",
+        "policy_ruleset_ref",
+        "findings",
+        "outcome"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "findings": {
+                "contains": {
+                  "properties": {
+                    "severity": {
+                      "enum": [
+                        "ERROR",
+                        "BLOCKER"
+                      ]
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "outcome": {
+                "const": "FAIL"
+              }
+            },
+            "type": "object"
+          },
+          "else": {
+            "properties": {
+              "outcome": {
+                "const": "PASS"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "ImpactReport": {
+      "type": "object",
+      "properties": {
+        "report_attachment_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "app_context_graph_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "base_artifact_digest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "change_count": {
+          "$ref": "#/$defs/UInt"
+        },
+        "impacted_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AssetRef"
+          },
+          "minItems": 0,
+          "maxItems": 10000,
+          "uniqueItems": true
+        },
+        "risk": {
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH"
+          ]
+        }
+      },
+      "required": [
+        "report_attachment_id",
+        "app_context_graph_digest",
+        "base_artifact_digest",
+        "change_count",
+        "impacted_refs",
+        "risk"
+      ],
+      "additionalProperties": false
+    },
+    "ApprovalPresentation": {
+      "type": "object",
+      "properties": {
+        "presented_to": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "presented_at": {
+          "$ref": "#/$defs/Time"
+        },
+        "impact_report_ref": {
+          "$ref": "#/$defs/EvidenceRef"
+        },
+        "diff_attachment_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "preview_attachment_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "presentation_attachment_id": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "required": [
+        "presented_to",
+        "presented_at",
+        "impact_report_ref",
+        "diff_attachment_id",
+        "preview_attachment_id",
+        "presentation_attachment_id"
+      ],
+      "additionalProperties": false
+    },
+    "LogReport": {
+      "type": "object",
+      "properties": {
+        "report_attachment_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "log_kind": {
+          "enum": [
+            "BUILD",
+            "VALIDATION",
+            "MIGRATION",
+            "RECOVERY"
+          ]
+        },
+        "started_at": {
+          "$ref": "#/$defs/Time"
+        },
+        "ended_at": {
+          "$ref": "#/$defs/Time"
+        },
+        "entry_count": {
+          "$ref": "#/$defs/UInt"
+        }
+      },
+      "required": [
+        "report_attachment_id",
+        "log_kind",
+        "started_at",
+        "ended_at",
+        "entry_count"
+      ],
+      "additionalProperties": false
+    },
+    "RecoveryDrill": {
+      "type": "object",
+      "properties": {
+        "report_attachment_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "scenario_code": {
+          "$ref": "#/$defs/Code"
+        },
+        "target_artifact_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "outcome": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "INCOMPLETE"
+          ]
+        },
+        "recovery_duration_ms": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UInt"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "report_attachment_id",
+        "scenario_code",
+        "target_artifact_digest",
+        "outcome",
+        "recovery_duration_ms"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "PASS"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "recovery_duration_ms": {
+                "$ref": "#/$defs/UInt"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "MonitorReport": {
+      "type": "object",
+      "properties": {
+        "report_attachment_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "window_start": {
+          "$ref": "#/$defs/Time"
+        },
+        "window_end": {
+          "$ref": "#/$defs/Time"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MonitorCheck"
+          },
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true
+        },
+        "outcome": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "INCOMPLETE"
+          ]
+        }
+      },
+      "required": [
+        "report_attachment_id",
+        "window_start",
+        "window_end",
+        "checks",
+        "outcome"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "checks": {
+                "contains": {
+                  "properties": {
+                    "outcome": {
+                      "const": "FAIL"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "outcome": {
+                "const": "FAIL"
+              }
+            },
+            "type": "object"
+          },
+          "else": {
+            "if": {
+              "properties": {
+                "checks": {
+                  "contains": {
+                    "properties": {
+                      "outcome": {
+                        "const": "INCOMPLETE"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            },
+            "then": {
+              "properties": {
+                "outcome": {
+                  "const": "INCOMPLETE"
+                }
+              },
+              "type": "object"
+            },
+            "else": {
+              "properties": {
+                "outcome": {
+                  "const": "PASS"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      ]
+    },
+    "GenerationProvenance": {
+      "type": "object",
+      "properties": {
+        "report_attachment_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "builder_tool_refs": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/AssetRef"
+              },
+              {
+                "properties": {
+                  "asset_type": {
+                    "const": "TOOL_SPEC"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1000,
+          "uniqueItems": true
+        },
+        "prompts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PromptProvenance"
+          },
+          "minItems": 0,
+          "maxItems": 1000,
+          "uniqueItems": true
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ModelProvenance"
+          },
+          "minItems": 0,
+          "maxItems": 1000,
+          "uniqueItems": true
+        },
+        "pipeline_code": {
+          "$ref": "#/$defs/Code"
+        },
+        "pipeline_version": {
+          "$ref": "#/$defs/Text"
+        },
+        "compiler_code": {
+          "$ref": "#/$defs/Code"
+        },
+        "compiler_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "source_snapshot_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "report_attachment_id",
+        "builder_tool_refs",
+        "prompts",
+        "models",
+        "pipeline_code",
+        "pipeline_version",
+        "compiler_code",
+        "compiler_version",
+        "source_snapshot_digest"
+      ],
+      "additionalProperties": false
+    },
+    "Record": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "evidence-bundle/v1alpha1"
+        },
+        "canonicalization_profile": {
+          "const": "kvvi-json-c14n/v1"
+        },
+        "evidence_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "artifact_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "evidence_type": {
+          "enum": [
+            "TEST_REPORT",
+            "DRY_RUN",
+            "POLICY_REPORT",
+            "IMPACT_REPORT",
+            "APPROVAL_PRESENTATION",
+            "LOG_REPORT",
+            "RECOVERY_DRILL",
+            "MONITOR_REPORT",
+            "GENERATION_PROVENANCE"
+          ]
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Environment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "promotion_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PromotionRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "producer": {
+          "$ref": "#/$defs/Producer"
+        },
+        "observed_at": {
+          "$ref": "#/$defs/Time"
+        },
+        "payload": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TestReport"
+            },
+            {
+              "$ref": "#/$defs/DryRun"
+            },
+            {
+              "$ref": "#/$defs/PolicyReport"
+            },
+            {
+              "$ref": "#/$defs/ImpactReport"
+            },
+            {
+              "$ref": "#/$defs/ApprovalPresentation"
+            },
+            {
+              "$ref": "#/$defs/LogReport"
+            },
+            {
+              "$ref": "#/$defs/RecoveryDrill"
+            },
+            {
+              "$ref": "#/$defs/MonitorReport"
+            },
+            {
+              "$ref": "#/$defs/GenerationProvenance"
+            }
+          ]
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AttachmentRef"
+          },
+          "minItems": 1,
+          "maxItems": 1000,
+          "uniqueItems": true
+        },
+        "audit": {
+          "$ref": "#/$defs/AuditStamp"
+        },
+        "record_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "contract_version",
+        "canonicalization_profile",
+        "evidence_id",
+        "artifact_digest",
+        "evidence_type",
+        "environment",
+        "promotion_ref",
+        "producer",
+        "observed_at",
+        "payload",
+        "attachments",
+        "audit",
+        "record_digest"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "evidence_type": {
+                "const": "TEST_REPORT"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/TestReport"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_type": {
+                "const": "DRY_RUN"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/DryRun"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_type": {
+                "const": "POLICY_REPORT"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/PolicyReport"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_type": {
+                "const": "IMPACT_REPORT"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/ImpactReport"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_type": {
+                "const": "APPROVAL_PRESENTATION"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/ApprovalPresentation"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_type": {
+                "const": "LOG_REPORT"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/LogReport"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_type": {
+                "const": "RECOVERY_DRILL"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/RecoveryDrill"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_type": {
+                "const": "MONITOR_REPORT"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/MonitorReport"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_type": {
+                "const": "GENERATION_PROVENANCE"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/GenerationProvenance"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_type": {
+                "const": "GENERATION_PROVENANCE"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "environment": {
+                "const": null
+              },
+              "promotion_ref": {
+                "const": null
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_type": {
+                "enum": [
+                  "TEST_REPORT",
+                  "DRY_RUN",
+                  "POLICY_REPORT",
+                  "LOG_REPORT",
+                  "RECOVERY_DRILL",
+                  "MONITOR_REPORT"
+                ]
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "environment": {
+                "$ref": "#/$defs/Environment"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "promotion_ref": {
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "environment": {
+                "$ref": "#/$defs/Environment"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_type": {
+                "const": "MONITOR_REPORT"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "promotion_ref": {
+                "$ref": "#/$defs/PromotionRef"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    }
+  }
+}

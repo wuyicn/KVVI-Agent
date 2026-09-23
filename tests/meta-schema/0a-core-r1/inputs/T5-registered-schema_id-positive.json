@@ -1,0 +1,50 @@
+{
+  "contract_version": "business-schema/v1",
+  "scope_type": "TENANT",
+  "scope_id": "tenant-fixture",
+  "version": 1,
+  "base_version": 0,
+  "lifecycle": "DRAFT",
+  "canonicalization_profile": "kvvi-json-c14n/v1",
+  "checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "audit": {
+    "created_by": "00000000-0000-4000-8000-000000000002",
+    "created_at": "2026-09-08T00:00:00Z",
+    "approved_by": null,
+    "approved_at": null,
+    "published_by": null,
+    "published_at": null,
+    "trace_id": "trace-fixture"
+  },
+  "spec": {
+    "schema_code": "general_item",
+    "name": "通用事项",
+    "field_type_registry_ref": {
+      "scope_type": "PLATFORM_CONTROL",
+      "scope_id": "kvvi-platform",
+      "app_id": null,
+      "module_id": null,
+      "asset_type": "FIELD_TYPE_REGISTRY",
+      "asset_id": "fake-business-types",
+      "version": 1,
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "fields": [
+      {
+        "field_code": "title",
+        "label": "字段",
+        "type": "short_text",
+        "required": false,
+        "nullable": true,
+        "write_policy": "MUTABLE",
+        "query": {
+          "searchable": false,
+          "filterable": false,
+          "sortable": false
+        }
+      }
+    ]
+  },
+  "schema_id": "00000000-0000-4000-8000-000000000001",
+  "source_ref": null
+}

@@ -1,0 +1,2123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:meta-schema:0a-full-r1:migration-run-event-v1alpha1",
+  "$comment": "Local review candidate. Structure only; synthetic case digests are placeholders, not recomputed evidence. Cross-record references, registration, authorization, canonical digests and event history require a separate semantic validator. Operation args are a bounded closed-shape subset; unknown registered operation shapes require a reviewed schema revision.",
+  "$ref": "#/$defs/Record",
+  "$defs": {
+    "AssetRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/AssetRef"
+    },
+    "BusinessRef": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/AssetRef"
+        },
+        {
+          "properties": {
+            "asset_type": {
+              "const": "BUSINESS_SCHEMA"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "Code": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+    },
+    "SchemaBinding": {
+      "type": "object",
+      "properties": {
+        "schema_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        }
+      },
+      "required": [
+        "schema_id",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "PendingCleanup": {
+      "type": "object",
+      "properties": {
+        "item_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "resource_ref": {
+          "$ref": "#/$defs/BusinessRef"
+        },
+        "subresource_type": {
+          "enum": [
+            "FIELD",
+            "INDEX",
+            "SCHEMA_VERSION"
+          ]
+        },
+        "subresource_code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "deferred_action": {
+          "enum": [
+            "RETAIN_PREVIOUS_FIELD",
+            "RETAIN_PREVIOUS_INDEX",
+            "RETAIN_PREVIOUS_SCHEMA"
+          ]
+        },
+        "minimum_retained_versions": {
+          "const": 2
+        },
+        "release_condition": {
+          "const": "SEPARATE_APPROVAL_AFTER_COMPATIBILITY_WINDOW"
+        }
+      },
+      "required": [
+        "item_id",
+        "resource_ref",
+        "subresource_type",
+        "subresource_code",
+        "deferred_action",
+        "minimum_retained_versions",
+        "release_condition"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "subresource_type": {
+                "enum": [
+                  "FIELD"
+                ]
+              }
+            },
+            "required": [
+              "subresource_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "subresource_code": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+              },
+              "deferred_action": {
+                "const": "RETAIN_PREVIOUS_FIELD"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subresource_type": {
+                "enum": [
+                  "INDEX"
+                ]
+              }
+            },
+            "required": [
+              "subresource_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "subresource_code": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+              },
+              "deferred_action": {
+                "const": "RETAIN_PREVIOUS_INDEX"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subresource_type": {
+                "enum": [
+                  "SCHEMA_VERSION"
+                ]
+              }
+            },
+            "required": [
+              "subresource_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "subresource_code": {
+                "type": "null"
+              },
+              "deferred_action": {
+                "const": "RETAIN_PREVIOUS_SCHEMA"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "StepResult": {
+      "type": "object",
+      "properties": {
+        "step_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "step_phase": {
+          "enum": [
+            "PREPARE",
+            "EXPAND",
+            "BACKFILL",
+            "VERIFY",
+            "ACTIVATE",
+            "CLEANUP"
+          ]
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "execution": {
+          "enum": [
+            "FORWARD",
+            "RECOVERY"
+          ]
+        },
+        "result_class": {
+          "enum": [
+            "SUCCESS",
+            "DEFERRED",
+            "RETRYABLE",
+            "MANUAL_REQUIRED",
+            "COMPENSATE_REQUIRED",
+            "FATAL",
+            "COMPENSATED",
+            "COMPENSATION_FAILED"
+          ]
+        },
+        "phase_result": {
+          "enum": [
+            "COMPLETED",
+            "DEFERRED",
+            "FAILED"
+          ]
+        },
+        "effect_state": {
+          "enum": [
+            "NONE",
+            "APPLIED",
+            "PARTIAL",
+            "REVERTED"
+          ]
+        },
+        "checkpoint_before_digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        },
+        "checkpoint_after_digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        },
+        "pending_cleanup": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PendingCleanup"
+          },
+          "minItems": 0,
+          "maxItems": 256
+        }
+      },
+      "required": [
+        "step_id",
+        "step_phase",
+        "attempt",
+        "execution",
+        "result_class",
+        "phase_result",
+        "effect_state",
+        "checkpoint_before_digest",
+        "checkpoint_after_digest",
+        "pending_cleanup"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "execution": {
+                "enum": [
+                  "RECOVERY"
+                ]
+              }
+            },
+            "required": [
+              "execution"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "attempt": {
+                "const": 1
+              },
+              "result_class": {
+                "enum": [
+                  "COMPENSATED",
+                  "COMPENSATION_FAILED"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "execution": {
+                "enum": [
+                  "FORWARD"
+                ]
+              }
+            },
+            "required": [
+              "execution"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "result_class": {
+                "enum": [
+                  "SUCCESS",
+                  "DEFERRED",
+                  "RETRYABLE",
+                  "MANUAL_REQUIRED",
+                  "COMPENSATE_REQUIRED",
+                  "FATAL"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "result_class": {
+                "enum": [
+                  "SUCCESS"
+                ]
+              }
+            },
+            "required": [
+              "result_class"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "phase_result": {
+                "const": "COMPLETED"
+              },
+              "step_phase": {
+                "not": {
+                  "const": "CLEANUP"
+                }
+              },
+              "effect_state": {
+                "enum": [
+                  "NONE",
+                  "APPLIED"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "result_class": {
+                "enum": [
+                  "DEFERRED"
+                ]
+              }
+            },
+            "required": [
+              "result_class"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "phase_result": {
+                "const": "DEFERRED"
+              },
+              "step_phase": {
+                "const": "CLEANUP"
+              },
+              "effect_state": {
+                "const": "NONE"
+              },
+              "pending_cleanup": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/PendingCleanup"
+                },
+                "minItems": 1,
+                "maxItems": 256
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "result_class": {
+                "enum": [
+                  "RETRYABLE",
+                  "MANUAL_REQUIRED",
+                  "COMPENSATE_REQUIRED",
+                  "FATAL",
+                  "COMPENSATION_FAILED"
+                ]
+              }
+            },
+            "required": [
+              "result_class"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "phase_result": {
+                "const": "FAILED"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "result_class": {
+                "enum": [
+                  "COMPENSATED"
+                ]
+              }
+            },
+            "required": [
+              "result_class"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "phase_result": {
+                "const": "COMPLETED"
+              },
+              "effect_state": {
+                "enum": [
+                  "REVERTED",
+                  "NONE"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "result_class": {
+                "enum": [
+                  "SUCCESS",
+                  "RETRYABLE",
+                  "MANUAL_REQUIRED",
+                  "COMPENSATE_REQUIRED",
+                  "FATAL",
+                  "COMPENSATED",
+                  "COMPENSATION_FAILED"
+                ]
+              }
+            },
+            "required": [
+              "result_class"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "pending_cleanup": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/PendingCleanup"
+                },
+                "minItems": 0,
+                "maxItems": 0
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "MigrationError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "enum": [
+            "MIGRATION_PLAN_MISMATCH",
+            "MIGRATION_EVENT_CHAIN_INVALID",
+            "MIGRATION_STATE_TRANSITION_INVALID",
+            "MIGRATION_STEP_FAILED",
+            "MIGRATION_RESUME_TOKEN_INVALID",
+            "MIGRATION_ROLLBACK_FAILED"
+          ]
+        },
+        "result_class": {
+          "enum": [
+            "RETRYABLE",
+            "MANUAL_REQUIRED",
+            "COMPENSATE_REQUIRED",
+            "FATAL",
+            "COMPENSATION_FAILED"
+          ]
+        },
+        "operation_error_code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "step_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+        },
+        "checkpoint_digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        }
+      },
+      "required": [
+        "code",
+        "result_class",
+        "operation_error_code",
+        "step_id",
+        "checkpoint_digest"
+      ],
+      "additionalProperties": false
+    },
+    "EventAudit": {
+      "type": "object",
+      "properties": {
+        "actor_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:[0-5]\\d(?:\\.\\d+)?Z$(?![\\s\\S])"
+        },
+        "trace_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "actor_id",
+        "occurred_at",
+        "trace_id"
+      ],
+      "additionalProperties": false
+    },
+    "Record": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "migration-run-event/v1alpha1"
+        },
+        "migration_run_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "run_mode": {
+          "enum": [
+            "FORWARD",
+            "ROLLBACK"
+          ]
+        },
+        "rollback_source_run_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "migration_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "artifact_digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        },
+        "plan_digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        },
+        "canonicalization_profile": {
+          "const": "kvvi-json-c14n/v1"
+        },
+        "sequence": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/PositiveSafeInteger"
+        },
+        "previous_record_digest": {
+          "anyOf": [
+            {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "event_type": {
+          "enum": [
+            "INITIALIZED",
+            "STARTED",
+            "STEP_SUCCEEDED",
+            "STEP_FAILED",
+            "RETRY_STARTED",
+            "MANUAL_RESUMED",
+            "ROLLBACK_REQUESTED",
+            "COMPENSATION_SUCCEEDED",
+            "COMPENSATION_FAILED",
+            "CLEANUP_DEFERRED",
+            "FINALIZED",
+            "ROLLBACK_COMPLETED"
+          ]
+        },
+        "current_phase": {
+          "enum": [
+            "PREPARE",
+            "EXPAND",
+            "BACKFILL",
+            "VERIFY",
+            "ACTIVATE",
+            "CLEANUP"
+          ]
+        },
+        "run_status": {
+          "enum": [
+            "PENDING",
+            "RUNNING",
+            "PAUSED",
+            "RETRY_WAIT",
+            "ROLLING_BACK",
+            "SUCCEEDED",
+            "ROLLED_BACK",
+            "FAILED_FINAL"
+          ]
+        },
+        "active_step_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6
+        },
+        "checkpoint_digest": {
+          "anyOf": [
+            {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "step_results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StepResult"
+          },
+          "minItems": 0,
+          "maxItems": 1
+        },
+        "resume_token_digest": {
+          "anyOf": [
+            {
+              "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MigrationError"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "audit": {
+          "$ref": "#/$defs/EventAudit"
+        },
+        "record_digest": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+        }
+      },
+      "required": [
+        "contract_version",
+        "migration_run_id",
+        "run_mode",
+        "rollback_source_run_id",
+        "migration_id",
+        "artifact_digest",
+        "plan_digest",
+        "canonicalization_profile",
+        "sequence",
+        "previous_record_digest",
+        "event_type",
+        "current_phase",
+        "run_status",
+        "active_step_id",
+        "attempt",
+        "checkpoint_digest",
+        "step_results",
+        "resume_token_digest",
+        "error",
+        "audit",
+        "record_digest"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "sequence": {
+                "enum": [
+                  1
+                ]
+              }
+            },
+            "required": [
+              "sequence"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "previous_record_digest": {
+                "type": "null"
+              },
+              "event_type": {
+                "const": "INITIALIZED"
+              }
+            },
+            "type": "object"
+          },
+          "else": {
+            "properties": {
+              "previous_record_digest": {
+                "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+              },
+              "event_type": {
+                "not": {
+                  "const": "INITIALIZED"
+                }
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "run_mode": {
+                "enum": [
+                  "FORWARD"
+                ]
+              }
+            },
+            "required": [
+              "run_mode"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "rollback_source_run_id": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "run_mode": {
+                "enum": [
+                  "ROLLBACK"
+                ]
+              }
+            },
+            "required": [
+              "run_mode"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "rollback_source_run_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "current_phase": {
+                "const": "PREPARE"
+              },
+              "active_step_id": {
+                "type": "null"
+              },
+              "attempt": {
+                "const": 0
+              },
+              "event_type": {
+                "enum": [
+                  "INITIALIZED",
+                  "STARTED",
+                  "ROLLBACK_REQUESTED",
+                  "COMPENSATION_SUCCEEDED",
+                  "COMPENSATION_FAILED",
+                  "ROLLBACK_COMPLETED"
+                ]
+              },
+              "step_results": {
+                "items": {
+                  "properties": {
+                    "execution": {
+                      "const": "RECOVERY"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "run_status": {
+                "enum": [
+                  "PAUSED",
+                  "RETRY_WAIT"
+                ]
+              }
+            },
+            "required": [
+              "run_status"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "resume_token_digest": {
+                "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+              }
+            },
+            "type": "object"
+          },
+          "else": {
+            "properties": {
+              "resume_token_digest": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "INITIALIZED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "sequence": {
+                "const": 1
+              },
+              "previous_record_digest": {
+                "type": "null"
+              },
+              "current_phase": {
+                "const": "PREPARE"
+              },
+              "run_status": {
+                "const": "PENDING"
+              },
+              "attempt": {
+                "const": 0
+              },
+              "checkpoint_digest": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          },
+          "else": {
+            "properties": {
+              "checkpoint_digest": {
+                "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "STARTED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "run_status": {
+                "enum": [
+                  "RUNNING"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "STEP_SUCCEEDED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "run_status": {
+                "enum": [
+                  "RUNNING"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "STEP_FAILED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "run_status": {
+                "enum": [
+                  "RETRY_WAIT",
+                  "PAUSED",
+                  "ROLLING_BACK"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "RETRY_STARTED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "run_status": {
+                "enum": [
+                  "RUNNING"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "MANUAL_RESUMED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "run_status": {
+                "enum": [
+                  "RUNNING"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "ROLLBACK_REQUESTED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "run_status": {
+                "enum": [
+                  "ROLLING_BACK"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "COMPENSATION_SUCCEEDED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "run_status": {
+                "enum": [
+                  "ROLLING_BACK"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "COMPENSATION_FAILED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "run_status": {
+                "enum": [
+                  "FAILED_FINAL"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "CLEANUP_DEFERRED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "run_status": {
+                "enum": [
+                  "RUNNING"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "FINALIZED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "run_status": {
+                "enum": [
+                  "SUCCEEDED"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "ROLLBACK_COMPLETED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "run_status": {
+                "enum": [
+                  "ROLLED_BACK"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "INITIALIZED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "maxItems": 0,
+                "type": "array"
+              },
+              "error": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "STARTED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "maxItems": 0,
+                "type": "array"
+              },
+              "error": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "STEP_SUCCEEDED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "properties": {
+                    "result_class": {
+                      "enum": [
+                        "SUCCESS"
+                      ]
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "error": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "STEP_FAILED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "properties": {
+                    "result_class": {
+                      "enum": [
+                        "RETRYABLE",
+                        "MANUAL_REQUIRED",
+                        "COMPENSATE_REQUIRED",
+                        "FATAL"
+                      ]
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "error": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/MigrationError"
+                  },
+                  {
+                    "properties": {
+                      "code": {
+                        "const": "MIGRATION_STEP_FAILED"
+                      },
+                      "result_class": {
+                        "enum": [
+                          "RETRYABLE",
+                          "MANUAL_REQUIRED",
+                          "COMPENSATE_REQUIRED",
+                          "FATAL"
+                        ]
+                      }
+                    },
+                    "type": "object"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "RETRY_STARTED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "maxItems": 0,
+                "type": "array"
+              },
+              "error": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "MANUAL_RESUMED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "maxItems": 0,
+                "type": "array"
+              },
+              "error": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "ROLLBACK_REQUESTED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "maxItems": 0,
+                "type": "array"
+              },
+              "error": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "COMPENSATION_SUCCEEDED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "properties": {
+                    "result_class": {
+                      "enum": [
+                        "COMPENSATED"
+                      ]
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "error": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "COMPENSATION_FAILED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "properties": {
+                    "result_class": {
+                      "enum": [
+                        "COMPENSATION_FAILED"
+                      ]
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "error": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/MigrationError"
+                  },
+                  {
+                    "properties": {
+                      "code": {
+                        "const": "MIGRATION_ROLLBACK_FAILED"
+                      },
+                      "result_class": {
+                        "enum": [
+                          "COMPENSATION_FAILED"
+                        ]
+                      }
+                    },
+                    "type": "object"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "CLEANUP_DEFERRED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "properties": {
+                    "result_class": {
+                      "enum": [
+                        "DEFERRED"
+                      ]
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "error": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "FINALIZED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "maxItems": 0,
+                "type": "array"
+              },
+              "error": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "ROLLBACK_COMPLETED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "maxItems": 0,
+                "type": "array"
+              },
+              "error": {
+                "type": "null"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "FINALIZED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "current_phase": {
+                "const": "CLEANUP"
+              },
+              "active_step_id": {
+                "type": "null"
+              },
+              "attempt": {
+                "const": 0
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "enum": [
+                  "CLEANUP_DEFERRED"
+                ]
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "current_phase": {
+                "const": "CLEANUP"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "run_mode": {
+                "enum": [
+                  "FORWARD"
+                ]
+              }
+            },
+            "required": [
+              "run_mode"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "event_type": {
+                      "enum": [
+                        "INITIALIZED",
+                        "STARTED"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event_type"
+                  ],
+                  "type": "object"
+                },
+                "then": {
+                  "properties": {
+                    "current_phase": {
+                      "const": "PREPARE"
+                    },
+                    "active_step_id": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "event_type": {
+                      "enum": [
+                        "STARTED"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event_type"
+                  ],
+                  "type": "object"
+                },
+                "then": {
+                  "properties": {
+                    "attempt": {
+                      "const": 1
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "event_type": {
+                      "enum": [
+                        "STEP_FAILED",
+                        "RETRY_STARTED",
+                        "MANUAL_RESUMED",
+                        "STEP_SUCCEEDED"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event_type"
+                  ],
+                  "type": "object"
+                },
+                "then": {
+                  "properties": {
+                    "active_step_id": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_]{0,63}$(?![\\s\\S])"
+                    },
+                    "attempt": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 6
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "const": "STEP_FAILED"
+              },
+              "error": {
+                "properties": {
+                  "result_class": {
+                    "const": "RETRYABLE"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "required": [
+              "event_type",
+              "error"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "items": {
+                  "properties": {
+                    "result_class": {
+                      "const": "RETRYABLE"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "run_status": {
+                "enum": [
+                  "RETRY_WAIT",
+                  "ROLLING_BACK"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "const": "STEP_FAILED"
+              },
+              "error": {
+                "properties": {
+                  "result_class": {
+                    "const": "MANUAL_REQUIRED"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "required": [
+              "event_type",
+              "error"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "items": {
+                  "properties": {
+                    "result_class": {
+                      "const": "MANUAL_REQUIRED"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "run_status": {
+                "enum": [
+                  "PAUSED"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "const": "STEP_FAILED"
+              },
+              "error": {
+                "properties": {
+                  "result_class": {
+                    "const": "COMPENSATE_REQUIRED"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "required": [
+              "event_type",
+              "error"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "items": {
+                  "properties": {
+                    "result_class": {
+                      "const": "COMPENSATE_REQUIRED"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "run_status": {
+                "enum": [
+                  "ROLLING_BACK"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "const": "STEP_FAILED"
+              },
+              "error": {
+                "properties": {
+                  "result_class": {
+                    "const": "FATAL"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "required": [
+              "event_type",
+              "error"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "items": {
+                  "properties": {
+                    "result_class": {
+                      "const": "FATAL"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "run_status": {
+                "enum": [
+                  "ROLLING_BACK"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "const": "STEP_FAILED"
+              },
+              "current_phase": {
+                "const": "BACKFILL"
+              },
+              "run_status": {
+                "enum": [
+                  "PAUSED",
+                  "RETRY_WAIT"
+                ]
+              }
+            },
+            "required": [
+              "event_type",
+              "current_phase",
+              "run_status"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "step_results": {
+                "items": {
+                  "properties": {
+                    "effect_state": {
+                      "const": "REVERTED"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "const": "RETRY_STARTED"
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "attempt": {
+                "minimum": 2,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "const": "CLEANUP_DEFERRED"
+              }
+            },
+            "required": [
+              "event_type"
+            ],
+            "type": "object"
+          },
+          "then": {
+            "oneOf": [
+              {
+                "properties": {
+                  "active_step_id": {
+                    "type": "null"
+                  },
+                  "attempt": {
+                    "const": 0
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "active_step_id": {
+                    "$ref": "#/$defs/Code"
+                  },
+                  "attempt": {
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": {
+              "run_mode": {
+                "const": "FORWARD"
+              }
+            },
+            "required": [
+              "run_mode"
+            ]
+          },
+          "then": {
+            "allOf": [
+              {
+                "if": {
+                  "type": "object",
+                  "properties": {
+                    "event_type": {
+                      "enum": [
+                        "ROLLBACK_REQUESTED",
+                        "COMPENSATION_SUCCEEDED",
+                        "COMPENSATION_FAILED",
+                        "ROLLBACK_COMPLETED"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event_type"
+                  ]
+                },
+                "then": {
+                  "type": "object",
+                  "properties": {
+                    "active_step_id": {
+                      "$ref": "#/$defs/Code"
+                    },
+                    "attempt": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 6
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "type": "object",
+                  "properties": {
+                    "event_type": {
+                      "const": "STEP_SUCCEEDED"
+                    }
+                  },
+                  "required": [
+                    "event_type"
+                  ]
+                },
+                "then": {
+                  "type": "object",
+                  "properties": {
+                    "attempt": {
+                      "const": 1
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

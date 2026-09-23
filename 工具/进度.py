@@ -108,6 +108,26 @@ def parse_progress_status():
     return status
 
 
+def parse_anchor_checks():
+    """解析 进度.md 里的 `- [x] / - [ ]` —— **勾选才是真相**，不是计数。
+
+    早先版本用「前 N 个算完成」渲染，遇到非连续完成（如 ③④⑧）就画错。
+    锚点是否完成，以本文件里的 checkbox 为准。
+    """
+    if not PROGRESS.is_file():
+        return {}
+    out, cur = {}, None
+    for line in PROGRESS.read_text(encoding='utf-8').splitlines():
+        m = re.match(r'^\*\*(阶段[一二三四五六七]：[^*]+)\*\*', line)
+        if m:
+            cur = clean(m.group(1))
+            continue
+        m2 = re.match(r'^- \[([ xX])\] (.+)$', line)
+        if m2 and cur:
+            out.setdefault(cur, []).append(m2.group(1).lower() == 'x')
+    return out
+
+
 def parse_gate_status():
     if not PROGRESS.is_file():
         return {}
@@ -178,7 +198,8 @@ def run_board():
     frozen = frozen_fingerprint()
 
     total_anchors = sum(len(s['anchors']) for s in stages)
-    done_anchors = sum(status.get(s['name'], {}).get('done', 0) for s in stages)
+    _ck = parse_anchor_checks()
+    done_anchors = sum(sum(v) for v in _ck.values())
     done_stages = sum(1 for s in stages
                       if status.get(s['name'], {}).get('status') == '已完成')
 
@@ -191,15 +212,17 @@ def run_board():
           f'锚点 {done_anchors}/{total_anchors}')
     print('─' * 74)
 
+    checks = parse_anchor_checks()
     for s in stages:
         rec = status.get(s['name'], {'status': '未开始', 'done': 0, 'total': len(s['anchors'])})
         icon = STATUS_ICON.get(rec['status'], '⬜')
+        marks = checks.get(s['name'], [])
         bar_total = len(s['anchors'])
-        bar_done = rec['done']
+        bar_done = sum(marks) if len(marks) == bar_total else rec['done']
         bar = '█' * bar_done + '░' * (bar_total - bar_done) if bar_total else ''
         print(f'  {icon} {s["name"]}  [{s["weeks"]}]  {bar_done}/{bar_total}  {bar}')
-        for i, a in enumerate(s['anchors'], 1):
-            mark = '✓' if i <= bar_done else ' '
+        for i, a in enumerate(s['anchors']):
+            mark = '✓' if (marks[i] if i < len(marks) else False) else ' '
             print(f'       [{mark}] {a[:96]}')
         print()
 
@@ -292,15 +315,16 @@ def run_next():
     gstat = parse_gate_status()
     pending_gates = [n for n, _ in gates if gstat.get(n) not in ('已完成', '🟢')]
     print('待通过门禁：', ', '.join(pending_gates) if pending_gates else '（无）')
+    ck = parse_anchor_checks()
     nxt = next((s for s in stages if status.get(s['name'], {}).get('status') != '已完成'), None)
     if nxt:
-        rec = status.get(nxt['name'], {})
-        done = rec.get('done', 0)
+        marks = ck.get(nxt['name'], [])
         print(f'当前阶段  ：{nxt["name"]}  [{nxt["weeks"]}]')
-        if done < len(nxt['anchors']):
-            print(f'下一个锚点：{nxt["anchors"][done]}')
+        i = next((k for k, m in enumerate(marks) if not m), None)
+        if i is None:
+            print('该阶段全部锚点已达成 —— 应在 进度.md 中标记为已完成')
         else:
-            print('该阶段全部锚点已达成 —— 应在 进度.md 中标记为 🟢')
+            print(f'下一个锚点：{nxt["anchors"][i]}')
     return 0
 
 

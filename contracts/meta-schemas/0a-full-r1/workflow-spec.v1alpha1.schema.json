@@ -1,0 +1,717 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:meta-schema:0a-full-r1:workflow-spec-v1alpha1",
+  "$ref": "#/$defs/CompiledDraft",
+  "$defs": {
+    "AssetRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/AssetRef"
+    },
+    "CapabilityRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/CapabilityRef"
+    },
+    "RoleRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:permission-spec-v1alpha1#/$defs/RoleRef"
+    },
+    "State": {
+      "type": "object",
+      "properties": {
+        "state_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "initial": {
+          "type": "boolean"
+        },
+        "terminal": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "state_code",
+        "name",
+        "initial",
+        "terminal"
+      ],
+      "additionalProperties": false
+    },
+    "Action": {
+      "type": "object",
+      "properties": {
+        "action_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "kind": {
+          "enum": [
+            "SUBMIT",
+            "APPROVE",
+            "REJECT",
+            "WITHDRAW",
+            "TIMEOUT_REMINDER",
+            "CLOSE",
+            "REOPEN"
+          ]
+        },
+        "capability_ref": {
+          "$ref": "#/$defs/CapabilityRef"
+        }
+      },
+      "required": [
+        "action_code",
+        "kind",
+        "capability_ref"
+      ],
+      "additionalProperties": false
+    },
+    "Transition": {
+      "type": "object",
+      "properties": {
+        "transition_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "from_state": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "to_state": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "action_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        }
+      },
+      "required": [
+        "transition_code",
+        "from_state",
+        "to_state",
+        "action_code"
+      ],
+      "additionalProperties": false
+    },
+    "SingleApprover": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "SINGLE"
+        },
+        "role_ref": {
+          "$ref": "#/$defs/RoleRef"
+        }
+      },
+      "required": [
+        "kind",
+        "role_ref"
+      ],
+      "additionalProperties": false
+    },
+    "ApprovalStep": {
+      "type": "object",
+      "properties": {
+        "step_code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "pending_state": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        },
+        "role_ref": {
+          "$ref": "#/$defs/RoleRef"
+        }
+      },
+      "required": [
+        "step_code",
+        "pending_state",
+        "role_ref"
+      ],
+      "additionalProperties": false
+    },
+    "FixedChain": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "FIXED_CHAIN"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApprovalStep"
+          },
+          "minItems": 1,
+          "maxItems": 100
+        }
+      },
+      "required": [
+        "kind",
+        "steps"
+      ],
+      "additionalProperties": false
+    },
+    "PredicateField": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "FIELD"
+        },
+        "code": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:business-schema-v1#/$defs/MachineCode"
+        }
+      },
+      "required": [
+        "type",
+        "code"
+      ],
+      "additionalProperties": false
+    },
+    "Predicate": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "$ref": "#/$defs/PredicateField"
+            },
+            "operator": {
+              "enum": [
+                "eq",
+                "ne"
+              ]
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "field",
+            "operator",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "$ref": "#/$defs/PredicateField"
+            },
+            "operator": {
+              "enum": [
+                "gt",
+                "gte",
+                "lt",
+                "lte"
+              ]
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "field",
+            "operator",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "$ref": "#/$defs/PredicateField"
+            },
+            "operator": {
+              "enum": [
+                "in",
+                "not_in"
+              ]
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "boolean"
+                  },
+                  "minItems": 1,
+                  "maxItems": 200,
+                  "uniqueItems": true
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/SafeInteger"
+                  },
+                  "minItems": 1,
+                  "maxItems": 200,
+                  "uniqueItems": true
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "maxItems": 200,
+                  "uniqueItems": true
+                }
+              ]
+            }
+          },
+          "required": [
+            "field",
+            "operator",
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Selector1": {
+      "$ref": "#/$defs/Predicate"
+    },
+    "Selector2": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Predicate"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "all": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Selector1"
+              },
+              "minItems": 1,
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Selector1"
+              },
+              "minItems": 1,
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/Selector1"
+            }
+          },
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Selector3": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Predicate"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "all": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Selector2"
+              },
+              "minItems": 1,
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Selector2"
+              },
+              "minItems": 1,
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/Selector2"
+            }
+          },
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Selector4": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Predicate"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "all": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Selector3"
+              },
+              "minItems": 1,
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Selector3"
+              },
+              "minItems": 1,
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/Selector3"
+            }
+          },
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Selector5": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Predicate"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "all": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Selector4"
+              },
+              "minItems": 1,
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Selector4"
+              },
+              "minItems": 1,
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/Selector4"
+            }
+          },
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Selector": {
+      "$ref": "#/$defs/Selector5"
+    },
+    "Choice": {
+      "type": "object",
+      "properties": {
+        "when": {
+          "$ref": "#/$defs/Selector"
+        },
+        "chain_ref": {
+          "$ref": "#/$defs/AssetRef",
+          "type": "object",
+          "properties": {
+            "asset_type": {
+              "const": "WORKFLOW"
+            }
+          }
+        }
+      },
+      "required": [
+        "when",
+        "chain_ref"
+      ],
+      "additionalProperties": false
+    },
+    "ChainSelection": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "REGISTERED_CHAIN_SELECTION"
+        },
+        "default_chain_ref": {
+          "$ref": "#/$defs/AssetRef",
+          "type": "object",
+          "properties": {
+            "asset_type": {
+              "const": "WORKFLOW"
+            }
+          }
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Choice"
+          },
+          "minItems": 0,
+          "maxItems": 20
+        }
+      },
+      "required": [
+        "kind",
+        "default_chain_ref",
+        "choices"
+      ],
+      "additionalProperties": false
+    },
+    "Spec": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "businessSchemaRef": {
+              "$ref": "#/$defs/AssetRef",
+              "type": "object",
+              "properties": {
+                "asset_type": {
+                  "const": "BUSINESS_SCHEMA"
+                }
+              }
+            },
+            "states": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/State"
+              },
+              "minItems": 1,
+              "maxItems": 100
+            },
+            "transitions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Transition"
+              },
+              "minItems": 0,
+              "maxItems": 500
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Action"
+              },
+              "minItems": 0,
+              "maxItems": 100
+            },
+            "approverRef": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/SingleApprover"
+                },
+                {
+                  "$ref": "#/$defs/FixedChain"
+                }
+              ]
+            }
+          },
+          "required": [
+            "businessSchemaRef",
+            "states",
+            "transitions",
+            "actions",
+            "approverRef"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "businessSchemaRef": {
+              "$ref": "#/$defs/AssetRef",
+              "type": "object",
+              "properties": {
+                "asset_type": {
+                  "const": "BUSINESS_SCHEMA"
+                }
+              }
+            },
+            "states": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/State"
+              },
+              "minItems": 0,
+              "maxItems": 0
+            },
+            "transitions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Transition"
+              },
+              "minItems": 0,
+              "maxItems": 0
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Action"
+              },
+              "minItems": 0,
+              "maxItems": 0
+            },
+            "approverRef": {
+              "$ref": "#/$defs/ChainSelection"
+            }
+          },
+          "required": [
+            "businessSchemaRef",
+            "states",
+            "transitions",
+            "actions",
+            "approverRef"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "$comment": "Structure only: role directory resolution, per-step coverage/graph order, selector field matrix and 100-leaf total are complete-check responsibilities."
+    },
+    "CompiledDraft": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "workflow-spec/v1alpha1"
+        },
+        "base_version": {
+          "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+        },
+        "spec": {
+          "$ref": "#/$defs/Spec"
+        }
+      },
+      "required": [
+        "contract_version",
+        "base_version",
+        "spec"
+      ],
+      "additionalProperties": false
+    },
+    "RegisteredContract": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/RegisteredBase",
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "workflow-spec/v1alpha1"
+        },
+        "workflow_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "spec": {
+          "$ref": "#/$defs/Spec"
+        }
+      },
+      "required": [
+        "contract_version",
+        "workflow_id",
+        "spec"
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

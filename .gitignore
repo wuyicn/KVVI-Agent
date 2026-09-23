@@ -55,3 +55,9 @@ samples/.kvvi-probe-task.txt
 # 从源码启动 KVVI 时使用的独立 DSH_HOME（scripts/kvvi-web.sh 创建）。
 # 与用户的 ~/.dsh 隔离，含会话、设置与 profile，不进版本管理。
 .kvvi-home/
+
+# 契约资产的构建产物（资产本身入库，依赖不入库）
+tools/meta-schema/python/.venv/
+tools/meta-schema/node/node_modules/
+**/__pycache__/
+*.pyc

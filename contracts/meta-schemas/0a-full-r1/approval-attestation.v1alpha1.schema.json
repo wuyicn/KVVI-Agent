@@ -1,0 +1,267 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:meta-schema:0a-full-r1:approval-attestation-v1alpha1",
+  "$comment": "0A-5 structure candidate. Synthetic tests do not establish complete validation, digest recomputation, signature verification, approval or deployment. Cross-record equality, indexed uniqueness/order, trusted source and history checks remain L/R responsibilities.",
+  "$ref": "#/$defs/Record",
+  "$defs": {
+    "AssetRef": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/AssetRef"
+    },
+    "Id": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/StableId"
+    },
+    "Digest": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/Digest"
+    },
+    "UInt": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/NonNegativeSafeInteger"
+    },
+    "PosInt": {
+      "$ref": "urn:kvvi:meta-schema:0a-full-r1:common#/$defs/PositiveSafeInteger"
+    },
+    "Uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "Time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$(?![\\s\\S])"
+    },
+    "Text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "Code": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,127}$(?![\\s\\S])"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$(?![\\s\\S])"
+    },
+    "PrincipalRef": {
+      "type": "object",
+      "properties": {
+        "scope_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "principal_id": {
+          "$ref": "#/$defs/Uuid"
+        }
+      },
+      "required": [
+        "scope_id",
+        "principal_id"
+      ],
+      "additionalProperties": false
+    },
+    "AuditStamp": {
+      "type": "object",
+      "properties": {
+        "actor": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/Time"
+        },
+        "trace_id": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "required": [
+        "actor",
+        "recorded_at",
+        "trace_id"
+      ],
+      "additionalProperties": false
+    },
+    "AttestationRef": {
+      "type": "object",
+      "properties": {
+        "attestation_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "attestation_digest"
+      ],
+      "additionalProperties": false
+    },
+    "EvidenceRef": {
+      "type": "object",
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "record_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "record_digest"
+      ],
+      "additionalProperties": false
+    },
+    "PromotionRef": {
+      "type": "object",
+      "properties": {
+        "promotion_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "sequence": {
+          "$ref": "#/$defs/PosInt"
+        },
+        "record_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "promotion_id",
+        "sequence",
+        "record_digest"
+      ],
+      "additionalProperties": false
+    },
+    "ContentBinding": {
+      "type": "object",
+      "properties": {
+        "content_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "media_type": {
+          "enum": [
+            "application/json",
+            "text/plain",
+            "application/pdf",
+            "image/png"
+          ]
+        }
+      },
+      "required": [
+        "content_id",
+        "digest",
+        "media_type"
+      ],
+      "additionalProperties": false
+    },
+    "AttachmentRef": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/ContentBinding"
+        },
+        "byte_length": {
+          "$ref": "#/$defs/UInt"
+        }
+      },
+      "required": [
+        "content",
+        "byte_length"
+      ],
+      "additionalProperties": false
+    },
+    "StructuredError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/Code"
+        },
+        "category": {
+          "enum": [
+            "RETRYABLE",
+            "MANUAL_REQUIRED",
+            "FATAL"
+          ]
+        },
+        "message": {
+          "$ref": "#/$defs/Text"
+        }
+      },
+      "required": [
+        "code",
+        "category",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "Environment": {
+      "enum": [
+        "DEVELOPMENT",
+        "TEST",
+        "PRODUCTION"
+      ]
+    },
+    "Record": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "approval-attestation/v1alpha1"
+        },
+        "canonicalization_profile": {
+          "const": "kvvi-json-c14n/v1"
+        },
+        "attestation_id": {
+          "$ref": "#/$defs/Uuid"
+        },
+        "artifact_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "approver": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "permission_version": {
+          "$ref": "#/$defs/PosInt"
+        },
+        "approved_at": {
+          "$ref": "#/$defs/Time"
+        },
+        "decision": {
+          "enum": [
+            "APPROVE",
+            "REJECT"
+          ]
+        },
+        "opinion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "presentation_ref": {
+          "$ref": "#/$defs/EvidenceRef"
+        },
+        "audit": {
+          "$ref": "#/$defs/AuditStamp"
+        },
+        "attestation_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "contract_version",
+        "canonicalization_profile",
+        "attestation_id",
+        "artifact_digest",
+        "approver",
+        "permission_version",
+        "approved_at",
+        "decision",
+        "opinion",
+        "presentation_ref",
+        "audit",
+        "attestation_digest"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
