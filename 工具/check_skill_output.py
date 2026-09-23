@@ -28,9 +28,19 @@ CLI = os.path.join(ROOT, 'tools', 'meta-schema', 'node', 'cli.mjs')
 
 C_OK, C_BAD, C_WARN, C_DIM, C_OFF = '\033[32m', '\033[31m', '\033[33m', '\033[90m', '\033[0m'
 
-# 验证器只接受这三个契约。另外两个目标契约（workflow-spec / tool-spec）
-# **不在其中** —— 这是任务卡里已记录的缺口，此处显式拒答而不是静默跳过。
+# cli.mjs 的 CONTRACTS 白名单只有这三个 —— 它们能走**完整校验**（结构+语义+引用）
 SUPPORTED = ('business-schema/v1', 'view-schema/lce-safe-v1', 'app-spec/v1alpha1')
+
+# 其余 10 个契约在 cli.mjs 白名单之外，但**结构校验仍可行**
+#（contracts/meta-schemas/0a-full-r1 有全量 14 个 schema）。
+# 它们没有契约专用的语义模块，所以只能做结构校验 —— 见 FULL_ONLY 的说明。
+FULL_ONLY = {
+    'workflow-spec/v1alpha1': 'workflow-spec-v1alpha1',
+    'tool-spec/v1alpha1': 'tool-spec-v1alpha1',
+    'permission-spec/v1alpha1': 'permission-spec-v1alpha1',
+    'app-model-command/v1alpha1': 'app-model-command-v1alpha1',
+}
+FULL_CHECKER = os.path.join(ROOT, '工具', 'lib', 'full_bundle_check.mjs')
 
 # cli.mjs 的退出码语义
 EXIT_OK, EXIT_INVALID, EXIT_FAILED = 0, 2, 1
@@ -48,15 +58,61 @@ def run_cli(payload: bytes, contract: str, checks: str,
         return r.returncode, {'_raw': (r.stdout + r.stderr).decode('utf-8', 'replace')[:400]}
 
 
+def check_structure_only(path: str, contract: str, contract_id: str) -> int:
+    """
+    对 cli.mjs 白名单之外的契约做**结构校验**。
+
+    **本函数不声称完整校验。** 这些契约没有专用语义模块，跑不了语义与引用检查。
+    所以输出里明写 `scope: structure_only`，并按「部分覆盖」呈现结果 ——
+    「结构通过」不等于「通过 MetaSchema 校验」。
+    """
+    if not os.path.isfile(FULL_CHECKER):
+        print('%s✗ 找不到全量结构校验器：%s%s' % (C_BAD, FULL_CHECKER, C_OFF))
+        return 2
+    print('%s=== 搭建产出验收 ===%s' % (C_OK, C_OFF))
+    print('  产出物 : %s' % os.path.relpath(path, ROOT))
+    print('  契约   : %s' % contract)
+    print()
+    r = subprocess.run(['node', FULL_CHECKER, contract_id, path],
+                       capture_output=True, timeout=300)
+    try:
+        doc = json.loads(r.stdout.decode('utf-8'))
+    except Exception:
+        print('  %s✗ 校验器输出无法解析：%s%s'
+              % (C_BAD, (r.stdout + r.stderr).decode('utf-8', 'replace')[:300], C_OFF))
+        return 2
+    if 'error' in doc:
+        print('  %s✗ %s%s' % (C_BAD, doc['error'], C_OFF))
+        if doc.get('detail'):
+            print('     %s' % doc['detail'])
+        return 2
+
+    v = doc.get('validation', {})
+    print('%s[仅结构校验]%s' % (C_WARN, C_OFF))
+    print('  %s%s%s' % (C_DIM, doc.get('coverage_note', ''), C_OFF))
+    if v.get('valid'):
+        print('  %s✓%s 结构通过（%d 错误）' % (C_OK, C_OFF, len(v.get('errors', []))))
+    else:
+        print('  %s✗ %d 个结构错误%s' % (C_BAD, len(v.get('errors', [])), C_OFF))
+        for e in v.get('errors', [])[:10]:
+            print('     %s | %s | %s' % (e.get('code'), e.get('path'),
+                                         str(e.get('message'))[:56]))
+    print()
+    print('%s⚠ 这只是结构校验 —— 语义与引用未查。'
+          '「结构通过」不等于「通过 MetaSchema 校验」。%s' % (C_WARN, C_OFF))
+    return 0 if v.get('valid') else 1
+
+
 def check(path: str, contract: str, context: Optional[str]) -> int:
     if not os.path.isfile(CLI):
         print('%s✗ 找不到验证器：%s%s' % (C_BAD, CLI, C_OFF))
         return 2
     if contract not in SUPPORTED:
+        if contract in FULL_ONLY:
+            return check_structure_only(path, contract, FULL_ONLY[contract])
         print('%s✗ 验证器不支持契约 %r%s' % (C_BAD, contract, C_OFF))
-        print('  %s支持：%s%s' % (C_DIM, '、'.join(SUPPORTED), C_OFF))
-        print('  %s→ 这是任务卡已记录的缺口（workflow-spec / tool-spec 无验证器入口），'
-              '不是产出物的问题%s' % (C_DIM, C_OFF))
+        print('  %s完整校验支持：%s%s' % (C_DIM, '、'.join(SUPPORTED), C_OFF))
+        print('  %s仅结构校验支持：%s%s' % (C_DIM, '、'.join(sorted(FULL_ONLY)), C_OFF))
         return 2
     if not os.path.isfile(path):
         print('%s✗ 产出物不存在：%s%s' % (C_BAD, path, C_OFF))
