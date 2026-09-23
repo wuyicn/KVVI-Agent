@@ -1,10 +1,15 @@
 {
-  "count": 26,
+  "count": 30,
   "files": {
     "apps/cli/package.json": {
       "sha256": "a84ba13f75fb3e15bfeb205e0451e419f14f2b442d6cd58ac29644a8b0adf1bb",
       "status": "M",
       "upstream_baseline_sha256": "324aca07dd6e2810f7ae77df2a3db2c39a54ed1a22957667677934070e634e03"
+    },
+    "apps/web/public/manifest.webmanifest": {
+      "sha256": "f182aa197581d017a14e828a9f34002bd24d82c9f357bb9e4a5481f5004e7f06",
+      "status": "M",
+      "upstream_baseline_sha256": "9b54d57eea00f2fdd1affe6e7999a4209a515755f12ac1a3299da2d55e178d4c"
     },
     "packages/bundle/kvvi-app/README.md": {
       "sha256": "2ba32779ca1c9df01d5cf239658fb14a26fba317da05b655fdf380a4a3db9d64",
@@ -50,10 +55,25 @@
       "sha256": "21ca7bfe5567fd2011aae96f7fe970afce8fc2ee941062d8b685373663a663c2",
       "status": "A"
     },
+    "packages/client/ui-plugin-manager/src/client/locales.ts": {
+      "sha256": "3903a0de3349ac8d0c81b83d3a536634b44f2fd2badc6b4b768dc0414de9e562",
+      "status": "M",
+      "upstream_baseline_sha256": "4e618873cdc2b829736db800690f4386fcde0a8f37945a3e0be274116720bde9"
+    },
     "packages/client/ui-settings-models/src/client/index.ts": {
       "sha256": "78c264c8f304dc57c15566ba2a183e0407041ef22f671fa44944c02ec28a4344",
       "status": "M",
       "upstream_baseline_sha256": "ecab37b6d846f5f4d908ad8fbc6924b6a35a81d00afebccdbf086b618c538e12"
+    },
+    "packages/client/ui-settings-models/src/client/locales.ts": {
+      "sha256": "961998c1e213c9c15e46be31ff7232b5852362cc08c6382a1e8a53804e5de26f",
+      "status": "M",
+      "upstream_baseline_sha256": "49dbe65729e25f45daf12d170bb34735960e33eb2bf9120ba6e8af28d8cd0b49"
+    },
+    "packages/client/ui-sidebar-documentpreview/src/client/office/locales.ts": {
+      "sha256": "04be0702df1965c815f1b9b347a83b3b9553e231c0d74925a01c38e351e868cd",
+      "status": "M",
+      "upstream_baseline_sha256": "cd48aa5feb060159a98bf82694d1f7cc9b6a7677544045a39feaeaf7215c35b7"
     },
     "packages/preset/agent-presets/presets/kvvi-builder/agent.cordis.yml": {
       "sha256": "1a69ba939c16a430d8adf279e9b207b8e3953b1a73390abec3d0333829c9137b",
@@ -111,7 +131,7 @@
       "upstream_baseline_sha256": "3cb83b2131b5c4841ff07e312b2e1dddd7f2f493f40ab94012240822140f25bd"
     }
   },
-  "fork_head": "67719b83d3ccaa0a52f1924749289dc10917e644",
+  "fork_head": "2bfb6afc35f55b0179a6a78c25f5f570990dde57",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "ddefc45fbc7f8e46dd73185e68295696d1297887"
