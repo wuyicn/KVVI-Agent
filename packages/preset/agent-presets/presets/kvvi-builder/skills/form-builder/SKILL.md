@@ -1,12 +1,39 @@
 ---
 name: form-builder
-description: 表单生成规范——字段类型、校验规则、条件显隐、分组布局。适用于「做一个员工信息登记表」「帮我做个申请单」这类需求。前置依赖 data-model。
+description: 表单生成——字段控件、分组布局、条件显隐，产出 view-schema 契约。适用于「做一个员工信息登记表」「帮我做个申请单」这类需求。前置依赖 data-model。
 ---
 
 # 表单生成（form-builder）
 
-把数据模型转成一张人能填的表单。表单是模型的可写视图，不是模型的复述：
-**字段的呈现顺序、分组、显隐、校验，都由填写人的实际动作决定，不由表结构决定。**
+把数据模型转成一张**可通过校验的** `view-schema/lce-safe-v1` 契约。
+
+表单是模型的可写视图，不是模型的复述：**字段的呈现顺序、分组、显隐，
+都由填写人的实际动作决定，不由表结构决定。**
+
+## 先说产出是什么
+
+产出**不是**一份「表单草案」，而是 `view-schema` 的 **`Spec`**，且 `view_type` 为 `"FORM"`。
+
+> **判定标准**：不能被 MetaSchema 校验的产出，不属于本产品的搭建产出。
+
+## ⚠️ 先划清职责边界（最容易搞错的一点）
+
+**`view-schema` 只管「怎么呈现」，不管「怎么校验」。**
+
+| 你想做的事 | 该去哪 |
+|---|---|
+| 字段的必填、长度、范围、格式 | **`business-schema`**（模型的字段约束） |
+| 跨字段与跨记录的不变量 | **`business-schema`**（模型的 record_rules） |
+| 唯一性 | **`business-schema`**（索引） |
+| 字段出现在哪、什么顺序、什么条件显示 | **`view-schema`**（本 Skill） |
+
+**所以**：如果模型里缺一条校验规则，**不要在本契约里想办法表达** ——
+回到 `data-model` 把它加到字段约束里。**在表单层写校验是实现不了的**，
+运行时校验只认模型。
+
+> 三层校验的说法仍然成立，但**分层不在本契约内**：
+> 即时校验与提交校验由模型字段约束驱动，服务端校验由模型不变量驱动。
+> **本 Skill 的职责是让这些字段以正确的形态出现在填写人面前。**
 
 ## 何时用
 
@@ -17,108 +44,338 @@ description: 表单生成规范——字段类型、校验规则、条件显隐�
 ## 前置
 
 模型未定时**先跑 `data-model`**。表单字段必须来自模型字段，
-不要为了界面好看临时加字段——临时字段会绕过约束和不变量。
+不要为了界面好看临时加字段 —— 临时字段会绕过约束和不变量，
+而且**引用校验会直接拒绝**（绑定的字段必须真实存在于模型里）。
 
-## 生成规范
+---
 
-### 1. 字段类型 → 控件映射
+# 一、概念对照
 
-| 模型类型 | 控件 | 备注 |
-|---|---|---|
-| string（短） | 单行输入 | 给默认最大长度 |
-| string（长） | 多行文本 | 超过约 100 字用多行 |
-| enum（≤5 项） | 单选按钮组 | 全部选项一眼可见 |
-| enum（>5 项） | 下拉选择 | 选项多时省空间 |
-| boolean | 开关 | 只有真二元语义才用；「是否通过」该用状态 |
-| integer / number | 数字输入 | 标注单位；金额标到分 |
-| date | 日期选择 | 不含时间 |
-| datetime | 日期时间选择 | 含时间 |
-| ref | 实体选择器 | 显示对方可读名，存对方 id |
-| file | 文件上传 | 标注格式与大小上限 |
+| 你可能会说 | 契约里是 |
+|---|---|
+| 表单 | `view-schema` 的 `Spec`，`view_type: "FORM"` |
+| 字段控件 | 一个 `ViewNode` + `props.fieldBinding` |
+| 分组 | `Section` 组件 |
+| 左右分栏 | `Grid` 组件 |
+| 条件显隐 | `node.condition`（`SafeExpression`） |
+| 明细行 / 子表 | `node.loop`（`DataBindingRef`） |
+| 提交按钮 | `SubmitButton` 组件 + `actions` |
+| 字段的中文名 | `label`（在模型里，不在本契约） |
 
-**禁止**：把 enum 做成自由文本输入；把 ref 做成手填 id；
-把日期做成手填字符串。这三样是错填的主要来源。
+**没有「表单标题」这个独立字段** —— `name` 是视图名，不是页面上印的标题。
+页面上要显示的文字用 `Text` 组件。
 
-### 2. 分组与顺序
+---
 
-按**填写人的思考顺序**排，不按表结构排：
+# 二、Spec 骨架
 
-1. 先放身份类字段（谁、哪个部门）——填写人先确认自己是谁
-2. 再放主数据字段（做什么、多少钱、什么时候）
-3. 明细行放下方独立区块
-4. 系统生成字段（id、单号、状态、时间戳）**不进表单**，或在只读区展示
+**六个字段全部必填**：
 
-每 5–9 个字段分一组，组有标题。超过 15 个字段的表单必须分组。
-
-### 3. 校验规则
-
-三层，缺一不可：
-
-| 层 | 时机 | 内容 |
-|---|---|---|
-| 即时 | 失焦即校验 | 格式、长度、范围——填写人能立刻改 |
-| 提交 | 点提交时 | 必填、跨字段约束——一次性列出全部问题 |
-| 服务端 | 落库前 | 唯一性、跨记录不变量——客户端校验只为准，不作数 |
-
-**提交时一次性列出所有错误**，不要逐个报——逐个报会让用户反复提交。
-
-校验消息要说**怎么改**，不说哪里错。*「金额必须大于 0」*，
-不是 *「金额字段校验失败」*。
-
-### 4. 条件显隐
-
-字段因其他字段取值而出现/消失时，规则必须显式写出：
-
-```yaml
-- 字段: 驳回原因
-  显隐: 状态 == 已驳回
-  必填: 当可见时必填
+```jsonc
+{
+  "view_code": "general_item_form",
+  "name": "通用事项登记表单",
+  "view_type": "FORM",
+  "businessSchemaRef":    { … },   // ★ 指向 data-model 产出的 schema
+  "componentRegistryRef": { … },   // ★ 指向组件注册表
+  "componentsTree":       [ … ]    // ★ 恰好 1 个元素
+}
 ```
 
-**关键**：隐藏字段的旧值必须清空，否则会带着用户看不见的脏数据提交。
-显隐规则要能反向验证——从最终提交的数据能推出当时哪些字段可见。
+⚠️ **`componentsTree` 恰好一个元素** —— 契约写的是 `minItems: 1, maxItems: 1`。
+想放多个顶层块，**用根节点的 `children`**，不要加第二个元素。
 
-### 5. 只读与禁用
+### 两个引用都不能编
 
-分开处理，语义不同：
+- `businessSchemaRef` → 指向**本次的模型**（`asset_type: "BUSINESS_SCHEMA"`）
+- `componentRegistryRef` → 指向**组件注册表**（`asset_type: "COMPONENT_REGISTRY"`）
 
-- **只读**：值有意义、会提交、只是不能改（如系统生成的单号）
-- **禁用**：当前状态下该字段不适用（如已通过后不能再改金额），灰显且不提交
+两者的 `digest` **必须是真实值**。写占位符结构能过、引用校验必挂。
 
-不要用「只读」冒充「禁用」——用户会以为值会被提交。
+**注册表不只是名单** —— 它决定每个组件允许的父组件、子组件、props 形状、
+能绑哪些字段类型。**所以必须先取到注册表再动手**（见 §三）。
 
-## 输出格式
+---
 
-```yaml
-表单: 员工信息登记
-实体: 员工
-分组:
-  - 标题: 基本信息
-    字段:
-      - { 名: 姓名,   类型: string, 控件: 单行输入, 必填: 是, 校验: "长度 2-20" }
-      - { 名: 部门,   类型: ref(部门), 控件: 实体选择器, 必填: 是 }
-      - { 名: 入职日期, 类型: date, 控件: 日期选择, 必填: 是, 校验: "不晚于今天" }
-  - 标题: 联系方式
-    字段:
-      - { 名: 手机号, 类型: string, 控件: 单行输入, 必填: 是, 校验: "11位数字" }
-条件显隐:
-  - { 字段: 离职日期, 显隐: "在职状态 == 已离职", 必填: 当可见时必填 }
-提交动作:
-  - 服务端校验: "手机号唯一"
-  - 成功后: "跳转详情页, 提示已登记"
+# 三、组件怎么选
+
+## 3.1 字段类型 → 组件
+
+**字段类型与组件必须匹配**，否则 `VIEW_FIELD_REF_INVALID`：
+
+| 模型字段类型 | 组件 |
+|---|---|
+| `short_text` | `ShortTextField` |
+| `long_text` | `LongTextField` |
+| `boolean` | `BooleanField` |
+| `integer` | `IntegerField` |
+| `decimal` | `DecimalField` |
+| `money` | `MoneyField` |
+| `date` | `DateField` |
+| `datetime` | `DateTimeField` |
+| `single_select` | `SingleSelectField` |
+| `multi_select` | `MultiSelectField` |
+
+**组件名不能凭直觉猜** —— 名字看起来合理但未登记，一样 `VIEW_COMPONENT_UNREGISTERED`。
+上游注册表里同时有 `Text`（静态文本）与 `ShortTextField`（可填字段），
+**两者不可混用**。
+
+## 3.2 根节点与容器
+
+| 用途 | 组件 | 约束 |
+|---|---|---|
+| 表单根 | `FormPage` | **`allowedParents` 为空** —— 只有它能当根 |
+| 分组 | `Section` | 可嵌套自身 |
+| 分栏 | `Grid` | 可嵌套自身 |
+
+**根节点必须是 `FormPage`** —— 用 `ListPage` 或 `DetailPage` 会因
+`viewTypes` 不含 `FORM` 被拒。
+
+**每 5–9 个字段分一组**，组有标题。超过 15 个字段必须分组。
+
+## 3.3 其他可用组件
+
+`Table`、`Description`、`StatusBadge`、`OpenRecordLink`、
+`SaveDraftButton`、`SubmitButton`、`CancelButton`
+
+---
+
+# 四、字段绑定
+
+```jsonc
+{
+  "id": "f_title",
+  "componentName": "ShortTextField",
+  "props": {
+    "fieldBinding": { "type": "FieldRef", "fieldRef": "title" }
+  }
+}
 ```
+
+**要过两关**：
+
+1. `fieldRef` 必须是**模型里真实存在的 `field_code`**
+2. 该字段的**类型**必须在组件的 `fieldTypes` 里
+
+**第二关最容易忽略**：`ShortTextField` 绑不了 `money` 字段 ——
+**选组件要看字段类型，不是看组件名**。
+
+> ⚠️ 字段名不要用平台的 12 个保留字（`id` / `status` / `created_at` …）。
+> 那是模型层的问题，但表单会第一个暴露它。
+
+---
+
+# 五、条件显隐
+
+用 `node.condition` 表达，**不是字符串表达式**：
+
+```jsonc
+{
+  "id": "f_reason",
+  "componentName": "LongTextField",
+  "condition": {
+    "type": "SafeExpression",
+    "left": { "type": "FieldRef", "fieldRef": "item_status" },
+    "operator": "eq",
+    "right": "rejected"
+  },
+  "props": { "fieldBinding": { "type": "FieldRef", "fieldRef": "reason" } }
+}
+```
+
+**操作符枚举**：`eq` / `ne` / `gt` / `gte` / `lt` / `lte` /
+`in` / `not_in` / `is_empty` / `not_empty`
+
+**组合**用 `all` / `any` / `not`：
+
+```jsonc
+"condition": {
+  "type": "SafeExpression",
+  "all": [
+    { "left": { "type": "FieldRef", "fieldRef": "amount" }, "operator": "gt", "right": 50000 },
+    { "left": { "type": "FieldRef", "fieldRef": "item_status" }, "operator": "ne", "right": "approved" }
+  ]
+}
+```
+
+**没有任意代码** —— 想写 `a && b || !c` 这种，用 `all`/`any`/`not` 组合出来。
+
+> **隐藏字段的旧值必须清空** —— 否则会带着用户看不见的脏数据提交。
+> 这一点**契约不检查**，要靠实现保证，产出时要向用户说明。
+
+---
+
+# 六、明细行（子表）
+
+用 `node.loop`：
+
+```jsonc
+{
+  "id": "lines_table",
+  "componentName": "Table",
+  "loop": { "type": "DataBindingRef", "queryCode": "…", "itemKey": "id", "maxItems": 200 }
+}
+```
+
+`DataBindingRef` 四个字段全必填：`queryCode`、`itemKey`、`maxItems`（1–200）。
+
+**`loopArgs` 的取值固定为 `["item", "index"]`** —— 写别的会被拒。
+而且 **`loopArgs` 必须与 `loop` 同时出现**。
+
+---
+
+# 七、一份完整的、已验证的示例
+
+```json
+{
+  "view_code": "general_item_form",
+  "name": "通用事项登记表单",
+  "view_type": "FORM",
+  "businessSchemaRef": {
+    "scope_type": "TENANT",
+    "scope_id": "11111111-1111-4111-8111-111111111111",
+    "app_id": "22222222-2222-4222-8222-222222222222",
+    "module_id": "33333333-3333-4333-8333-333333333333",
+    "asset_type": "BUSINESS_SCHEMA",
+    "asset_id": "general_item",
+    "version": 1,
+    "digest": "sha256:518077baee491b8146bc740bfa84d23bb2ef7f4bc81929eadefb7fd1691c9433"
+  },
+  "componentRegistryRef": {
+    "scope_type": "PLATFORM_CONTROL",
+    "scope_id": "kvvi-platform",
+    "app_id": null,
+    "module_id": null,
+    "asset_type": "COMPONENT_REGISTRY",
+    "asset_id": "vue_element_approved",
+    "version": 1,
+    "digest": "sha256:09b78fdd43ca6556a626e7b532ab05f5bf87ab8012ba4d9a018386af808c34f5"
+  },
+  "componentsTree": [
+    {
+      "id": "page_root",
+      "componentName": "FormPage",
+      "children": [
+        {
+          "id": "basic_section",
+          "componentName": "Section",
+          "children": [
+            {
+              "id": "f_title",
+              "componentName": "ShortTextField",
+              "props": {
+                "fieldBinding": {
+                  "type": "FieldRef",
+                  "fieldRef": "title"
+                }
+              }
+            },
+            {
+              "id": "f_category",
+              "componentName": "SingleSelectField",
+              "props": {
+                "fieldBinding": {
+                  "type": "FieldRef",
+                  "fieldRef": "category"
+                }
+              }
+            },
+            {
+              "id": "f_quantity",
+              "componentName": "IntegerField",
+              "props": {
+                "fieldBinding": {
+                  "type": "FieldRef",
+                  "fieldRef": "quantity"
+                }
+              }
+            },
+            {
+              "id": "f_amount",
+              "componentName": "MoneyField",
+              "props": {
+                "fieldBinding": {
+                  "type": "FieldRef",
+                  "fieldRef": "amount"
+                }
+              }
+            },
+            {
+              "id": "f_due",
+              "componentName": "DateField",
+              "props": {
+                "fieldBinding": {
+                  "type": "FieldRef",
+                  "fieldRef": "due_date"
+                }
+              }
+            },
+            {
+              "id": "f_notes",
+              "componentName": "LongTextField",
+              "props": {
+                "fieldBinding": {
+                  "type": "FieldRef",
+                  "fieldRef": "notes"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "btn_submit",
+          "componentName": "SubmitButton"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**这份示例是校验通过的状态** —— 从本文件提取后可直接跑（配 `样例/view-schema/context.json`）：
+结构 + 语义 + 引用三层全通过。
+
+> ⚠️ 示例里的 `businessSchemaRef` / `componentRegistryRef` 含**本部署特有的值**
+> （`scope_id`、`asset_id`、`version`、`digest`）。**照抄会让引用失效** ——
+> 必须从平台侧取得真实值。
+
+---
+
+# 八、自查
+
+```bash
+python3 工具/check_skill_output.py <你的Spec.json> \
+  --contract view-schema/lce-safe-v1 --context <配套context.json>
+```
+
+**这条契约有完整校验**（结构 + 语义 + 引用），所以这条命令跑绿就是真绿。
+
+跑之前先自己过一遍：
+
+- [ ] 每个 `fieldRef` 都在模型里存在，且**类型与组件匹配**
+- [ ] 每个 `componentName` 都在注册表里，且 `viewTypes` 含 `FORM`
+- [ ] 根节点是 `FormPage`（不是 ListPage / DetailPage）
+- [ ] **所有 `id` 唯一**，且没有沿用上下文里 `deleted_node_ids` 中的 id
+- [ ] `loop` 与 `loopArgs` 成对出现，`loopArgs` 是 `["item","index"]`
+- [ ] `props` 里没有多余的键（`additionalProperties: false`）
+- [ ] 条件显隐用的是 `SafeExpression` 对象，不是字符串
+
+---
 
 ## 常见错误
 
 | 错误 | 后果 | 正确做法 |
 |---|---|---|
+| 把校验规则写进表单 | **实现不了** —— 运行时只认模型 | 回到 `business-schema` 加字段约束 |
 | 把系统字段放进表单 | 用户填不该填的 | 系统生成，只读展示 |
-| 隐藏字段不清值 | 脏数据静默入库 | 隐藏即清空 |
-| 只做客户端校验 | 绕过校验写入脏数据 | 服务端兜底 |
-| 错误逐个报 | 用户反复提交 | 一次性列全 |
-| 15 个字段不分组 | 用户漏填、填错 | 分组并给标题 |
-| enum 做成自由文本 | 同义不同值，无法聚合 | 用选择控件 |
-| 报错说「校验失败」 | 用户不知道改什么 | 说清怎么改 |
+| 隐藏字段不清值 | 脏数据静默入库 | 实现层保证，并向用户说明 |
+| 临时加模型里没有的字段 | 引用校验直接拒绝 | 先改模型 |
+| `Text` 当成输入框 | 用户填不进去 | 输入用 `*TextField` |
+| 组件名凭直觉猜 | `VIEW_COMPONENT_UNREGISTERED` | 从注册表里选 |
+| 字段类型与组件不匹配 | `VIEW_FIELD_REF_INVALID` | `money` 只能用 `MoneyField` |
+| `componentsTree` 放两个根 | 结构错误 | 一个根，其余放 `children` |
+| 15 个字段不分组 | 用户漏填、填错 | 用 `Section` 分组 |
+| 条件写成字符串表达式 | 结构错误 | 用 `SafeExpression` 对象 |
 
 ## 交接
 
