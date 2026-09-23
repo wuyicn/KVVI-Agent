@@ -33,6 +33,20 @@
 用法：
     python3 check_prd.py            # 核查，输出问题列表；有问题则退出码 1
     python3 check_prd.py --quiet    # 只输出结论
+    python3 check_prd.py --report   # 传播检查报告：把关键概念的全部出现位置摊开
+
+## --report 为什么存在
+
+本 PRD 反复出现同一类错误：**修了一处，没有把同一概念在别处的表述一起改**。
+评审在连续四轮里各自独立指出过它：
+  v2.6 「承认插件可绕过，只改了 §4.1.1 与 §9.6.3，漏 §9.2、红线 4」
+  v2.7 「接口清单测试语义未特化」
+  v2.8 「新写『插件可拦截审计』，未传播到任何审计条款」
+  v2.9 「为修『改一半』而做的统一，本身又是改一半」
+
+根因是**语义传播**，机械检查抓不到。但可以把它**变得可见**：
+把同一关键词的全部出现行一次性列出来，作者扫一遍就能发现哪处没跟上。
+这不能替代审阅，只能替代「靠记忆回想哪里还提到过」。
 """
 import re
 import sys
@@ -285,6 +299,27 @@ def current_version(lines):
     return None
 
 
+# 传播检查关注的「容易只改一处」的概念
+PROPAGATION_TERMS = [
+    '动作全集', '生命周期动作', '安装、注册', '加载', '卸载',
+    '私钥', '签名进程', '身份层', '插件',
+    '红线 3', '可追溯',
+    '永远无法', '任何路径', '无一可豁免',
+    '指纹', '内容指纹',
+]
+
+
+def report(lines):
+    """把关键概念的全部出现位置摊开，供作者做传播核查。"""
+    for term in PROPAGATION_TERMS:
+        hits = [(i, l.strip()) for i, l in enumerate(lines, 1) if term in l]
+        if not hits:
+            continue
+        print(f'\n══ 「{term}」 共 {len(hits)} 处 ' + '═' * 30)
+        for i, l in hits:
+            print(f'  {i:>5}  {l[:110]}')
+
+
 def main():
     quiet = '--quiet' in sys.argv
     text, lines = load()
@@ -334,6 +369,10 @@ def main():
                     f' —— {flat.strip()[:70]}'
                 )
     sections.append(('评审轮次一致性', round_problems))
+
+    if '--report' in sys.argv:
+        report(lines)
+        return 0
 
     total = sum(len(p) for _, p in sections)
     if not quiet:
