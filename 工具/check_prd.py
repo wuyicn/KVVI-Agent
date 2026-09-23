@@ -275,6 +275,51 @@ def check_count_claims(lines):
     return problems
 
 
+def check_anchor_numbers(lines):
+    """同一条表格单元格内的 ①…⑨ 编号必须按顺序出现。
+
+    第九轮复评发现 §7.1 阶段一锚点为 ①②③⑥④⑤ —— 新增锚点插错位置。
+    """
+    problems = []
+    order = '①②③④⑤⑥⑦⑧⑨'
+    for i, line in enumerate(lines, 1):
+        found = [c for c in line if c in order]
+        if len(found) < 2:
+            continue
+        # 引用型描述（如「编号乱序（①②③⑥④⑤）」）是在描述问题，不是问题本身
+        if any(k in line for k in ['乱序', '这类', '重排', '例如', '曾', '原为']):
+            continue
+        idx = [order.index(c) for c in found]
+        if idx != sorted(idx):
+            problems.append(f'  行{i}: 锚点编号顺序错乱 {"".join(found)}')
+    return problems
+
+
+def check_cross_section_counts(lines):
+    """跨节引用的计数必须与被引小节标题一致。
+
+    第九轮复评发现 §4.6.5 写「§4.6.1 的三类数据」而 §4.6.1 标题是「四类」
+    —— 沿用旧计数。这是「计数漂移」在**跨节引用**上的形态，
+    与表格行数检查不同，故单列。
+    """
+    problems = []
+    # 收集「#### x.y  N类...」形式的标题计数
+    titled = {}
+    for line in lines:
+        m = re.match(r'^#{3,4}\s+(\d+\.\d+)\s+([一二三四五六七八九十])([类条项种])', line)
+        if m:
+            titled[m.group(1)] = (m.group(2), m.group(3))
+    for i, line in enumerate(lines, 1):
+        for m in re.finditer(r'§(\d+\.\d+)\s*的?\s*\*{0,2}([一二三四五六七八九十])([类条项种])', line):
+            sec, num, unit = m.group(1), m.group(2), m.group(3)
+            if sec in titled and titled[sec] != (num, unit):
+                problems.append(
+                    f'  行{i}: 称「§{sec} 的 {num}{unit}」，但 §{sec} 标题为'
+                    f'「{titled[sec][0]}{titled[sec][1]}」'
+                )
+    return problems
+
+
 def check_structure(lines):
     problems = []
     fences = sum(1 for l in lines if l.strip().startswith('```'))
@@ -337,6 +382,8 @@ def main():
         ('版本状态残留', check_version_residue(lines, version)),
         ('已废弃表述残留', check_retired(lines)),
         ('自称条数与表行数', check_count_claims(lines)),
+        ('锚点编号顺序', check_anchor_numbers(lines)),
+        ('跨节引用计数', check_cross_section_counts(lines)),
         ('结构完整性', check_structure(lines)),
     ]
     round_problems, rounds = check_round_counts(lines)
