@@ -1,0 +1,150 @@
+/**
+ * KVVI 平台服务进程。
+ *
+ * 归属（PRD §4.6.5）：身份层（会话状态、授权判定）、签名模块、发布通道、
+ * 平台库访问、认证端点（登录 / 登出）。**不加载任何插件。**
+ *
+ * 为什么这样写：本进程刻意**不引入任何 DSH 包**。PRD §9.4.1 要求
+ * 「平台服务进程不加载任何插件」是**可核验的启动配置**——若本进程依赖
+ * DSH 的 loader，那它就具备了加载插件的能力，「不加载」就降级成了一句纪律；
+ * 现在它是**能力缺失**：容器里根本没有 @deepseek-ai/* 包可供加载。
+ * 取证见 topology.mjs 与 `GET /topology`。
+ *
+ * 本文件是阶段一骨架：端点形状已按最终归属就位，业务实现在阶段四/五。
+ * 未实现的端点一律返回 501 并写明归属阶段 —— 不用空 200 冒充已实现。
+ */
+import { createServer } from 'node:http'
+import { readFileSync, existsSync } from 'node:fs'
+import { timingSafeEqual } from 'node:crypto'
+import { topologySnapshot, SERVICE_ROOT } from './topology.mjs'
+
+const PORT = Number(process.env.KVVI_PLATFORM_PORT ?? 7400)
+const HOST = process.env.KVVI_PLATFORM_HOST ?? '0.0.0.0'
+
+/**
+ * 进程间调用鉴别所需的凭据。
+ *
+ * PRD §4.6.5 部署基线要求「两进程间接口**有调用方鉴别**」。此处用 bearer 令牌
+ * 满足该条的形状，但**它不满足 §9.4.1 对签名的要求**——那条要求非对称签名、
+ * 私钥仅存于本进程。本令牌只用于**非签名**的内部接口；签名接口在阶段五实现，
+ * 且不得复用本令牌。混用会让「私钥仅存于签名进程」这条失去意义。
+ */
+const INTERNAL_TOKEN = process.env.KVVI_INTERNAL_TOKEN ?? ''
+
+/** 签名私钥的存在性。私钥**不进镜像**（PRD §9.4.1）。 */
+const SIGNING_KEY_PATH = process.env.KVVI_SIGNING_KEY_PATH ?? '/run/kvvi-secrets/signing.key'
+
+/** 每个端点的归属阶段：未实现的端点返回 501 而不是假成功。 */
+const PENDING = {
+  '/auth/login': '阶段四（自建账号体系）',
+  '/auth/logout': '阶段四（自建账号体系）',
+  '/auth/session': '阶段四（会话生命周期五类事件）',
+  '/sign/delegation': '阶段五（身份层签发委派令牌）',
+  '/registry/publish': '阶段五（发布通道）',
+  '/registry/plugins': '阶段五（插件批准记录查询）',
+}
+
+const startedAt = Date.now()
+
+/** 常量时间比较，避免按字符早退泄漏令牌长度。 */
+function tokenMatches(presented) {
+  if (INTERNAL_TOKEN === '') return false
+  const a = Buffer.from(presented ?? '')
+  const b = Buffer.from(INTERNAL_TOKEN)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
+function send(res, status, body, extraHeaders = {}) {
+  const payload = `${JSON.stringify(body, null, 2)}\n`
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'x-kvvi-process': 'platform-service',
+    'x-kvvi-plugins-loaded': String(topologySnapshot().pluginsLoaded),
+    ...extraHeaders,
+  })
+  res.end(payload)
+}
+
+async function readBody(req, limit = 64 * 1024) {
+  const chunks = []
+  let size = 0
+  for await (const chunk of req) {
+    size += chunk.length
+    if (size > limit) return null
+    chunks.push(chunk)
+  }
+  return Buffer.concat(chunks).toString('utf8')
+}
+
+const server = createServer(async (req, res) => {
+  const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`)
+  const path = url.pathname
+  const method = req.method ?? 'GET'
+
+  // 健康检查：不鉴别调用方。它必须能被编排层（compose healthcheck）无凭据探测，
+  // 否则容器会因为「探针没有令牌」而被判不健康 —— 那是自锁。
+  if (path === '/healthz' && method === 'GET') {
+    const snap = topologySnapshot()
+    return send(res, 200, {
+      ok: true,
+      process: snap.process,
+      role: snap.role,
+      pluginsLoaded: snap.pluginsLoaded,
+      // 健康检查刻意只报结论与最关键的一条证据，完整证据在 /topology。
+      dshPackagesPresent: snap.evidence.dshPackagesPresent,
+      signingKeyMounted: existsSync(SIGNING_KEY_PATH),
+      uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
+    })
+  }
+
+  // 取证端点：同样不鉴别。它不含任何凭据，只是本进程的自我描述，
+  // 而锚点⑥ 的取证必须能在**无凭据**的情况下由外部复核 —— 需要凭据才能取证的
+  // 「可核验」是自相矛盾的。
+  if (path === '/topology' && method === 'GET') {
+    return send(res, 200, topologySnapshot())
+  }
+
+  // 以下端点属于受控接口，需要调用方鉴别。
+  if (!tokenMatches((req.headers.authorization ?? '').replace(/^Bearer\s+/iu, ''))) {
+    return send(res, 401, {
+      ok: false,
+      error: 'unauthorized',
+      detail: '受控接口需要调用方鉴别（PRD §4.6.5 部署基线）。',
+    }, { 'www-authenticate': 'Bearer' })
+  }
+
+  if (path in PENDING) {
+    await readBody(req)
+    return send(res, 501, {
+      ok: false,
+      error: 'not_implemented',
+      endpoint: path,
+      ownedBy: PENDING[path],
+      detail: '阶段一骨架：端点形状已按归属就位，实现随所属阶段交付。',
+    })
+  }
+
+  return send(res, 404, { ok: false, error: 'not_found', path })
+})
+
+server.listen(PORT, HOST, () => {
+  const snap = topologySnapshot()
+  // 启动即打印机器可读的取证事实：锚点⑥ 的判据是「启动配置」，
+  // 所以事实必须在**启动时**可见，而不是事后被问出来。
+  console.log(JSON.stringify({
+    event: 'platform-service-up',
+    listen: `${HOST}:${PORT}`,
+    serviceRoot: SERVICE_ROOT,
+    pluginsLoaded: snap.pluginsLoaded,
+    dshPackagesPresent: snap.evidence.dshPackagesPresent,
+    declaredDependencies: snap.evidence.declaredDependencies,
+    signingKeyMounted: existsSync(SIGNING_KEY_PATH),
+  }))
+})
+
+for (const signal of ['SIGTERM', 'SIGINT']) {
+  process.on(signal, () => {
+    console.log(JSON.stringify({ event: 'platform-service-down', signal }))
+    server.close(() => process.exit(0))
+  })
+}

@@ -1,0 +1,22 @@
+# Docker 构建上下文排除项。
+#
+# 关键是 vendor/dsh/node_modules：宿主机的 node_modules 里是 **darwin-arm64**
+# 原生模块（sharp / fsevents / oxlint），Linux 容器用不了。运行时镜像必须在
+# 容器内重新 install 才能拿到 linux 原生二进制。
+#
+# 但 lib/ 与 dist/ **不排除** —— 那些是平台无关的构建产物，复用宿主机已构建
+# 的结果可以省掉容器内一次完整的 pnpm build（约 20 分钟）。
+vendor/dsh/node_modules
+vendor/dsh/.git
+vendor/dsh/.dsh-build
+vendor/dsh/**/node_modules
+**/node_modules
+.kvvi-home
+.samples
+.git
+评审
+冻结
+tools/meta-schema/python/.venv
+tools/meta-schema/node/node_modules
+**/__pycache__
+*.pyc

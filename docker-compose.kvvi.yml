@@ -1,0 +1,86 @@
+# KVVI-Agent 两进程骨架（PRD §4.6.5）。
+#
+# 这份文件是「两进程划分」的**可执行形式**。每一条部署基线要求都对应下面
+# 一个具体配置 —— 只在文档里写「两进程分离」而配置里没有对应项，
+# 那条声明就不可核验。对照关系：
+#
+#   §4.6.5 要求                本文件中的对应
+#   ─────────────────────────  ──────────────────────────────────────────────
+#   两进程分属不同容器          services.platform / services.runtime 各一个
+#   无共享可写文件系统          各自的 named volume，无任何共享挂载
+#   禁止跨进程调试              不设 pid/ipc: host，不共享 namespace
+#   接口有调用方鉴别            platform 受控端点要求 KVVI_INTERNAL_TOKEN
+#   平台服务进程不加载插件      platform 镜像内不含任何 DSH 包（见其 Dockerfile）
+#
+# 用法：scripts/kvvi-up.sh（会先生成 KVVI_INTERNAL_TOKEN）
+name: kvvi
+
+services:
+  # ── 平台服务进程 ────────────────────────────────────────────────────
+  # 身份层 / 授权判定 / 签名模块 / 发布通道 / 平台库访问 / 认证端点。
+  platform:
+    build:
+      context: .
+      dockerfile: services/platform/Dockerfile
+    image: kvvi/platform:dev
+    environment:
+      KVVI_PLATFORM_PORT: "7400"
+      KVVI_INTERNAL_TOKEN: "${KVVI_INTERNAL_TOKEN:?需要 KVVI_INTERNAL_TOKEN；用 scripts/kvvi-up.sh 启动}"
+      # 签名私钥**不进镜像**，由运行期挂载。此处留路径，不预置文件。
+      KVVI_SIGNING_KEY_PATH: /run/kvvi-secrets/signing.key
+    ports:
+      - "${KVVI_PLATFORM_PORT:-7400}:7400"
+    volumes:
+      # 平台库落点（阶段四接入真实存储）。
+      - platform-data:/var/lib/kvvi
+    networks:
+      - control
+    # 部署基线：禁止提权、禁止新增能力。
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+
+  # ── Agent 运行时进程 ───────────────────────────────────────────────
+  # Agent Loop / Skill 执行 / 插件宿主。**加载插件。**
+  runtime:
+    build:
+      context: .
+      dockerfile: services/runtime/Dockerfile
+    image: kvvi/runtime:dev
+    environment:
+      DSH_HOME: /data
+      KVVI_RUNTIME_PORT: "7401"
+      KVVI_PROFILE: kvvi
+      # 会话消息数据归属见 docs/数据归属表.md；本容器**不**挂载平台库卷。
+      KVVI_PLATFORM_URL: "http://platform:7400"
+      KVVI_INTERNAL_TOKEN: "${KVVI_INTERNAL_TOKEN:?}"
+    # ⚠️ 刻意**不映射宿主端口**：DSH 的 webserver 只接受 127.0.0.1 | 0.0.0.0，
+    #    而 startup 拒绝 0.0.0.0，故容器内只能 loopback 监听，映射到宿主也访问不到。
+    #    映射一个连不通的端口比不映射更坏 —— 它看起来像能用。
+    #    打通对外访问须走 fork 改造点，见 services/runtime/entrypoint.sh 的说明。
+    expose:
+      - "7401"
+    volumes:
+      # 会话消息数据（对话历史、工具调用结果，可能含业务数据片段）。
+      # 与 platform-data **是两个不同的卷**：PRD §4.6.5 要求
+      # 「无共享可写文件系统」，共享卷会重新开出一条进程间越权路径。
+      - runtime-data:/data
+    networks:
+      - control
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  platform-data:
+  runtime-data:
+
+networks:
+  control:
+    driver: bridge
+    # 两进程需要互相通信（受控接口），故同网络；
+    # 但**不**与宿主默认网络或其他 compose 项目互通。
+    internal: false
