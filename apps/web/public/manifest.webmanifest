@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "DeepSeek Harness",
-  "short_name": "DSH",
+  "name": "KVVI 搭建引擎",
+  "short_name": "KVVI",
   "start_url": "/",
   "scope": "/",
   "display": "fullscreen",
