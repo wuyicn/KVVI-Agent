@@ -40,6 +40,33 @@ const BUNDLE = resolve(ROOT, 'contracts/meta-schemas/0a-full-r1')
 const ID_PREFIX = 'urn:kvvi:meta-schema:0a-full-r1:'
 
 /** 建一个与官方定义一致的校验器。format 定义取自 meta-schema/node/values.mjs。 */
+/**
+ * 用例的 entry 名 → 契约里的 `$defs` 名。
+ *
+ * ── 为什么必须有这张表 ────────────────────────────────────────────────────
+ *
+ * 契约的用例带一个 `entry` 字段（`spec` / `compiled-draft` / `registered` /
+ * `command`），它**决定该用例的值该用哪个根定义去校验**：
+ *
+ *   spec           → #/$defs/Spec
+ *   compiled-draft → #/$defs/CompiledDraft
+ *   registered     → #/$defs/RegisteredContract
+ *   command        → #/$defs/Command      （app-model-command 专用）
+ *
+ * **只按 `valid` 筛用例、不按 `entry` 选根定义，是一个真实踩过的坑**：
+ * 拿 `registered` 态的值去校验 `Spec` 定义，会得到「缺 20 个必填字段」
+ * 这样的结果 —— 看起来像产出物坏了，其实是校验器的入口选错了。
+ *
+ * 那次误判的代价：让人以为 `tool-spec` 的用例判不出来，
+ * 而实际按 entry 映射后是 **34/34 一致**。
+ */
+export const ENTRY_TO_DEF = {
+  'spec': 'Spec',
+  'compiled-draft': 'CompiledDraft',
+  'registered': 'RegisteredContract',
+  'command': 'Command',
+}
+
 function buildEngine() {
   const ajv = new Ajv2020({
     strict: false, allErrors: true, coerceTypes: false,
@@ -60,6 +87,9 @@ function buildEngine() {
 }
 
 const [, , contractId, instancePath, entry = 'Spec'] = process.argv
+// 允许传用例的 entry 名（spec / registered / command …），自动映射到 $defs 名。
+// 直接传 $defs 名（Spec / Command …）也接受 —— 两种写法都不会选错入口。
+const defName = ENTRY_TO_DEF[entry] ?? entry
 if (!contractId || !instancePath) {
   process.stdout.write(JSON.stringify({
     error: 'usage: node full_bundle_check.mjs <contract-id> <instance.json>',
@@ -69,7 +99,7 @@ if (!contractId || !instancePath) {
 
 let validate
 try {
-  validate = buildEngine().getSchema(`${ID_PREFIX}${contractId}#/$defs/${entry}`)
+  validate = buildEngine().getSchema(`${ID_PREFIX}${contractId}#/$defs/${defName}`)
 } catch (e) {
   process.stdout.write(JSON.stringify({ error: 'engine_failed', detail: String(e.message).slice(0, 300) }) + '\n')
   process.exit(1)
@@ -95,6 +125,7 @@ process.stdout.write(JSON.stringify({
   stage: 'structure',
   // ★ 显式声明本校验的边界，避免被读成「完整校验通过」
   entry,
+  definition: defName,
   scope: 'structure_only',
   coverage_note: '本契约在 cli.mjs 的 CONTRACTS 白名单之外，'
     + '且没有契约专用的语义模块；此结果不含语义校验与引用校验。',
