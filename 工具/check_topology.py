@@ -126,6 +126,20 @@ def check_static() -> bool:
         ok = False
         print('  %s✗ platform 未要求调用方鉴别 —— 违反「接口有调用方鉴别」%s' % (C_BAD, C_OFF))
 
+    # N3 的拓扑要求：**唯一对外入口**。platform 映射宿主端口，runtime 不映射。
+    # 若 runtime 也映射，浏览器就能绕过那条请求分流直连它 —— 插件与认证流量
+    # 重新同处一个可嗅探面，正是 PRD §4.6.5 要避免的。
+    plat_ports = services.get('platform', {}).get('ports') or []
+    run_ports = services.get('runtime', {}).get('ports') or []
+    if plat_ports and not run_ports:
+        print('  %s✓%s 唯一对外入口：platform 映射宿主端口，runtime 不映射'
+              % (C_OK, C_OFF))
+    else:
+        ok = False
+        print('  %s✗ 端口暴露不合要求：platform=%s runtime=%s%s'
+              % (C_BAD, len(plat_ports), len(run_ports), C_OFF))
+        print('  %s→ runtime 必须不映射宿主端口，否则可绕过请求分流直连%s' % (C_DIM, C_OFF))
+
     # 部署基线：禁止提权
     for n, s in services.items():
         if 'no-new-privileges:true' in (s.get('security_opt') or []):
@@ -225,25 +239,61 @@ def check_dynamic() -> bool:
         ok = False
         print('  %s✗ runtime 插件行为 0 —— profile 没组合上%s' % (C_BAD, C_OFF))
 
-    # 运行时进程的 Web 服务真的在响应。
-    #
-    # 探针必须在**容器内**发：runtime 刻意不映射宿主端口（DSH 只允许它绑
-    # 127.0.0.1，见 services/runtime/entrypoint.sh），所以从宿主探测必然失败。
-    # 早先版本从宿主探 127.0.0.1:7401，报出来的是「Web UI 无响应」——
-    # 那是**检查本身错**，不是服务错。
-    #
-    # 判据是「返回了 HTTP 状态」而不是 200：DSH web 自带 token 认证，
-    # 无凭据时返回 401，那说明服务正常工作。用 200 判会让正常服务永远红。
-    rc, out = dc('exec', '-T', 'runtime', 'node', '-e',
-                 "fetch('http://127.0.0.1:7401/').then(r=>{"
-                 "console.log('HTTP '+r.status);process.exit(r.status<500?0:1)"
-                 "}).catch(e=>{console.log('ERR '+e.message);process.exit(1)})", timeout=40)
-    if rc == 0 and 'HTTP' in out:
-        code = out.split('HTTP')[1].strip().split()[0]
-        print('  %s✓%s runtime Web 服务在响应（容器内 HTTP %s）' % (C_OK, C_OFF, code))
+    # ── N3：唯一入口与代理 ────────────────────────────────────────────
+    print()
+    print('%s[N3] 唯一入口与代理%s' % (C_OK, C_OFF))
+
+    # 证据 1：直连 runtime 的宿主端口必须**失败** —— 证明它没暴露。
+    port_r = os.environ.get('KVVI_RUNTIME_PORT', '7401')
+    rc, out = run("curl -sS -o /dev/null -w '%%{http_code}' --max-time 5 'http://127.0.0.1:%s/'"
+                  % port_r, timeout=15)
+    if rc != 0 or out.strip() in ('000', ''):
+        print('  %s✓%s 直连 runtime 宿主端口 %s 失败 —— 它没有对外暴露' % (C_OK, port_r, C_OFF))
     else:
         ok = False
-        print('  %s✗ runtime Web 服务无响应：%s%s' % (C_BAD, out[:120], C_OFF))
+        print('  %s✗ 直连 runtime 宿主端口 %s 得到 HTTP %s —— 它暴露了%s'
+              % (C_BAD, port_r, out.strip(), C_OFF))
+        print('  %s→ 浏览器可绕过请求分流直连它，违反 §4.6.5%s' % (C_DIM, C_OFF))
+
+    # 证据 2：经 platform 能拿到 DSH web 的响应 —— 代理是通的。
+    # 判据是「收到了 DSH web 的认证提示」而不是某个具体状态码：
+    # 无 token 时 DSH 返回 401 + 那句提示，那正说明请求到达了运行时进程。
+    port_p = os.environ.get('KVVI_PLATFORM_PORT', '7400')
+    rc, body = run("curl -sS --max-time 10 'http://127.0.0.1:%s/'"
+                   % port_p, timeout=20)
+    if rc == 0 and 'dsh web authentication required' in body:
+        print('  %s✓%s 经 platform 访问到达 DSH web（收到其认证提示）' % (C_OK, C_OFF))
+    else:
+        ok = False
+        print('  %s✗ 经 platform 未到达 DSH web（%r）%s' % (C_BAD, body[:120], C_OFF))
+
+    # 证据 3：端到端 —— 从 runtime 日志取 token，经 platform 带 token 访问，
+    # 必须拿到**真正的页面**。前两条只证明「转发在发生」，这条证明「转发是对的」。
+    #
+    # 判据是「跟随重定向后 200 且标题为 KVVI」，不是「第一次响应是 2xx」：
+    # DSH 收到 token 后回 303 把 token 从 URL 移走并换 cookie，那是**认证成功**
+    # 的正常表现。早先版本只认 2xx，把一个完全正常的流程判成失败 ——
+    # 假红会训练人忽略检查结果，比没有检查更坏。
+    rc, logs = dc('logs', '--no-log-prefix', 'runtime', timeout=60)
+    m = re.search(r'\?token=([A-Za-z0-9_\-]+)', logs or '')
+    if not m:
+        ok = False
+        print('  %s✗ runtime 日志里找不到 web token —— 无法做端到端取证%s' % (C_BAD, C_OFF))
+    else:
+        token = m.group(1)
+        rc, body = run(
+            "curl -sS -L --max-time 20 -c /tmp/kvvi-e2e-cookies "
+            "'http://127.0.0.1:%s/?token=%s'" % (port_p, token), timeout=30)
+        rc2, code2 = run(
+            "curl -sS -o /dev/null -w '%%{http_code}' --max-time 10 "
+            "-b /tmp/kvvi-e2e-cookies 'http://127.0.0.1:%s/'" % port_p, timeout=20)
+        if rc == 0 and '<title>KVVI' in body and code2.strip().startswith('2'):
+            print('  %s✓%s 端到端：经 platform 带 token 拿到 KVVI 页面，'
+                  '换 cookie 后复访 HTTP %s' % (C_OK, C_OFF, code2.strip()))
+        else:
+            ok = False
+            print('  %s✗ 端到端失败：复访 HTTP %r；页面含 KVVI 标题=%s%s'
+                  % (C_BAD, code2.strip(), '<title>KVVI' in body, C_OFF))
 
     return ok
 

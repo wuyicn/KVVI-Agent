@@ -17,6 +17,7 @@ import { createServer } from 'node:http'
 import { readFileSync, existsSync } from 'node:fs'
 import { timingSafeEqual } from 'node:crypto'
 import { topologySnapshot, SERVICE_ROOT } from './topology.mjs'
+import { isOwnedPath, resolveTarget, createProxyHandler, createUpgradeHandler } from './proxy.mjs'
 
 const PORT = Number(process.env.KVVI_PLATFORM_PORT ?? 7400)
 const HOST = process.env.KVVI_PLATFORM_HOST ?? '0.0.0.0'
@@ -45,6 +46,15 @@ const PENDING = {
 }
 
 const startedAt = Date.now()
+
+/**
+ * 运行时进程的地址。**这是唯一的对外入口**：浏览器只与本进程对话，
+ * 运行时进程只在容器网络内可达（PRD §4.6.5 的请求分流）。
+ */
+const RUNTIME_TARGET = resolveTarget(process.env.KVVI_RUNTIME_URL)
+
+/** 非本进程路径一律转发给运行时进程。 */
+const proxyHandler = createProxyHandler(RUNTIME_TARGET)
 
 /** 常量时间比较，避免按字符早退泄漏令牌长度。 */
 function tokenMatches(presented) {
@@ -104,6 +114,17 @@ const server = createServer(async (req, res) => {
     return send(res, 200, topologySnapshot())
   }
 
+  // ── Web UI 转发必须排在鉴别之前 ────────────────────────────────────
+  //
+  // KVVI_INTERNAL_TOKEN 是**进程间**调用凭据，不是用户凭据。用它去拦 Web UI
+  // 流量是语义错误：浏览器当然没有这个令牌，于是每个页面请求都被 401 挡住，
+  // 表现为「代理不工作」，而代理本身是好的。
+  //
+  // 用户身份由阶段四的账号体系负责，与此令牌无关。故非本进程路径一律先转发。
+  if (!isOwnedPath(path)) {
+    return proxyHandler(req, res)
+  }
+
   // 以下端点属于受控接口，需要调用方鉴别。
   if (!tokenMatches((req.headers.authorization ?? '').replace(/^Bearer\s+/iu, ''))) {
     return send(res, 401, {
@@ -127,6 +148,8 @@ const server = createServer(async (req, res) => {
   return send(res, 404, { ok: false, error: 'not_found', path })
 })
 
+server.on('upgrade', createUpgradeHandler(RUNTIME_TARGET))
+
 server.listen(PORT, HOST, () => {
   const snap = topologySnapshot()
   // 启动即打印机器可读的取证事实：锚点⑥ 的判据是「启动配置」，
@@ -139,6 +162,7 @@ server.listen(PORT, HOST, () => {
     dshPackagesPresent: snap.evidence.dshPackagesPresent,
     declaredDependencies: snap.evidence.declaredDependencies,
     signingKeyMounted: existsSync(SIGNING_KEY_PATH),
+    proxiesTo: RUNTIME_TARGET.host,
   }))
 })
 

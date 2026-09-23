@@ -16,8 +16,12 @@
 name: kvvi
 
 services:
-  # ── 平台服务进程 ────────────────────────────────────────────────────
+  # ── 平台服务进程（**唯一对外入口**）────────────────────────────────
   # 身份层 / 授权判定 / 签名模块 / 发布通道 / 平台库访问 / 认证端点。
+  #
+  # 它同时是 Web UI 的唯一入口：认证类路径由本进程闭合，其余转发给运行时
+  # 进程。运行时进程不映射宿主端口，浏览器无法直接触达 —— PRD §4.6.5
+  # 「认证请求不经运行时进程」那条分流，靠这个拓扑在架构上成立。
   platform:
     build:
       context: .
@@ -26,9 +30,14 @@ services:
     environment:
       KVVI_PLATFORM_PORT: "7400"
       KVVI_INTERNAL_TOKEN: "${KVVI_INTERNAL_TOKEN:?需要 KVVI_INTERNAL_TOKEN；用 scripts/kvvi-up.sh 启动}"
+      # 转发目标用 compose 服务名。运行时会把这个名字声明为受信任 authority
+      #（它的 --trusted-host），否则 browser-trust fence 会拒绝代理的每个请求。
+      KVVI_RUNTIME_URL: "http://runtime:7401"
       # 签名私钥**不进镜像**，由运行期挂载。此处留路径，不预置文件。
       KVVI_SIGNING_KEY_PATH: /run/kvvi-secrets/signing.key
     ports:
+      # 唯一对外端口：既是本进程的 /healthz 与 API，也是 Web UI 的入口
+      #（非本进程路径经 proxy.mjs 转发给运行时进程）。
       - "${KVVI_PLATFORM_PORT:-7400}:7400"
     volumes:
       # 平台库落点（阶段四接入真实存储）。
@@ -56,11 +65,14 @@ services:
       KVVI_PROFILE: kvvi
       # 会话消息数据归属见 docs/数据归属表.md；本容器**不**挂载平台库卷。
       KVVI_PLATFORM_URL: "http://platform:7400"
+      # 平台服务进程经服务名访问本进程，请求的 Host 即为该名字；
+      # entrypoint 会把它传给 --trusted-host 让其通过 browser-trust fence。
+      KVVI_TRUSTED_NAME: "runtime"
       KVVI_INTERNAL_TOKEN: "${KVVI_INTERNAL_TOKEN:?}"
-    # ⚠️ 刻意**不映射宿主端口**：DSH 的 webserver 只接受 127.0.0.1 | 0.0.0.0，
-    #    而 startup 拒绝 0.0.0.0，故容器内只能 loopback 监听，映射到宿主也访问不到。
-    #    映射一个连不通的端口比不映射更坏 —— 它看起来像能用。
-    #    打通对外访问须走 fork 改造点，见 services/runtime/entrypoint.sh 的说明。
+    # 刻意**不映射宿主端口**：本进程只在 kvvi_control 网络内可达，对外由
+    # 平台服务进程作唯一入口。这不是「暴露到网络」，而是「暴露给同一部署内
+    # 的受控入口」。映射到宿主会绕开那条分流，让插件与认证流量重新同处一个
+    # 可嗅探面 —— 正是 PRD §4.6.5 要避免的。
     expose:
       - "7401"
     volumes:

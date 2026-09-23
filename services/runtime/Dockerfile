@@ -19,8 +19,9 @@ COPY vendor/dsh/ /dsh/
 # corepack 按 package.json 的 packageManager 字段选 pnpm 版本。
 RUN pnpm install --frozen-lockfile
 
+COPY services/runtime/bind-ip.sh /usr/local/bin/kvvi-bind-ip
 COPY services/runtime/entrypoint.sh /usr/local/bin/kvvi-runtime-entrypoint
-RUN chmod +x /usr/local/bin/kvvi-runtime-entrypoint
+RUN chmod +x /usr/local/bin/kvvi-bind-ip /usr/local/bin/kvvi-runtime-entrypoint
 
 ENV NODE_ENV=production
 ENV DSH_HOME=/data
@@ -44,7 +45,11 @@ USER node
 #   那说明服务**正在正常处理请求**，只是探针没带凭据 —— 这恰恰是健康。
 #   用 `r.ok` 会让一个完全正常的服务永远被判不健康，
 #   而这种假红会训练人忽略健康检查，比没有还坏。
+# ★ 探的是**实际绑定的地址**，不是 127.0.0.1。
+#   本进程绑容器内网地址（由 kvvi-bind-ip 决定），127.0.0.1 上没有监听 ——
+#   探它必然失败，表现为容器永久 unhealthy，而服务其实是好的。这类假红会
+#   训练人忽略健康检查，比没有检查更坏。故探针与 entrypoint 共用同一份取址。
 HEALTHCHECK --interval=5s --timeout=5s --start-period=30s --retries=12 \
-  CMD node -e "fetch('http://127.0.0.1:7401/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
+  CMD sh -c 'node -e "const ip=require(\"child_process\").execSync(\"/usr/local/bin/kvvi-bind-ip\").toString().trim(); fetch(\"http://\"+ip+\":7401/\").then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"' 
 
 ENTRYPOINT ["/usr/local/bin/kvvi-runtime-entrypoint"]

@@ -13,6 +13,27 @@ PROFILE="${KVVI_PROFILE:-kvvi}"
 PORT="${KVVI_RUNTIME_PORT:-7401}"
 CLI=/dsh/apps/cli/lib/bin.js
 
+# ── 绑定地址与受信任 authority（必须在首次使用之前定义）────────────────
+#
+# ⚠️ 这两个变量曾在脚本后段定义、却在前段被 echo 引用 —— 结果是启动日志里
+#    打出空值，而进程本身照常工作。**日志里的空值比报错更难发现**，
+#    因为它长得像「这个字段本来就没值」。故定义一律前置于使用点。
+#
+# 为什么绑容器内网地址、而不是 127.0.0.1：
+#   上游两条约束夹击后只剩 loopback，而 loopback 在各容器内是隔离的，
+#   平台服务进程因此够不到本进程，PRD §4.6.5 的请求分流无从落地。
+#   已按 §4.1.1「若 DSH 与规则不同，修改 DSH，而不是改规则」让 webserver
+#   支持显式 IPv4 监听（fork 改造点 DSH-B5）。同时保留原有两条语义：
+#     · 0.0.0.0 仍被 startup 拒绝 —— 最危险的形态没有放开
+#     · 未显式指定时仍是 127.0.0.1
+#
+# 本进程不映射宿主端口，只在 kvvi_control 网络内可达；对外只有平台服务进程。
+BIND_IP=$(/usr/local/bin/kvvi-bind-ip) || { echo '{"event":"runtime-service-abort","reason":"no non-internal IPv4 address"}' >&2; exit 1; }
+
+TRUSTED_NAME="${KVVI_TRUSTED_NAME:-runtime}"
+
+
+
 mkdir -p "$DSH_HOME/profiles/$PROFILE"
 
 # KVVI profile：在 dsh-base + dsh-web-app 之上叠加自己的 bundle。
@@ -49,7 +70,7 @@ node "$CLI" --profile "$PROFILE" --dump-config > "$DSH_HOME/profile-tree.yml" 2>
   exit 1
 }
 ROWS=$(grep -c '^- id:' "$DSH_HOME/profile-tree.yml" || true)
-echo "{\"event\":\"runtime-service-up\",\"profile\":\"$PROFILE\",\"pluginRows\":$ROWS,\"listen\":\"0.0.0.0:$PORT\",\"tree\":\"$DSH_HOME/profile-tree.yml\"}"
+echo "{\"event\":\"runtime-service-up\",\"profile\":\"$PROFILE\",\"pluginRows\":$ROWS,\"bind\":\"$BIND_IP:$PORT\",\"trustedName\":\"$TRUSTED_NAME\",\"tree\":\"$DSH_HOME/profile-tree.yml\"}"
 
 # 插件行数为 0 说明 bundle 没解析上 —— 此时启动的是一个空壳，
 # 静默跑起来会比直接失败更难查。
@@ -57,33 +78,6 @@ if [ "$ROWS" -eq 0 ]; then
   echo '{"event":"runtime-service-abort","reason":"profile composed to zero plugin rows"}' >&2
   exit 1
 fi
-
-# ── 绑定地址：为什么是 127.0.0.1（以及这带来的已知限制）──────────────────
-#
-# 这里**不是**随手写的默认值，而是 DSH 当前唯一可用的取值。两条约束夹击：
-#
-#   1. startup 拒绝通配符（packages/bundle/web-app/src/startup.ts:75）：
-#        "--host 0.0.0.0 is intentionally not supported yet for safety:
-#         it would expose remote code execution to the network"
-#      理由是直接的：本进程加载插件、能执行代码，暴露到网络等于把 RCE 暴露出去。
-#
-#   2. webserver 插件的 Config schema 只接受两个字面量
-#      （packages/host/webserver）："127.0.0.1" | "0.0.0.0"。
-#      绑别的地址会以 ValidationError 直接启动失败：
-#        $.host expected "127.0.0.1" | "0.0.0.0" but got "172.19.0.2"
-#
-#   1 排除了 0.0.0.0，2 排除了其它一切 —— **净结果只剩 127.0.0.1**。
-#
-# ⚠️ 由此产生的已知限制（阶段一不解决，须显式决策）：
-#     容器化部署下，Web UI **无法从宿主访问**；容器内的健康检查仍可通过。
-#     这不影响阶段一锚点 ②⑥ —— 那两条要求的是「两进程分离」与
-#     「平台服务进程不加载插件」，都不含「宿主能访问 Web UI」。
-#
-#     要打通对外访问，按 PRD §4.1.1「若 DSH 与规则不同，**修改 DSH，而不是改规则**」，
-#     须作为 fork 改造点处理：要么放宽 webserver 的 host 枚举，
-#     要么改为「平台服务进程作唯一对外入口、本进程只在内网监听」。
-#     二者都需要在 forks/dsh/改造点清单.md 登记后实施。
-BIND_HOST=127.0.0.1
 
 # ★ 不要在这里写 `web`。
 #
@@ -96,4 +90,4 @@ BIND_HOST=127.0.0.1
 #
 #   launcher 用 passThroughOptions：从第一个它不认识的 token 起，
 #   后面的参数全部交给被启动的 app，所以 --host/--port/--no-open 这样传是对的。
-exec node "$CLI" --profile "$PROFILE" --host "$BIND_HOST" --port "$PORT" --no-open
+exec node "$CLI" --profile "$PROFILE" --host "$BIND_IP" --port "$PORT" --no-open --trusted-host "$TRUSTED_NAME"
