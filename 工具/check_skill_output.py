@@ -34,11 +34,14 @@ SUPPORTED = ('business-schema/v1', 'view-schema/lce-safe-v1', 'app-spec/v1alpha1
 # 其余 10 个契约在 cli.mjs 白名单之外，但**结构校验仍可行**
 #（contracts/meta-schemas/0a-full-r1 有全量 14 个 schema）。
 # 它们没有契约专用的语义模块，所以只能做结构校验 —— 见 FULL_ONLY 的说明。
+# 注意：**只列已验证确实有 `#/$defs/Spec` 的契约**。
+# `app-model-command/v1alpha1` 不在此列 —— 实测报 `no_spec_definition`，
+# 它用的不是 Spec 形态（见 docs/阶段三-五Skill任务卡.md 的卡 5）。
+# 把一个不能用的契约列进来，会让人以为「路径存在但产出物有问题」。
 FULL_ONLY = {
     'workflow-spec/v1alpha1': 'workflow-spec-v1alpha1',
     'tool-spec/v1alpha1': 'tool-spec-v1alpha1',
     'permission-spec/v1alpha1': 'permission-spec-v1alpha1',
-    'app-model-command/v1alpha1': 'app-model-command-v1alpha1',
 }
 FULL_CHECKER = os.path.join(ROOT, '工具', 'lib', 'full_bundle_check.mjs')
 
@@ -192,8 +195,16 @@ def self_test() -> int:
     rc = check(good, 'business-schema/v1', ctx_old)
     results.append(('修改场景被拒', rc == 1, rc))
 
-    print('\n[3] 不支持的契约（期望无法执行，而非静默跳过）')
-    rc = check(good, 'workflow-spec/v1alpha1', ctx)
+    print('\n[3] 白名单外的契约：**仅结构校验**路径已生效')
+    wf = os.path.join(ROOT, '样例', 'workflow-spec', '通用事项审批流.spec.json')
+    rc = check(wf, 'workflow-spec/v1alpha1', None)
+    results.append(('仅结构校验路径生效', rc == 0, rc))
+
+    print('\n[4] 既不在完整校验也不在结构校验列表的契约（期望无法执行）')
+    # migration-plan 两者都不在 —— 用它能测出「拒答」而不是「静默跳过」。
+    # （早先此处用的是 workflow-spec，后来把它加进了结构校验列表，
+    #   该断言随之失效 —— 自测确实抓到了这次改动，这是它该做的。）
+    rc = check(good, 'migration-plan/v1alpha1', ctx)
     results.append(('不支持时拒答', rc == 2, rc))
 
     print()
