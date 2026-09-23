@@ -2,7 +2,7 @@
 # 来源：KVVI-Builder worktree 0a-5-meta-schemas
 #        commit 0be4475  branch feat/0a-5-meta-schemas
 # 校验：python3 工具/g1_指纹.py --verify
-# 条目数：1331
+# 条目数：1332
 
 0556b723df6515e11c0fcadd64a08db0fc031f4020b20a70ee0c9fa2a791492a  .github/workflows/meta-schema-files.yml
 ce32c06339221f89cb4ae1c580d1a0c62ba5d2000056e98e6e50bc8ca3eca451  contracts/meta-schemas/0a-core-r1/BUSINESS.md
@@ -31,6 +31,7 @@ fb497a9ce7ccd414419408feef438ae01e59e7f3d9cce98c686fe5243c9213bd  contracts/meta
 779d3e1bb43564691ad77cfa70f77a746060d51ffebe5d7e85f4871a8780e0ec  contracts/meta-schemas/0a-full-r1/tool-spec.v1alpha1.schema.json
 c5535b1903debab954ca3a6ee244381594a3c95de6f74d2e9619c00cc7f63085  contracts/meta-schemas/0a-full-r1/view-schema.lce-safe-v1.schema.json
 097c919b16bfcc1581ebca40b94c3d5f913ac8a4fb1a1629db8a6559798e622f  contracts/meta-schemas/0a-full-r1/workflow-spec.v1alpha1.schema.json
+aac6ba5dae3e1edb2b5930592a7c926b27f7e1655426befb6a7921147e8a7223  contracts/来源与指纹.md
 d517617a0c500713897e7d6c88b5894d4c802e6362ecf68631ba88776750993b  docs/PRD-AI无代码平台设计-v1.11.md
 45899097378bbf881449ee280ae6aaf16db4c2873afa077c994f15faa4b87c7b  docs/superpowers/specs/2026-09-11-0a-5-command-tool-dictionary.md
 242bc72a9ef4b52b59e81695fe56c868900d50d50cfc4508e0ff3f10a4f27515  docs/superpowers/specs/2026-09-11-0a-5-meta-schemas-design.md
