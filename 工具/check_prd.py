@@ -158,10 +158,13 @@ def check_tables(lines):
     return problems
 
 
+CN_NUM = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9}
+
+
 def check_round_counts(lines):
     """评审轮次：取全文出现的最大轮次作为真值，报告与之不符的当前主张。"""
     problems = []
-    chinese = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9}
+    chinese = CN_NUM
     claims = []
     for i, line in enumerate(lines, 1):
         flat = strip_markdown(line)
@@ -302,6 +305,34 @@ def main():
         ('结构完整性', check_structure(lines)),
     ]
     round_problems, rounds = check_round_counts(lines)
+    chinese = CN_NUM
+    # 补充：**当前版本**修订说明区内的「改为「N轮」」类指代必须等于真值。
+    # （第八轮复评发现：§0.9 写「改为『六轮』」而 §10.4 是「七轮」，旧检查漏掉。）
+    # 只查当前版本区：更早版本区内的「先改为五轮、再改六轮」是历史记录，不应报错。
+    sec_headers = [i for i, l in enumerate(lines, 1) if re.match(r'^###\s*0\.\d+\s', l)]
+    if sec_headers:
+        cs = sec_headers[-1]
+        ce = len(lines) + 1
+        for i in range(cs, len(lines) + 1):
+            if re.match(r'^##\s', lines[i - 1]):
+                ce = i
+                break
+    else:
+        cs, ce = 0, 0
+    cur_span = range(cs, ce)
+    for i, line in enumerate(lines, 1):
+        if i not in cur_span:
+            continue
+        flat = strip_markdown(line)
+        if any(k in flat for k in ['仍写', '不符', '描述', '原文是', '例如', '矛盾', '历史', '前）', '前)']):
+            continue          # 引用旧文本作为说明，不是当前版本的主张
+        for m in re.finditer(r'(改为|修正为|写|指向)\s*[「『"]?([一二三四五六七八九十])轮', flat):
+            val = chinese.get(m.group(2))
+            if val is not None and rounds and val != rounds:
+                round_problems.append(
+                    f'  行{i}: 称「{m.group(1)}「{m.group(2)}轮」」，但全文真值为 {rounds} 轮'
+                    f' —— {flat.strip()[:70]}'
+                )
     sections.append(('评审轮次一致性', round_problems))
 
     total = sum(len(p) for _, p in sections)
