@@ -1,0 +1,24 @@
+{
+  "runner": "deepseek-api",
+  "model": "deepseek-v4-pro",
+  "family": "deepseek",
+  "lens": "landing",
+  "prd_sha256": "5d2fec4733997be37c26bb37741b93be59a5e92df9410c90c8e91b9704e956b9",
+  "prompt_sha256": "13f4ee70c1e47e681de1becbd1a0425d9f372f4d94efc871c13de5f6ac4ce8d1",
+  "answer_sha256": "7bd7467b8e0a05d9325183701e60251d16fb7270351f4ea290871eb9829f17f4",
+  "answer_chars": 2656,
+  "elapsed_seconds": 289.8,
+  "usage": {
+    "prompt_tokens": 79117,
+    "completion_tokens": 18748,
+    "total_tokens": 97865,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 16916
+    },
+    "prompt_cache_hit_tokens": 0,
+    "prompt_cache_miss_tokens": 79117
+  }
+}

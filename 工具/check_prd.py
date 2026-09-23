@@ -222,10 +222,16 @@ def check_round_counts(lines):
         flat = strip_markdown(line)
         # 引号判定必须在**原始行**上做——strip_markdown 会剥掉反引号
         raw = line
-        for m in re.finditer(r'([一二三四五六七八九十]+)轮评审', flat):
+        # 基数用法不止「N轮评审」一种——第十二轮复评指出「已十轮」漏网。
+        # 覆盖：N轮评审 / 已N轮 / 共N轮 / 历N轮 / 累计N轮 / 截至…已N轮
+        for m in re.finditer(r'([一二三四五六七八九十]+)轮(?:评审|(?=[，。、）)]|$))', flat):
             if m.start() > 0 and flat[m.start() - 1] == '第':
                 continue                      # 序数，不是状态断言
             # 原始行中若该处处于未闭合引号/反引号内，则属引用
+            # 裸「N轮」（非「N轮评审」）出现在描述历史变更的句子里时，属引用而非断言
+            if not m.group(0).startswith(m.group(1) + '轮评审') and \
+               any(k in flat for k in ['改为', '不符', '曾', '原', '描述', '更正', '前）']):
+                continue
             raw_pos = raw.find(m.group(0)[:2])
             if raw_pos > 0:
                 head = raw[:raw_pos]
@@ -335,11 +341,16 @@ def check_anchor_numbers(lines):
     problems = []
     order = '①②③④⑤⑥⑦⑧⑨'
     for i, line in enumerate(lines, 1):
-        found = [c for c in line if c in order]
+        # 「§9.4.1 ②」这类是**章节内子节引用**，不是列表锚点，先剔除
+        cleaned = re.sub(r'§\s*\d+(?:\.\d+)*\s*[①-⑨]', '', line)
+        found = [c for c in cleaned if c in order]
         if len(found) < 2:
             continue
         # 引用型描述（如「编号乱序（①②③⑥④⑤）」）是在描述问题，不是问题本身
-        if any(k in line for k in ['乱序', '这类', '重排', '例如', '曾', '原为']):
+        if any(k in cleaned for k in ['乱序', '这类', '重排', '例如', '曾', '原为']):
+            continue
+        # 跨阶段的锚点引用（如「阶段一 ⑦ / 阶段四 ⑥」）本就不递增，不算错乱
+        if cleaned.count('阶段') > 1 or re.search(r'[①-⑨][^①-⑨]{0,12}§', cleaned):
             continue
         idx = [order.index(c) for c in found]
         if idx != sorted(idx):
