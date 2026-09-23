@@ -1,8 +1,8 @@
-# KVVI Agent PRD v2.11 冻结清单
+# KVVI Agent PRD v2.14 冻结清单
 # 校验方式：python3 make_manifest.py --verify
-# 条目数：127
+# 条目数：168
 
-eb36fb4d50eb98244ef474dc4bec1f8d9cbb42402021e27fc6fc7542e46be219  KVVI-Agent 开发文档 PRD.md
+cd2c5d93bef1f676b6d938b5fd220add01abcca8d76799118f1a78b1b6b47322  KVVI-Agent 开发文档 PRD.md
 6d60ffdd443f66158f6b521b8668c73efa3f141c4868ea786e059e48fe087ea7  评审/.DS_Store
 f47242b6473bb03ee597110553ea964459f59c898db000482d72bc0ff1ec0e4a  评审/v2.1/lenses-round2.json
 97b2ebb3a53e2f229efd5b0fa083d8987e6225f267ed95aa34847f2fdf3eabf5  评审/v2.1/lenses.json
@@ -34,6 +34,46 @@ c79e31984d0737db967ec5eebd758eaf84d6696d17d7f7daa6cade292fd96033  评审/v2.10/�
 92ad9f1a8143f70182e5fe7425b5abfdc96a7bbc76aa028ae686f2bdeea481e1  评审/v2.10/证据/评审10-qwen3.8-一致性.md
 83a6d87ebb04258f10f2ac0ae08fdd79dd791ccf181a11a5ce2a07acebb1ba49  评审/v2.10/证据/评审10-qwen3.8-一致性.record.json
 e0ff6fa7f5821d0fa091233671c3af6ee08bb0e129dd03aeff41de6d473d5b86  评审/v2.10/证据/评审10-qwen3.8-一致性.思考过程.md
+7a66829432eb242cf03e0eaf11e6b1940db2c4e64266c5c9280745b6b8de52b4  评审/v2.11/lenses.json
+d1fc264aef53f8461a5529491c2d9247a96e16593d051db4547707cb196d5b9c  评审/v2.11/run_deepseek_review.py
+dead1b19df7e58287af349b7b6c0f4bfb1e699617da2c5c220c520891012fed8  评审/v2.11/run_kimi_review.py
+275cf1345c17faae53ab0b82953afea81407f28665198c4c99a618e21f3767d1  评审/v2.11/run_local_review.py
+1df0f69fb4d7ddce35b2b64a7391b28b62b52022823c82f338cdd61f5e6bfc01  评审/v2.11/汇总.md
+314b16b12817bf09dfbe05c80044cee9486eed1cdbbaa4930b4633d551c988ed  评审/v2.11/证据/codex-不可用-网络诊断.md
+b8dd1e9515cbb568e585e01c1845fb954b58a8ddb2b4a960f3fbc995dab08ac1  评审/v2.11/证据/评审11-deepseek-v4-pro-落地验证.md
+366fd7e2a12d415a868257860c8957666b22bd7eea00d281f50db04a4e6bc94e  评审/v2.11/证据/评审11-deepseek-v4-pro-落地验证.record.json
+74d2a00be543a423bd9df7067d25253c8bafd8f1ad3eaaf602ba489b43930d77  评审/v2.11/证据/评审11-kimi-k3-对抗验证.md
+e32b2c9e7e0202cdce2d7dd2a9c634a34fb6911ae4baa5267f93b64e4200ff16  评审/v2.11/证据/评审11-kimi-k3-对抗验证.record.json
+e130c450bceff1ab64a3990fac5b8a6199da7c72ec076554337697d226f385e4  评审/v2.11/证据/评审11-kimi-k3-对抗验证.思考过程.md
+42c2ed59b5864d73f3eb8aea4547093eb4727825ab407d9fa5f869f2593e0bcb  评审/v2.11/证据/评审11-qwen3.8-一致性.md
+7ead444c8603b1710c660c82459f06784bd3daa8bc4d525230be6b766d0b6267  评审/v2.11/证据/评审11-qwen3.8-一致性.record.json
+a173c6403a88a4492227881c8a3c729129ec01f71a5c0e1b0944a24769723c0b  评审/v2.11/证据/评审11-qwen3.8-一致性.思考过程.md
+062950d3526d563cb7dae1c7d89f078308198949a1d80ca3eeb5d3590b88567d  评审/v2.12/lenses.json
+7724963313fc0653ebdcba4ae320651a0360a4654bda2ebc53b92fbdf0931d3b  评审/v2.12/run_deepseek_review.py
+cbeee033486ffc62fd582002bc4e9e5a898896c94f402555c77762d0dca6b6fb  评审/v2.12/run_kimi_review.py
+852f815a6f46edaace72014a3c2c5843080817438f585bcdbef808b35fad035b  评审/v2.12/run_local_review.py
+35a9c2ac755a6f9b41d7a14f314786ce449e78571abcb54f0fbb4eaa06131449  评审/v2.12/汇总.md
+314b16b12817bf09dfbe05c80044cee9486eed1cdbbaa4930b4633d551c988ed  评审/v2.12/证据/codex-不可用-网络诊断.md
+7bd7467b8e0a05d9325183701e60251d16fb7270351f4ea290871eb9829f17f4  评审/v2.12/证据/评审12-deepseek-v4-pro-落地验证.md
+9d5ff220f2109b6cff62a30cc22257fad9af97bf006616a5bcbc18ea0e245ae7  评审/v2.12/证据/评审12-deepseek-v4-pro-落地验证.record.json
+5b10dfa188d7581165b83abd367123817a67b93372112224f64af050432434df  评审/v2.12/证据/评审12-kimi-k3-对抗验证.md
+0ec3f5806afac51b1dcec8d71861db591bfae9892e425b5097bafece81707124  评审/v2.12/证据/评审12-kimi-k3-对抗验证.record.json
+89d178fabbd9689e7f85455204b90c87f7076ec09b37a7e0dc3ea75b0232c2a9  评审/v2.12/证据/评审12-kimi-k3-对抗验证.思考过程.md
+74aac8650d5dffb02012655453b086b27a22382c9fa70f3b466419ddaca4140d  评审/v2.12/证据/评审12-qwen3.8-一致性.md
+d647feef7ef1dce3b99a32f1617696509b379cea2398cdfcdc1a8ecfbe166bd8  评审/v2.12/证据/评审12-qwen3.8-一致性.record.json
+21b186c9377f03d85b0a70492043035b2ea9312daf30c521561a1da378a2cd86  评审/v2.12/证据/评审12-qwen3.8-一致性.思考过程.md
+6231ded9f7ddcf9960bccb1e4c0a3fc3bc006adf302ab2e0bb69df19a66ed8bb  评审/v2.13/lenses.json
+e488a712d06f2649ab89784d761704ceb405ceba95e4e23e969d64e93c9e30d4  评审/v2.13/run_deepseek_review.py
+6dab6c9436c3cd0eb2d4f4e7e12936de96036cc125a29d5e38aee89761622f94  评审/v2.13/run_kimi_review.py
+710d1b114367aadb81d2ec5a002fa95e7561a498d6cdfd13e36901de85315620  评审/v2.13/run_local_review.py
+aa51c4ac22e10c11059b576fa19797e58b61b73417f9bf94e616042fa73757d1  评审/v2.13/汇总.md
+1b6120b86e91887d4815b3688f8ce45a2ccb690ce873b9c4471b4b08bb21677b  评审/v2.13/窄范围核查.md
+314b16b12817bf09dfbe05c80044cee9486eed1cdbbaa4930b4633d551c988ed  评审/v2.13/证据/codex-不可用-网络诊断.md
+751d9dfdcfbf047001e6957e8c13559c3270aa4005c64f23bbbaf5a4977dd828  评审/v2.13/证据/评审13-deepseek-v4-pro-落地验证.md
+76835d260da0faa9226b63385f81e58211893cfbbb5f1574ab03011b881f7079  评审/v2.13/证据/评审13-deepseek-v4-pro-落地验证.record.json
+bb0e1b3cf3b28e3a63f0b1457d5080a43a58e72a47e5cf167dd2df24e9cf1030  评审/v2.13/证据/评审13-kimi-k3-对抗验证.md
+5aaec34c77def4110fab285427ca6fd3471c33523f3da78be6f602ae36c82989  评审/v2.13/证据/评审13-kimi-k3-对抗验证.record.json
+142e89856a95e181764d41329296d4f38a1a6e625f9c3fd1f0e628bd6b13e7de  评审/v2.13/证据/评审13-kimi-k3-对抗验证.思考过程.md
 bc2591dcf624dd3244b026edbd315b776c6127be5e7e32ba4040584538c5ce4d  评审/v2.2/lenses-round2.json
 bc2591dcf624dd3244b026edbd315b776c6127be5e7e32ba4040584538c5ce4d  评审/v2.2/lenses.json
 2ccd145c82bea9825475ebf3d9fbad6bad4b17c26db0ea727d20a3217c32faeb  评审/v2.2/run_codex_review.py
@@ -127,5 +167,6 @@ f2d87141c6bc1e72cae7e749c1d80bd9990a042e26e7c9e2e0e831fe6347913a  评审/v2.9/�
 ff0714f71dd63547fb2d5802d290918ea285ec8bbf61553251c03126f1edee38  评审/v2.9/证据/评审9-qwen3.8-一致性.md
 fb70fc0753022f6345086077d8c779851565f13369e936d2e3377460588fdda9  评审/v2.9/证据/评审9-qwen3.8-一致性.record.json
 12743cefbf393925bb12338ada2ee99a858aea916b1b07dbf4139d2b1eb8949e  评审/v2.9/证据/评审9-qwen3.8-一致性.思考过程.md
+f12374d068608d97399888e116e8f8708b7f84d398b5ae55ac724d7b7a34b8b8  冻结/PRD-v2.14-冻结记录.md
 c152c89501b117ee555912987ba302da010cd8ecd2a79e7b43f159f7c1ca3bb3  冻结/PRD-v2.5-冻结记录.md
 fcfd7e870a4f02e4a9beaab824c88e8cbba937924b6a77c82bb8c4e83ec9c68f  冻结/清单-v2.5.sha256
