@@ -2,7 +2,7 @@
 # 来源：KVVI-Builder worktree 0a-5-meta-schemas
 #        commit 0be4475  branch feat/0a-5-meta-schemas
 # 校验：python3 工具/g1_指纹.py --verify
-# 条目数：1332
+# 条目数：1339
 
 0556b723df6515e11c0fcadd64a08db0fc031f4020b20a70ee0c9fa2a791492a  .github/workflows/meta-schema-files.yml
 ce32c06339221f89cb4ae1c580d1a0c62ba5d2000056e98e6e50bc8ca3eca451  contracts/meta-schemas/0a-core-r1/BUSINESS.md
@@ -31,8 +31,9 @@ fb497a9ce7ccd414419408feef438ae01e59e7f3d9cce98c686fe5243c9213bd  contracts/meta
 779d3e1bb43564691ad77cfa70f77a746060d51ffebe5d7e85f4871a8780e0ec  contracts/meta-schemas/0a-full-r1/tool-spec.v1alpha1.schema.json
 c5535b1903debab954ca3a6ee244381594a3c95de6f74d2e9619c00cc7f63085  contracts/meta-schemas/0a-full-r1/view-schema.lce-safe-v1.schema.json
 097c919b16bfcc1581ebca40b94c3d5f913ac8a4fb1a1629db8a6559798e622f  contracts/meta-schemas/0a-full-r1/workflow-spec.v1alpha1.schema.json
-aac6ba5dae3e1edb2b5930592a7c926b27f7e1655426befb6a7921147e8a7223  contracts/来源与指纹.md
+dd029fc435a644a74c9df74d066ce04b961b39ee3ebf5f5acadd09be069cf9f4  contracts/来源与指纹.md
 d517617a0c500713897e7d6c88b5894d4c802e6362ecf68631ba88776750993b  docs/PRD-AI无代码平台设计-v1.11.md
+6b3f0eea5a0cd8874c2d509bf446edb0402513efb6c3c6b00c26674fdecbe4c0  docs/superpowers/specs/2026-09-08-0a-meta-schema-core-design.md
 45899097378bbf881449ee280ae6aaf16db4c2873afa077c994f15faa4b87c7b  docs/superpowers/specs/2026-09-11-0a-5-command-tool-dictionary.md
 242bc72a9ef4b52b59e81695fe56c868900d50d50cfc4508e0ff3f10a4f27515  docs/superpowers/specs/2026-09-11-0a-5-meta-schemas-design.md
 c391531c4376e2e76597e9c5d6195fc23aae7116cfd299dec7bdfccf1904679a  docs/superpowers/specs/2026-09-11-0a-5-migration-dictionary.md
@@ -41,6 +42,12 @@ c391531c4376e2e76597e9c5d6195fc23aae7116cfd299dec7bdfccf1904679a  docs/superpowe
 b17e71ea5b43734c222583c21e7bb22334215595ec1dd4624743beb0a16f8a3a  docs/superpowers/specs/2026-09-11-0a-5-shared-dictionary.md
 470011ffab5619c4a9d10324fa70800276e049debb713b09d6280bfd1bd49cfc  docs/superpowers/specs/2026-09-15-0a-5-machine-delivery-scope.md
 6b08d6f874e5e58ce2e64b9cb5efe33f47c9d9295924f7de51d2fceab0c21123  docs/superpowers/specs/2026-09-15-0a-5-uuid-profile-r1.md
+bc9887e59d04119f87945e2a198fd52030fe8ce90110cd99dfeaf3a7f304e950  protocol/kvvi-json-c14n/v1/EVIDENCE_SETS.md
+0e80c05a5f38f7c3e2afbf810b466ada99f25dfd6ac581dde06a0f61cfdb76fc  protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/README.md
+e725d654ea2e7f81ea04ba00277eefee1fefbe7519730858ff8763106c88d002  protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/node/kvvi-json-c14n.mjs
+010dacdfbefbc62bbeb76903c02127043dfa33d074b91f14aa6b1891c126d059  protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/python/kvvi_json_c14n.py
+824db464b714bebbffdcbaad2fcc4957497471aae38bfce29bb91a206d2a1fa2  protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/tests/test_conformance.py
+1a58aff79f9372937a999655d1c2937a6589e492f9eb987366bf4ea81f71b0b9  protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/vectors.json
 abffcb21c10ba4fb9482190be4c42a019bc364f8d10eff821e5de7794ebdc444  tests/meta-schema/0a-core-r1/cases.json
 070c4415aab7fc0ab12cfe7dbc1f8d519e73fa418be9edcb43d4b52126960e75  tests/meta-schema/0a-core-r1/contexts/business-070c4415aab7fc0a.json
 07eae45d6bbbff52eccb4431c0c9f5e08481d6cd2f661fee7ae918d8dfdef6c5  tests/meta-schema/0a-core-r1/contexts/business-07eae45d6bbbff52.json

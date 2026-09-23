@@ -23,7 +23,14 @@ MANIFEST = ROOT / 'contracts' / '契约资产清单.sha256'
 PROVENANCE = ROOT / 'contracts' / '来源与指纹.md'
 
 # 并入范围：契约、验证器、测试、以及验证器要求的源绑定文件
-INCLUDE = ['contracts', 'tools/meta-schema', 'tools/meta-schema-full',
+# ⚠️ `protocol/` 是**验证器的运行时依赖**，不是可选项：
+#   tools/meta-schema/node/cli.mjs 直接 import
+#   protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/node/kvvi-json-c14n.mjs
+#   漏掉它会让 Node CLI 入口以 CANONICALIZER_EXECUTION_FAILED 失败 ——
+#   而这是**运行期才暴露**的失败，构建与其它校验器都不会报。
+#   （本目录确曾在首轮并入时被漏掉，见 G1 补充记录。）
+INCLUDE = ['contracts', 'protocol/kvvi-json-c14n',
+           'tools/meta-schema', 'tools/meta-schema-full',
            'tests/meta-schema', 'tests/meta-schema-full',
            '.github/workflows/meta-schema-files.yml',
            'docs/PRD-AI无代码平台设计-v1.11.md',

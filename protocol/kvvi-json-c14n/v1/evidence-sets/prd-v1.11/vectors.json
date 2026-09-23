@@ -1,0 +1,125 @@
+{
+  "suite": "kvvi-json-c14n/v1-conformance",
+  "profile": "kvvi-json-c14n/v1",
+  "positive": [
+    {
+      "id": "C1",
+      "description": "对象键按未转义 UTF-8 字节升序排列",
+      "input": "{\"b\":2,\"a\":1}",
+      "canonical": "{\"a\":1,\"b\":2}",
+      "canonical_utf8_hex": "7b2261223a312c2262223a327d",
+      "sha256": "43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777"
+    },
+    {
+      "id": "C2",
+      "description": "数组保持输入顺序",
+      "input": "{\"a\":[3,1,2]}",
+      "canonical": "{\"a\":[3,1,2]}",
+      "canonical_utf8_hex": "7b2261223a5b332c312c325d7d",
+      "sha256": "d934227f5a9f29b31bd6a8ceed3213dd498a07ce32bdfa9ae2488de0c0ab68f1"
+    },
+    {
+      "id": "C3",
+      "description": "控制字符、斜线与非 ASCII 字符按协议转义",
+      "input": "{\"s\":\"line\\u000a\\/é\"}",
+      "canonical": "{\"s\":\"line\\n/é\"}",
+      "canonical_utf8_hex": "7b2273223a226c696e655c6e2fc3a9227d",
+      "sha256": "d10309a9f292a5abf657a4d17a4b50dda10daceb0713f677c5d1168fa47adf6e"
+    },
+    {
+      "id": "C4",
+      "description": "数学整数转为最短十进制且负零归一",
+      "input": "{\"z\":-0,\"n\":1e0}",
+      "canonical": "{\"n\":1,\"z\":0}",
+      "canonical_utf8_hex": "7b226e223a312c227a223a307d",
+      "sha256": "11beb7b10beec1509e9c51e46aaa2445ba87a6134074c358144a087207082403"
+    },
+    {
+      "id": "C5",
+      "description": "对象键使用 UTF-8 字节序而非 UTF-16 code unit 顺序",
+      "input": "{\"😀\":1,\"דּ\":2}",
+      "canonical": "{\"דּ\":2,\"😀\":1}",
+      "canonical_utf8_hex": "7b22efacb3223a322c22f09f9880223a317d",
+      "sha256": "96c4e1b26f2ef1f5f03e115d3128f9306830bf5eaf2d523c0f7551d3424e4937"
+    },
+    {
+      "id": "C6",
+      "description": "布尔值和 null 使用固定小写字面量",
+      "input": "{\"t\":true,\"f\":false,\"n\":null}",
+      "canonical": "{\"f\":false,\"n\":null,\"t\":true}",
+      "canonical_utf8_hex": "7b2266223a66616c73652c226e223a6e756c6c2c2274223a747275657d",
+      "sha256": "22e00dc2f7b01420f940fbdbfbdf34fa0667cc6500186495023ba37722cbd05e"
+    },
+    {
+      "id": "C7",
+      "description": "任意长度指数不得把数学零误判为不支持",
+      "input": "0e99999999999999999999999999999999999999",
+      "canonical": "0",
+      "canonical_utf8_hex": "30",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    }
+  ],
+  "negative": [
+    {
+      "id": "N1",
+      "description": "解码后重复的对象键必须在覆盖前拒绝",
+      "input": "{\"a\":1,\"\\u0061\":2}",
+      "error_code": "CANON_DUPLICATE_KEY"
+    },
+    {
+      "id": "N2",
+      "description": "非整数 JSON number 不属于输入域",
+      "input": "{\"n\":1.25}",
+      "error_code": "CANON_NUMBER_UNSUPPORTED"
+    },
+    {
+      "id": "N3",
+      "description": "超出安全整数范围的 JSON number 必须拒绝",
+      "input": "{\"n\":9007199254740992}",
+      "error_code": "CANON_NUMBER_OUT_OF_RANGE"
+    },
+    {
+      "id": "N4",
+      "description": "孤立代理项不是有效 Unicode 标量序列",
+      "input": "{\"s\":\"\\ud800\"}",
+      "error_code": "CANON_INVALID_UNICODE"
+    },
+    {
+      "id": "N5",
+      "description": "未知规范化 profile 失败关闭",
+      "profile": "kvvi-json-c14n/v999",
+      "input": "{}",
+      "error_code": "CANON_PROFILE_UNSUPPORTED"
+    },
+    {
+      "id": "N6",
+      "description": "UTF-8 BOM 不属于严格 JSON 输入",
+      "input": "\ufeff{}",
+      "error_code": "CANON_JSON_INVALID"
+    },
+    {
+      "id": "N7",
+      "description": "NaN 不是合法 JSON token",
+      "input": "NaN",
+      "error_code": "CANON_JSON_INVALID"
+    },
+    {
+      "id": "N8",
+      "description": "Infinity 不是合法 JSON token",
+      "input": "Infinity",
+      "error_code": "CANON_JSON_INVALID"
+    },
+    {
+      "id": "N9",
+      "description": "-Infinity 不是合法 JSON token",
+      "input": "-Infinity",
+      "error_code": "CANON_JSON_INVALID"
+    },
+    {
+      "id": "N10",
+      "description": "任意长度正指数的非零数必须稳定判定为超范围",
+      "input": "1e99999999999999999999999999999999999999",
+      "error_code": "CANON_NUMBER_OUT_OF_RANGE"
+    }
+  ]
+}
