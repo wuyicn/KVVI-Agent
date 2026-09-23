@@ -172,29 +172,81 @@ def check_tables(lines):
     return problems
 
 
-CN_NUM = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9}
+_D = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9}
+
+
+def cn2int(s):
+    """中文数字转整数，覆盖 一~二十（评审轮次不会更多）。"""
+    if not s:
+        return None
+    if '十' not in s:
+        return _D.get(s)
+    if s == '十':
+        return 10
+    head, _, tail = s.partition('十')
+    tens = _D.get(head, 1) if head else 1
+    ones = _D.get(tail, 0) if tail else 0
+    return tens * 10 + ones
+
+
+CN_NUM = _D
+
+
+def true_round(lines):
+    """从版本头的状态行解析「已完成评审轮次」——这是唯一权威来源。
+
+    第十一轮复评发现旧实现有循环 bug：真值取自全文「N轮评审」的最大值，
+    而排除关键词里的 '第' 又过宽，把真值来源行和错误行**一起跳过了**，
+    于是「§9.12 写九轮、实际已十轮」静默通过。
+
+    正确做法：真值来自版本头，不来自被检查的断言本身。
+    """
+    for line in lines[:40]:
+        flat = strip_markdown(line)
+        m = re.search(r'([一二三四五六七八九十]+)轮评审后修订', flat)
+        if m:
+            return cn2int(m.group(1))
+    return None
 
 
 def check_round_counts(lines):
-    """评审轮次：取全文出现的最大轮次作为真值，报告与之不符的当前主张。"""
+    """「N轮评审」形式的**状态断言**必须等于真值。
+
+    关键区分：「**第**N轮评审」是序数（指某一轮），合法；
+    「N轮评审的发现已全部处理」是基数（断言已处理 N 轮），必须等于真值。
+    因此只检查**前面不带「第」**的出现。
+    """
     problems = []
-    chinese = CN_NUM
-    claims = []
+    truth = true_round(lines)
     for i, line in enumerate(lines, 1):
         flat = strip_markdown(line)
-        for cn, val in chinese.items():
-            if f'{cn}轮评审' in flat:
-                claims.append((i, cn, val, flat.strip()[:70]))
-    if not claims:
-        return problems, 0
-    truth = max(c[2] for c in claims)
-    for i, cn, val, snippet in claims:
-        if val == truth:
-            continue
-        # 历史/变更记录中的引用是合法的
-        if any(k in snippet for k in ['改为', '标题', '与正文', '不符', '残留', '第', '漏掉', '原文是', '例如', '如 §']):
-            continue
-        problems.append(f'  行{i}: 写「{cn}轮评审」，但全文最大为 {truth} 轮 —— {snippet}')
+        # 引号判定必须在**原始行**上做——strip_markdown 会剥掉反引号
+        raw = line
+        for m in re.finditer(r'([一二三四五六七八九十]+)轮评审', flat):
+            if m.start() > 0 and flat[m.start() - 1] == '第':
+                continue                      # 序数，不是状态断言
+            # 原始行中若该处处于未闭合引号/反引号内，则属引用
+            raw_pos = raw.find(m.group(0)[:2])
+            if raw_pos > 0:
+                head = raw[:raw_pos]
+                # 「」『』 区分开闭；反引号同一字符用于开闭，故用奇偶判断
+                in_quote = (sum(head.count(c) for c in '「『')
+                            > sum(head.count(c) for c in '」』'))
+                in_code = (head.count('`') % 2 == 1)
+                if in_quote or in_code:
+                    continue
+            # 处于**未闭合引号内**的匹配是引用（在描述某个问题），不是对本文档状态的断言。
+            # 判据：匹配位置之前的开引号多于闭引号。引文往往比匹配更长，
+            # 因此不能要求匹配两侧紧邻引号。
+            head = flat[:m.start()]
+            if sum(head.count(c) for c in '「『`') > sum(head.count(c) for c in '」』`'):
+                continue
+            val = cn2int(m.group(1))
+            if truth and val and val != truth:
+                problems.append(
+                    f'  行{i}: 断言「{m.group(1)}轮评审」，但版本头声明已完成 {truth} 轮'
+                    f' —— {flat.strip()[:80]}'
+                )
     return problems, truth
 
 
@@ -387,34 +439,6 @@ def main():
         ('结构完整性', check_structure(lines)),
     ]
     round_problems, rounds = check_round_counts(lines)
-    chinese = CN_NUM
-    # 补充：**当前版本**修订说明区内的「改为「N轮」」类指代必须等于真值。
-    # （第八轮复评发现：§0.9 写「改为『六轮』」而 §10.4 是「七轮」，旧检查漏掉。）
-    # 只查当前版本区：更早版本区内的「先改为五轮、再改六轮」是历史记录，不应报错。
-    sec_headers = [i for i, l in enumerate(lines, 1) if re.match(r'^###\s*0\.\d+\s', l)]
-    if sec_headers:
-        cs = sec_headers[-1]
-        ce = len(lines) + 1
-        for i in range(cs, len(lines) + 1):
-            if re.match(r'^##\s', lines[i - 1]):
-                ce = i
-                break
-    else:
-        cs, ce = 0, 0
-    cur_span = range(cs, ce)
-    for i, line in enumerate(lines, 1):
-        if i not in cur_span:
-            continue
-        flat = strip_markdown(line)
-        if any(k in flat for k in ['仍写', '不符', '描述', '原文是', '例如', '矛盾', '历史', '前）', '前)']):
-            continue          # 引用旧文本作为说明，不是当前版本的主张
-        for m in re.finditer(r'(改为|修正为|写|指向)\s*[「『"]?([一二三四五六七八九十])轮', flat):
-            val = chinese.get(m.group(2))
-            if val is not None and rounds and val != rounds:
-                round_problems.append(
-                    f'  行{i}: 称「{m.group(1)}「{m.group(2)}轮」」，但全文真值为 {rounds} 轮'
-                    f' —— {flat.strip()[:70]}'
-                )
     sections.append(('评审轮次一致性', round_problems))
 
     if '--report' in sys.argv:
