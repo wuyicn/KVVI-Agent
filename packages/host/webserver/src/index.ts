@@ -55,10 +55,29 @@ export interface WebUpgradeRoute {
   handler: (req: IncomingMessage, socket: Duplex, head: Buffer) => void | Promise<void>
 }
 
+/**
+ * One IPv4 literal in canonical dotted-quad form.
+ *
+ * Each octet is 0-255 written without leading zeros: `010.0.0.1` is read as
+ * decimal by some resolvers and octal by others, so accepting it would let one
+ * configured value denote two different hosts.
+ */
+const IPV4_LITERAL = /^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/u
+
 /** Web server listen and response-compression config. */
 export interface Config {
-  /** Listen host; the two supported values are loopback and all-interfaces. */
-  host: '127.0.0.1' | '0.0.0.0'
+  /**
+   * Listen host: the loopback literal, the all-interfaces literal, or one
+   * explicit IPv4 literal.
+   *
+   * The all-interfaces literal stays enumerated here because a cordis.yml may
+   * set it directly, but the Web app's flag parser refuses `--host 0.0.0.0`,
+   * so the values a deployment can actually choose are loopback and one
+   * explicit address. The explicit form is what lets a deployment bind an
+   * internal interface and put its own entry point in front, instead of being
+   * confined to loopback that no other container can reach.
+   */
+  host: string
   /** Listen port; zero requests an OS-assigned port. */
   port: number
   /** Response compression for socket-backed HTTP requests. @default 'none' */
@@ -123,7 +142,7 @@ function createGzipMiddleware(config: ResolvedConfig): NodeMiddleware {
  */
 export class WebServer extends Service {
   static Config: z<Config> = z.object({
-    host: z.union([z.const('127.0.0.1'), z.const('0.0.0.0')]).required(),
+    host: z.union([z.const('127.0.0.1'), z.const('0.0.0.0'), z.string().pattern(IPV4_LITERAL)]).required(),
     port: z.natural().max(65535).required(),
     compression: z.union([z.const('none'), z.const('gzip')]).default(DEFAULT_COMPRESSION),
     compressionLevel: z.number().step(1).min(0).max(9).default(DEFAULT_COMPRESSION_LEVEL),

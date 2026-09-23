@@ -96,6 +96,24 @@ async function upgrade(port: number, path: string): Promise<ReturnType<typeof co
   return socket
 }
 
+describe('listen host enumeration', () => {
+  it('accepts loopback, all-interfaces, and one explicit IPv4 literal', () => {
+    for (const host of ['127.0.0.1', '0.0.0.0', '10.1.2.3', '172.19.0.2', '255.255.255.255']) {
+      expect(HttpServer.Config({ host, port: 0 }).host).toBe(host)
+    }
+  })
+
+  it('refuses anything that is not a canonical IPv4 literal', () => {
+    // Leading zeros are the load-bearing case: `010.0.0.1` is decimal to some
+    // resolvers and octal to others, so one configured value would denote two
+    // hosts. A hostname is refused for the same reason a rebinding attack
+    // relies on: the fence trusts IP literals, not names.
+    for (const host of ['010.0.0.1', '999.1.1.1', '1.2.3', '1.2.3.4.5', 'harness.internal', '::1', '']) {
+      expect(() => HttpServer.Config({ host, port: 0 })).toThrow()
+    }
+  })
+})
+
 describe('real Loader composition', () => {
   it('applies gzip only to eligible socket-backed HTTP responses', { timeout: 60_000 }, async () => {
     expect(HttpServer.Config({ host: '127.0.0.1', port: 0 })).toEqual({

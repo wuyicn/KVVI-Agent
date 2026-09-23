@@ -128,7 +128,12 @@ export function resolveLanTrust(bindHost: string, extra: readonly string[]): Web
       .filter((iface): iface is NonNullable<typeof iface> => iface !== undefined && iface.family === 'IPv4' && !iface.internal)
       .map(iface => iface.address)
     : []
-  return { lanAddresses, trustedHosts: [...lanAddresses, ...extra] }
+  // An explicitly bound address is reachable by whoever can route to it, and
+  // its requests carry that address in Host. Without this entry the fence would
+  // refuse every such request: the bind would succeed while the API stayed
+  // unreachable, which is a harder failure to read than a refused bind.
+  const explicit = bindHost !== ALL_INTERFACES_HOST && bindHost !== LOOPBACK_HOST ? [bindHost] : []
+  return { lanAddresses, trustedHosts: [...lanAddresses, ...explicit, ...extra] }
 }
 
 /** Model-visible orientation and acceptance boundary for sessions created through `dsh web`. */

@@ -26,6 +26,16 @@ describe('resolveLanTrust', () => {
     expect(trustedHosts).toEqual(['192.168.1.5', '10.0.0.7', 'harness.internal:3080'])
   })
 
+  it('trusts an explicitly bound address — the bind succeeds only if its own Host passes the fence', () => {
+    // Without this the server would bind the interface and then refuse every
+    // request arriving on it: a failure that reads as "unreachable" rather
+    // than as a misconfigured bind.
+    expect(resolveLanTrust('172.19.0.2', []))
+      .toEqual({ lanAddresses: [], trustedHosts: ['172.19.0.2'] })
+    expect(resolveLanTrust('172.19.0.2', ['harness.internal:3080']))
+      .toEqual({ lanAddresses: [], trustedHosts: ['172.19.0.2', 'harness.internal:3080'] })
+  })
+
   it('derives nothing for a loopback bind — extras alone stand, no LAN URL to print', () => {
     expect(resolveLanTrust('127.0.0.1', [])).toEqual({ lanAddresses: [], trustedHosts: [] })
     expect(resolveLanTrust('127.0.0.1', ['lab.internal']))

@@ -36,7 +36,7 @@ Compose the webserver as the HTTP transport of a browser-facing host, then let t
     port: 3000
 ```
 
-`host` accepts exactly two values: `127.0.0.1` (default posture, loopback only) and `0.0.0.0` (deliberate network exposure — the server carries no TLS, authentication, or origin policy of its own). `port` 0 requests an OS-assigned port; `ctx.webServer.port` reads the listening port afterwards.
+`host` accepts `127.0.0.1` (default posture, loopback only), `0.0.0.0` (deliberate network exposure — the server carries no TLS, authentication, or origin policy of its own), or one explicit IPv4 literal. The Web app's flag parser refuses `--host 0.0.0.0`, so in practice a deployment chooses loopback or one explicit address; the explicit form binds an internal interface for a deployment that puts its own entry point in front. Any non-loopback bind is network exposure with the same consequences stated above, and the config field alone provides no authentication. `port` 0 requests an OS-assigned port; `ctx.webServer.port` reads the listening port afterwards.
 
 Set `compression: 'gzip'` to wrap eligible socket-backed responses without changing route APIs. The client must accept gzip and the media type must be compressible; known response lengths below `compressionThresholdBytes` remain uncompressed, while unknown-length streams are eligible immediately. Existing encodings, `Cache-Control: no-transform`, range responses, SSE, ZIP, and the packaged `.gz` Worker image remain unchanged. The shipped Web bundle uses compression level 1 with a 1024-byte threshold; other compositions default to no compression.
 
