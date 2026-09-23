@@ -30,6 +30,10 @@ FREEZE_SET = [
     # 冻结记录与历史清单快照（但不含 清单.sha256 自身——那会自指）
     *(p for p in sorted(HERE.glob('*.md')) if p.is_file()),
     *(p for p in sorted(HERE.glob('清单-v*.sha256')) if p.is_file()),
+    # 机械核查工具本身（v2.14 冻结时补入）
+    # 理由：该工具的「全绿」是冻结门槛的一部分，因此**工具版本必须可追溯**。
+    # 此前遗漏 —— 门槛的一部分未进清单，等于门槛可被事后替换而不留痕。
+    *(p for p in sorted((ROOT / '工具').rglob('*')) if p.is_file()),
 ]
 
 

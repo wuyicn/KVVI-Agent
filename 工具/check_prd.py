@@ -409,6 +409,32 @@ def check_cross_section_counts(lines):
     return problems
 
 
+def check_round_enumeration(lines):
+    """§9.12 的「N轮评审的发现已全部处理（v2.1 … / v2.13 …）」括号列举必须完整。
+
+    第十三轮审计（`qwen3.8`）指出：工具的模式只覆盖「N轮评审」，
+    而括号里用的是**序数**（「第九轮验证」），既非基数也非「N轮评审」——
+    **若列举漏了一轮，没有任何检查能发现**。故单列本项。
+    """
+    problems = []
+    for i, line in enumerate(lines, 1):
+        m = re.search(r'轮评审的发现已全部处理\*{0,2}（([^）]*)）', line)
+        if not m:
+            continue
+        listed = re.findall(r'v(\d+\.\d+)', m.group(1))
+        if not listed:
+            continue
+        nums = sorted(int(x.split('.')[1]) for x in listed)
+        expected = list(range(nums[0], nums[-1] + 1))
+        missing = [n for n in expected if n not in nums]
+        if missing:
+            problems.append(
+                f'  行{i}: 括号列举缺 v2.{", v2.".join(map(str, missing))}'
+                f'（已列 {len(nums)} 轮，区间应为 v2.{nums[0]}–v2.{nums[-1]}）'
+            )
+    return problems
+
+
 def check_structure(lines):
     problems = []
     fences = sum(1 for l in lines if l.strip().startswith('```'))
@@ -473,6 +499,7 @@ def main():
         ('自称条数与表行数', check_count_claims(lines)),
         ('锚点编号顺序', check_anchor_numbers(lines)),
         ('跨节引用计数', check_cross_section_counts(lines)),
+        ('轮次列举完整性', check_round_enumeration(lines)),
         ('结构完整性', check_structure(lines)),
     ]
     round_problems, rounds = check_round_counts(lines)
