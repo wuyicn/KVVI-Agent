@@ -1,0 +1,29 @@
+{
+  "runner": "moonshot-api-stream",
+  "model": "kimi-k3",
+  "family": "moonshot",
+  "lens": "adversarial",
+  "endpoint": "https://api.moonshot.cn/v1/chat/completions",
+  "temperature": 1,
+  "prd_sha256": "6ed240567c255feb198df327feebbc7457cfc45fb5fafccaeb5f72decf00a7e9",
+  "prompt_sha256": "3bf60650f399462fad879e1ec2f470ffee2c4a8ad27a8dae73bbba726137255a",
+  "answer_sha256": "bb0e1b3cf3b28e3a63f0b1457d5080a43a58e72a47e5cf167dd2df24e9cf1030",
+  "answer_chars": 5408,
+  "reasoning_chars": 40072,
+  "stream_chunks": 29469,
+  "finish_reason": "stop",
+  "elapsed_seconds": 920.3,
+  "usage": {
+    "prompt_tokens": 80732,
+    "completion_tokens": 29492,
+    "total_tokens": 110224,
+    "cached_tokens": 51968,
+    "completion_tokens_details": {
+      "reasoning_tokens": 25977
+    },
+    "prompt_tokens_details": {
+      "cached_tokens": 51968,
+      "cache_write_tokens": 28672
+    }
+  }
+}

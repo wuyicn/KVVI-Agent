@@ -305,14 +305,38 @@ def check_retired(lines):
 
 
 def check_count_claims(lines):
-    """「N 条/类/项 X」后紧跟的表格，行数应与 N 相符。"""
+    """「N 条/类/项 X」后紧跟的表格，行数应与 N 相符。
+
+    「自称条数」检查连续三轮漏检（均由外部评审发现）：
+      · 第十一轮：真值取自被检查的断言本身（循环判据）
+      · 第十二轮：模式只覆盖「N轮评审」，漏裸基数「已N轮」
+      · 第十三轮：只认标题形式（`### x.y N类`），漏**加粗正文**形式
+        （如「**v2.13 修改的 17 项**」）
+    故此处同时匹配标题与「…的 N 项」式加粗正文。
+    """
     problems = []
-    cn = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10}
+    digits = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+              '六': 6, '七': 7, '八': 8, '九': 9, '十': 10}
+    claim_re = re.compile(r'([一二三四五六七八九十])([条类项种])')
     for i, line in enumerate(lines):
+        claimed = None
+        # ① 标题形式：### x.y N类/条/项
         m = re.match(r'^#{3,4}\s+(\d+(?:\.\d+)*)\s+([一二三四五六七八九十])([条类项种])', line)
-        if not m:
+        if m:
+            claimed = digits.get(m.group(2))
+        else:
+            # ② 标题形式之二：#### …… 的 N 项（阿拉伯数字）
+            m_ar = re.match(r'^#{3,4}\s+.*?的\s*(\d+)\s*[条类项种]', line)
+            if m_ar:
+                claimed = int(m_ar.group(1))
+            else:
+                # ③ 加粗正文形式：**……的 N 项**（加粗段须**以单位结尾**，避免
+                #    「一条结论」这类普通短语误报）
+                m2 = re.search(r'\*\*[^*]*?的\s*(\d+|[一二三四五六七八九十])\s*([条类项种])\*\*', line)
+                if m2:
+                    claimed = int(m2.group(1)) if m2.group(1).isdigit() else digits.get(m2.group(1))
+        if not claimed:
             continue
-        claimed = cn.get(m.group(2))
         # 向下找第一个表格，数它的数据行
         j = i + 1
         while j < len(lines) and not lines[j].strip().startswith('|'):
@@ -325,10 +349,10 @@ def check_count_claims(lines):
         while k < len(lines) and lines[k].strip().startswith('|'):
             k += 1
         rows = k - j - 2          # 减去表头与分隔行
-        if claimed and rows != claimed:
+        if rows != claimed:
             problems.append(
-                f'  行{i+1}: 标题称「{m.group(2)}{m.group(3)}」，但表格有 {rows} 行数据'
-                f' —— {line.strip()[:50]}'
+                f'  行{i+1}: 自称 {claimed}（{line.strip()[:40]}…），'
+                f'但表格有 {rows} 行数据 —— {line.strip()[:60]}'
             )
     return problems
 
@@ -337,19 +361,19 @@ def check_anchor_numbers(lines):
     """同一条表格单元格内的 ①…⑨ 编号必须按顺序出现。
 
     第九轮复评发现 §7.1 阶段一锚点为 ①②③⑥④⑤ —— 新增锚点插错位置。
+    需排除两类误报：
+      · 「§9.4.1 ②」这类**章节内子节引用**不是列表锚点
+      · 「阶段一 ⑦ / 阶段四 ⑥」这类**跨阶段引用**本就不递增
     """
     problems = []
     order = '①②③④⑤⑥⑦⑧⑨'
     for i, line in enumerate(lines, 1):
-        # 「§9.4.1 ②」这类是**章节内子节引用**，不是列表锚点，先剔除
         cleaned = re.sub(r'§\s*\d+(?:\.\d+)*\s*[①-⑨]', '', line)
         found = [c for c in cleaned if c in order]
         if len(found) < 2:
             continue
-        # 引用型描述（如「编号乱序（①②③⑥④⑤）」）是在描述问题，不是问题本身
         if any(k in cleaned for k in ['乱序', '这类', '重排', '例如', '曾', '原为']):
             continue
-        # 跨阶段的锚点引用（如「阶段一 ⑦ / 阶段四 ⑥」）本就不递增，不算错乱
         if cleaned.count('阶段') > 1 or re.search(r'[①-⑨][^①-⑨]{0,12}§', cleaned):
             continue
         idx = [order.index(c) for c in found]
@@ -364,9 +388,11 @@ def check_cross_section_counts(lines):
     第九轮复评发现 §4.6.5 写「§4.6.1 的三类数据」而 §4.6.1 标题是「四类」
     —— 沿用旧计数。这是「计数漂移」在**跨节引用**上的形态，
     与表格行数检查不同，故单列。
+
+    注意：若被引小节标题**去数字化**（如「数据归属」），本检查失去比对基准
+    —— 这是已知边界，故 §4.6.1 标题去数字化后，相关引用须人工核对。
     """
     problems = []
-    # 收集「#### x.y  N类...」形式的标题计数
     titled = {}
     for line in lines:
         m = re.match(r'^#{3,4}\s+(\d+\.\d+)\s+([一二三四五六七八九十])([类条项种])', line)
