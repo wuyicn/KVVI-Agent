@@ -78,11 +78,24 @@ fi
 
 if [[ "$REBUILD" == "1" || ! -f "$BUILD_MARK" ]]; then
   if [[ "$REBUILD" == "1" ]]; then say "重新构建…"; else say "构建产物缺失，开始构建…"; fi
-  # 品牌由 build-time 环境变量注入：DSH_CLIENT_TITLE 决定产品名，
-  # DSH_CLIENT_BUILD_PROFILE 决定上游官方品牌是否占用插槽
-  #（不设 official，KVVI 的 kvvi-brand 插件才能拿到那两个插槽）。
-  ( cd "$DSH_SRC" && DSH_CLIENT_BUILD_PROFILE=official \
-      DSH_CLIENT_TITLE="KVVI 搭建引擎" pnpm build )
+  # 品牌由 build-time 环境变量注入，DSH_CLIENT_TITLE 决定产品名。
+  #
+  # ★ 这里**故意不设** DSH_CLIENT_BUILD_PROFILE —— 设了会让 Web UI 起不来。
+  #
+  #   上游 ui-brand-official 的门控是「不是 official 就直接 return」。
+  #   而 sidebar.brand.mark / sidebar.brand.name 都是 kind:'single' 的格子，
+  #   注册语义是 one-occupant-per-cell fail-loud：同一 priority 的第二个注册
+  #   直接抛错（packages/client/ui-slots/src/index.ts:1138）。
+  #
+  #   所以设成 official 会让上游的鲸鱼标志和 kvvi-brand 抢同一个格子，
+  #   客户端加载即抛错 —— 构建能过，页面起不来。
+  #
+  #   `pnpm build` 不带 --profile 时不会强制 official：它采纳环境里所有
+  #   DSH_CLIENT_* 前缀的变量作为「嵌入产物的公开值」。不设该变量，
+  #   ui-brand-official 读到的就是 undefined，于是让位给 kvvi-brand。
+  #
+  #   上游的 `build:official` 才是给官方发布用的（那时没有 kvvi-brand 竞争）。
+  ( cd "$DSH_SRC" && DSH_CLIENT_TITLE="KVVI 搭建引擎" pnpm build )
   say "构建完成"
 fi
 
