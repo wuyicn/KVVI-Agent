@@ -39,9 +39,13 @@ SUPPORTED = ('business-schema/v1', 'view-schema/lce-safe-v1', 'app-spec/v1alpha1
 # 它用的不是 Spec 形态（见 docs/阶段三-五Skill任务卡.md 的卡 5）。
 # 把一个不能用的契约列进来，会让人以为「路径存在但产出物有问题」。
 FULL_ONLY = {
-    'workflow-spec/v1alpha1': 'workflow-spec-v1alpha1',
-    'tool-spec/v1alpha1': 'tool-spec-v1alpha1',
-    'permission-spec/v1alpha1': 'permission-spec-v1alpha1',
+    'workflow-spec/v1alpha1': ('workflow-spec-v1alpha1', 'Spec'),
+    'tool-spec/v1alpha1': ('tool-spec-v1alpha1', 'Spec'),
+    'permission-spec/v1alpha1': ('permission-spec-v1alpha1', 'Spec'),
+    # ★ 根定义不叫 Spec：它的 $ref 指向 $defs/Command。
+    #   把「根定义不叫 Spec」当成「没有校验入口」会得出它不可验证的错误结论 ——
+    #   实测 78 条用例判定一致 78/78。
+    'app-model-command/v1alpha1': ('app-model-command-v1alpha1', 'Command'),
 }
 FULL_CHECKER = os.path.join(ROOT, '工具', 'lib', 'full_bundle_check.mjs')
 
@@ -61,7 +65,7 @@ def run_cli(payload: bytes, contract: str, checks: str,
         return r.returncode, {'_raw': (r.stdout + r.stderr).decode('utf-8', 'replace')[:400]}
 
 
-def check_structure_only(path: str, contract: str, contract_id: str) -> int:
+def check_structure_only(path: str, contract: str, contract_id: str, entry: str = 'Spec') -> int:
     """
     对 cli.mjs 白名单之外的契约做**结构校验**。
 
@@ -76,7 +80,7 @@ def check_structure_only(path: str, contract: str, contract_id: str) -> int:
     print('  产出物 : %s' % os.path.relpath(path, ROOT))
     print('  契约   : %s' % contract)
     print()
-    r = subprocess.run(['node', FULL_CHECKER, contract_id, path],
+    r = subprocess.run(['node', FULL_CHECKER, contract_id, path, entry],
                        capture_output=True, timeout=300)
     try:
         doc = json.loads(r.stdout.decode('utf-8'))
@@ -112,7 +116,8 @@ def check(path: str, contract: str, context: Optional[str]) -> int:
         return 2
     if contract not in SUPPORTED:
         if contract in FULL_ONLY:
-            return check_structure_only(path, contract, FULL_ONLY[contract])
+            cid, entry = FULL_ONLY[contract]
+            return check_structure_only(path, contract, cid, entry)
         print('%s✗ 验证器不支持契约 %r%s' % (C_BAD, contract, C_OFF))
         print('  %s完整校验支持：%s%s' % (C_DIM, '、'.join(SUPPORTED), C_OFF))
         print('  %s仅结构校验支持：%s%s' % (C_DIM, '、'.join(sorted(FULL_ONLY)), C_OFF))

@@ -21,8 +21,11 @@
  * **所以本脚本给不出「完整校验」的结论** —— 它的输出里会显式写明这一点，
  * 不让人误以为跑过了就万事大吉。
  *
- * 用法：node full_bundle_check.mjs <contract-id> <instance.json>
+ * 用法：node full_bundle_check.mjs <contract-id> <instance.json> [entry]
  *   contract-id 形如 workflow-spec-v1alpha1（schema 的 $id 末段）
+ *   entry 默认 `Spec`。多数契约的根定义叫 Spec，但 **不是全部** ——
+ *   `app-model-command` 的根定义是 `Command`（其 $ref 指向它）。
+ *   把「根定义不叫 Spec」误当成「没有校验入口」，会得出它不可验证的错误结论。
  */
 import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -56,7 +59,7 @@ function buildEngine() {
   return ajv
 }
 
-const [, , contractId, instancePath] = process.argv
+const [, , contractId, instancePath, entry = 'Spec'] = process.argv
 if (!contractId || !instancePath) {
   process.stdout.write(JSON.stringify({
     error: 'usage: node full_bundle_check.mjs <contract-id> <instance.json>',
@@ -66,13 +69,17 @@ if (!contractId || !instancePath) {
 
 let validate
 try {
-  validate = buildEngine().getSchema(`${ID_PREFIX}${contractId}#/$defs/Spec`)
+  validate = buildEngine().getSchema(`${ID_PREFIX}${contractId}#/$defs/${entry}`)
 } catch (e) {
   process.stdout.write(JSON.stringify({ error: 'engine_failed', detail: String(e.message).slice(0, 300) }) + '\n')
   process.exit(1)
 }
 if (!validate) {
-  process.stdout.write(JSON.stringify({ error: 'no_spec_definition', contract: contractId }) + '\n')
+  process.stdout.write(JSON.stringify({
+    error: 'no_such_definition', contract: contractId, entry,
+    hint: '该契约的根定义可能不叫 Spec —— 查 schema 的 $ref 指向哪个 $defs。'
+      + '例如 app-model-command 是 Command。',
+  }) + '\n')
   process.exit(1)
 }
 
@@ -87,6 +94,7 @@ process.stdout.write(JSON.stringify({
   contract: contractId,
   stage: 'structure',
   // ★ 显式声明本校验的边界，避免被读成「完整校验通过」
+  entry,
   scope: 'structure_only',
   coverage_note: '本契约在 cli.mjs 的 CONTRACTS 白名单之外，'
     + '且没有契约专用的语义模块；此结果不含语义校验与引用校验。',
