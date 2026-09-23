@@ -1,0 +1,69 @@
+{
+  "tool_code": "general_item.get",
+  "tool_version": "1.0.0",
+  "gateway": "USER_GATEWAY",
+  "implementation_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "input_schema": {
+    "schema_id": "fixture.input",
+    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "output_schema": {
+    "schema_id": "fixture.output",
+    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "error_codes": [
+    "TOOL_RATE_LIMITED",
+    "item_not_found",
+    "permission_denied"
+  ],
+  "limits": {
+    "timeout_ms": 1000,
+    "max_input_bytes": 1024,
+    "max_output_bytes": 2048,
+    "max_items": 100
+  },
+  "rate_limit": {
+    "algorithm": "SLIDING_WINDOW",
+    "subject": "TENANT_ACTOR_TOOL",
+    "window_ms": 60000,
+    "max_requests": 60,
+    "burst_policy": "WITHIN_QUOTA"
+  },
+  "required_permissions": {
+    "builder_permissions": [],
+    "form_actions": [],
+    "field_filter": false,
+    "data_scope": true,
+    "flow_actions": []
+  },
+  "scope_policy": {
+    "allowed_scope_types": [
+      "TENANT"
+    ],
+    "app_refs": [],
+    "module_codes": []
+  },
+  "risk_level": "READ",
+  "data_access": "AUTHORIZED_BUSINESS",
+  "confirmation": {
+    "immediate": false,
+    "human_approval": false,
+    "dual_approval_declared": false,
+    "dual_approval_enabled": false
+  },
+  "reliability": {
+    "idempotency": "READ_ONLY",
+    "max_retries": 2,
+    "retry_on": [
+      "TIMEOUT"
+    ],
+    "compensation_ref": null
+  },
+  "audit_policy": {
+    "parameter_digest": true,
+    "result": true,
+    "rejection_reason": true,
+    "trace_id": true,
+    "retention_days": 30
+  }
+}
