@@ -1,0 +1,55 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"urn:kvvi:tool-private:0a-core-r1:context",
+  "type":"object", "additionalProperties":false,
+  "required":["fixture","suite_revision","current","business","fake_assets","snapshots","histories","grants"],
+  "properties":{
+    "fixture":{"const":true}, "suite_revision":{"const":"0a-core-r1"},
+    "current":{"$ref":"#/$defs/Current"},
+    "business":{"$ref":"#/$defs/Business"},
+    "view":{"type":"object","additionalProperties":false,"required":["capability_registry_ref","deleted_node_ids"],"properties":{
+      "capability_registry_ref":{"anyOf":[{"$ref":"#/$defs/Ref"},{"type":"null"}]},"deleted_node_ids":{"$ref":"#/$defs/Strings"}}},
+    "fake_assets":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["ref","content"],"properties":{"ref":{"$ref":"#/$defs/Ref"},"content":{}}}},
+    "snapshots":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["ref","registered"],"properties":{"ref":{"$ref":"#/$defs/Ref"},"registered":{"$ref":"#/$defs/Snapshot"}}}},
+    "histories":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["target","previous_ref","business_history","deleted_node_ids"],"properties":{
+      "target":{"$ref":"#/$defs/Identity","type":"object","unevaluatedProperties":false},"previous_ref":{"anyOf":[{"$ref":"#/$defs/Ref"},{"type":"null"}]},
+      "business_history":{"$ref":"#/$defs/History"},"deleted_node_ids":{"$ref":"#/$defs/Strings"}}}},
+    "grants":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["side","source_app_id","target","purpose"],"properties":{
+      "side":{"enum":["source","target"]},"source_app_id":{"type":["string","null"]},"target":{"$ref":"#/$defs/Ref"},"purpose":{"type":"string","minLength":1}}}}
+  },
+  "$defs":{
+    "Snapshot":{"$ref":"urn:kvvi:meta-schema:0a-core-r1:common#/$defs/RegisteredBase","type":"object","properties":{
+      "contract_version":{"enum":["business-schema/v1","view-schema/lce-safe-v1","app-spec/v1alpha1"]},
+      "schema_id":{"type":"string","format":"uuid"},"view_id":{"type":"string","format":"uuid"},"app_id":{"type":"string","format":"uuid"},
+      "spec":{},"source_ref":{"anyOf":[{"$ref":"#/$defs/Ref"},{"type":"null"}]}
+    },"required":["contract_version","spec"],"unevaluatedProperties":false,
+    "allOf":[
+      {"if":{"properties":{"contract_version":{"const":"business-schema/v1"}},"required":["contract_version"]},"then":{"properties":{"schema_id":{},"source_ref":{}},"required":["schema_id","source_ref"]}},
+      {"if":{"properties":{"contract_version":{"const":"view-schema/lce-safe-v1"}},"required":["contract_version"]},"then":{"properties":{"view_id":{}},"required":["view_id"]}},
+      {"if":{"properties":{"contract_version":{"const":"app-spec/v1alpha1"}},"required":["contract_version"]},"then":{"properties":{"app_id":{}},"required":["app_id"]}}
+    ]},
+    "Ref":{"anyOf":[{"$ref":"urn:kvvi:meta-schema:0a-core-r1:common#/$defs/AssetRef"},{"$ref":"urn:kvvi:meta-schema:0a-core-r1:common#/$defs/CapabilityRef"}]},
+    "Strings":{"type":"array","items":{"type":"string"},"uniqueItems":true},
+    "Identity":{"type":"object","properties":{
+      "scope_type":{"enum":["TENANT","TEMPLATE","PLATFORM_CONTROL"]},"scope_id":{"type":"string","minLength":1},
+      "app_id":{"type":["string","null"]},"module_id":{"type":["string","null"]},
+      "asset_type":{"enum":["BUSINESS_SCHEMA","VIEW_SCHEMA","APP_SPEC"]},"asset_id":{"type":"string","minLength":1}},
+      "required":["scope_type","scope_id","app_id","module_id","asset_type","asset_id"]},
+    "Current":{"$ref":"#/$defs/Identity","type":"object","properties":{
+      "stable_id":{"type":"string","format":"uuid"},"active_version":{"$ref":"urn:kvvi:meta-schema:0a-core-r1:common#/$defs/NonNegativeSafeInteger"},"purpose":{"type":"string"}},
+      "required":["stable_id","active_version","purpose"],"unevaluatedProperties":false},
+    "History":{"anyOf":[{"type":"null"},{"type":"object","additionalProperties":false,"required":["previous_spec","used_options","deleted_field_codes","value_samples"],"properties":{
+      "previous_spec":{"type":"object"},"used_fields":{"$ref":"#/$defs/Strings"},
+      "used_options":{"type":"object","additionalProperties":{"$ref":"#/$defs/Strings"}},"deleted_field_codes":{"$ref":"#/$defs/Strings"},
+      "value_samples":{"type":"object","additionalProperties":{"type":"array"}},
+      "field_identity_changes":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["previous_code","current_code"],"properties":{"previous_code":{"type":"string"},"current_code":{"type":"string"}}}}
+    }}]},
+    "Business":{"type":"object","additionalProperties":false,"required":["enabled_types","generators","index_capabilities","money_rules","history"],"properties":{
+      "enabled_types":{"$ref":"#/$defs/Strings"},
+      "generators":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["schema_code","field_code","type"],"properties":{"schema_code":{"type":"string"},"field_code":{"type":"string"},"type":{"type":"string"}}}},
+      "index_capabilities":{"type":"object","additionalProperties":{"type":"array","items":{"enum":["NORMAL","UNIQUE"]},"uniqueItems":true}},
+      "money_rules":{"type":"object","additionalProperties":{"type":"object","additionalProperties":false,"required":["precision","scale"],"properties":{"precision":{"type":"integer","minimum":1,"maximum":38},"scale":{"type":"integer","minimum":0,"maximum":38}}}},
+      "history":{"$ref":"#/$defs/History"}
+    }}
+  }
+}

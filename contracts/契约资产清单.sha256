@@ -2,7 +2,7 @@
 # 来源：KVVI-Builder worktree 0a-5-meta-schemas
 #        commit 0be4475  branch feat/0a-5-meta-schemas
 # 校验：python3 工具/g1_指纹.py --verify
-# 条目数：1339
+# 条目数：1340
 
 0556b723df6515e11c0fcadd64a08db0fc031f4020b20a70ee0c9fa2a791492a  .github/workflows/meta-schema-files.yml
 ce32c06339221f89cb4ae1c580d1a0c62ba5d2000056e98e6e50bc8ca3eca451  contracts/meta-schemas/0a-core-r1/BUSINESS.md
@@ -1296,6 +1296,7 @@ ff6c12dbb98d50ac6f5f260d1425bbc67cb8485bd15a99b86af4a5adfe8c3da1  tests/meta-sch
 dbe841e049b7f367388fbe9b0a46160b3d80f7c5656ac5d0be972d864265d233  tests/meta-schema-full/0a-full-r1/w12-cases.json
 9de7df66afdf04c0706fd9140f8fa45b5846862015667e47c5abc3fa4927ec1f  tests/meta-schema-full/0a-full-r1/w3-cases.json
 fad6c9bee9cd8d89c90b8fc74df68b4fd1dc4ad8e2e32382eeed1d43cfc9f6a0  tests/meta-schema-full/0a-full-r1/w4-cases.json
+453c0e7c4e5f746151897c3ff19081d1ece77404d91694d650c899af993e5dae  tools/meta-schema/context.schema.json
 6becdaab4f322efa2617fd7ade1fc604d954dbf92de8df8d5f5a1a576a30eeb8  tools/meta-schema/node/app.mjs
 b5659b8d1c4a243862e5a2bbd6a21db3b9252420fcf879298feeaae9302d0920  tools/meta-schema/node/bundle-policy.mjs
 cecf84abd977bec2bad85abf5ad156f356a00ae3e285a1bed295bbd180fd5d8f  tools/meta-schema/node/business.mjs
