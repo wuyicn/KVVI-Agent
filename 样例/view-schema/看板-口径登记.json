@@ -1,0 +1,37 @@
+{
+  "org": {
+    "tenants": ["t1"],
+    "depts": {
+      "sales": null,
+      "sales-a": "sales",
+      "sales-b": "sales",
+      "fin": null,
+      "fin-a": "fin"
+    },
+    "shops": ["store-1", "store-2"],
+    "users": [
+      {
+        "tenant": "t1",
+        "dept": "sales-a",
+        "shop": "store-1",
+        "id": "u1"
+      }
+    ]
+  },
+  "calibers": [
+    {
+      "aggregate": "caliber.monthly_sales",
+      "scopes": ["COMPANY"],
+      "resource": { "tenant": "t1" },
+      "inject": ["COMPANY"],
+      "expect": true
+    },
+    {
+      "aggregate": "caliber.dept_completion",
+      "scopes": ["DEPARTMENT", "DEPARTMENT_AND_CHILDREN"],
+      "resource": { "tenant": "t1", "dept": "sales-a" },
+      "inject": ["DEPARTMENT_AND_CHILDREN"],
+      "expect": true
+    }
+  ]
+}

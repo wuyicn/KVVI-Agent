@@ -18,6 +18,21 @@ cp "$REG" "$RESULT"
 restore() { git -C "$DSH" reset -q --hard "$HEAD0"; git -C "$DSH" clean -qfd; cp "$RESULT" "$REG"; rm -f "$RESULT"; }
 trap restore EXIT
 
+# ⚠️ 开工前必须确认工作区是干净的。
+#
+# 本测试靠 `git reset --hard` / `git clean -fd` 撤销自己制造的探针改动，
+# 而这两个命令**不区分「探针改动」与「你自己的未提交改动」** —— 一起删。
+# 已经发生过一次：一份写了两百多行的 SKILL.md 被这里的 restore 抹掉。
+# 所以从这里就拦住，而不是等它删完再解释。
+if [ -n "$(git -C "$DSH" status --porcelain)" ]; then
+  printf '\033[31m✗ vendor/dsh 工作区不干净 —— 拒绝运行\033[0m\n'
+  echo "  本自测会执行 git reset --hard 与 git clean -fd，"
+  echo "  **会删掉你尚未提交的改动**（不只是它自己的探针）。"
+  echo "  先提交或 git stash，再跑。当前改动："
+  git -C "$DSH" status --short
+  exit 2
+fi
+
 pass=0; fail=0
 T() {  # T <用例名> <期望退出码> <实际退出码>
   if [ "$2" = "$3" ]; then printf '  \033[32m✓\033[0m %-42s 退出码 %s（期望 %s）\n' "$1" "$3" "$2"; pass=$((pass+1))

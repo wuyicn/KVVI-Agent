@@ -41,8 +41,44 @@ PRD §2.5.1 明确：**未规定店铺与部门的组织包含关系，二者可
 
 ## 用法
 
-    python3 工具/check_invariant.py              # 跑内置用例
-    python3 工具/check_invariant.py --json       # 机读输出
+    python3 工具/check_invariant.py                       # 跑内置用例
+    python3 工具/check_invariant.py --json                # 机读输出
+    python3 工具/check_invariant.py --input <口径登记单.json>   # 判定实际产出的口径
+
+### 为什么需要 `--input`
+
+内置用例只证明**判定器本身**能区分成立与拒绝，不判定任何真实产出。
+而 §9.8.1 要求的门禁是「发布前检查这条口径」，检查对象是**搭建产出的配置**。
+
+`--input` 就是这条通路：把 `dashboard-builder` 产出的每条口径登记为
+
+    (aggregate, scopes, resource, inject)
+
+后交给同一套判定。判定通过即放行，不通过即拒绝发布（**不存在审批放行路径**）。
+
+这三个量**都不在 `view-schema` 里** —— 它们是配置的另外几处：
+
+| 量 | 来源 |
+|---|---|
+| `scopes` 可见性档位 | `permission-spec` 的 `data_scopes`（档位是**数组**，并集语义） |
+| `resource` 聚合范围 | 口径 capability 自身定义的范围 |
+| `inject` 查询注入档位 | 视图调用该查询时传入的 `params`（`DataQueryRef.params`） |
+
+所以 `dashboard-builder` 的产出包含**两个**文件：`view-schema` 的 `Spec`，
+以及这份口径登记单。前者过 MetaSchema，后者过本判定器。
+
+登记单格式（`org` 可选，缺省用内置的组织模型）：
+
+    {
+      "org": { "tenants": [...], "depts": {...}, "shops": [...], "users": [...] },
+      "calibers": [
+        { "aggregate": "caliber.monthly_sales",
+          "scopes": ["COMPANY"], "resource": {"tenant": "t1"},
+          "inject": ["COMPANY"], "expect": true }
+      ]
+    }
+
+`expect` 可省略；省略时判据是「该口径必须成立」。
 """
 
 import json
@@ -352,7 +388,100 @@ CASES = [
 ]
 
 
+# ── 实际产出：口径登记单 ────────────────────────────────────────────────
+
+def org_from(spec: Optional[Dict]) -> OrgModel:
+    """从登记单的 `org` 段建组织模型。缺省或空对象时用内置组织模型。"""
+    if not spec:
+        return _org()
+    missing = [k for k in ('tenants', 'depts', 'shops', 'users') if k not in spec]
+    if missing:
+        raise ValueError('org 段缺少字段：%s' % ', '.join(missing))
+    return OrgModel(spec['tenants'], spec['depts'], spec['shops'], spec['users'])
+
+
+def check_calibers(org: OrgModel, calibers: Sequence[Dict]) -> List[Dict]:
+    """
+    逐条判定登记单里的口径。
+
+    与内置用例的区别：**这里没有「期望值」** —— 每条口径的判据就是
+    「必须成立」。`expect` 只是给有意构造的拒绝用例留的口子。
+    """
+    out = []
+    for entry in calibers:
+        for key in ('aggregate', 'scopes', 'resource'):
+            if key not in entry:
+                raise ValueError('口径条目缺少字段 %s：%r' % (key, entry))
+        result = check(org, entry['aggregate'], entry['scopes'],
+                       entry['resource'], entry.get('inject'))
+        result['expect'] = entry.get('expect', True)
+        out.append(result)
+    return out
+
+
+def run_input(path: str, as_json: bool) -> int:
+    """判定一份口径登记单。退出码 0 = 全部口径成立。"""
+    try:
+        with open(path, encoding='utf-8') as fh:
+            payload = json.load(fh)
+    except (OSError, ValueError) as exc:
+        print('✗ 无法读取口径登记单 %s：%s' % (path, exc))
+        return 2
+
+    if not isinstance(payload, dict) or not isinstance(payload.get('calibers'), list):
+        print('✗ 口径登记单必须是 {"org"?: …, "calibers": [ … ]}')
+        return 2
+    if not payload['calibers']:
+        print('✗ 口径登记单里没有任何口径 —— 看板不产出口径，就不该走这条判定')
+        return 2
+
+    try:
+        org = org_from(payload.get('org'))
+        results = check_calibers(org, payload['calibers'])
+    except ValueError as exc:
+        print('✗ 口径登记单不合法：%s' % exc)
+        return 2
+
+    if as_json:
+        print(json.dumps({'source': path, 'calibers': results},
+                         ensure_ascii=False, indent=2))
+        return 0 if all(r['ok'] == r['expect'] for r in results) else 1
+
+    print('=== 0C-8 不变量判定（口径登记单）===')
+    print('来源：%s' % path)
+    print('不变量：能查看聚合口径的用户，必须能访问构成它的每一条个体数据')
+    print()
+
+    bad = 0
+    for r in results:
+        mark = '✓' if r['ok'] == r['expect'] else '✗'
+        if r['ok'] != r['expect']:
+            bad += 1
+        layer = '' if r['ok'] else '［%s］' % r['layer']
+        print('%s %-34s 判定=%-6s%s' % (mark, r['aggregate'],
+                                        '成立' if r['ok'] else '拒绝', layer))
+        if not r['ok']:
+            ce = r.get('counterexample')
+            print('      聚合范围 %s ／ 可见性档位 %s ／ 注入档位 %s'
+                  % (r['resource'], r['scopes'], r.get('inject')))
+            print('      %s' % (r.get('why') or ce['why']))
+
+    print()
+    if bad:
+        print('✗ %d 条口径不满足不变量 —— 按 §9.8.1 **拒绝发布**，无审批放行路径' % bad)
+        return 1
+    print('✓ %d 条口径全部成立' % len(results))
+    return 0
+
+
 def main() -> int:
+    if '--input' in sys.argv:
+        index = sys.argv.index('--input')
+        if index + 1 >= len(sys.argv):
+            print('✗ --input 需要一个文件路径')
+            return 2
+        return run_input(sys.argv[index + 1], '--json' in sys.argv)
+
     org = _org()
 
     if '--json' in sys.argv:

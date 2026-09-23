@@ -58,6 +58,35 @@ PY
 T "未注入被拒 / 正确注入被接受" 0 $?
 
 echo
+echo "[6] 口径登记单通路：**实际产出**能被判定"
+# 内置用例只证明判定器本身可信；本项证明「拿一份产出的口径登记单来跑」这条
+# 通路真的通 —— 包括它**会**拒绝一条坏口径，不是恒给绿灯。
+TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+cat > "$TMP/good.json" <<'JSON'
+{"calibers": [
+  {"aggregate": "caliber.monthly_sales", "scopes": ["COMPANY"],
+   "resource": {"tenant": "t1"}, "inject": ["COMPANY"]},
+  {"aggregate": "caliber.dept_completion", "scopes": ["DEPARTMENT", "DEPARTMENT_AND_CHILDREN"],
+   "resource": {"tenant": "t1", "dept": "sales-a"}, "inject": ["DEPARTMENT_AND_CHILDREN"]}
+]}
+JSON
+"${INV[@]}" --input "$TMP/good.json" >/dev/null 2>&1; T "两条合法口径 → 退出码 0" 0 $?
+
+cat > "$TMP/bad.json" <<'JSON'
+{"calibers": [
+  {"aggregate": "caliber.leaky", "scopes": ["COMPANY"],
+   "resource": {"tenant": "t1"}, "inject": ["SELF"]}
+]}
+JSON
+"${INV[@]}" --input "$TMP/bad.json" >/dev/null 2>&1; T "声明 COMPANY / 只注入 SELF → 退出码 1" 1 $?
+
+"${INV[@]}" --input "$TMP/bad.json" 2>/dev/null | grep -q "［L3］"
+T "坏口径被判在 L3（注入一致性）" 0 $?
+
+echo '{"calibers": []}' > "$TMP/empty.json"
+"${INV[@]}" --input "$TMP/empty.json" >/dev/null 2>&1; T "空登记单 → 退出码 2（不是绿灯）" 2 $?
+
+echo
 printf '小计：\033[32m%d 通过\033[0m' "$pass"
 [ "$fail" -gt 0 ] && printf '，\033[31m%d 失败\033[0m' "$fail"
 echo

@@ -109,28 +109,56 @@
 
 ---
 
-## 五、⚠️ 当前注册表里**没有图表组件**（对卡 4 的直接影响）
+## 五、注册表里**没有图表组件** —— 已按决策 A 处理
 
 23 个组件**全部不含**任何图表（线图、柱图、饼图等）。
+且 `view_type` 只有 `FORM` / `LIST` / `DETAIL`。
 
-而 `view_type` 只有 `FORM` / `LIST` / `DETAIL` —— **没有看板类型**。
+最初据此写下「看板在当前契约下没有载体」，并列出三种可能：
 
-**这意味着**：按当前契约与注册表，**PRD §5.1 给 dashboard-builder 指定的目标契约
-（`view-schema` + 聚合口径配置）无法表达一个看板。**
+| 可能 | 含义 | 结论 |
+|---|---|---|
+| **A** | 生产环境的注册表**另有图表组件**，`vue_element_approved` 只是测试 fixture | ✅ **已采纳**（见下） |
+| B | 看板由**新的 `view_type`** 承载，契约需要扩展 | ✗ 不需要（见下） |
+| C | 图表作为组件加进注册表，看板用 `DETAIL` 承载 | ✗ 改用 `LIST`（见下） |
 
-三种可能，**必须在卡 4 开工前澄清**：
+### 5.1 决策 A 已确认
 
-| 可能 | 含义 |
+**2026 年阶段三：采用 A** —— 生产注册表另有图表组件，本 Skill 据此开工；
+后期遇到问题再解决（图表做成组件/插件加进注册表，即 C 的形态）。
+
+### 5.2 ⚠️ 更正：**看板本来就有载体** —— `LIST`
+
+**早先「看板无载体」的结论是错的。** 核实后：
+
+| 事实 | 依据 |
 |---|---|
-| A | 生产环境的注册表**另有图表组件**，`vue_element_approved` 只是测试 fixture |
-| B | 看板由**新的 `view_type`** 承载，契约需要扩展 |
-| C | 看板用 `DETAIL` 承载，图表作为组件加进注册表 |
+| `LIST` 的根组件是 `ListPage`，`viewTypes` 含 `["LIST"]` | 注册表 |
+| 「看板」与「列表」的差别**在放了什么组件**，不在视图类型 | —— |
+| `Section` / `Grid` 可嵌套，`props.columns` 可选 1–4 栏 | 注册表 |
+| `Table` 的 `bindingPositions.data` 接受 `DataBindingRef` / `DataQueryRef` | 注册表 |
 
-**这是任务卡待办 3 的答案**：不是「聚合口径配置落在哪个 schema」的问题，
-而是**更前面的一步 —— 看板在当前契约下根本没有载体**。
+所以**不需要**新增 `view_type`（B 被排除），**也不需要**用 `DETAIL`（C 的承载方式被改为 `LIST`）。
+缺的**只有图表组件的名字**，而名字来自注册表 —— 这正是决策 A 的范围。
 
-> **本文档不下结论**，只把事实摆出来：以上判断基于唯一的可用注册表
-> （`vue_element_approved`，来自测试 fixture）。**卡 4 开工前须向产品侧确认。**
+### 5.3 口径的接入点（同时核实）
+
+`Spec.queries[]` 的每一项是 `{query_code, query}`，`query` 是 `DataQueryRef`
+→ `CapabilityRef`（`asset_type: "CAPABILITY"`）。
+节点侧用 `props.data` / 节点 `loop` 写 `DataBindingRef {queryCode, itemKey, maxItems}`。
+
+**这条通路已端到端跑通**，见 `样例/view-schema/月度销售看板.spec.json`
++ `context-看板.json`（完整校验通过）与 `样例/view-schema/看板-口径登记.json`
+（§9.8.1 不变量判定通过）。
+
+### 5.4 仍未闭合的一项
+
+**`CAPABILITY` 资产本身的登记内容没有契约。** 13 份 MetaSchema 里只有引用它的
+`CapabilityRef`，没有任何一份定义了 `category` / `inputSchema` / `itemKeys` /
+`runtimeDigest` 这些字段的合法形态。测试 fixture 里有实体（形态完整），但**没有契约**。
+
+后果：本层能保证「**引用**正确」，**不能**保证「登记内容合法」。已记入
+`docs/阶段三-待澄清事项.md` 事项 4。
 
 ---
 
@@ -194,8 +222,9 @@ python3 工具/check_skill_output.py <你的Spec.json> \
 
 | # | 不足 | 影响 |
 |---|---|---|
-| 1 | **基于测试 fixture 的注册表** | 「没有图表组件」这一结论可能不适用于生产注册表，见 §5 |
-| 2 | **`queries` 与 `meta` 未整理** | 本文只覆盖 `componentsTree` 主路径 |
+| 1 | **基于测试 fixture 的注册表** | 「没有图表组件」只对 fixture 成立；**已按决策 A 处理**（见 §5），生产注册表到手后须替换 §5.3 的图表节点名 |
+| 2 | **`queries` 的接入点已整理**（§5.3、§六），但 `meta` 未整理 | 看板路径已覆盖，其余用途未验证 |
 | 3 | **`SafeExpression` 与 `DataBindingRef` 的可用构造未展开** | 只知道不安全会被拒，不知确切白名单 |
 | 4 | **action 的 `capability_code` 清单未列出** | 依赖 `CAPABILITY_REGISTRY`，本文未整理 |
-| 5 | **未经第二人复核** | 全部由我一人从源码与用例读出 |
+| 5 | **`CAPABILITY` 资产本身没有契约** | 见 §5.4；本层只能保证引用正确 |
+| 6 | **未经第二人复核** | 全部由我一人从源码与用例读出 |

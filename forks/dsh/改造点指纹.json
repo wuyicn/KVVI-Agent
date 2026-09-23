@@ -113,7 +113,7 @@
       "status": "A"
     },
     "packages/preset/agent-presets/presets/kvvi-builder/skills/dashboard-builder/SKILL.md": {
-      "sha256": "45b54ec4609f57e3c0a2a142b5bf0f1d4af8f5053d04be121d69356eac1af077",
+      "sha256": "76403ed7141cbb039afe3245d562ed53752a2c8abcd47a28a7a2d88f8ac61920",
       "status": "A"
     },
     "packages/preset/agent-presets/presets/kvvi-builder/skills/data-model/SKILL.md": {
@@ -156,7 +156,7 @@
       "upstream_baseline_sha256": "3cb83b2131b5c4841ff07e312b2e1dddd7f2f493f40ab94012240822140f25bd"
     }
   },
-  "fork_head": "0ff80a1fe079fb68bc21004d31949d0ad7fae0db",
+  "fork_head": "834eec5363cb7b30d008636e45fbde3c392f0460",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "ddefc45fbc7f8e46dd73185e68295696d1297887"

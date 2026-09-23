@@ -90,12 +90,12 @@ def parse_gates():
 
 
 def parse_progress_status():
-    """从 进度.md 读每阶段状态与锚点达成数。"""
+    """从 进度.md 读每阶段的状态、锚点达成数与备注。"""
     if not PROGRESS.is_file():
         return {}
     status = {}
     for line in PROGRESS.read_text(encoding='utf-8').splitlines():
-        m = re.match(r'^\| (阶段[一二三四五六七]：[^|]+?) \| ([^|]*?) \| ([^|]*?) \| (\d+)/(\d+) \|', line)
+        m = re.match(r'^\| (阶段[一二三四五六七]：[^|]+?) \| ([^|]*?) \| ([^|]*?) \| (\d+)/(\d+) \| ?([^|]*?) ?\|', line)
         if m:
             raw_status = clean(m.group(3))
             for icon in STATUS_ICON.values():        # 剥掉状态列里的图标
@@ -104,6 +104,7 @@ def parse_progress_status():
                 'status': raw_status.strip(),
                 'done': int(m.group(4)),
                 'total': int(m.group(5)),
+                'note': m.group(6).strip(),
             }
     return status
 
@@ -236,16 +237,63 @@ def run_board():
     nxt = next((s for s in stages if status.get(s['name'], {}).get('status') != '已完成'),
                None)
     if nxt:
-        rec = status.get(nxt['name'], {})
-        i = rec.get('done', 0)
+        # 第一条**未勾选**的锚点 —— 不是「第 done 条」。
+        # 锚点可非连续完成，按序号取会把已完成的锚点当成下一步。
+        marks = checks.get(nxt['name'], [])
+        i = next((k for k, m in enumerate(marks) if not m), len(marks))
         print(f'  下一步   {nxt["name"]}')
         if i < len(nxt['anchors']):
             print(f'           {nxt["anchors"][i]}')
     print('═' * 74)
 
 
+def anchor_marks(name: str, count: int) -> list:
+    """该阶段每个锚点的勾选状态，长度恒为 `count`。
+
+    **不能用「前 N 个算完成」。** 锚点可以**非连续**完成（阶段三就是 ①③ 完成、
+    ②④ 未完成），按序号前缀渲染会把已完成的画成未完成、把未完成的画成已完成。
+
+    早先版本正是这样：`- [x]` 从 ③ 挪到了 ① —— 一次 `--write` 就能把进度表
+    **改成假的**，而且改得看不出来。所以这里以现有文件的 checkbox 为准。
+    """
+    marks = parse_anchor_checks().get(name, [])
+    if len(marks) == count:
+        return marks
+    return [False] * count
+
+
+def open_items() -> list:
+    """原样取回「未关闭事项」一节（表头之后、下一个 `---` 之前）。
+
+    这一节**没有任何 PRD 对应物** —— 它是人工积累的未决问题清单。
+    `--write` 的职责是重生成锚点，不是丢弃它没能力生成的段落。
+
+    只去掉两端由 `run_write` 固定重写的行：
+    开头的 `| — |` 占位行、结尾的「冻结记录中…」说明段。
+    中间可以夹任意内容（N3 的解决说明就是一段夹在表格中间的长引用）。
+    """
+    if not PROGRESS.is_file():
+        return []
+    lines = PROGRESS.read_text(encoding='utf-8').splitlines()
+    try:
+        start = lines.index('| # | 事项 | 阻断范围 | 状态 |') + 2
+        end = next(i for i in range(start, len(lines)) if lines[i].startswith('---'))
+    except (ValueError, StopIteration):
+        return []
+    block = lines[start:end]
+
+    def is_noise(line: str) -> bool:
+        return not line.strip() or line.lstrip().startswith('>')
+
+    while block and (block[0].startswith('| — |') or not block[0].strip()):
+        block.pop(0)
+    while block and (is_noise(block[-1]) or block[-1].startswith('| — |')):
+        block.pop()
+    return block
+
+
 def run_write():
-    """由 PRD 重新生成 进度.md 的锚点骨架；已存在的状态列保留。"""
+    """由 PRD 重新生成 进度.md 的锚点骨架；已存在的状态列与勾选保留。"""
     stages = parse_stages()
     gates = parse_gates()
     old = parse_progress_status()
@@ -254,14 +302,17 @@ def run_write():
 
     def status_of(name):
         rec = old.get(name)
-        if rec and rec['total'] == len([s for s in stages if s['name'] == name][0]['anchors']):
-            return rec['status'], rec['done']
+        anchors = [s for s in stages if s['name'] == name][0]['anchors']
+        if rec and rec['total'] == len(anchors):
+            # 达成数**从勾选数推导**，不沿用旧计数 —— 否则两处会漂移。
+            return rec['status'], sum(anchor_marks(name, len(anchors)))
         return '未开始', 0
 
     out = ["# KVVI-Agent 开发进度", "",
            "> **这是一份「打开就能看」的状态文件。** 详尽的定义在冻结的 PRD 里，此处只记**做到哪了**。",
            "> ⚠️ **不要手改锚点清单**——它由 `python3 工具/进度.py --write` 从 PRD 生成；",
-           "> 手改会在 PRD 修订后漂移。**人只填「状态」与「锚点达成」两列。**", "",
+           "> 手改会在 PRD 修订后漂移。**人只填两处**：「状态」列，以及锚点前的勾选框",
+           "> （**勾选才是真相**）。「锚点达成」列与勾选框不一致时以勾选框为准，", "",
            "---", "", "## 基准", "", "| 项 | 值 |", "|---|---|",
            "| PRD 版本 | **v2.16**（冻结） |",
            f"| PRD 指纹 | `{frozen}` |",
@@ -272,7 +323,10 @@ def run_write():
            "| 阶段 | 周期 | 状态 | 锚点达成 | 备注 |", "|---|---|---|---|---|"]
     for s in stages:
         st, done = status_of(s['name'])
-        out.append(f"| {s['name']} | {s['weeks']} | {st} | {done}/{len(s['anchors'])} | |")
+        # 备注列由人维护（进度依据、取证命令…），**必须原样保留** ——
+        # 它不是 PRD 推导出来的。早先版本写死为空，一次 `--write` 就把它抹掉。
+        note = (old.get(s['name']) or {}).get('note', '')
+        out.append(f"| {s['name']} | {s['weeks']} | {st} | {done}/{len(s['anchors'])} | {note} |")
 
     out += ["", "> **状态取值**：`未开始` / `进行中` / `已完成`（可写 `进行中`，图标由看板渲染）。",
             "> **🟢 的判据**：该阶段**全部锚点通过**才算完成——不接受「基本做完」「功能可用」（PRD §7.1 表后规则）。",
@@ -281,8 +335,8 @@ def run_write():
         st, done = status_of(s['name'])
         out.append(f"**{s['name']}**  [{s['weeks']}]")
         out.append("")
-        for i, a in enumerate(s['anchors'], 1):
-            out.append(f"- [{'x' if i <= done else ' '}] {a}")
+        for mark, a in zip(anchor_marks(s['name'], len(s['anchors'])), s['anchors']):
+            out.append(f"- [{'x' if mark else ' '}] {a}")
         out.append("")
 
     out += ["---", "", "## 阶段门禁", "", "| 门禁 | 条件 | 状态 |", "|---|---|---|"]
@@ -290,8 +344,11 @@ def run_write():
         out.append(f"| **{name}** | {cond} | {old_g.get(name, '未开始')} |")
     out += ["", "> **门禁的含义**（PRD §7.5.2）：**未通过，下一阶段不得启动**——不接受「先做后面、回头补」。",
             "", "---", "", "## 未关闭事项", "", "| # | 事项 | 阻断范围 | 状态 |", "|---|---|---|---|",
-            "| — | *（PRD v2.16 终审通过，当前无阻断项）* | — | — |", "",
-            "> 冻结记录中「不主张什么」一节仍然有效：**不主张安全评审已完成**——",
+            "| — | *（PRD v2.16 终审通过，当前无阻断项）* | — | — |"]
+    # ⚠️ 未关闭事项**全部由人维护**，PRD 里没有对应内容 —— 必须原样搬回来。
+    # 早先版本在这里写死，一次 `--write` 就会把 N1…N11 与 N3 的解决说明整段删掉。
+    out += open_items()
+    out += ["", "> 冻结记录中「不主张什么」一节仍然有效：**不主张安全评审已完成**——",
             "> 进入实现阶段后仍须由专门人员按标准方法（威胁建模等）做正式安全评审（PRD §9.12）。",
             "", "---", "", "## 怎么查", "", "```bash",
             "python3 工具/进度.py            # 打印看板（含锚点逐条清单与状态）",
