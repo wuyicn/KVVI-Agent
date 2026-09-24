@@ -69,7 +69,20 @@ function actorToken(req) {
  * @param {object} input 入参
  * @returns {Promise<{status: number, body: object}|null>} 响应；不属本模块时返回 null
  */
-export async function handleAuth({ method, path, body, headers }) {
+/**
+ * @param {object} input
+ * @param {string} input.method
+ * @param {string} input.path
+ * @param {object|null} input.body
+ * @param {object} input.headers
+ * @param {boolean} [input.omitOtherGateway]
+ *   省略 `toolsOfOtherGateway`。**只有工作台页面会用到**。
+ *   那组字段是给复核者核对「两个集合确实不相交」的取证材料，
+ *   而工作台的响应会直接渲染进员工浏览器 —— 让界面拿到
+ *   「另一个模式有哪些能力」，正是 §2.3 界面隔离要挡的东西。
+ *   审计与取证路径继续带它，不受影响。
+ */
+export async function handleAuth({ method, path, body, headers, omitOtherGateway = false }) {
   const fake = { headers }
 
   // ── ① 登录 ──────────────────────────────────────────────────────
@@ -144,13 +157,17 @@ export async function handleAuth({ method, path, body, headers }) {
     //   **一个搭建工具都没有**，而且这不是「本接口过滤的」——
     //   分类表是冻结常量，交集只减不增（见 toolsForGateway）。
     const enabled = Object.keys(TOOL_GATEWAY)
-    return { status: 200, body: {
+    const payload = {
       sessionId: ctx.sessionId, userId: ctx.userId, companyId: ctx.companyId,
       gateway: ctx.gateway, state: session.state, createdAt: session.createdAt,
       tools: toolsForGateway(ctx.gateway, enabled),
+    }
+    if (!omitOtherGateway) {
       // 让复核者能自己核对：两个集合都报出来。
-      toolsOfOtherGateway: toolsForGateway(ctx.gateway === 'USER' ? 'BUILDER' : 'USER', enabled),
-    } }
+      payload.toolsOfOtherGateway =
+        toolsForGateway(ctx.gateway === 'USER' ? 'BUILDER' : 'USER', enabled)
+    }
+    return { status: 200, body: payload }
   }
 
   // ── 签名接口（§9.4.1 ② 授权规则）───────────────────────────────

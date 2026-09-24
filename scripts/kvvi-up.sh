@@ -12,6 +12,7 @@
 #   ./scripts/kvvi-up.sh --down       # 停止并移除
 #   ./scripts/kvvi-up.sh --status     # 只看状态
 #   ./scripts/kvvi-up.sh --reset-volumes  # 清掉容器与**数据卷**（数据可弃时用）
+#   ./scripts/kvvi-up.sh --seed-dev       # 建开发演示账号（空库必备，否则登不进去）
 #
 # 启动后会打印**界面入口地址**（带一次性 token）。首次访问用带 token 的地址，
 # 它会换成 Cookie 并跳回根路径；之后直接开根地址即可。
@@ -32,7 +33,8 @@ for arg in "$@"; do
     --down)    MODE=down ;;
     --status)  MODE=status ;;
     --reset-volumes) MODE=reset-volumes ;;
-    -h|--help) sed -n '3,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --seed-dev) MODE=seed-dev ;;
+    -h|--help) sed -n '3,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) die "未知参数：$arg（用 --help 看用法）" ;;
   esac
 done
@@ -51,8 +53,11 @@ if [ ! -f "$ENV_FILE" ]; then
   say "生成进程间调用令牌与三个库口令 → $ENV_FILE"
   # 三个库各自的 superuser 口令（PRD §4.6.1「不共享 DBA」）。
   # 生成三个**不同**的值：共用口令会让「DBA 不共享」在配置层就不成立。
-  printf '# KVVI 本地开发口令。**不要提交**（已在 .gitignore）。\nKVVI_INTERNAL_TOKEN=%s\nKVVI_PLATFORM_DB_PASSWORD=%s\nKVVI_BUSINESS_DB_PASSWORD=%s\nKVVI_AUDIT_DB_PASSWORD=%s\n' \
-    "$(rand)" "$(rand)" "$(rand)" "$(rand)" > "$ENV_FILE"
+  #
+  # 第五个是**审计读角色**的口令。它与审计写角色分开 ——
+  # 共用一个口令时，读写分离只剩 SQL 授权那一半，凭据本身两者一样。
+  printf '# KVVI 本地开发口令。**不要提交**（已在 .gitignore）。\nKVVI_INTERNAL_TOKEN=%s\nKVVI_PLATFORM_DB_PASSWORD=%s\nKVVI_BUSINESS_DB_PASSWORD=%s\nKVVI_AUDIT_DB_PASSWORD=%s\nKVVI_AUDIT_READ_DB_PASSWORD=%s\n' \
+    "$(rand)" "$(rand)" "$(rand)" "$(rand)" "$(rand)" > "$ENV_FILE"
   chmod 600 "$ENV_FILE"
 fi
 
@@ -68,7 +73,8 @@ fi
 # 这种情况**不能猜**，必须让人决定：要么找回旧口令，要么清卷重建。
 MISSING_KEYS=""
 for key in KVVI_INTERNAL_TOKEN KVVI_PLATFORM_DB_PASSWORD \
-           KVVI_BUSINESS_DB_PASSWORD KVVI_AUDIT_DB_PASSWORD; do
+           KVVI_BUSINESS_DB_PASSWORD KVVI_AUDIT_DB_PASSWORD \
+           KVVI_AUDIT_READ_DB_PASSWORD; do
   if ! grep -q "^${key}=" "$ENV_FILE"; then
     printf '%s=%s\n' "$key" "$(rand)" >> "$ENV_FILE"
     say "补齐缺失的 ${key}（新值）"
@@ -90,7 +96,20 @@ fi
 set -a; . "$ENV_FILE"; set +a
 [ -n "${KVVI_INTERNAL_TOKEN:-}" ] || die "$ENV_FILE 里没有 KVVI_INTERNAL_TOKEN"
 
-dc() { docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"; }
+# ⚠️ 用 `-f` 会**关掉** docker compose 对 `docker-compose.override.yml` 的自动合并
+# —— 自动合并只发生在「不带任何 -f、直接用默认文件名」时。
+# 所以这里显式带上：存在就叠加，不存在就照旧。
+#
+# 那个覆盖层是**本地开发专用**（补开发签名密钥），交付的
+# `docker-compose.kvvi.yml` 一个字符都不改；部署到真实环境时不应带它。
+dc() {
+  if [ -f "$ROOT/docker-compose.override.yml" ]; then
+    docker compose -f "$COMPOSE_FILE" -f "$ROOT/docker-compose.override.yml" \
+      --env-file "$ENV_FILE" "$@"
+  else
+    docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
+  fi
+}
 
 case "$MODE" in
   down)
@@ -102,6 +121,16 @@ case "$MODE" in
     dc down -v
     ok "已清空（下一次 up 会从零建库）"
     exit 0 ;;
+  seed-dev)
+    # 建开发演示账号。**空库里没有账号时 `/auth/login` 一律回
+    # KVVI_BAD_CREDENTIALS** —— 那看起来像「登录坏了」，其实是没有账号，
+    # 而本仓库此前没有任何一条「怎么造一个账号」的路径。
+    #
+    # 走 migrate 服务跑：同一个镜像、同一份 pg 依赖，
+    # 于是 `hashPassword` 只有一份实现（抄一份迟早漂移）。
+    say "创建开发演示账号…"
+    dc run --rm --no-deps --build migrate node dev/seed-dev.mjs
+    exit $? ;;
 esac
 
 if [ "$MODE" = "rebuild" ]; then
@@ -110,8 +139,18 @@ if [ "$MODE" = "rebuild" ]; then
 fi
 
 say "启动（等待健康检查，最长 240 秒）…"
+# ⚠️ **默认带上 --build**，不是只在 --rebuild 时才构建。
+#
+# 不带 --build 时，改了 `services/platform/src/**` 却照常 `up`，
+# compose 会认为镜像已存在、直接复用**旧镜像** ——
+# 于是你改的代码一行都没跑，而症状是业务报错（如登录回 KVVI_BAD_GATEWAY），
+# 看着完全像代码 bug。这个坑本会话真实踩过一次：
+# 容器里的 migrate.mjs 是 114 行的旧版，主机上已经是 155 行。
+#
+# --build 在无变化时很快（全部命中缓存），远低于排查一次这种问题的时间。
+#
 # --wait 等的就是 Dockerfile 里的 HEALTHCHECK，不是容器 Running。
-dc up -d --wait --wait-timeout 240 || {
+dc up -d --build --wait --wait-timeout 240 || {
   printf '\n\033[31m✗ 健康检查未通过。日志：\033[0m\n'
   dc ps
   dc logs --tail=40

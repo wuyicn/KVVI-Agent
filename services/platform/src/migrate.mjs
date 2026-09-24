@@ -23,7 +23,28 @@ const PASSWORD = process.env.KVVI_DB_PASSWORD ?? 'kvvi-test'
 const ADMIN = process.env.KVVI_ADMIN_DSN
   ?? `postgres://kvvi:${PASSWORD}@127.0.0.1:55432/postgres`
 
-const adminFor = (db) => new Client({ connectionString: ADMIN.replace(/\/[^/]*$/, `/${db}`) })
+/**
+ * 每库一个超级用户连接。
+ *
+ * ⚠️ **这不只是为了干净，是为了正确。**
+ * §4.6.1 要求三个库是**三个独立实例**（compose 里就是三个 postgres 容器），
+ * 而 `KVVI_ADMIN_DSN` 只有一条连接串 —— 把它当成「一个超级用户能连三个库」，
+ * 只有在测试夹具（一个容器里三个库）里才成立。
+ * 真实拓扑下 `pg_database` 查不到别的实例，建表也会落到错的实例上。
+ *
+ * 所以三库各给一条可选的管理连接串；没给就回退到旧行为（单超级用户派生）。
+ * 测试夹具与本文件此前的调用方因此**不需要改**。
+ */
+const ADMIN_BY_DB = {
+  kvvi_platform: process.env.KVVI_ADMIN_DSN_PLATFORM ?? ADMIN,
+  kvvi_business: process.env.KVVI_ADMIN_DSN_BUSINESS ?? ADMIN,
+  kvvi_audit: process.env.KVVI_ADMIN_DSN_AUDIT ?? ADMIN,
+}
+
+const isSingleAdmin = new Set(Object.values(ADMIN_BY_DB)).size === 1
+
+const adminFor = (db) =>
+  new Client({ connectionString: ADMIN_BY_DB[db].replace(/\/[^/]*$/, `/${db}`) })
 
 /** 逐库执行一段 SQL。pg 的 simple query 支持多语句，但整段是一个事务单位。 */
 async function applyFile(db, file) {
@@ -90,7 +111,27 @@ async function grantPlatform() {
 }
 
 async function main() {
-  const steps = await provision()
+  // 三个库分属三个实例时，逐实例建角色 —— 不逐实例走一遍的话，
+  // `kvvi_business` 这个角色在 business 实例里根本不存在，后面的
+  // `GRANT ... TO kvvi_business` 会报 role does not exist。
+  //
+  // ⚠️ 口令**逐角色给**，不能全用同一个：compose 里平台进程拿到的 DSN
+  // 就是这四条各不相同的口令，建角色时若统一用平台口令，
+  // 业务/审计角色建出来就是**连不上**的 —— 报认证失败，看着像配置写错。
+  // 回退到 `KVVI_DB_PASSWORD` 是为了让测试夹具（单口令）不改也能跑。
+  const passwords = {
+    kvvi_platform: process.env.KVVI_DB_PASSWORD ?? PASSWORD,
+    kvvi_business: process.env.KVVI_BUSINESS_DB_PASSWORD ?? PASSWORD,
+    kvvi_audit_writer: process.env.KVVI_AUDIT_WRITER_PASSWORD ?? PASSWORD,
+    kvvi_audit_reader: process.env.KVVI_AUDIT_READER_PASSWORD ?? PASSWORD,
+  }
+  const steps = isSingleAdmin
+    ? await provision()
+    : [
+      ...await provision({ dsn: ADMIN_BY_DB.kvvi_platform, roles: ['kvvi_platform'], databases: ['kvvi_platform'], passwords }),
+      ...await provision({ dsn: ADMIN_BY_DB.kvvi_business, roles: ['kvvi_business'], databases: ['kvvi_business'], passwords }),
+      ...await provision({ dsn: ADMIN_BY_DB.kvvi_audit, roles: ['kvvi_audit_writer', 'kvvi_audit_reader'], databases: ['kvvi_audit'], passwords }),
+    ]
   await applyFile('kvvi_platform', '10-platform.sql')
   await applyFile('kvvi_platform', '15-visitor.sql')
   await applyFile('kvvi_platform', '16-publish.sql')

@@ -82,6 +82,48 @@ services:
       retries: 12
     restart: unless-stopped
 
+  # ── 一次性迁移：建库、建角色、建表、分权 ───────────────────────────
+  #
+  # ⚠️ **这个服务不是可选的装饰，少了它全栈路径根本走不通。**
+  # 此前 compose 里没有它，于是「空库 + up」会得到一个**在崩溃重启循环里**的
+  # 平台进程 —— 日志报 `relation "users" does not exist`，看起来像代码 bug，
+  # 实际是没人跑过迁移。全栈从来没有在**空库**上被走通过一次。
+  #
+  # 三个库分属三个实例（§4.6.1），所以给三条管理连接串，各自连自己的实例：
+  # 拿一条连接串去建三个库，只有在「单实例多库」的测试夹具里才成立。
+  migrate:
+    build:
+      context: .
+      dockerfile: services/platform/Dockerfile
+    image: kvvi/platform:dev
+    command: ["node", "src/migrate.mjs"]
+    environment:
+      # 各库的 superuser（就是各自 POSTGRES_USER），连到各自的库上。
+      KVVI_ADMIN_DSN_PLATFORM: "postgres://kvvi_platform:${KVVI_PLATFORM_DB_PASSWORD:?}@platform-db:5432/postgres"
+      KVVI_ADMIN_DSN_BUSINESS: "postgres://kvvi_business:${KVVI_BUSINESS_DB_PASSWORD:?}@business-db:5432/postgres"
+      KVVI_ADMIN_DSN_AUDIT: "postgres://kvvi_audit_owner:${KVVI_AUDIT_DB_PASSWORD:?}@audit-db:5432/postgres"
+      # 建出来的角色口令必须与平台进程拿到的 DSN 一致，否则角色建了也连不上。
+      KVVI_DB_PASSWORD: "${KVVI_PLATFORM_DB_PASSWORD:?}"
+      KVVI_BUSINESS_DB_PASSWORD: "${KVVI_BUSINESS_DB_PASSWORD:?}"
+      KVVI_AUDIT_WRITER_PASSWORD: "${KVVI_AUDIT_DB_PASSWORD:?}"
+      KVVI_AUDIT_READER_PASSWORD: "${KVVI_AUDIT_READ_DB_PASSWORD:?}"
+    volumes:
+      - platform-data:/var/lib/kvvi
+    networks:
+      - control
+      - data
+    depends_on:
+      platform-db: { condition: service_healthy }
+      business-db: { condition: service_healthy }
+      audit-db: { condition: service_healthy }
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    # 一次性任务：跑完就退出。`unless-stopped` 会让它反复重跑。
+    restart: "no"
+
   # ── 平台服务进程（**唯一对外入口**）────────────────────────────────
   # 身份层 / 授权判定 / 签名模块 / 发布通道 / 平台库访问 / 认证端点。
   #
@@ -105,7 +147,7 @@ services:
       KVVI_PLATFORM_DSN: "postgres://kvvi_platform:${KVVI_PLATFORM_DB_PASSWORD:?}@platform-db:5432/kvvi_platform"
       KVVI_BUSINESS_DSN: "postgres://kvvi_business:${KVVI_BUSINESS_DB_PASSWORD:?}@business-db:5432/kvvi_business"
       KVVI_AUDIT_DSN: "postgres://kvvi_audit_writer:${KVVI_AUDIT_DB_PASSWORD:?}@audit-db:5432/kvvi_audit"
-      KVVI_AUDITREAD_DSN: "postgres://kvvi_audit_reader:${KVVI_AUDIT_DB_PASSWORD:?}@audit-db:5432/kvvi_audit"
+      KVVI_AUDITREAD_DSN: "postgres://kvvi_audit_reader:${KVVI_AUDIT_READ_DB_PASSWORD:?}@audit-db:5432/kvvi_audit"
     ports:
       # 唯一对外端口：既是本进程的 /healthz 与 API，也是 Web UI 的入口
       #（非本进程路径经 proxy.mjs 转发给运行时进程）。
@@ -121,6 +163,8 @@ services:
       platform-db: { condition: service_healthy }
       business-db: { condition: service_healthy }
       audit-db: { condition: service_healthy }
+      # 平台起来前迁移必须跑完 —— 否则它读到的是空库，然后崩溃重启。
+      migrate: { condition: service_completed_successfully }
     # 部署基线：禁止提权、禁止新增能力。
     security_opt:
       - no-new-privileges:true

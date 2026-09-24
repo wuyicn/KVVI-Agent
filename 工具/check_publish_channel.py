@@ -29,7 +29,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, 'services', 'platform', 'src')
+SRC = os.path.join(ROOT, "services", "platform", "src")
 ONLY = 'publish.mjs'
 WRITE = re.compile(r'\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+policies\b', re.I)
 

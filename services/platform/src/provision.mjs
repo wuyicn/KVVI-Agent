@@ -36,30 +36,47 @@ const ROLES = [
 
 /**
  * 建库、建角色、分权。**幂等**：可重复运行。
+ *
+ * @param {object} [options]
+ * @param {string} [options.dsn] 该实例的管理连接串；缺省用 `KVVI_ADMIN_DSN`。
+ *   ⚠️ 三个库分属三个实例时**必须**逐实例调用 —— 一个超级用户连不到另一个实例，
+ *   「角色已存在」的判断会查在错的实例上。
+ * @param {string[]} [options.roles] 该实例上要建的角色；缺省建全部四个。
+ * @param {string[]} [options.databases] 该实例上要建的库；缺省建全部三个。
+ * @param {Record<string,string>} [options.passwords] 角色 → 口令；缺省都用 `KVVI_DB_PASSWORD`。
  * @returns {Promise<string[]>} 执行过的语句摘要
  */
-export async function provision() {
+export async function provision(options = {}) {
+  const dsn = options.dsn ?? ADMIN_DSN
+  const databases = options.databases ?? DATABASES
+  const roles = options.roles ?? ROLES.map(([name]) => name)
+  const passwords = options.passwords ?? {}
+  const passwordOf = (role) => passwords[role] ?? PASSWORD
+  // 本实例上建了几个库 —— 多于一个就说明这是「单实例多库」的测试夹具形态，
+  // 跨库撤销才有意义。三实例形态下它必然是 1。
+  const isSingleCluster = databases.length > 1
+
   const log = []
-  const admin = new Client({ connectionString: ADMIN_DSN })
+  const admin = new Client({ connectionString: dsn })
   await admin.connect()
   try {
     // `KVVI_RESET=1` 先删库重建。**只在开发与测试**使用 ——
     // 它是一句 `DROP DATABASE`，对生产数据没有「撤销」。
     if (process.env.KVVI_RESET === '1') {
-      for (const db of ['kvvi_platform', 'kvvi_business', 'kvvi_audit']) {
+      for (const db of databases) {
         await admin.query(`DROP DATABASE IF EXISTS ${db} WITH (FORCE)`)
       }
-      log.push('dropped 3 databases')
+      log.push('dropped ' + databases.length + ' databases')
     }
-    for (const [role] of ROLES) {
+    for (const role of roles) {
       await admin.query(`DO $$ BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${role}') THEN
-          CREATE ROLE ${role} LOGIN PASSWORD '${PASSWORD}';
+          CREATE ROLE ${role} LOGIN PASSWORD '${passwordOf(role)}';
         END IF;
       END $$`)
       log.push(`role ${role}`)
     }
-    for (const db of DATABASES) {
+    for (const db of databases) {
       const { rows } = await admin.query('SELECT 1 FROM pg_database WHERE datname = $1', [db])
       if (rows.length === 0) {
         await admin.query(`CREATE DATABASE ${db}`)
@@ -72,23 +89,45 @@ export async function provision() {
 
   // 逐库授予。**每个角色只连自己的库** —— 这是「一把钥匙开不了两扇门」
   // 在授权层面的形状。
-  await grant('kvvi_platform', ['kvvi_platform'])
-  await grant('kvvi_business', ['kvvi_business'])
-  await grant('kvvi_audit_writer', ['kvvi_audit'])
-  await grant('kvvi_audit_reader', ['kvvi_audit'])
+  //
+  // ⚠️ 三库分属三个实例时，**在本实例里只授予本实例的角色**：
+  // 别实例的角色名在这里根本不存在，`GRANT ... TO` 会直接报错。
+  // 这不是「少做了一步」—— 实例之间本来就不共享角色目录。
+  const GRANTS = [
+    ['kvvi_platform', ['kvvi_platform']],
+    ['kvvi_business', ['kvvi_business']],
+    ['kvvi_audit_writer', ['kvvi_audit']],
+    ['kvvi_audit_reader', ['kvvi_audit']],
+  ]
+  for (const [role, dbs] of GRANTS) {
+    if (!roles.includes(role)) continue
+    await grant(role, dbs.filter((db) => databases.includes(db)))
+  }
 
   // 反向撤销：确保没有任何角色能连别的库。
   // 只做「授予」不做「撤销」的话，一次误授予会永久留在集群里。
-  await revokeOthers('kvvi_platform', ['kvvi_business', 'kvvi_audit'])
-  await revokeOthers('kvvi_business', ['kvvi_platform', 'kvvi_audit'])
-  await revokeOthers('kvvi_audit_writer', ['kvvi_platform', 'kvvi_business'])
-  await revokeOthers('kvvi_audit_reader', ['kvvi_platform', 'kvvi_business'])
-  log.push('grants/revokes')
+  // 单实例（测试夹具）里三个库同处一个集群，这条**是**唯一能拦住跨库连接的检查；
+  // 三实例（compose）里它退化为空操作 —— 边界已经由网络隔离给定了。
+  if (isSingleCluster) {
+    const pairs = [
+      ['kvvi_platform', ['kvvi_business', 'kvvi_audit']],
+      ['kvvi_business', ['kvvi_platform', 'kvvi_audit']],
+      ['kvvi_audit_writer', ['kvvi_platform', 'kvvi_business']],
+      ['kvvi_audit_reader', ['kvvi_platform', 'kvvi_business']],
+    ]
+    for (const [role, dbs] of pairs) {
+      if (!roles.includes(role)) continue
+      await revokeOthers(role, dbs)
+    }
+    log.push('revokes')
+  }
+  log.push('grants')
 
   return log
 
   async function grant(role, dbs) {
-    const admin2 = new Client({ connectionString: ADMIN_DSN })
+    if (dbs.length === 0) return
+    const admin2 = new Client({ connectionString: dsn })
     await admin2.connect()
     try {
       for (const db of dbs) {
@@ -98,7 +137,7 @@ export async function provision() {
     } finally {
       await admin2.end()
     }
-    const c = new Client({ connectionString: ADMIN_DSN.replace('/postgres', `/${dbs[0]}`) })
+    const c = new Client({ connectionString: dsn.replace('/postgres', `/${dbs[0]}`) })
     await c.connect()
     try {
       await c.query(`GRANT ALL ON SCHEMA public TO ${role}`)
@@ -108,7 +147,7 @@ export async function provision() {
   }
 
   async function revokeOthers(role, dbs) {
-    const admin2 = new Client({ connectionString: ADMIN_DSN })
+    const admin2 = new Client({ connectionString: dsn })
     await admin2.connect()
     try {
       for (const db of dbs) {

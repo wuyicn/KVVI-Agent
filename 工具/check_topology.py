@@ -27,6 +27,9 @@ import subprocess
 import sys
 from typing import Dict, List, Optional, Tuple
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib'))
+import compose_env  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COMPOSE = os.path.join(ROOT, 'docker-compose.kvvi.yml')
 ENV_FILE = os.path.join(ROOT, '.kvvi-docker.env')
@@ -46,8 +49,14 @@ def run(cmd: str, timeout: int = 60) -> Tuple[Optional[int], str]:
         return -1, str(e)
 
 
-def compose_env() -> str:
-    """compose 需要的变量。没有 env 文件时给一个占位，静态检查不依赖它。"""
+def internal_token() -> str:
+    """进程间令牌：有 env 文件就用真值，没有就给占位（静态检查不依赖它）。
+
+    ⚠️ 名字**不能叫做 `compose_env`** —— 那个名字被上面 import 的
+    `工具/lib/compose_env.py` 占着。同名函数会把它遮蔽掉，
+    于是 `compose_env.placeholder_env(...)` 报
+    `'function' object has no attribute 'placeholder_env'`。
+    """
     token = 'static-check-token'
     if os.path.exists(ENV_FILE):
         for line in open(ENV_FILE, encoding='utf-8'):
@@ -61,14 +70,17 @@ def dc(*args: str, timeout: int = 60) -> Tuple[Optional[int], str]:
     # --env-file 只在文件存在时传：compose 对不存在的 env 文件直接报错，
     # 而没有 env 文件是完全正常的（首次静态检查时它还没被 kvvi-up.sh 生成）。
     env_part = '--env-file "%s"' % ENV_FILE if os.path.exists(ENV_FILE) else ''
-    # ⚠️ 三个库的口令是 `${VAR:?}` 形式的**必填**变量：compose 在变量缺失时
-    # 直接报错，而报错信息只写「required variable ... is missing」——
+    # ⚠️ compose 里 `${VAR:?}` 形式的**必填**变量在缺失时会让 compose 直接报错，
+    # 而报错信息只写「required variable ... is missing」——
     # 看起来像 compose 文件坏了，其实是静态检查没喂变量。
-    # 这三个值只用于**渲染配置**，静态检查不连数据库，所以给占位即可。
-    placeholder = ('KVVI_PLATFORM_DB_PASSWORD=p KVVI_BUSINESS_DB_PASSWORD=p '
-                   'KVVI_AUDIT_DB_PASSWORD=p')
+    #
+    # 占位变量**从 compose 文件扫出来**（`工具/lib/compose_env.py`），
+    # 不在这里维护第二份名单：那份名单与 compose 是两份事实，已经漂移过一次
+    # （compose 加了 KVVI_AUDIT_READ_DB_PASSWORD，检查器却还只喂三个）。
+    # 这些值只用于**渲染配置**，静态检查不连数据库，所以给占位即可。
+    placeholder = compose_env.placeholder_env(COMPOSE)
     return run('KVVI_INTERNAL_TOKEN=%s %s docker compose -f "%s" %s %s'
-               % (compose_env(), placeholder, COMPOSE, env_part, q), timeout=timeout)
+               % (internal_token(), placeholder, COMPOSE, env_part, q), timeout=timeout)
 
 
 def compose_json() -> Optional[dict]:
@@ -93,14 +105,44 @@ def check_static() -> bool:
     ok = True
     services = cfg.get('services', {})
 
-    want = {'platform', 'runtime'}
-    got = set(services)
-    runners = [s for s in set(cfg['services']) if not s.endswith('-db')]
-    if sorted(runners) == ['platform', 'runtime']:
-        print('  %s✓%s 两个进程各为一个 service：%s' % (C_OK, C_OFF, ', '.join(sorted(got))))
+    # ── runner 的判据是「**长期运行的进程**」，不是「service 名字的全体」──
+    #
+    # 早先这里是 `set(services) == {'platform','runtime'}`，而那个等式在
+    # N15 把三个库拆成三个容器、以及后来补上 `migrate` 之后就不成立了 ——
+    # 于是检查器开始报「service 集合不对」，而实际拓扑是对的。
+    # 一个把**新增基础设施**读成**违规**的断言，会训练人忽略它。
+    #
+    # 所以按性质分类，并且**任何未登记的 service 仍然报错** ——
+    # 这样新加的东西会被看见，而合法的扩展不会。
+    DB_SUFFIX = '-db'
+    ONE_SHOT = {'migrate'}          # 一次性任务：跑完即退出
+    WANT_RUNNERS = {'platform', 'runtime'}
+
+    db_services = {s for s in services if s.endswith(DB_SUFFIX)}
+    runners = {s for s in services if s not in db_services and s not in ONE_SHOT}
+    unknown = set(services) - db_services - ONE_SHOT - WANT_RUNNERS
+
+    if runners == WANT_RUNNERS and not unknown:
+        print('  %s✓%s 长期运行的进程恰好两个：%s（另有 %d 个库容器、%d 个一次性任务）'
+              % (C_OK, C_OFF, ', '.join(sorted(runners)), len(db_services), len(ONE_SHOT)))
     else:
         ok = False
-        print('  %s✗ service 集合是 %s，期望 %s%s' % (C_BAD, sorted(got), sorted(want), C_OFF))
+        if runners != WANT_RUNNERS:
+            print('  %s✗ 长期运行的 service 是 %s，期望 %s%s'
+                  % (C_BAD, sorted(runners), sorted(WANT_RUNNERS), C_OFF))
+        if unknown:
+            print('  %s✗ 出现了未登记的 service：%s —— 新加的 service 必须先在这里登记，'
+                  '再说明它为什么不算 runner%s' % (C_BAD, sorted(unknown), C_OFF))
+
+    # 一次性任务必须真的是一次性的：`restart` 不是 "no" 就会反复重跑。
+    for name in ONE_SHOT:
+        spec = services.get(name)
+        if spec is None:
+            continue
+        if str(spec.get('restart', '')) != 'no':
+            ok = False
+            print('  %s✗ 一次性任务 %s 的 restart 是 %r，期望 "no"（否则会反复重跑）%s'
+                  % (C_BAD, name, spec.get('restart'), C_OFF))
 
     # 无共享可写文件系统：两边的卷 source 不得相交
     mounts: Dict[str, List[str]] = {}

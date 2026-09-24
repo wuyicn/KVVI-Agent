@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KVVI 工作台</title>
+<style>
+  :root{
+    --fg:#1a1d21; --muted:#6b7280; --line:#e5e7eb; --line2:#f1f2f4;
+    --bg:#f6f7f9; --card:#fff; --accent:#2f6bff; --accent-dark:#1f4fd0;
+    --ok-bg:#ecfdf5; --ok-fg:#166534; --warn-bg:#fffbeb; --warn-fg:#92400e;
+    --bad-bg:#fef2f2; --bad-fg:#991b1b; --radius:12px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+    font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  }
+  button{font:inherit;cursor:pointer}
+  input{font:inherit}
+
+  /* ── 登录视图 ─────────────────────────────────────────────── */
+  #login{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px}
+  #login .box{width:100%;max-width:372px;background:var(--card);border:1px solid var(--line);
+    border-radius:16px;padding:32px 30px;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+  #login h1{margin:0 0 4px;font-size:20px;letter-spacing:.3px}
+  #login .sub{color:var(--muted);font-size:12.5px;margin-bottom:24px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px}
+  .field input{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:9px;
+    background:#fff;outline:none;transition:border-color .12s,box-shadow .12s}
+  .field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,107,255,.12)}
+  .btn{width:100%;padding:10px 14px;border:none;border-radius:9px;background:var(--accent);
+    color:#fff;font-weight:600;transition:background .12s}
+  .btn:hover:not(:disabled){background:var(--accent-dark)}
+  .btn:disabled{opacity:.55;cursor:progress}
+  #loginMsg{margin-top:14px;font-size:12.5px;min-height:19px}
+  .msg-bad{color:var(--bad-fg)}
+  .msg-ok{color:var(--ok-fg)}
+  .msg-dim{color:var(--muted)}
+  #companyPick{margin-top:6px}
+  #companyPick button{display:block;width:100%;margin-top:8px;padding:9px 12px;text-align:left;
+    background:#fff;border:1px solid var(--line);border-radius:9px}
+  #companyPick button:hover{border-color:var(--accent);background:#f8faff}
+
+  /* ── 工作台视图 ───────────────────────────────────────────── */
+  #app{display:none;min-height:100%}
+  header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 26px;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header .brand{font-weight:700;font-size:15.5px;letter-spacing:.3px}
+  header .tag{font-size:11.5px;color:var(--muted);border:1px solid var(--line);
+    border-radius:999px;padding:2px 9px}
+  header .spacer{flex:1}
+  header .who{font-size:12.5px;color:var(--muted)}
+  header .link{background:none;border:none;color:var(--accent);font-size:12.5px;padding:4px 6px}
+  header .link:hover{text-decoration:underline}
+  main{padding:24px 26px 64px;max-width:1120px;margin:0 auto}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px}
+  .card.wide{grid-column:1/-1}
+  .card h2{margin:0 0 3px;font-size:14.5px}
+  .card .hint{color:var(--muted);font-size:12px;margin-bottom:16px}
+  .kv{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-top:1px solid var(--line2)}
+  .kv:first-of-type{border-top:none}
+  .kv .k{color:var(--muted);flex:0 0 auto}
+  .kv .v{font-weight:600;text-align:right;word-break:break-all}
+  ul.caps{list-style:none;margin:0;padding:0}
+  ul.caps li{padding:9px 0;border-top:1px solid var(--line2);display:flex;
+    justify-content:space-between;gap:12px;align-items:baseline}
+  ul.caps li:first-child{border-top:none}
+  ul.caps code{background:#f3f4f6;border-radius:5px;padding:2px 7px;font-size:12px}
+  ul.caps .when{color:var(--muted);font-size:12px}
+  .badge{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:999px;font-weight:600}
+  .badge.ok{background:var(--ok-bg);color:var(--ok-fg)}
+  .badge.warn{background:var(--warn-bg);color:var(--warn-fg)}
+  .badge.bad{background:var(--bad-bg);color:var(--bad-fg)}
+  .empty{color:var(--muted);font-size:13px}
+  .note{background:#fff;border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:var(--radius);padding:16px 20px;font-size:12.5px;line-height:1.9;color:var(--muted)}
+  .note b{color:var(--fg)}
+  .note code{background:#f3f4f6;border-radius:5px;padding:1px 6px;font-size:12px;color:var(--fg)}
+  .spinner{display:inline-block;width:13px;height:13px;border:2px solid var(--line);
+    border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;
+    vertical-align:-2px;margin-right:7px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ── 登录 ──────────────────────────────────────────────────── -->
+<div id="login">
+  <form class="box" id="loginForm" autocomplete="on">
+    <h1>KVVI 工作台</h1>
+    <div class="sub">用你的账号登录，进入本职业务系统</div>
+
+    <div class="field">
+      <label for="login">账号</label>
+      <input id="loginInput" name="login" type="text" autocomplete="username"
+             placeholder="请输入账号" required>
+    </div>
+    <div class="field">
+      <label for="password">口令</label>
+      <input id="passwordInput" name="password" type="password"
+             autocomplete="current-password" placeholder="请输入口令" required>
+    </div>
+
+    <button class="btn" id="submitBtn" type="submit">登录</button>
+    <div id="loginMsg"></div>
+    <div id="companyPick"></div>
+  </form>
+</div>
+
+<!-- ── 工作台 ────────────────────────────────────────────────── -->
+<div id="app">
+  <header>
+    <span class="brand">KVVI 工作台</span>
+    <span class="tag" id="tagGateway">—</span>
+    <span class="spacer"></span>
+    <span class="who" id="tagWho">—</span>
+    <button class="link" id="logoutBtn" type="button">退出</button>
+  </header>
+
+  <main>
+    <div class="grid">
+
+      <section class="card">
+        <h2>本次会话</h2>
+        <div class="hint">来自身份层，页面按它渲染</div>
+        <div id="sessionBox"><span class="spinner"></span>读取中…</div>
+      </section>
+
+      <section class="card">
+        <h2>我能做什么</h2>
+        <div class="hint" id="capsHint">本模式下可用的能力，由身份层按会话给出</div>
+        <ul class="caps" id="capsList"><li class="empty">读取中…</li></ul>
+      </section>
+
+      <section class="card">
+        <h2>我的系统</h2>
+        <div class="hint">搭建完成后发布到本公司的业务系统</div>
+        <div id="appsBox"><div class="empty">尚未读取</div></div>
+      </section>
+
+      <section class="card wide">
+        <h2>对话办理</h2>
+        <div class="hint">工作模式下用自然语言表达意图</div>
+        <div id="chatBox"><div class="empty">对话区尚未接通 —— 见下方说明</div></div>
+      </section>
+
+      <section class="note wide" id="aboutBox"></section>
+
+    </div>
+  </main>
+</div>
+
+<script>
+'use strict';
+
+const TOKEN_KEY = 'kvvi.workbench.token';
+
+const $ = (id) => document.getElementById(id);
+
+function esc(v){
+  return String(v == null ? '' : v).replace(/[&<>"]/g, (c) =>
+    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+}
+
+/** 后端错误码 → 人话。判据在服务端，这里只做呈现。 */
+const MESSAGES = {
+  KVVI_BAD_CREDENTIALS: '账号或口令不对。',
+  KVVI_ACCOUNT_NOT_ACTIVE: '账号已停用，请联系管理员。',
+  KVVI_NOT_A_MEMBER: '该账号不属于任何公司。',
+  KVVI_BAD_GATEWAY: '入口类型不对 —— 工作台只接受员工入口（USER）。',
+  KVVI_BAD_JSON: '请求格式错误。',
+  KVVI_TOKEN_REQUIRED: '登录状态已失效，请重新登录。',
+  KVVI_INVALID_TOKEN: '登录状态已失效，请重新登录。',
+  KVVI_IDENTITY_UNAVAILABLE: '身份层暂时不可用，请稍后重试。',
+  KVVI_COMPANY_SELECTION_REQUIRED: '这个账号属于多家公司，请选择本次要进入的公司。',
+};
+
+function say(text, kind){
+  const el = $('loginMsg');
+  el.className = kind ? 'msg-' + kind : '';
+  el.textContent = text || '';
+}
+
+function getToken(){ return sessionStorage.getItem(TOKEN_KEY) || ''; }
+function setToken(t){
+  if (t) sessionStorage.setItem(TOKEN_KEY, t);
+  else sessionStorage.removeItem(TOKEN_KEY);
+}
+
+/** 调平台的身份端点。**令牌只放在头里**，不放 URL 也不放 Cookie。 */
+async function authFetch(path, options){
+  const opts = Object.assign({ headers: {} }, options || {});
+  const token = getToken();
+  if (token) opts.headers.authorization = 'Bearer ' + token;
+  if (opts.body !== undefined && typeof opts.body !== 'string') {
+    opts.headers['content-type'] = 'application/json';
+    opts.body = JSON.stringify(opts.body);
+  }
+  const res = await fetch(path, opts);
+  let body = null;
+  try { body = await res.json(); } catch (e) { body = null; }
+  return { status: res.status, body };
+}
+
+/* ── 登录 ─────────────────────────────────────────────────────── */
+
+let pendingCompany = null;
+
+async function doLogin(login, password, companyId){
+  say('正在登录…', 'dim');
+  $('submitBtn').disabled = true;
+  $('companyPick').innerHTML = '';
+  try {
+    const body = { login, password, gateway: 'USER' };
+    if (companyId) body.companyId = companyId;
+    // 走 /auth/login 而不是 /workbench/api/... ：**登录端点只有一份**，
+    // 工作台不复制身份逻辑，只消费它的结果。
+    const r = await authFetch('/auth/login', { method: 'POST', body });
+    if (r.status === 409 && r.body && r.body.error === 'KVVI_COMPANY_SELECTION_REQUIRED') {
+      say(MESSAGES.KVVI_COMPANY_SELECTION_REQUIRED, 'dim');
+      pendingCompany = { login, password };
+      const box = $('companyPick');
+      box.innerHTML = (r.body.companies || []).map((c) =>
+        '<button type="button" data-company="' + esc(c.companyId) + '">' + esc(c.name || c.companyId) + '</button>'
+      ).join('');
+      Array.prototype.forEach.call(box.querySelectorAll('button'), (b) => {
+        b.addEventListener('click', () => doLogin(login, password, b.getAttribute('data-company')));
+      });
+      return;
+    }
+    if (r.status !== 201 || !r.body || !r.body.token) {
+      const code = (r.body && r.body.error) || ('HTTP ' + r.status);
+      say(MESSAGES[code] || ('登录失败：' + code), 'bad');
+      return;
+    }
+    setToken(r.body.token);
+    say('', '');
+    await enterWorkbench();
+  } catch (error) {
+    say('网络错误：' + error, 'bad');
+  } finally {
+    $('submitBtn').disabled = false;
+  }
+}
+
+$('loginForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  doLogin($('loginInput').value.trim(), $('passwordInput').value, null);
+});
+
+/* ── 工作台 ───────────────────────────────────────────────────── */
+
+async function enterWorkbench(){
+  const r = await authFetch('/workbench/api/session', { method: 'GET' });
+  if (r.status === 401) {
+    setToken('');
+    showLogin('登录状态已失效，请重新登录。');
+    return;
+  }
+  if (r.status !== 200 || !r.body) {
+    showLogin('读取会话失败：' + ((r.body && r.body.error) || ('HTTP ' + r.status)));
+    return;
+  }
+  renderSession(r.body);
+  $('login').style.display = 'none';
+  $('app').style.display = 'block';
+}
+
+function showLogin(message){
+  $('app').style.display = 'none';
+  $('login').style.display = 'flex';
+  if (message) say(message, 'bad');
+}
+
+function renderSession(s){
+  const isEmployee = s.gateway === 'USER';
+  $('tagGateway').textContent = '工作模式';
+  $('tagWho').textContent = '公司 ' + String(s.companyId).slice(0, 8) + '…';
+  $('sessionBox').innerHTML =
+    row('会话', s.sessionId) +
+    row('模式', '工作模式（员工入口）') +
+    row('所属公司', s.companyId) +
+    row('状态', s.state) +
+    row('建立时间', s.createdAt);
+
+  const caps = s.capabilities || [];
+  const list = $('capsList');
+  if (!caps.length) {
+    list.innerHTML = '<li class="empty">身份层没有给出任何能力</li>';
+  } else {
+    list.innerHTML = caps.map((name) =>
+      '<li><code>' + esc(name) + '</code><span class="when">本模式可用</span></li>').join('');
+  }
+  $('capsHint').innerHTML = '本模式下可用能力 ' + caps.length + ' 项 —— '
+    + '由身份层按**会话**给出，不是界面过滤的结果';
+
+  // 界面隔离：页面上不渲染任何搭建入口。这里**如实说明它为什么不在**，
+  // 而不是假装没有这回事 —— 说不清边界的隔离，读起来像遗忘。
+  const o = s.otherGatewayCapabilitiesOmitted;
+  $('aboutBox').innerHTML =
+    '<b>这一页是什么</b><br>'
+    + '它是 KVVI 自己的工作台页面，由平台服务进程直接提供 —— **不是 DSH 自带界面的一部分**。'
+    + 'PRD §2.6.1 说「模式由入口决定，不做会话内切换」，而只有平台进程知道一个会话属于哪种模式，'
+    + '所以工作台挂在它上面。<br><br>'
+    + '<b>为什么这里看不到搭建入口</b><br>'
+    + '不是把按钮藏起来了。`/workbench/api/session` 返回的能力表里**本来就没有**搭建类能力'
+    + '（' + (o ? '另一个模式的清单被显式省略，键名 <code>otherGatewayCapabilitiesOmitted</code> 写明这是刻意的'
+              : '⚠️ 未确认省略') + '）。'
+    + '界面拿不到的东西，渲染不出来。<br><br>'
+    + '<b>还没接的部分</b><br>'
+    + '对话区与「我的系统」还是空的：前者要接运行时进程的 Agent 会话接口，'
+    + '后者要有发布通道产出的已发布版本。两样都还没做，这里如实标出来，不假装能用。';
+
+  function row(k, v){
+    return '<div class="kv"><span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + '</span></div>';
+  }
+}
+
+$('logoutBtn').addEventListener('click', async () => {
+  try { await authFetch('/auth/logout', { method: 'POST' }); } catch (e) { /* 登出失败也要清本地 */ }
+  setToken('');
+  showLogin('已退出。');
+});
+
+/* ── 启动 ─────────────────────────────────────────────────────── */
+if (getToken()) enterWorkbench();
+</script>
+</body>
+</html>

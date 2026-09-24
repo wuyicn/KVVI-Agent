@@ -3,13 +3,14 @@ $ python3 工具/check_topology.py
 [32m=== 两进程骨架取证（PRD §4.6.5 · 锚点 ②⑥）===[0m
 
 [32m[静态] compose 配置[0m
-  [32m✓[0m 两个进程各为一个 service：audit-db, business-db, platform, platform-db, runtime
+  [32m✓[0m 长期运行的进程恰好两个：platform, runtime（另有 3 个库容器、1 个一次性任务）
   [32m✓[0m 无共享卷：platform=['platform-data']  runtime=['runtime-data']
   [32m✓[0m 未共享 pid/ipc namespace（禁止跨进程调试）
   [32m✓[0m platform 受控接口要求调用方鉴别（KVVI_INTERNAL_TOKEN）
   [32m✓[0m 唯一对外入口：platform 映射宿主端口，runtime 不映射
   [32m✓[0m audit-db 设置 no-new-privileges
   [32m✓[0m business-db 设置 no-new-privileges
+  [32m✓[0m migrate 设置 no-new-privileges
   [32m✓[0m platform 设置 no-new-privileges
   [32m✓[0m platform-db 设置 no-new-privileges
   [32m✓[0m runtime 设置 no-new-privileges

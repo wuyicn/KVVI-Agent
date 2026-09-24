@@ -1,0 +1,39 @@
+# 本地开发用的 compose 覆盖层 —— **不是交付物的一部分**。
+#
+# compose 会自动合并 `docker-compose.override.yml`（同目录、同名），
+# 所以本地 `docker compose up` 会带上它，而交付给客户的
+# `docker-compose.kvvi.yml` **一个字符都不变**。
+#
+# ── 为什么需要这一层 ──────────────────────────────────────────────────────
+#
+# PRD §9.4.1：私钥不进镜像、不进仓库、不进日志；生产环境缺私钥时进程
+# **必须起不来**，而不是悄悄生成一把新的 —— 后者会让所有已签发令牌静默失效。
+# 这条是刻意的，不能为开发方便在产品文件里改掉。
+#
+# 但本地开发确实需要一把密钥：`.kvvi-docker.env` 里没有私钥，
+# 而容器里 `/run/kvvi-secrets` 没有挂载，于是**登录一走到签发令牌就崩**，
+# 报 `KVVI_SIGNING_KEY_MISSING`。看着像登录坏了，其实是缺密钥。
+#
+# 所以：开发环境**显式声明**用开发密钥（`KVVI_DEV_KEYS=1`，由 signing.mjs
+# 自己判断），且**只在这个文件里**声明。
+#
+# ⚠️ 部署到真实环境时**不要带这个文件**。带了就等于把
+# 「缺私钥必须起不来」这条防线关掉。
+
+services:
+  platform:
+    environment:
+      # 显式声明：允许在缺私钥时现场生成一把**开发**密钥。
+      # 不加这一条，signing.mjs 会直接抛错（那是它的正确行为）。
+      KVVI_DEV_KEYS: "1"
+      # ⚠️ 写到 tmpfs，**不能写进卷**。
+      #
+      # 实测：`platform-data` 卷的属主是 root，而容器以 uid 1000 运行，
+      # 于是写 `/var/lib/kvvi/signing.key` 报 `EACCES` ——
+      # 又是「报错位置指向代码、原因在文件权限」那个形态（N22 同形）。
+      # tmpfs 由容器运行时按运行用户建，进程可写；且它不受 read_only 影响
+      #（`/tmp` 本来就这么挂）。
+      KVVI_SIGNING_KEY_PATH: /run/kvvi-secrets/signing.key
+    tmpfs:
+      - /tmp
+      - /run/kvvi-secrets

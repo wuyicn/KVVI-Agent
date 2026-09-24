@@ -18,6 +18,7 @@ import { readFileSync, existsSync } from 'node:fs'
 import { timingSafeEqual } from 'node:crypto'
 import { topologySnapshot, SERVICE_ROOT } from './topology.mjs'
 import { isOwnedPath, resolveTarget, createProxyHandler, createUpgradeHandler } from './proxy.mjs'
+import { isWorkbenchPath, handleWorkbench } from './workbench.mjs'
 import { handleAuth } from './auth.mjs'
 
 const PORT = Number(process.env.KVVI_PLATFORM_PORT ?? 7400)
@@ -139,6 +140,41 @@ const server = createServer(async (req, res) => {
   // 「可核验」是自相矛盾的。
   if (path === '/topology' && method === 'GET') {
     return send(res, 200, topologySnapshot())
+  }
+
+  // ── KVVI 工作台（员工侧入口）──────────────────────────────────────
+  //
+  // ⚠️ 必须排在 Web UI 转发**之前**，否则 `/workbench` 会被当作
+  // 「非本进程路径」转发给运行时，然后由 DSH 的壳接管 ——
+  // 那正是 §2.6.1「模式由入口决定」不成立的样子：
+  // 员工打开的会是搭建舱的壳，而不是工作台。
+  //
+  // 也排在鉴别之前：它是**页面**与**用户凭据端点**，不该被进程间令牌拦。
+  if (isWorkbenchPath(path)) {
+    const out = await handleWorkbench({
+      method, path, headers: req.headers,
+      // ★ 复用认证模块自己的会话端点，**不另写一份**。
+      //   工作台要的正是「本会话可见什么」，而那个判定只有 auth.mjs 有：
+      //   在这里再算一次 `toolsForGateway`，两份实现迟早对不上，
+      //   而对不上的方向恰好是漏判 —— 员工界面会多出能力。
+      loadSession: (token) => handleAuth({
+        method: 'GET', path: '/auth/session', body: null,
+        headers: { ...req.headers, authorization: 'Bearer ' + token },
+        omitOtherGateway: true,
+      }),
+    })
+    if (out === null) return send(res, 404, { ok: false, error: 'not_found', path })
+    if (out.html !== undefined) {
+      return send(res, out.status, out.html, {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'no-store',
+        // 工作台是自包含单页：不允许被嵌进别的站点的 iframe。
+        'x-frame-options': 'DENY',
+        'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; "
+          + "script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'",
+      })
+    }
+    return send(res, out.status, out.body)
   }
 
   // ── Web UI 转发必须排在鉴别之前 ────────────────────────────────────

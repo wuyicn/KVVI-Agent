@@ -29,8 +29,12 @@
 
 import json
 import os
+import sys
 import subprocess
 import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib'))
+import compose_env  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COMPOSE = os.path.join(ROOT, 'docker-compose.kvvi.yml')
@@ -47,8 +51,10 @@ def sh(cmd, timeout=600):
 
 
 def config() -> dict:
-    env = ('KVVI_INTERNAL_TOKEN=x KVVI_PLATFORM_DB_PASSWORD=a '
-           'KVVI_BUSINESS_DB_PASSWORD=b KVVI_AUDIT_DB_PASSWORD=c')
+    # 占位变量**从 compose 文件扫出来**，不在这里维护第二份名单 ——
+    # 那份名单漂移过一次：compose 加了 KVVI_AUDIT_READ_DB_PASSWORD 之后，
+    # 这里报「读不到 compose 配置」，读起来像 compose 坏了。
+    env = compose_env.placeholder_env(COMPOSE)
     r = sh('%s docker compose -f %s config --format json' % (env, COMPOSE))
     if r.returncode != 0:
         raise RuntimeError(r.stderr.strip()[:300])

@@ -24,8 +24,8 @@
     },
     "platform-service": {
       "path": "services/platform",
-      "digest": "sha256:f954e626503044cbf444f3630967db0a77aa411ed04ef92364fd7666bdaf1a25",
-      "fileCount": 51
+      "digest": "sha256:aa193d0b0f83f754a045fb3f444b982900619a370d599096e874223978624caf",
+      "fileCount": 55
     },
     "runtime-service": {
       "path": "services/runtime",
@@ -68,6 +68,12 @@
     },
     {
       "reason": "N4 落地（会话消息保留期）给平台服务加了 retention.mjs / 18-retention.sql / retention.test.mjs 三个文件，地基基线随之跟进",
+      "changedComponents": [
+        "platform-service"
+      ]
+    },
+    {
+      "reason": "工作台：平台服务新增 workbench.mjs 与 ui/workbench.html（KVVI 自己的员工侧入口），前端与后端同镜像发布；配套把开发种子移出 src/ 以便发布通道静态核查成立",
       "changedComponents": [
         "platform-service"
       ]
