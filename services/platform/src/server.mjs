@@ -18,6 +18,7 @@ import { readFileSync, existsSync } from 'node:fs'
 import { timingSafeEqual } from 'node:crypto'
 import { topologySnapshot, SERVICE_ROOT } from './topology.mjs'
 import { isOwnedPath, resolveTarget, createProxyHandler, createUpgradeHandler } from './proxy.mjs'
+import { handleAuth } from './auth.mjs'
 
 const PORT = Number(process.env.KVVI_PLATFORM_PORT ?? 7400)
 const HOST = process.env.KVVI_PLATFORM_HOST ?? '0.0.0.0'
@@ -37,12 +38,32 @@ const SIGNING_KEY_PATH = process.env.KVVI_SIGNING_KEY_PATH ?? '/run/kvvi-secrets
 
 /** 每个端点的归属阶段：未实现的端点返回 501 而不是假成功。 */
 const PENDING = {
-  '/auth/login': '阶段四（自建账号体系）',
-  '/auth/logout': '阶段四（自建账号体系）',
-  '/auth/session': '阶段四（会话生命周期五类事件）',
   '/sign/delegation': '阶段五（身份层签发委派令牌）',
   '/registry/publish': '阶段五（发布通道）',
   '/registry/plugins': '阶段五（插件批准记录查询）',
+}
+
+/**
+ * **用户**认证端点：不要求进程间令牌。
+ *
+ * ⚠️ `KVVI_INTERNAL_TOKEN` 是**进程间**调用凭据，不是用户凭据。
+ * 拿它去拦浏览器请求是语义错误 —— 浏览器当然没有这个令牌，
+ * 于是登录永远 401，而看起来像是「认证坏了」。这个坑本项目已经踩过一次
+ * （见 proxy 路由顺序那段注释），所以这里显式列出来。
+ *
+ * 这些端点各自有自己的鉴权：登录凭账号口令，登出与会话查询凭委派令牌。
+ */
+const USER_AUTH_PATHS = new Set(['/auth/login', '/auth/logout', '/auth/session'])
+
+/** 管理员/平台内部端点：要求进程间令牌（真实管理员角色归阶段五授权服务）。 */
+const INTERNAL_AUTH_PATHS = [
+  '/auth/sessions/reap',
+  /^\/auth\/accounts\/[0-9a-fA-F-]{36}\/suspend$/u,
+  /^\/auth\/sessions\/[0-9a-fA-F-]{36}\/revoke$/u,
+]
+
+function needsInternalToken(path) {
+  return INTERNAL_AUTH_PATHS.some((p) => (typeof p === 'string' ? p === path : p.test(path)))
 }
 
 const startedAt = Date.now()
@@ -125,6 +146,21 @@ const server = createServer(async (req, res) => {
     return proxyHandler(req, res)
   }
 
+  // ── 用户认证端点：不走进程间令牌，走自己的凭据 ────────────────────
+  if (USER_AUTH_PATHS.has(path)) {
+    const raw = await readBody(req)
+    let body = null
+    if (raw) {
+      try { body = JSON.parse(raw) } catch { body = null }
+      if (body === null) {
+        return send(res, 400, { ok: false, error: 'KVVI_BAD_JSON' })
+      }
+    }
+    const out = await handleAuth({ method, path, body, headers: req.headers })
+    if (out === null) return send(res, 405, { ok: false, error: 'method_not_allowed', path })
+    return send(res, out.status, out.body)
+  }
+
   // 以下端点属于受控接口，需要调用方鉴别。
   if (!tokenMatches((req.headers.authorization ?? '').replace(/^Bearer\s+/iu, ''))) {
     return send(res, 401, {
@@ -132,6 +168,16 @@ const server = createServer(async (req, res) => {
       error: 'unauthorized',
       detail: '受控接口需要调用方鉴别（PRD §4.6.5 部署基线）。',
     }, { 'www-authenticate': 'Bearer' })
+  }
+
+  // ── 会话生命周期事件的管理入口（第四、五类）──────────────────────
+  if (needsInternalToken(path)) {
+    const raw = await readBody(req)
+    let body = null
+    if (raw) { try { body = JSON.parse(raw) } catch { body = null } }
+    const out = await handleAuth({ method, path, body, headers: req.headers })
+    if (out === null) return send(res, 405, { ok: false, error: 'method_not_allowed', path })
+    return send(res, out.status, out.body)
   }
 
   if (path in PENDING) {

@@ -4,7 +4,15 @@
   "version": "0.1.0",
   "type": "module",
   "description": "KVVI 平台服务进程：身份层、授权判定、签名模块、发布通道、平台库访问、认证端点。不加载任何插件。",
-  "engines": { "node": ">=22.19.0" },
-  "dependencies": {},
-  "scripts": { "start": "node src/server.mjs" }
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "migrate": "node src/migrate.mjs",
+    "test": "node --test --test-concurrency=1 'tests/*.test.mjs'"
+  }
 }

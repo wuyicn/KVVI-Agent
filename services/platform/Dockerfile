@@ -11,14 +11,30 @@
 FROM node:24-bookworm-slim
 
 WORKDIR /app
-COPY services/platform/package.json ./package.json
+COPY services/platform/package.json services/platform/package-lock.json ./
+# 依赖在**构建期**安装，而不是把开发机上的 node_modules 拷进镜像：
+# 拷贝法在干净克隆上必然失败（node_modules 不入库），
+# 而且会让「镜像里有什么」取决于构建那台机器的状态。
+RUN npm ci --omit=dev --no-audit --no-fund
 COPY services/platform/src/ ./src/
+COPY services/platform/sql/ ./sql/
 
-# 无依赖安装步骤 —— 因为就没有依赖。保留这行是为了让「零依赖」这件事
-# 在 Dockerfile 里显式可见，而不是靠读者去翻 package.json。
-RUN test ! -s package.json || node -e "const p=require('./package.json'); \
-  const n=Object.keys(p.dependencies??{}).length+Object.keys(p.devDependencies??{}).length; \
-  if(n>0){console.error('平台服务进程不允许有依赖，实际 '+n+' 个');process.exit(1)}"
+# 阶段四起本进程需要一个数据库驱动（`pg`）—— 它要访问平台库。
+#
+# ⚠️ 这里把原先的「零依赖」断言**收窄为「零 DSH 依赖」**，并把理由写清楚：
+# 原断言用「依赖数为 0」当「不加载插件」的**代理**，而代理比被代理的性质更严 ——
+# 严到会把一个纯数据库驱动也挡在外面。真正的性质是**镜像里没有可加载的插件材料**，
+# 所以下面直接断言那一条（依赖声明 + 装机结果两处都查），
+# 而不是继续用一个更严但不相干的代理。
+RUN node -e "const p=require('./package.json'); \
+  const all=[...Object.keys(p.dependencies??{}),...Object.keys(p.devDependencies??{})]; \
+  const dsh=all.filter(n=>n.startsWith('@deepseek-ai/')); \
+  if(dsh.length){console.error('平台服务进程不得依赖 DSH 包，实际 '+dsh.join(', '));process.exit(1)}; \
+  const {readdirSync,existsSync}=require('node:fs'); \
+  for(const dir of ['node_modules','node_modules/@deepseek-ai']) \
+    if(existsSync(dir)&&readdirSync(dir).some(n=>n.startsWith('@deepseek-ai')||dir.endsWith('@deepseek-ai'))) \
+      {console.error('镜像里出现了 DSH 包：'+dir);process.exit(1)}; \
+  console.log('无 DSH 依赖，装机树内亦无 DSH 包')"
 
 ENV NODE_ENV=production
 ENV KVVI_PLATFORM_PORT=7400
