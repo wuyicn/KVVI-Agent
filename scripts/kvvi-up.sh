@@ -11,6 +11,10 @@
 #   ./scripts/kvvi-up.sh --rebuild    # 强制重新构建镜像
 #   ./scripts/kvvi-up.sh --down       # 停止并移除
 #   ./scripts/kvvi-up.sh --status     # 只看状态
+#   ./scripts/kvvi-up.sh --reset-volumes  # 清掉容器与**数据卷**（数据可弃时用）
+#
+# 启动后会打印**界面入口地址**（带一次性 token）。首次访问用带 token 的地址，
+# 它会换成 Cookie 并跳回根路径；之后直接开根地址即可。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -27,7 +31,8 @@ for arg in "$@"; do
     --rebuild) MODE=rebuild ;;
     --down)    MODE=down ;;
     --status)  MODE=status ;;
-    -h|--help) sed -n '3,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --reset-volumes) MODE=reset-volumes ;;
+    -h|--help) sed -n '3,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) die "未知参数：$arg（用 --help 看用法）" ;;
   esac
 done
@@ -50,6 +55,37 @@ if [ ! -f "$ENV_FILE" ]; then
     "$(rand)" "$(rand)" "$(rand)" "$(rand)" > "$ENV_FILE"
   chmod 600 "$ENV_FILE"
 fi
+
+# ── 补齐缺失的键，而不是「文件在就跳过」 ─────────────────────────────────
+#
+# 只判「文件存不存在」是不够的：一个**存在但缺键**的文件会让 compose 报
+# `required variable KVVI_PLATFORM_DB_PASSWORD is missing a value`。
+# 那条报错说的是「配置缺失」，读起来却像「部署坏了」——
+# 本项目就撞上过这个形态（文件里只有 KVVI_INTERNAL_TOKEN）。
+#
+# ⚠️ 补进去的是**新值**。若同名数据卷**已经存在**，库里的口令是旧值，
+# 新值会让平台进程连不上库（表现为认证失败，而不是「口令不对」）。
+# 这种情况**不能猜**，必须让人决定：要么找回旧口令，要么清卷重建。
+MISSING_KEYS=""
+for key in KVVI_INTERNAL_TOKEN KVVI_PLATFORM_DB_PASSWORD \
+           KVVI_BUSINESS_DB_PASSWORD KVVI_AUDIT_DB_PASSWORD; do
+  if ! grep -q "^${key}=" "$ENV_FILE"; then
+    printf '%s=%s\n' "$key" "$(rand)" >> "$ENV_FILE"
+    say "补齐缺失的 ${key}（新值）"
+    MISSING_KEYS="${MISSING_KEYS} ${key}"
+  fi
+done
+
+if [ -n "$MISSING_KEYS" ] && [ "$MODE" != "down" ] && [ "$MODE" != "status" ]; then
+  if docker volume ls -q 2>/dev/null | grep -q 'platform-db-data'; then
+    printf '\n\033[31m✗ 同名数据卷已存在，但本次补了新的库口令。\033[0m\n' >&2
+    printf '  卷里的口令是旧的，新口令连不上 —— 表现为认证失败，不是「代码坏了」。两条路：\n' >&2
+    printf '    1) 找回旧口令填回 %s（推荐：不动数据）\n' "$ENV_FILE" >&2
+    printf '    2) 确认数据可弃，清卷重建：%s --reset-volumes\n' "$0" >&2
+    exit 1
+  fi
+fi
+
 # shellcheck disable=SC1090
 set -a; . "$ENV_FILE"; set +a
 [ -n "${KVVI_INTERNAL_TOKEN:-}" ] || die "$ENV_FILE 里没有 KVVI_INTERNAL_TOKEN"
@@ -61,6 +97,11 @@ case "$MODE" in
     say "停止并移除…"; dc down; ok "已停止"; exit 0 ;;
   status)
     dc ps; exit 0 ;;
+  reset-volumes)
+    say "清掉本项目的容器与**数据卷**…"
+    dc down -v
+    ok "已清空（下一次 up 会从零建库）"
+    exit 0 ;;
 esac
 
 if [ "$MODE" = "rebuild" ]; then
@@ -80,9 +121,32 @@ dc up -d --wait --wait-timeout 240 || {
 printf '\n'
 dc ps
 printf '\n'
+# 把**能点开的地址**打出来，而不是让人自己去翻日志。
+#
+# 界面走的是运行时进程的 DSH web，它有一道 token 鉴权栅栏；token 只在运行时
+# 启动时打印一次，落在容器日志里。此前本脚本只打 healthz ——
+# 那是**取证地址**，不是**入口地址**，照着它点开机只能看到一行 401。
+#
+# 首次访问带 `?token=` 会换成 Cookie 并 303 跳回 `/`，之后正常刷新即可。
+ACCESS_URL="$(dc logs runtime 2>/dev/null \
+  | grep -o 'http://127\.0\.0\.1:[0-9]*/?token=[A-Za-z0-9_-]*' \
+  | tail -1 || true)"
+# 容器内打印的是它自己的回环地址，宿主机要走映射出来的端口。
+if [ -n "$ACCESS_URL" ]; then
+  ACCESS_URL="$(printf '%s' "$ACCESS_URL" \
+    | sed "s#http://127.0.0.1:[0-9]*/#http://127.0.0.1:${KVVI_PLATFORM_PORT:-7400}/#")"
+fi
+
 ok "两进程骨架已就绪"
-printf '  平台服务进程  http://127.0.0.1:%s/healthz   （pluginsLoaded 应为 0）\n' "${KVVI_PLATFORM_PORT:-7400}"
-printf '  Agent 运行时  仅在容器网络内（未映射宿主端口）\n'
+if [ -n "$ACCESS_URL" ]; then
+  printf '  \033[1m界面入口\033[0m      \033[36m%s\033[0m\n' "$ACCESS_URL"
+  printf '                （首次访问会把 token 换成 Cookie，之后直接开 http://127.0.0.1:%s/ 即可）\n' "${KVVI_PLATFORM_PORT:-7400}"
+else
+  printf '  \033[33m⚠\033[0m 没从运行时日志里取到界面地址。手动取：\n'
+  printf '      %s logs runtime | grep -o "http://[^ ]*token=[A-Za-z0-9_-]*"\n' "$0"
+fi
+printf '  平台服务进程  http://127.0.0.1:%s/healthz   （pluginsReady 应为 0）\n' "${KVVI_PLATFORM_PORT:-7400}"
+printf '  平台服务进程  http://127.0.0.1:%s/topology  （运行期证据，无需凭据）\n' "${KVVI_PLATFORM_PORT:-7400}"
+printf '  Agent 运行时  仅在容器网络内（未映射宿主端口；界面经平台进程转发）\n'
 printf '\n  取证：python3 工具/check_topology.py\n'
-printf '  查看运行时日志：docker compose -f docker-compose.kvvi.yml logs runtime\n'
 printf '  停止：%s --down\n' "$0"
