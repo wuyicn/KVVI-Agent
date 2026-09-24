@@ -239,7 +239,7 @@ description: 表单生成——字段控件、分组布局、条件显隐，产�
     "asset_type": "BUSINESS_SCHEMA",
     "asset_id": "general_item",
     "version": 1,
-    "digest": "sha256:518077baee491b8146bc740bfa84d23bb2ef7f4bc81929eadefb7fd1691c9433"
+    "digest": "sha256:898c0ae169c52fbce26428e3eb90a92763e3615ab9521aa44ef120b79edeeca1"
   },
   "componentRegistryRef": {
     "scope_type": "PLATFORM_CONTROL",
@@ -259,6 +259,9 @@ description: 表单生成——字段控件、分组布局、条件显隐，产�
         {
           "id": "basic_section",
           "componentName": "Section",
+          "props": {
+            "title": "事项信息"
+          },
           "children": [
             {
               "id": "f_title",
@@ -271,22 +274,12 @@ description: 表单生成——字段控件、分组布局、条件显隐，产�
               }
             },
             {
-              "id": "f_category",
-              "componentName": "SingleSelectField",
+              "id": "f_detail",
+              "componentName": "LongTextField",
               "props": {
                 "fieldBinding": {
                   "type": "FieldRef",
-                  "fieldRef": "category"
-                }
-              }
-            },
-            {
-              "id": "f_quantity",
-              "componentName": "IntegerField",
-              "props": {
-                "fieldBinding": {
-                  "type": "FieldRef",
-                  "fieldRef": "quantity"
+                  "fieldRef": "detail"
                 }
               }
             },
@@ -309,14 +302,33 @@ description: 表单生成——字段控件、分组布局、条件显隐，产�
                   "fieldRef": "due_date"
                 }
               }
+            }
+          ]
+        },
+        {
+          "id": "system_section",
+          "componentName": "Section",
+          "props": {
+            "title": "系统字段（只读）"
+          },
+          "children": [
+            {
+              "id": "f_item_no",
+              "componentName": "Description",
+              "props": {
+                "value": {
+                  "type": "FieldRef",
+                  "fieldRef": "item_no"
+                }
+              }
             },
             {
-              "id": "f_notes",
-              "componentName": "LongTextField",
+              "id": "f_status",
+              "componentName": "StatusBadge",
               "props": {
-                "fieldBinding": {
+                "value": {
                   "type": "FieldRef",
-                  "fieldRef": "notes"
+                  "fieldRef": "item_status"
                 }
               }
             }

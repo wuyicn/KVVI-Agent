@@ -370,7 +370,7 @@ python3 工具/check_invariant.py --input <你的口径登记单.json>
     "asset_type": "BUSINESS_SCHEMA",
     "asset_id": "general_item",
     "version": 1,
-    "digest": "sha256:518077baee491b8146bc740bfa84d23bb2ef7f4bc81929eadefb7fd1691c9433"
+    "digest": "sha256:898c0ae169c52fbce26428e3eb90a92763e3615ab9521aa44ef120b79edeeca1"
   },
   "componentRegistryRef": {
     "scope_type": "PLATFORM_CONTROL",
@@ -395,7 +395,7 @@ python3 工具/check_invariant.py --input <你的口径登记单.json>
           "asset_type": "CAPABILITY",
           "capability_code": "caliber.monthly_sales",
           "version": 1,
-          "digest": "sha256:42771c2eff1f0cddf68dbe962413a002037154dd09dacd2229a76bc5a71f9c5c"
+          "digest": "sha256:be29a8215ecc59771fdcac0291aa4a2ea4e23f04a68f43d61b4cd73e25b28ee6"
         },
         "params": {
           "businessSchemaRef": {
@@ -406,7 +406,7 @@ python3 工具/check_invariant.py --input <你的口径登记单.json>
             "asset_type": "BUSINESS_SCHEMA",
             "asset_id": "general_item",
             "version": 1,
-            "digest": "sha256:518077baee491b8146bc740bfa84d23bb2ef7f4bc81929eadefb7fd1691c9433"
+            "digest": "sha256:898c0ae169c52fbce26428e3eb90a92763e3615ab9521aa44ef120b79edeeca1"
           },
           "dataScope": [
             "COMPANY"
@@ -426,7 +426,7 @@ python3 工具/check_invariant.py --input <你的口径登记单.json>
           "asset_type": "CAPABILITY",
           "capability_code": "caliber.dept_completion",
           "version": 1,
-          "digest": "sha256:2c2b9b654a3134f49f458047264002e554c6daba2bb8d3ba687f107c21e4c2ec"
+          "digest": "sha256:a99240f769acd5f820892251851551e64d764e6439a459214cb706cbd3414fb2"
         },
         "params": {
           "businessSchemaRef": {
@@ -437,7 +437,7 @@ python3 工具/check_invariant.py --input <你的口径登记单.json>
             "asset_type": "BUSINESS_SCHEMA",
             "asset_id": "general_item",
             "version": 1,
-            "digest": "sha256:518077baee491b8146bc740bfa84d23bb2ef7f4bc81929eadefb7fd1691c9433"
+            "digest": "sha256:898c0ae169c52fbce26428e3eb90a92763e3615ab9521aa44ef120b79edeeca1"
           },
           "dataScope": [
             "DEPARTMENT",
@@ -458,7 +458,7 @@ python3 工具/check_invariant.py --input <你的口径登记单.json>
           "asset_type": "CAPABILITY",
           "capability_code": "records.list",
           "version": 1,
-          "digest": "sha256:82a4a0057bf0b83d5d79898c29940825ae5b5ce7d9442822078f4c983ef510b7"
+          "digest": "sha256:f042f0106afe49c4246485032b03c4b3d7ed80eb5ecafda2f29fbb526c5bdc97"
         },
         "params": {
           "businessSchemaRef": {
@@ -469,7 +469,7 @@ python3 工具/check_invariant.py --input <你的口径登记单.json>
             "asset_type": "BUSINESS_SCHEMA",
             "asset_id": "general_item",
             "version": 1,
-            "digest": "sha256:518077baee491b8146bc740bfa84d23bb2ef7f4bc81929eadefb7fd1691c9433"
+            "digest": "sha256:898c0ae169c52fbce26428e3eb90a92763e3615ab9521aa44ef120b79edeeca1"
           }
         }
       }
