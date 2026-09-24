@@ -73,14 +73,42 @@ def foundation_digests():
 def main() -> int:
     if '--write' in sys.argv:
         payload = {
-            'recordVersion': 'kvvi-foundation-snapshot/v1',
+            'recordVersion': 'kvvi-foundation-snapshot/v2',
             'note': '行业扩展包安装**之前**的地基指纹。加包之后必须逐项一致 —— '
                     '这是「不改地基」这句承诺的执行点。',
             'foundation': foundation_digests(),
+            'rebases': [],
         }
         with open(RECORD, 'w', encoding='utf-8') as fh:
             fh.write(json.dumps(payload, ensure_ascii=False, indent=2) + '\n')
         print('✓ 已记录地基指纹（%d 个组件）' % len(payload['foundation']))
+        return 0
+
+    if '--rebaseline' in sys.argv:
+        # ⚠️ **重设基线必须是一次有记录的动作，不能是「跑一遍 --write 覆盖掉」**。
+        # 地基**合法变更**（修 bug、加固构建）之后基线确实要跟着走，
+        # 但如果只是覆盖，那次变更就**从证据里消失了** ——
+        # 而「地基没被悄悄改过」正是这个文件存在的理由。
+        # 所以每次重设都追加一条历史：什么时候、由什么原因。
+        if '--reason' not in sys.argv:
+            print('%s✗ 重设基线必须给 --reason：地基为什么变了%s' % (C_BAD, C_OFF))
+            print('  （无理由的重设等于把证据删掉）')
+            return 2
+        reason = sys.argv[sys.argv.index('--reason') + 1]
+        with open(RECORD, encoding='utf-8') as fh:
+            old = json.load(fh)
+        before = old['foundation']
+        after = foundation_digests()
+        changed = [name for name in before
+                   if before[name]['digest'] != after.get(name, {}).get('digest')]
+        old.setdefault('rebases', []).append({
+            'reason': reason,
+            'changedComponents': changed,
+        })
+        old['foundation'] = after
+        with open(RECORD, 'w', encoding='utf-8') as fh:
+            fh.write(json.dumps(old, ensure_ascii=False, indent=2) + '\n')
+        print('✓ 基线已重设；本次变更的组件：%s' % ('、'.join(changed) or '无'))
         return 0
 
     problems = []
@@ -119,7 +147,15 @@ def main() -> int:
         problems.append('缺少地基指纹记录')
     else:
         with open(RECORD, encoding='utf-8') as fh:
-            declared = json.load(fh)['foundation']
+            record = json.load(fh)
+        declared = record['foundation']
+        rebases = record.get('rebases', [])
+        if rebases:
+            print('  %s（基线被重设过 %d 次，每次都有记录的原因）%s'
+                  % (C_WARN, len(rebases), C_OFF))
+            for rb in rebases:
+                print('    · %s —— 变更组件：%s'
+                      % (rb['reason'], '、'.join(rb['changedComponents']) or '无'))
         fresh = foundation_digests()
         for name, want in declared.items():
             got = fresh.get(name)

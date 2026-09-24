@@ -19,6 +19,14 @@ RUN npm ci --omit=dev --no-audit --no-fund
 COPY services/platform/src/ ./src/
 COPY services/platform/sql/ ./sql/
 
+# ⚠️ 归一化权限。**这不是可有可无的美化**：`COPY` 会保留源文件的权限位，
+# 而不同机器上的 umask 不同 —— 源文件若是 0600，容器里就是 root 拥有的 0600，
+# 以 uid 1000 运行的 `USER node` 读不到它，启动时报
+# `EACCES: permission denied, open '/app/src/auth.mjs'` 然后无限重启。
+# 那个报错看起来像代码 bug，实际是构建机的 umask 泄漏进了镜像。
+# 镜像的可运行性不该取决于构建机的 umask，所以在这里抹平。
+RUN chmod -R a+rX /app/src /app/sql /app/node_modules
+
 # 阶段四起本进程需要一个数据库驱动（`pg`）—— 它要访问平台库。
 #
 # ⚠️ 这里把原先的「零依赖」断言**收窄为「零 DSH 依赖」**，并把理由写清楚：

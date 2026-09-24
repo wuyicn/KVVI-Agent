@@ -1,0 +1,11 @@
+$ python3 工具/check_build.py
+
+[32m=== 构建配置检查 ===[0m
+[32m✓[0m DSH_CLIENT_BUILD_PROFILE 未被设为 official（kvvi-brand 能拿到品牌插槽）
+[32m✓[0m 已注入 DSH_CLIENT_TITLE
+[32m✓[0m 构建记录里没有 DSH_CLIENT_BUILD_PROFILE（上游品牌不注册）
+[32m✓[0m 构建记录里 DSH_CLIENT_TITLE = 'KVVI 搭建引擎'
+  [90m产物：250 个文件，sha256 fa7701369a827731[0m
+[32m✓[0m 门控在构建期折叠为 {}.DSH_CLIENT_BUILD_PROFILE（恒为 undefined → 上游品牌不注册）
+
+[32m✓ 构建配置正确[0m

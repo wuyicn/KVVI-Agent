@@ -1,0 +1,58 @@
+$ python3 工具/check_skill_output.py --self-test
+
+=== 验收检查器自测 ===
+
+[1] 正例 + 新建 context（期望通过）
+[32m=== 搭建产出验收 ===[0m
+  产出物 : 样例/business-schema/通用事项.spec.json
+  契约   : business-schema/v1
+
+[32m[1/2] 结构校验[0m
+  [32m✓[0m 通过
+
+[32m[2/2] 语义 + 引用校验[0m
+  [32m✓[0m 通过
+
+[32m✓ 通过[0m
+
+[2] 正例 + 修改 context（期望被拒 —— 含已注册版本，触发迁移检查）
+[32m=== 搭建产出验收 ===[0m
+  产出物 : 样例/business-schema/通用事项.spec.json
+  契约   : business-schema/v1
+
+[32m[1/2] 结构校验[0m
+  [32m✓[0m 通过
+
+[32m[2/2] 语义 + 引用校验[0m
+  [31m✗ 4 个错误[0m
+     MIGRATION_REQUIRED | fields[0] | 契约校验失败
+     BREAKING_CHANGE_FORBIDDEN | fields[1].type | 契约校验失败
+     MIGRATION_REQUIRED | fields[3] | 契约校验失败
+     MIGRATION_REQUIRED | fields[5] | 契约校验失败
+  [90m→ 约束清单见 docs/business-schema-产出约束.md[0m
+
+[31m✗ 未通过[0m
+
+[3] 白名单外的契约：**仅结构校验**路径已生效
+[32m=== 搭建产出验收 ===[0m
+  产出物 : 样例/workflow-spec/通用事项审批流.spec.json
+  契约   : workflow-spec/v1alpha1
+
+[33m[仅结构校验][0m
+  [90m本契约在 cli.mjs 的 CONTRACTS 白名单之外，且没有契约专用的语义模块；此结果不含语义校验与引用校验。[0m
+  [32m✓[0m 结构通过
+
+[33m⚠ 这只是结构校验 —— 语义与引用未查。「结构通过」不等于「通过 MetaSchema 校验」。[0m
+
+[4] 既不在完整校验也不在结构校验列表的契约（期望无法执行）
+[31m✗ 验证器不支持契约 'migration-plan/v1alpha1'[0m
+  [90m完整校验支持：business-schema/v1、view-schema/lce-safe-v1、app-spec/v1alpha1[0m
+  [90m仅结构校验支持：app-model-command/v1alpha1、permission-spec/v1alpha1、tool-spec/v1alpha1、workflow-spec/v1alpha1[0m
+
+────────────────────────────────────────────────────────────
+  [32m✓[0m 正例通过                   退出码 0
+  [32m✓[0m 修改场景被拒                 退出码 1
+  [32m✓[0m 仅结构校验路径生效              退出码 0
+  [32m✓[0m 不支持时拒答                 退出码 2
+
+[32m✓ 4 项全部符合 —— 检查器能区分通过、被拒与无法执行三种结果[0m

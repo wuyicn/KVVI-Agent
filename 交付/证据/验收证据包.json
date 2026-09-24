@@ -1,0 +1,164 @@
+{
+  "bundleVersion": "kvvi-evidence/v1",
+  "stages": [
+    {
+      "stage": "阶段一",
+      "title": "基座就位"
+    },
+    {
+      "stage": "阶段二",
+      "title": "品牌与外壳"
+    },
+    {
+      "stage": "阶段三",
+      "title": "搭建引擎模式"
+    },
+    {
+      "stage": "阶段四",
+      "title": "身份与隔离"
+    },
+    {
+      "stage": "阶段五",
+      "title": "契约授权与运行时"
+    },
+    {
+      "stage": "阶段六",
+      "title": "工作模式"
+    },
+    {
+      "stage": "贯穿",
+      "title": "交付完整性"
+    }
+  ],
+  "entries": [
+    {
+      "stage": "阶段一",
+      "name": "G1 契约资产指纹",
+      "command": "python3 工具/g1_指纹.py --verify",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段一-G1-契约资产指纹.txt",
+      "digest": "sha256:ecf09185ff7289aaa7e9a820ab1720abe7db436865339d17426a82a12f1e012c"
+    },
+    {
+      "stage": "阶段一",
+      "name": "G2 fork 改造点",
+      "command": "python3 工具/g2_改造点.py --check",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段一-G2-fork-改造点.txt",
+      "digest": "sha256:9abd7264ca07062e7e4c84a1fd9342eb696b5a65bfefb20b3d0150d07aaf77fe"
+    },
+    {
+      "stage": "阶段一",
+      "name": "两进程骨架与 N3 拓扑",
+      "command": "python3 工具/check_topology.py",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段一-两进程骨架与-N3-拓扑.txt",
+      "digest": "sha256:91cb9c42145c2580d5d439e325c2a9f9f117fb85ed3c053600aa422be1927df1"
+    },
+    {
+      "stage": "阶段一",
+      "name": "构建配置",
+      "command": "python3 工具/check_build.py",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段一-构建配置.txt",
+      "digest": "sha256:4e87c62e1f829f2fa382c1b8c7437c9a64c565d6a863c10cb427ca3d4ac56b23"
+    },
+    {
+      "stage": "阶段二",
+      "name": "品牌残留",
+      "command": "python3 工具/check_brand.py",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段二-品牌残留.txt",
+      "digest": "sha256:41c6a9e6345754d5a3455f2501bc73f9ba187df198c9378590336f22cae2590d"
+    },
+    {
+      "stage": "阶段三",
+      "name": "Skill 产出验收",
+      "command": "python3 工具/check_skill_output.py --self-test",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段三-Skill-产出验收.txt",
+      "digest": "sha256:1538f1b025c3367396bec71227251e89ecd7182f0a729df151fc2ae4d8ca7cf0"
+    },
+    {
+      "stage": "阶段三",
+      "name": "§9.8.1 不变量判定器",
+      "command": "bash 工具/check_invariant_自测.sh",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段三-§9.8.1-不变量判定器.txt",
+      "digest": "sha256:ea9d1dbd15e0b00a86ba9a289bf6cafd56c06e10edb943a9f0e232f9533b26f4"
+    },
+    {
+      "stage": "阶段三",
+      "name": "去行业化自查（0A-14）",
+      "command": "python3 工具/check_industry_neutral.py",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段三-去行业化自查（0A-14）.txt",
+      "digest": "sha256:80be1d657df2a34caf312777260c678de7504d480fba9b8e1b3b47ff2b88dcd6"
+    },
+    {
+      "stage": "阶段三",
+      "name": "蓝图闭环（0D-1）",
+      "command": "python3 工具/check_blueprint.py 样例/蓝图/通用事项管理系统",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段三-蓝图闭环（0D-1）.txt",
+      "digest": "sha256:736863c1ae982fbc4851163d3a0a23a50510be5aef8ca43aaddde67581deea08"
+    },
+    {
+      "stage": "阶段四",
+      "name": "锚点①②③④⑥ 全量",
+      "command": "python3 工具/check_stage4.py",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段四-锚点①②③④⑥-全量.txt",
+      "digest": "sha256:86542c968bdeb1673b5ae155a1836583bbb4d5f940a732cdb158f085f86d9f2e"
+    },
+    {
+      "stage": "阶段五",
+      "name": "锚点①②③④ 全量",
+      "command": "python3 工具/check_stage5.py",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段五-锚点①②③④-全量.txt",
+      "digest": "sha256:3562e39208615624605faffc7bbf26edbd514a59a4b629831e701733798b2270"
+    },
+    {
+      "stage": "阶段六",
+      "name": "锚点①②③④ 全量",
+      "command": "python3 工具/check_stage6.py",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段六-锚点①②③④-全量.txt",
+      "digest": "sha256:91022e62910fd6c48a610e400da79a1c2a39a369c003b0f5bcf4f70aabd2045d"
+    },
+    {
+      "stage": "贯穿",
+      "name": "交付包清单/版本/指纹",
+      "command": "python3 工具/交付包.py --check",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/贯穿-交付包清单_版本_指纹.txt",
+      "digest": "sha256:2bd826f730aad02ebcfe9f46c5797001eb5c06757292d2af2eacf3203ddf6150"
+    },
+    {
+      "stage": "贯穿",
+      "name": "干净环境部署",
+      "command": "python3 工具/交付环境.py",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/贯穿-干净环境部署.txt",
+      "digest": "sha256:f271dd1517f28e655d9c62c6d54bb9f868c5e1dbe649ce078e34b8cc575977b4"
+    }
+  ],
+  "deliveryDigest": "sha256:97f69723f202b481a3ca18c79717fa00c53793c1a37ad7dfd51e0de754024797",
+  "failed": [],
+  "bundleDigest": "sha256:4a9d4bfd6d7b97b48ec8e761620cdb4fcb03b376885aeb62b86d56e5c7c37e98"
+}

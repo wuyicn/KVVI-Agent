@@ -24,7 +24,7 @@
     },
     "platform-service": {
       "path": "services/platform",
-      "digest": "sha256:26c6a5f05fab6540210801e9f8bf2c78e86a4ca74d7c06b4be5b84391718a40d",
+      "digest": "sha256:50cdcb57ceed9daab39d97a2eddb23d999475b0e00d6b891b7a5e5ecde3423ef",
       "fileCount": 34
     },
     "runtime-service": {
@@ -52,5 +52,13 @@
       "digest": "sha256:b3ad117fc02861bbef46385fdab09fca485fbdfa46dbda016b0fad903f52baf2",
       "fileCount": 5
     }
-  }
+  },
+  "rebases": [
+    {
+      "reason": "加固平台镜像：Dockerfile 归一化文件权限（构建机 umask 泄漏导致容器 EACCES 启动失败）",
+      "changedComponents": [
+        "platform-service"
+      ]
+    }
+  ]
 }

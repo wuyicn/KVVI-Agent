@@ -1,0 +1,27 @@
+$ python3 工具/check_blueprint.py 样例/蓝图/通用事项管理系统
+
+[32m=== `0D-1` AI 蓝图闭环检查 ===[0m
+判据：说人话 → 蓝图 → 类型化命令 → DraftGraph → 校验/影响/预览 → 你点通过
+
+[32m✓[0m ① 说人话
+[32m✓[0m ② 蓝图
+[32m✓[0m ③ 类型化命令
+    [90m命令 35 条，类型 11 种[0m
+[32m✓[0m ④ DraftGraph
+    [90mgeneral_item_form：10 个节点，命令序列与产出物逐位一致[0m
+    [90mmonthly_sales_dashboard：7 个节点，命令序列与产出物逐位一致[0m
+    [90m重放 35 步；蓝图提供的外壳 4 个（general_item_flow、general_item_form、general_item_roles、monthly_sales_dashboard）[0m
+[32m✓[0m ⑤ 校验 / 影响 / 预览
+    [90m契约校验：business-schema/v1=完整校验（结构 + 语义 + 引用）；tool-spec/v1alpha1=⚠️ 仅结构校验（语义与引用未查）；view-schema/lce-safe-v1=完整校验（结构 + 语义 + 引用）；workflow-spec/v1alpha1=⚠️ 仅结构校验（语义与引用未查）[0m
+    [90m口径登记单过不变量判定：样例/view-schema/看板-口径登记.json[0m
+    [90m预览 2 份，逐字节与产出物重算结果比对[0m
+[32m✓[0m ⑥ 你点通过
+    [90m审批人 c0ffee00-0000-4000-8000-000000009005 于 2026-09-23T00:01:00Z 批准[0m
+
+[33m本闭环未覆盖（必须与「通过」一起读）[0m
+  · 接口（tool-spec）不由命令产出 —— 14 个命令里没有对应的命令，该部分只做到「契约校验 + 摘要一致」，没有命令级溯源
+  · `draft.undoCommand` / `draft.redoCommand` 未在本样例出现 —— 撤销重做的幂等历史未验证
+  · 批准之后的发布动作（注册、上线）不在本闭环内 —— 本闭环到「你点通过」为止
+  · 运行期是否真按配置执行，是另一件事：本检查器判定的是**配置**
+
+[32m✓ 闭环闭合：六段全部成立[0m

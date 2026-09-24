@@ -1,0 +1,26 @@
+$ python3 工具/check_industry_neutral.py
+
+=== `0A-14` 去行业化自查 ===
+判据：代码里没有「报货单」这类家具词（KVVI-Builder progress.json）
+
+[1] 扫描面
+  文件 1485 个，词表 40 个词（8 个行业）
+
+[2] 负向：地基里没有行业词
+  ✓ 0 处违规
+  · 7 处为「禁止性提及」（豁免清单，逐条带理由）：
+    vendor/dsh/packages/preset/agent-presets/presets/kvvi-builder/agent.cordis.yml:63 「报货单」 —— 搭建引擎人格里**明令禁止**这些词：「Do not reach for …」
+    vendor/dsh/packages/preset/agent-presets/presets/kvvi-builder/agent.cordis.yml:63 「报货」 —— 同上，禁令的一部分
+    vendor/dsh/packages/preset/agent-presets/presets/kvvi-builder/agent.cordis.yml:63 「病历」 —— 同上，禁令的一部分
+    vendor/dsh/packages/preset/agent-presets/presets/kvvi-builder/skills/data-model/SKILL.md:44 「报货单」 —— Skill 里**明令禁止**把行业词当原语：「也不要引入…这类行业家具当作原语」
+    vendor/dsh/packages/preset/agent-presets/presets/kvvi-builder/skills/data-model/SKILL.md:44 「报货」 —— 同上，禁令的一部分
+    vendor/dsh/packages/preset/agent-presets/presets/kvvi-builder/skills/data-model/SKILL.md:44 「家具」 —— 同上，禁令的一部分
+    vendor/dsh/packages/preset/agent-presets/presets/kvvi-builder/skills/data-model/SKILL.md:44 「病历」 —— 同上，禁令的一部分
+
+[3] 豁免清单自身是否成立
+  ✓ 7 条豁免全部有效（理由齐备、无失效条目）
+
+[4] 正向：行业扩展点存在（地基中立 ≠ 长不出行业）
+  ✓ 预设的 Skill 目录是可追加列表（`customSkillDirs`），行业包以「多一个目录」接入
+
+✓ 通过：地基中立，且留了行业扩展口

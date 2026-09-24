@@ -1,0 +1,26 @@
+$ python3 工具/check_topology.py
+
+[32m=== 两进程骨架取证（PRD §4.6.5 · 锚点 ②⑥）===[0m
+
+[32m[静态] compose 配置[0m
+  [32m✓[0m 两个进程各为一个 service：platform, runtime
+  [32m✓[0m 无共享卷：platform=['platform-data']  runtime=['runtime-data']
+  [32m✓[0m 未共享 pid/ipc namespace（禁止跨进程调试）
+  [32m✓[0m platform 受控接口要求调用方鉴别（KVVI_INTERNAL_TOKEN）
+  [32m✓[0m 唯一对外入口：platform 映射宿主端口，runtime 不映射
+  [32m✓[0m platform 设置 no-new-privileges
+  [32m✓[0m runtime 设置 no-new-privileges
+
+[32m[动态] 运行状态[0m
+  [32m✓[0m platform 容器 healthy
+  [32m✓[0m runtime 容器 healthy
+  [32m✓@deepseek-ai platform 容器内无 [0m/ 目录 —— 加载不了插件是能力缺失
+  [32m✓[0m platform /healthz pluginsLoaded = 0（dshPackagesPresent=False）
+  [32m✓[0m runtime 组合出 164 个插件行（对照：platform 0 个）
+
+[32m[N3] 唯一入口与代理[0m
+  [32m✓7401 直连 runtime 宿主端口 [0m 失败 —— 它没有对外暴露
+  [32m✓[0m 经 platform 访问到达 DSH web（收到其认证提示）
+  [32m✓[0m 端到端：经 platform 带 token 拿到 KVVI 页面，换 cookie 后复访 HTTP 200
+
+[32m✓ 通过[0m
