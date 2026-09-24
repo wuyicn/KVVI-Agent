@@ -95,6 +95,7 @@ async function main() {
   await applyFile('kvvi_platform', '15-visitor.sql')
   await applyFile('kvvi_platform', '16-publish.sql')
   await applyFile('kvvi_platform', '17-rate.sql')
+  await applyFile('kvvi_platform', '18-retention.sql')
   await applyFile('kvvi_business', '20-business.sql')
   await applyFile('kvvi_audit', '30-audit.sql')
   await grantPlatform()
