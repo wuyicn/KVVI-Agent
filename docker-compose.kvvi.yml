@@ -15,7 +15,73 @@
 # 用法：scripts/kvvi-up.sh（会先生成 KVVI_INTERNAL_TOKEN）
 name: kvvi
 
+# ── 三个数据库**分属三个容器**（PRD §4.6.1）─────────────────────────────
+#
+# §4.6.1 要求审计库**不共享**主机管理域、DBA、备份通道：
+#
+#   「不共享主机管理域」 → 三个独立容器（各自的生命周期与 root 环境）
+#   「不共享备份通道」   → 三个独立 named volume（备份单元按卷划分）
+#   「不共享 DBA」       → 三个独立 superuser 密码（由 .kvvi-docker.env 注入）
+#
+# ⚠️ 仍未兑现的是**独立主机**：三者仍在同一台物理/虚拟主机上。
+# 那是托管面的事，不是 compose 能决定的 —— 见 进度.md N15 的残留。
+#
+# 三者都**不映射宿主端口**，只挂在 internal 网络里：数据库不该有对外入口。
 services:
+  # ── 平台库 ──────────────────────────────────────────────────────
+  platform-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: kvvi_platform
+      POSTGRES_PASSWORD: "${KVVI_PLATFORM_DB_PASSWORD:?需要 KVVI_PLATFORM_DB_PASSWORD}"
+      POSTGRES_DB: kvvi_platform
+    volumes:
+      - platform-db-data:/var/lib/postgresql/data
+    networks: [data]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kvvi_platform -d kvvi_platform"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  # ── 业务系统库 ──────────────────────────────────────────────────
+  business-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: kvvi_business
+      POSTGRES_PASSWORD: "${KVVI_BUSINESS_DB_PASSWORD:?需要 KVVI_BUSINESS_DB_PASSWORD}"
+      POSTGRES_DB: kvvi_business
+    volumes:
+      - business-db-data:/var/lib/postgresql/data
+    networks: [data]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kvvi_business -d kvvi_business"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  # ── 审计库（独立实例、独立卷、独立口令）────────────────────────
+  audit-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: kvvi_audit_owner
+      POSTGRES_PASSWORD: "${KVVI_AUDIT_DB_PASSWORD:?需要 KVVI_AUDIT_DB_PASSWORD}"
+      POSTGRES_DB: kvvi_audit
+    volumes:
+      - audit-db-data:/var/lib/postgresql/data
+    networks: [data]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kvvi_audit_owner -d kvvi_audit"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
   # ── 平台服务进程（**唯一对外入口**）────────────────────────────────
   # 身份层 / 授权判定 / 签名模块 / 发布通道 / 平台库访问 / 认证端点。
   #
@@ -35,15 +101,26 @@ services:
       KVVI_RUNTIME_URL: "http://runtime:7401"
       # 签名私钥**不进镜像**，由运行期挂载。此处留路径，不预置文件。
       KVVI_SIGNING_KEY_PATH: /run/kvvi-secrets/signing.key
+      # 三个库分属三个容器（PRD §4.6.1）
+      KVVI_PLATFORM_DSN: "postgres://kvvi_platform:${KVVI_PLATFORM_DB_PASSWORD:?}@platform-db:5432/kvvi_platform"
+      KVVI_BUSINESS_DSN: "postgres://kvvi_business:${KVVI_BUSINESS_DB_PASSWORD:?}@business-db:5432/kvvi_business"
+      KVVI_AUDIT_DSN: "postgres://kvvi_audit_writer:${KVVI_AUDIT_DB_PASSWORD:?}@audit-db:5432/kvvi_audit"
+      KVVI_AUDITREAD_DSN: "postgres://kvvi_audit_reader:${KVVI_AUDIT_DB_PASSWORD:?}@audit-db:5432/kvvi_audit"
     ports:
       # 唯一对外端口：既是本进程的 /healthz 与 API，也是 Web UI 的入口
       #（非本进程路径经 proxy.mjs 转发给运行时进程）。
       - "${KVVI_PLATFORM_PORT:-7400}:7400"
     volumes:
-      # 平台库落点（阶段四接入真实存储）。
+      # 平台服务进程自己的状态目录。**数据在 platform-db 里**，
+      # 这个卷只放进程自己的东西 —— 两者不是一回事，别合并。
       - platform-data:/var/lib/kvvi
     networks:
       - control
+      - data
+    depends_on:
+      platform-db: { condition: service_healthy }
+      business-db: { condition: service_healthy }
+      audit-db: { condition: service_healthy }
     # 部署基线：禁止提权、禁止新增能力。
     security_opt:
       - no-new-privileges:true
@@ -89,6 +166,10 @@ services:
 volumes:
   platform-data:
   runtime-data:
+  # 三个库各自一个卷 —— 备份通道按卷划分（§4.6.1）
+  platform-db-data:
+  business-db-data:
+  audit-db-data:
 
 networks:
   control:
@@ -96,3 +177,8 @@ networks:
     # 两进程需要互相通信（受控接口），故同网络；
     # 但**不**与宿主默认网络或其他 compose 项目互通。
     internal: false
+  data:
+    driver: bridge
+    # 数据库只在部署内可达：**internal: true** 让这个网络没有对外网关，
+    # 三个库因此不可能有对外入口 —— 比「不映射端口」更硬。
+    internal: true

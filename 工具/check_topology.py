@@ -61,8 +61,14 @@ def dc(*args: str, timeout: int = 60) -> Tuple[Optional[int], str]:
     # --env-file 只在文件存在时传：compose 对不存在的 env 文件直接报错，
     # 而没有 env 文件是完全正常的（首次静态检查时它还没被 kvvi-up.sh 生成）。
     env_part = '--env-file "%s"' % ENV_FILE if os.path.exists(ENV_FILE) else ''
-    return run('KVVI_INTERNAL_TOKEN=%s docker compose -f "%s" %s %s'
-               % (compose_env(), COMPOSE, env_part, q), timeout=timeout)
+    # ⚠️ 三个库的口令是 `${VAR:?}` 形式的**必填**变量：compose 在变量缺失时
+    # 直接报错，而报错信息只写「required variable ... is missing」——
+    # 看起来像 compose 文件坏了，其实是静态检查没喂变量。
+    # 这三个值只用于**渲染配置**，静态检查不连数据库，所以给占位即可。
+    placeholder = ('KVVI_PLATFORM_DB_PASSWORD=p KVVI_BUSINESS_DB_PASSWORD=p '
+                   'KVVI_AUDIT_DB_PASSWORD=p')
+    return run('KVVI_INTERNAL_TOKEN=%s %s docker compose -f "%s" %s %s'
+               % (compose_env(), placeholder, COMPOSE, env_part, q), timeout=timeout)
 
 
 def compose_json() -> Optional[dict]:
@@ -89,7 +95,8 @@ def check_static() -> bool:
 
     want = {'platform', 'runtime'}
     got = set(services)
-    if got == want:
+    runners = [s for s in set(cfg['services']) if not s.endswith('-db')]
+    if sorted(runners) == ['platform', 'runtime']:
         print('  %s✓%s 两个进程各为一个 service：%s' % (C_OK, C_OFF, ', '.join(sorted(got))))
     else:
         ok = False

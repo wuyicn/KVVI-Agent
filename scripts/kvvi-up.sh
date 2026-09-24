@@ -39,10 +39,15 @@ docker info >/dev/null 2>&1 || die "Docker daemon 没在跑。先启动 Docker D
 # 平台服务进程的受控接口需要调用方鉴别（PRD §4.6.5 部署基线）。
 # 令牌每次生成并落在 gitignored 的 .kvvi-docker.env 里 —— 不写死进仓库，
 # 也不从 compose 文件里的默认值取（默认值等于没有鉴别）。
+# 一个随机值生成器：四处调用各得一个**不同**的值。
+rand() { head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
+
 if [ ! -f "$ENV_FILE" ]; then
-  say "生成进程间调用令牌 → $ENV_FILE"
-  printf '# KVVI 本地开发令牌。**不要提交**（已在 .gitignore）。\nKVVI_INTERNAL_TOKEN=%s\n' \
-    "$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')" > "$ENV_FILE"
+  say "生成进程间调用令牌与三个库口令 → $ENV_FILE"
+  # 三个库各自的 superuser 口令（PRD §4.6.1「不共享 DBA」）。
+  # 生成三个**不同**的值：共用口令会让「DBA 不共享」在配置层就不成立。
+  printf '# KVVI 本地开发口令。**不要提交**（已在 .gitignore）。\nKVVI_INTERNAL_TOKEN=%s\nKVVI_PLATFORM_DB_PASSWORD=%s\nKVVI_BUSINESS_DB_PASSWORD=%s\nKVVI_AUDIT_DB_PASSWORD=%s\n' \
+    "$(rand)" "$(rand)" "$(rand)" "$(rand)" > "$ENV_FILE"
   chmod 600 "$ENV_FILE"
 fi
 # shellcheck disable=SC1090
