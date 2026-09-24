@@ -80,6 +80,9 @@ async function grantPlatform() {
   try {
     await client.query(`GRANT USAGE ON SCHEMA public TO kvvi_platform`)
     await client.query(`GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO kvvi_platform`)
+    // 限流记账需要 DELETE（清理过期窗口）。它是**唯一**需要 DELETE 的表 ——
+    // 权限按表给，不按库给。
+    await client.query(`GRANT DELETE ON rate_events TO kvvi_platform`)
     await client.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO kvvi_platform`)
   } finally {
     await client.end()
@@ -91,6 +94,7 @@ async function main() {
   await applyFile('kvvi_platform', '10-platform.sql')
   await applyFile('kvvi_platform', '15-visitor.sql')
   await applyFile('kvvi_platform', '16-publish.sql')
+  await applyFile('kvvi_platform', '17-rate.sql')
   await applyFile('kvvi_business', '20-business.sql')
   await applyFile('kvvi_audit', '30-audit.sql')
   await grantPlatform()
