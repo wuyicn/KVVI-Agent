@@ -73,7 +73,7 @@
         "app_id": null,
         "module_id": null,
         "asset_type": "FIELD_TYPE_REGISTRY",
-        "asset_id": "business-field-types-core",
+        "asset_id": "fake-business-types",
         "version": 1,
         "digest": "sha256:a36716610e06b202ea165484cd58fef645905408aac7534ebdb47791c17649d2"
       },
@@ -167,132 +167,78 @@
         "asset_type": "BUSINESS_SCHEMA",
         "asset_id": "general_item",
         "version": 1,
-        "digest": "sha256:518077baee491b8146bc740bfa84d23bb2ef7f4bc81929eadefb7fd1691c9433"
+        "digest": "sha256:898c0ae169c52fbce26428e3eb90a92763e3615ab9521aa44ef120b79edeeca1"
       },
       "content": {
         "schema_code": "general_item",
+        "name": "通用事项",
+        "description": "一类需要登记、跟踪状态、可被审批的业务事项",
         "field_type_registry_ref": {
           "scope_type": "PLATFORM_CONTROL",
           "scope_id": "kvvi-platform",
           "app_id": null,
           "module_id": null,
           "asset_type": "FIELD_TYPE_REGISTRY",
-          "asset_id": "business-field-types-core",
+          "asset_id": "fake-business-types",
           "version": 1,
           "digest": "sha256:a36716610e06b202ea165484cd58fef645905408aac7534ebdb47791c17649d2"
         },
-        "name": "通用事项登记",
-        "description": "用于验证 BusinessSchema v1 和通用 CRUD 运行时",
-        "record_number": {
-          "field_code": "record_no",
-          "label": "事项编号",
-          "sequence_policy_ref": {
-            "scope_type": "TENANT",
-            "scope_id": "11111111-1111-4111-8111-111111111111",
-            "app_id": "22222222-2222-4222-8222-222222222222",
-            "module_id": "33333333-3333-4333-8333-333333333333",
-            "asset_type": "SEQUENCE_POLICY",
-            "asset_id": "general_item_no",
-            "version": 1,
-            "digest": "sha256:70a87c366be01435b75dfd7bc35444ea7e232022ddfb0cecf3e7042853bf81bc"
-          }
-        },
         "fields": [
+          {
+            "field_code": "item_no",
+            "label": "事项编号",
+            "type": "short_text",
+            "required": true,
+            "nullable": false,
+            "write_policy": "CREATE_ONLY",
+            "query": {
+              "searchable": true,
+              "filterable": true,
+              "sortable": true
+            }
+          },
           {
             "field_code": "title",
             "label": "标题",
-            "description": "事项的简短名称",
             "type": "short_text",
             "required": true,
             "nullable": false,
             "write_policy": "MUTABLE",
-            "constraints": {
-              "min_length": 1,
-              "max_length": 120,
-              "trim": true
-            },
             "query": {
               "searchable": true,
-              "filterable": true,
-              "sortable": true
-            },
-            "deprecated": false
+              "filterable": false,
+              "sortable": false
+            }
           },
           {
-            "field_code": "category",
-            "label": "分类",
-            "type": "single_select",
-            "required": true,
-            "nullable": false,
-            "write_policy": "MUTABLE",
-            "type_config": {
-              "options": [
-                {
-                  "code": "general",
-                  "label": "一般",
-                  "order": 1,
-                  "enabled": true
-                },
-                {
-                  "code": "urgent",
-                  "label": "紧急",
-                  "order": 2,
-                  "enabled": true
-                },
-                {
-                  "code": "disabled",
-                  "label": "相同标签",
-                  "order": 0,
-                  "enabled": false
-                }
-              ]
-            },
-            "query": {
-              "searchable": true,
-              "filterable": true,
-              "sortable": true
-            },
-            "deprecated": false
-          },
-          {
-            "field_code": "quantity",
-            "label": "数量",
-            "type": "integer",
-            "required": true,
-            "nullable": false,
-            "default": 1,
-            "write_policy": "MUTABLE",
-            "constraints": {
-              "minimum": 1,
-              "maximum": 1000000
-            },
-            "query": {
-              "searchable": false,
-              "filterable": true,
-              "sortable": true
-            },
-            "deprecated": false
-          },
-          {
-            "field_code": "amount",
-            "label": "预计金额",
-            "type": "money",
+            "field_code": "detail",
+            "label": "说明",
+            "type": "long_text",
             "required": false,
             "nullable": true,
             "write_policy": "MUTABLE",
-            "type_config": {
-              "currency_mode": "FIXED",
-              "currency": "CNY"
-            },
-            "constraints": {
-              "minimum": "0.00"
-            },
+            "query": {
+              "searchable": false,
+              "filterable": false,
+              "sortable": false
+            }
+          },
+          {
+            "field_code": "amount",
+            "label": "金额",
+            "type": "money",
+            "required": true,
+            "nullable": false,
+            "write_policy": "MUTABLE",
             "query": {
               "searchable": false,
               "filterable": true,
               "sortable": true
             },
-            "deprecated": false
+            "type_config": {
+              "currency_mode": "FIXED",
+              "currency": "CNY"
+            }
           },
           {
             "field_code": "due_date",
@@ -305,260 +251,50 @@
               "searchable": false,
               "filterable": true,
               "sortable": true
-            },
-            "deprecated": false
-          },
-          {
-            "field_code": "notes",
-            "label": "说明",
-            "type": "long_text",
-            "required": false,
-            "nullable": true,
-            "write_policy": "MUTABLE",
-            "constraints": {
-              "max_length": 5000
-            },
-            "query": {
-              "searchable": true,
-              "filterable": false,
-              "sortable": false
-            },
-            "deprecated": false
-          },
-          {
-            "field_code": "short_text",
-            "label": "字段",
-            "type": "short_text",
-            "required": false,
-            "nullable": true,
-            "write_policy": "MUTABLE",
-            "query": {
-              "searchable": false,
-              "filterable": false,
-              "sortable": false
             }
           },
           {
-            "field_code": "long_text",
-            "label": "字段",
-            "type": "long_text",
-            "required": false,
-            "nullable": true,
-            "write_policy": "MUTABLE",
-            "query": {
-              "searchable": false,
-              "filterable": false,
-              "sortable": false
-            }
-          },
-          {
-            "field_code": "boolean",
-            "label": "字段",
-            "type": "boolean",
-            "required": false,
-            "nullable": true,
-            "write_policy": "MUTABLE",
-            "query": {
-              "searchable": false,
-              "filterable": false,
-              "sortable": false
-            }
-          },
-          {
-            "field_code": "integer",
-            "label": "字段",
-            "type": "integer",
-            "required": false,
-            "nullable": true,
-            "write_policy": "MUTABLE",
-            "query": {
-              "searchable": false,
-              "filterable": false,
-              "sortable": false
-            }
-          },
-          {
-            "field_code": "decimal",
-            "label": "字段",
-            "type": "decimal",
-            "required": false,
-            "nullable": true,
-            "write_policy": "MUTABLE",
-            "query": {
-              "searchable": false,
-              "filterable": false,
-              "sortable": false
-            }
-          },
-          {
-            "field_code": "money",
-            "label": "字段",
-            "type": "money",
-            "required": false,
-            "nullable": true,
-            "write_policy": "MUTABLE",
-            "query": {
-              "searchable": false,
-              "filterable": false,
-              "sortable": false
-            },
-            "type_config": {
-              "currency_mode": "FIXED",
-              "currency": "CNY"
-            }
-          },
-          {
-            "field_code": "date",
-            "label": "字段",
-            "type": "date",
-            "required": false,
-            "nullable": true,
-            "write_policy": "MUTABLE",
-            "query": {
-              "searchable": false,
-              "filterable": false,
-              "sortable": false
-            }
-          },
-          {
-            "field_code": "datetime",
-            "label": "字段",
-            "type": "datetime",
-            "required": false,
-            "nullable": true,
-            "write_policy": "MUTABLE",
-            "query": {
-              "searchable": false,
-              "filterable": false,
-              "sortable": false
-            }
-          },
-          {
-            "field_code": "single_select",
-            "label": "字段",
+            "field_code": "item_status",
+            "label": "状态",
             "type": "single_select",
-            "required": false,
-            "nullable": true,
+            "required": true,
+            "nullable": false,
             "write_policy": "MUTABLE",
             "query": {
               "searchable": false,
-              "filterable": false,
+              "filterable": true,
               "sortable": false
             },
             "type_config": {
               "options": [
                 {
-                  "code": "one",
-                  "label": "相同标签",
+                  "code": "draft",
+                  "label": "草稿",
                   "order": 0,
                   "enabled": true
                 },
                 {
-                  "code": "disabled",
-                  "label": "相同标签",
-                  "order": 0,
-                  "enabled": false
-                }
-              ]
-            }
-          },
-          {
-            "field_code": "multi_select",
-            "label": "字段",
-            "type": "multi_select",
-            "required": false,
-            "nullable": true,
-            "write_policy": "MUTABLE",
-            "query": {
-              "searchable": false,
-              "filterable": false,
-              "sortable": false
-            },
-            "type_config": {
-              "options": [
-                {
-                  "code": "one",
-                  "label": "相同标签",
-                  "order": 0,
+                  "code": "submitted",
+                  "label": "待审批",
+                  "order": 1,
                   "enabled": true
                 },
                 {
-                  "code": "disabled",
-                  "label": "相同标签",
-                  "order": 0,
-                  "enabled": false
+                  "code": "approved",
+                  "label": "已通过",
+                  "order": 2,
+                  "enabled": true
+                },
+                {
+                  "code": "rejected",
+                  "label": "已驳回",
+                  "order": 3,
+                  "enabled": true
                 }
               ]
             }
           }
-        ],
-        "indexes": [
-          {
-            "index_code": "idx_category_due_date",
-            "kind": "NORMAL",
-            "fields": [
-              "category",
-              "due_date"
-            ]
-          }
-        ],
-        "record_rules": [
-          {
-            "rule_code": "large_quantity_requires_notes",
-            "when": {
-              "field": "quantity",
-              "operator": "gt",
-              "value": 100
-            },
-            "assert": {
-              "field": "notes",
-              "operator": "not_empty"
-            },
-            "message": "数量超过 100 时必须填写说明"
-          }
-        ],
-        "layout": {
-          "sections": [
-            {
-              "section_code": "basic",
-              "title": "基本信息",
-              "description": "填写事项的基础内容",
-              "columns": 2,
-              "items": [
-                {
-                  "kind": "field",
-                  "field_code": "title",
-                  "col_span": 2
-                },
-                {
-                  "kind": "field",
-                  "field_code": "category",
-                  "col_span": 1
-                },
-                {
-                  "kind": "field",
-                  "field_code": "quantity",
-                  "col_span": 1
-                },
-                {
-                  "kind": "field",
-                  "field_code": "amount",
-                  "col_span": 1
-                },
-                {
-                  "kind": "field",
-                  "field_code": "due_date",
-                  "col_span": 1
-                },
-                {
-                  "kind": "field",
-                  "field_code": "notes",
-                  "col_span": 2
-                }
-              ]
-            }
-          ]
-        }
+        ]
       }
     },
     {
@@ -2385,7 +2121,7 @@
         "asset_type": "CAPABILITY",
         "capability_code": "records.list",
         "version": 1,
-        "digest": "sha256:82a4a0057bf0b83d5d79898c29940825ae5b5ce7d9442822078f4c983ef510b7"
+        "digest": "sha256:f042f0106afe49c4246485032b03c4b3d7ed80eb5ecafda2f29fbb526c5bdc97"
       },
       "content": {
         "fixture": true,
@@ -2405,7 +2141,7 @@
                 "asset_type": "BUSINESS_SCHEMA",
                 "asset_id": "general_item",
                 "version": 1,
-                "digest": "sha256:518077baee491b8146bc740bfa84d23bb2ef7f4bc81929eadefb7fd1691c9433"
+                "digest": "sha256:898c0ae169c52fbce26428e3eb90a92763e3615ab9521aa44ef120b79edeeca1"
               }
             },
             "pageSize": {
@@ -2495,7 +2231,7 @@
         "asset_type": "CAPABILITY",
         "capability_code": "records.get",
         "version": 1,
-        "digest": "sha256:6bcbcb34589f3ebdda97c0934af0a12697865318caa829361055e92dc064a667"
+        "digest": "sha256:01d1f4a163653409950e1362554d7cd48f30e055f37b0c04353d8689cd62f5b4"
       },
       "content": {
         "fixture": true,
@@ -2515,7 +2251,7 @@
                 "asset_type": "BUSINESS_SCHEMA",
                 "asset_id": "general_item",
                 "version": 1,
-                "digest": "sha256:518077baee491b8146bc740bfa84d23bb2ef7f4bc81929eadefb7fd1691c9433"
+                "digest": "sha256:898c0ae169c52fbce26428e3eb90a92763e3615ab9521aa44ef120b79edeeca1"
               }
             },
             "recordId": {
@@ -2605,7 +2341,7 @@
         "asset_type": "CAPABILITY",
         "capability_code": "options.list",
         "version": 1,
-        "digest": "sha256:76302219268400866a0a5ee857992b74ed2a69e6a2380e9e99e1f802faf9ec17"
+        "digest": "sha256:6a3248fec26eb9c00ac706498ed835f6c2d4fd66262de84632f816f712450f67"
       },
       "content": {
         "fixture": true,
@@ -2625,7 +2361,7 @@
                 "asset_type": "BUSINESS_SCHEMA",
                 "asset_id": "general_item",
                 "version": 1,
-                "digest": "sha256:518077baee491b8146bc740bfa84d23bb2ef7f4bc81929eadefb7fd1691c9433"
+                "digest": "sha256:898c0ae169c52fbce26428e3eb90a92763e3615ab9521aa44ef120b79edeeca1"
               }
             },
             "field": {
@@ -2714,7 +2450,7 @@
         "asset_type": "CAPABILITY_REGISTRY",
         "asset_id": "fake-capabilities",
         "version": 1,
-        "digest": "sha256:33ec37aec2239159216a9be9fb1792c83fc8a8b50b4e2bb9367721357529e38f"
+        "digest": "sha256:9a83b2cc3cbbfc10152614a0b4e2b719ad871170d0c04607dd5dba9339e3cbb9"
       },
       "content": {
         "fixture": true,
@@ -2769,7 +2505,7 @@
             "asset_type": "CAPABILITY",
             "capability_code": "records.list",
             "version": 1,
-            "digest": "sha256:82a4a0057bf0b83d5d79898c29940825ae5b5ce7d9442822078f4c983ef510b7"
+            "digest": "sha256:f042f0106afe49c4246485032b03c4b3d7ed80eb5ecafda2f29fbb526c5bdc97"
           },
           {
             "scope_type": "PLATFORM_CONTROL",
@@ -2779,7 +2515,7 @@
             "asset_type": "CAPABILITY",
             "capability_code": "records.get",
             "version": 1,
-            "digest": "sha256:6bcbcb34589f3ebdda97c0934af0a12697865318caa829361055e92dc064a667"
+            "digest": "sha256:01d1f4a163653409950e1362554d7cd48f30e055f37b0c04353d8689cd62f5b4"
           },
           {
             "scope_type": "PLATFORM_CONTROL",
@@ -2789,7 +2525,7 @@
             "asset_type": "CAPABILITY",
             "capability_code": "options.list",
             "version": 1,
-            "digest": "sha256:76302219268400866a0a5ee857992b74ed2a69e6a2380e9e99e1f802faf9ec17"
+            "digest": "sha256:6a3248fec26eb9c00ac706498ed835f6c2d4fd66262de84632f816f712450f67"
           },
           {
             "scope_type": "PLATFORM_CONTROL",
@@ -2799,7 +2535,7 @@
             "asset_type": "CAPABILITY",
             "capability_code": "caliber.monthly_sales",
             "version": 1,
-            "digest": "sha256:42771c2eff1f0cddf68dbe962413a002037154dd09dacd2229a76bc5a71f9c5c"
+            "digest": "sha256:be29a8215ecc59771fdcac0291aa4a2ea4e23f04a68f43d61b4cd73e25b28ee6"
           },
           {
             "scope_type": "PLATFORM_CONTROL",
@@ -2809,7 +2545,7 @@
             "asset_type": "CAPABILITY",
             "capability_code": "caliber.dept_completion",
             "version": 1,
-            "digest": "sha256:2c2b9b654a3134f49f458047264002e554c6daba2bb8d3ba687f107c21e4c2ec"
+            "digest": "sha256:a99240f769acd5f820892251851551e64d764e6439a459214cb706cbd3414fb2"
           }
         ]
       }
@@ -2823,7 +2559,7 @@
         "asset_type": "CAPABILITY",
         "capability_code": "caliber.monthly_sales",
         "version": 1,
-        "digest": "sha256:42771c2eff1f0cddf68dbe962413a002037154dd09dacd2229a76bc5a71f9c5c"
+        "digest": "sha256:be29a8215ecc59771fdcac0291aa4a2ea4e23f04a68f43d61b4cd73e25b28ee6"
       },
       "content": {
         "fixture": true,
@@ -2843,7 +2579,7 @@
                 "asset_type": "BUSINESS_SCHEMA",
                 "asset_id": "general_item",
                 "version": 1,
-                "digest": "sha256:518077baee491b8146bc740bfa84d23bb2ef7f4bc81929eadefb7fd1691c9433"
+                "digest": "sha256:898c0ae169c52fbce26428e3eb90a92763e3615ab9521aa44ef120b79edeeca1"
               }
             },
             "dataScope": {
@@ -2943,7 +2679,7 @@
         "asset_type": "CAPABILITY",
         "capability_code": "caliber.dept_completion",
         "version": 1,
-        "digest": "sha256:2c2b9b654a3134f49f458047264002e554c6daba2bb8d3ba687f107c21e4c2ec"
+        "digest": "sha256:a99240f769acd5f820892251851551e64d764e6439a459214cb706cbd3414fb2"
       },
       "content": {
         "fixture": true,
@@ -2963,7 +2699,7 @@
                 "asset_type": "BUSINESS_SCHEMA",
                 "asset_id": "general_item",
                 "version": 1,
-                "digest": "sha256:518077baee491b8146bc740bfa84d23bb2ef7f4bc81929eadefb7fd1691c9433"
+                "digest": "sha256:898c0ae169c52fbce26428e3eb90a92763e3615ab9521aa44ef120b79edeeca1"
               }
             },
             "dataScope": {
@@ -3072,7 +2808,7 @@
       "asset_type": "CAPABILITY_REGISTRY",
       "asset_id": "fake-capabilities",
       "version": 1,
-      "digest": "sha256:33ec37aec2239159216a9be9fb1792c83fc8a8b50b4e2bb9367721357529e38f"
+      "digest": "sha256:9a83b2cc3cbbfc10152614a0b4e2b719ad871170d0c04607dd5dba9339e3cbb9"
     },
     "deleted_node_ids": []
   },
@@ -3097,7 +2833,7 @@
         "asset_type": "BUSINESS_SCHEMA",
         "asset_id": "general_item",
         "version": 1,
-        "digest": "sha256:518077baee491b8146bc740bfa84d23bb2ef7f4bc81929eadefb7fd1691c9433"
+        "digest": "sha256:898c0ae169c52fbce26428e3eb90a92763e3615ab9521aa44ef120b79edeeca1"
       },
       "registered": {
         "contract_version": "business-schema/v1",
@@ -3107,7 +2843,7 @@
         "base_version": 0,
         "lifecycle": "PUBLISHED",
         "canonicalization_profile": "kvvi-json-c14n/v1",
-        "checksum": "sha256:518077baee491b8146bc740bfa84d23bb2ef7f4bc81929eadefb7fd1691c9433",
+        "checksum": "sha256:898c0ae169c52fbce26428e3eb90a92763e3615ab9521aa44ef120b79edeeca1",
         "audit": {
           "created_by": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
           "created_at": "2026-09-08T00:00:00Z",
@@ -3119,128 +2855,74 @@
         },
         "spec": {
           "schema_code": "general_item",
+          "name": "通用事项",
+          "description": "一类需要登记、跟踪状态、可被审批的业务事项",
           "field_type_registry_ref": {
             "scope_type": "PLATFORM_CONTROL",
             "scope_id": "kvvi-platform",
             "app_id": null,
             "module_id": null,
             "asset_type": "FIELD_TYPE_REGISTRY",
-            "asset_id": "business-field-types-core",
+            "asset_id": "fake-business-types",
             "version": 1,
             "digest": "sha256:a36716610e06b202ea165484cd58fef645905408aac7534ebdb47791c17649d2"
           },
-          "name": "通用事项登记",
-          "description": "用于验证 BusinessSchema v1 和通用 CRUD 运行时",
-          "record_number": {
-            "field_code": "record_no",
-            "label": "事项编号",
-            "sequence_policy_ref": {
-              "scope_type": "TENANT",
-              "scope_id": "11111111-1111-4111-8111-111111111111",
-              "app_id": "22222222-2222-4222-8222-222222222222",
-              "module_id": "33333333-3333-4333-8333-333333333333",
-              "asset_type": "SEQUENCE_POLICY",
-              "asset_id": "general_item_no",
-              "version": 1,
-              "digest": "sha256:70a87c366be01435b75dfd7bc35444ea7e232022ddfb0cecf3e7042853bf81bc"
-            }
-          },
           "fields": [
+            {
+              "field_code": "item_no",
+              "label": "事项编号",
+              "type": "short_text",
+              "required": true,
+              "nullable": false,
+              "write_policy": "CREATE_ONLY",
+              "query": {
+                "searchable": true,
+                "filterable": true,
+                "sortable": true
+              }
+            },
             {
               "field_code": "title",
               "label": "标题",
-              "description": "事项的简短名称",
               "type": "short_text",
               "required": true,
               "nullable": false,
               "write_policy": "MUTABLE",
-              "constraints": {
-                "min_length": 1,
-                "max_length": 120,
-                "trim": true
-              },
               "query": {
                 "searchable": true,
-                "filterable": true,
-                "sortable": true
-              },
-              "deprecated": false
+                "filterable": false,
+                "sortable": false
+              }
             },
             {
-              "field_code": "category",
-              "label": "分类",
-              "type": "single_select",
-              "required": true,
-              "nullable": false,
-              "write_policy": "MUTABLE",
-              "type_config": {
-                "options": [
-                  {
-                    "code": "general",
-                    "label": "一般",
-                    "order": 1,
-                    "enabled": true
-                  },
-                  {
-                    "code": "urgent",
-                    "label": "紧急",
-                    "order": 2,
-                    "enabled": true
-                  },
-                  {
-                    "code": "disabled",
-                    "label": "相同标签",
-                    "order": 0,
-                    "enabled": false
-                  }
-                ]
-              },
-              "query": {
-                "searchable": true,
-                "filterable": true,
-                "sortable": true
-              },
-              "deprecated": false
-            },
-            {
-              "field_code": "quantity",
-              "label": "数量",
-              "type": "integer",
-              "required": true,
-              "nullable": false,
-              "default": 1,
-              "write_policy": "MUTABLE",
-              "constraints": {
-                "minimum": 1,
-                "maximum": 1000000
-              },
-              "query": {
-                "searchable": false,
-                "filterable": true,
-                "sortable": true
-              },
-              "deprecated": false
-            },
-            {
-              "field_code": "amount",
-              "label": "预计金额",
-              "type": "money",
+              "field_code": "detail",
+              "label": "说明",
+              "type": "long_text",
               "required": false,
               "nullable": true,
               "write_policy": "MUTABLE",
-              "type_config": {
-                "currency_mode": "FIXED",
-                "currency": "CNY"
-              },
-              "constraints": {
-                "minimum": "0.00"
-              },
+              "query": {
+                "searchable": false,
+                "filterable": false,
+                "sortable": false
+              }
+            },
+            {
+              "field_code": "amount",
+              "label": "金额",
+              "type": "money",
+              "required": true,
+              "nullable": false,
+              "write_policy": "MUTABLE",
               "query": {
                 "searchable": false,
                 "filterable": true,
                 "sortable": true
               },
-              "deprecated": false
+              "type_config": {
+                "currency_mode": "FIXED",
+                "currency": "CNY"
+              }
             },
             {
               "field_code": "due_date",
@@ -3253,260 +2935,50 @@
                 "searchable": false,
                 "filterable": true,
                 "sortable": true
-              },
-              "deprecated": false
-            },
-            {
-              "field_code": "notes",
-              "label": "说明",
-              "type": "long_text",
-              "required": false,
-              "nullable": true,
-              "write_policy": "MUTABLE",
-              "constraints": {
-                "max_length": 5000
-              },
-              "query": {
-                "searchable": true,
-                "filterable": false,
-                "sortable": false
-              },
-              "deprecated": false
-            },
-            {
-              "field_code": "short_text",
-              "label": "字段",
-              "type": "short_text",
-              "required": false,
-              "nullable": true,
-              "write_policy": "MUTABLE",
-              "query": {
-                "searchable": false,
-                "filterable": false,
-                "sortable": false
               }
             },
             {
-              "field_code": "long_text",
-              "label": "字段",
-              "type": "long_text",
-              "required": false,
-              "nullable": true,
-              "write_policy": "MUTABLE",
-              "query": {
-                "searchable": false,
-                "filterable": false,
-                "sortable": false
-              }
-            },
-            {
-              "field_code": "boolean",
-              "label": "字段",
-              "type": "boolean",
-              "required": false,
-              "nullable": true,
-              "write_policy": "MUTABLE",
-              "query": {
-                "searchable": false,
-                "filterable": false,
-                "sortable": false
-              }
-            },
-            {
-              "field_code": "integer",
-              "label": "字段",
-              "type": "integer",
-              "required": false,
-              "nullable": true,
-              "write_policy": "MUTABLE",
-              "query": {
-                "searchable": false,
-                "filterable": false,
-                "sortable": false
-              }
-            },
-            {
-              "field_code": "decimal",
-              "label": "字段",
-              "type": "decimal",
-              "required": false,
-              "nullable": true,
-              "write_policy": "MUTABLE",
-              "query": {
-                "searchable": false,
-                "filterable": false,
-                "sortable": false
-              }
-            },
-            {
-              "field_code": "money",
-              "label": "字段",
-              "type": "money",
-              "required": false,
-              "nullable": true,
-              "write_policy": "MUTABLE",
-              "query": {
-                "searchable": false,
-                "filterable": false,
-                "sortable": false
-              },
-              "type_config": {
-                "currency_mode": "FIXED",
-                "currency": "CNY"
-              }
-            },
-            {
-              "field_code": "date",
-              "label": "字段",
-              "type": "date",
-              "required": false,
-              "nullable": true,
-              "write_policy": "MUTABLE",
-              "query": {
-                "searchable": false,
-                "filterable": false,
-                "sortable": false
-              }
-            },
-            {
-              "field_code": "datetime",
-              "label": "字段",
-              "type": "datetime",
-              "required": false,
-              "nullable": true,
-              "write_policy": "MUTABLE",
-              "query": {
-                "searchable": false,
-                "filterable": false,
-                "sortable": false
-              }
-            },
-            {
-              "field_code": "single_select",
-              "label": "字段",
+              "field_code": "item_status",
+              "label": "状态",
               "type": "single_select",
-              "required": false,
-              "nullable": true,
+              "required": true,
+              "nullable": false,
               "write_policy": "MUTABLE",
               "query": {
                 "searchable": false,
-                "filterable": false,
+                "filterable": true,
                 "sortable": false
               },
               "type_config": {
                 "options": [
                   {
-                    "code": "one",
-                    "label": "相同标签",
+                    "code": "draft",
+                    "label": "草稿",
                     "order": 0,
                     "enabled": true
                   },
                   {
-                    "code": "disabled",
-                    "label": "相同标签",
-                    "order": 0,
-                    "enabled": false
-                  }
-                ]
-              }
-            },
-            {
-              "field_code": "multi_select",
-              "label": "字段",
-              "type": "multi_select",
-              "required": false,
-              "nullable": true,
-              "write_policy": "MUTABLE",
-              "query": {
-                "searchable": false,
-                "filterable": false,
-                "sortable": false
-              },
-              "type_config": {
-                "options": [
-                  {
-                    "code": "one",
-                    "label": "相同标签",
-                    "order": 0,
+                    "code": "submitted",
+                    "label": "待审批",
+                    "order": 1,
                     "enabled": true
                   },
                   {
-                    "code": "disabled",
-                    "label": "相同标签",
-                    "order": 0,
-                    "enabled": false
+                    "code": "approved",
+                    "label": "已通过",
+                    "order": 2,
+                    "enabled": true
+                  },
+                  {
+                    "code": "rejected",
+                    "label": "已驳回",
+                    "order": 3,
+                    "enabled": true
                   }
                 ]
               }
             }
-          ],
-          "indexes": [
-            {
-              "index_code": "idx_category_due_date",
-              "kind": "NORMAL",
-              "fields": [
-                "category",
-                "due_date"
-              ]
-            }
-          ],
-          "record_rules": [
-            {
-              "rule_code": "large_quantity_requires_notes",
-              "when": {
-                "field": "quantity",
-                "operator": "gt",
-                "value": 100
-              },
-              "assert": {
-                "field": "notes",
-                "operator": "not_empty"
-              },
-              "message": "数量超过 100 时必须填写说明"
-            }
-          ],
-          "layout": {
-            "sections": [
-              {
-                "section_code": "basic",
-                "title": "基本信息",
-                "description": "填写事项的基础内容",
-                "columns": 2,
-                "items": [
-                  {
-                    "kind": "field",
-                    "field_code": "title",
-                    "col_span": 2
-                  },
-                  {
-                    "kind": "field",
-                    "field_code": "category",
-                    "col_span": 1
-                  },
-                  {
-                    "kind": "field",
-                    "field_code": "quantity",
-                    "col_span": 1
-                  },
-                  {
-                    "kind": "field",
-                    "field_code": "amount",
-                    "col_span": 1
-                  },
-                  {
-                    "kind": "field",
-                    "field_code": "due_date",
-                    "col_span": 1
-                  },
-                  {
-                    "kind": "field",
-                    "field_code": "notes",
-                    "col_span": 2
-                  }
-                ]
-              }
-            ]
-          }
+          ]
         },
         "schema_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
         "source_ref": null

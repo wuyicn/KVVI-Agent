@@ -1,0 +1,24 @@
+{
+  "command_version": "app-model-command/v1alpha1",
+  "command_id": "c0ffee00-0000-4000-8000-000000001025",
+  "draft_id": "c0ffee00-0000-4000-8000-000000000002",
+  "base_revision": 25,
+  "type": "view.addNode",
+  "target_ref": {
+    "view_id": "c0ffee00-0000-4000-8000-000000000040",
+    "parent_node_id": "c0ffee00-0000-4000-8000-000000000042"
+  },
+  "args": {
+    "componentName": "Table",
+    "props": {
+      "text": "近 12 个月销售趋势",
+      "data": {
+        "type": "DataBindingRef",
+        "queryCode": "q_monthly_sales",
+        "itemKey": "month",
+        "maxItems": 12
+      }
+    },
+    "position": 1
+  }
+}

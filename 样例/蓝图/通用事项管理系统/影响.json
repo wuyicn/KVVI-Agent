@@ -1,0 +1,95 @@
+{
+  "contract_version": "evidence-bundle/v1alpha1",
+  "canonicalization_profile": "kvvi-json-c14n/v1",
+  "evidence_id": "c0ffee00-0000-4000-8000-000000009001",
+  "artifact_digest": "sha256:26f2405d6c8dbcbb3bfadf181a1439a264886b6e13912c1e0b0b5f181bad17f7",
+  "evidence_type": "IMPACT_REPORT",
+  "environment": "DEVELOPMENT",
+  "promotion_ref": null,
+  "producer": {
+    "source_id": "kvvi_blueprint_loop",
+    "run_id": "c0ffee00-0000-4000-8000-000000009002",
+    "method_version": "kvvi-blueprint/v1",
+    "execution_kind": "REFERENCE",
+    "dataset_kind": "NONE"
+  },
+  "observed_at": "2026-09-23T00:00:00Z",
+  "payload": {
+    "report_attachment_id": "impact_report",
+    "app_context_graph_digest": "sha256:26f2405d6c8dbcbb3bfadf181a1439a264886b6e13912c1e0b0b5f181bad17f7",
+    "base_artifact_digest": null,
+    "change_count": 5,
+    "impacted_refs": [
+      {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "c0ffee00-0000-4000-8000-000000000001",
+        "module_id": "c0ffee00-0000-4000-8000-000000000003",
+        "asset_type": "BUSINESS_SCHEMA",
+        "asset_id": "general_item",
+        "version": 1,
+        "digest": "sha256:898c0ae169c52fbce26428e3eb90a92763e3615ab9521aa44ef120b79edeeca1"
+      },
+      {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "c0ffee00-0000-4000-8000-000000000001",
+        "module_id": "c0ffee00-0000-4000-8000-000000000003",
+        "asset_type": "VIEW_SCHEMA",
+        "asset_id": "general_item_form",
+        "version": 1,
+        "digest": "sha256:ac1d5f25646a2d5b4921c08c8fd25b9b8f0f6cb75440a13e8c5e7ffce55141e4"
+      },
+      {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "c0ffee00-0000-4000-8000-000000000001",
+        "module_id": "c0ffee00-0000-4000-8000-000000000003",
+        "asset_type": "VIEW_SCHEMA",
+        "asset_id": "monthly_sales_dashboard",
+        "version": 1,
+        "digest": "sha256:2f7fea4ce421c889860ec26345c3c09ff922448a9b8b3d3431afd1f6e4a6b345"
+      },
+      {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "c0ffee00-0000-4000-8000-000000000001",
+        "module_id": "c0ffee00-0000-4000-8000-000000000003",
+        "asset_type": "WORKFLOW",
+        "asset_id": "general_item_flow",
+        "version": 1,
+        "digest": "sha256:c06640b261b7d69e54a6b138fe7eff6b6c8bb3a60806f3fbb3b90b835b357ec3"
+      },
+      {
+        "scope_type": "TENANT",
+        "scope_id": "11111111-1111-4111-8111-111111111111",
+        "app_id": "c0ffee00-0000-4000-8000-000000000001",
+        "module_id": "c0ffee00-0000-4000-8000-000000000003",
+        "asset_type": "TOOL_SPEC",
+        "asset_id": "general_item.get",
+        "version": 1,
+        "digest": "sha256:7790af031af610fab95f34c5c701622b548728ed8291a015ea95c8e1ddc5268e"
+      }
+    ],
+    "risk": "MEDIUM"
+  },
+  "attachments": [
+    {
+      "content": {
+        "content_id": "impact_report",
+        "digest": "sha256:26f2405d6c8dbcbb3bfadf181a1439a264886b6e13912c1e0b0b5f181bad17f7",
+        "media_type": "application/json"
+      },
+      "byte_length": 1
+    }
+  ],
+  "audit": {
+    "actor": {
+      "scope_id": "kvvi-platform",
+      "principal_id": "c0ffee00-0000-4000-8000-000000009003"
+    },
+    "recorded_at": "2026-09-23T00:00:00Z",
+    "trace_id": "blueprint_trace"
+  },
+  "record_digest": "sha256:26f2405d6c8dbcbb3bfadf181a1439a264886b6e13912c1e0b0b5f181bad17f7"
+}

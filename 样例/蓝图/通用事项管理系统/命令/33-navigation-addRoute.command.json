@@ -1,0 +1,15 @@
+{
+  "command_version": "app-model-command/v1alpha1",
+  "command_id": "c0ffee00-0000-4000-8000-000000001032",
+  "draft_id": "c0ffee00-0000-4000-8000-000000000002",
+  "base_revision": 32,
+  "type": "navigation.addRoute",
+  "target_ref": {
+    "app_id": "c0ffee00-0000-4000-8000-000000000001"
+  },
+  "args": {
+    "route_code": "general_item_entry",
+    "path": "/general-item",
+    "view_id": "c0ffee00-0000-4000-8000-000000000020"
+  }
+}

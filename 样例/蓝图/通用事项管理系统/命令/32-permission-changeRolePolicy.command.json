@@ -1,0 +1,52 @@
+{
+  "command_version": "app-model-command/v1alpha1",
+  "command_id": "c0ffee00-0000-4000-8000-000000001031",
+  "draft_id": "c0ffee00-0000-4000-8000-000000000002",
+  "base_revision": 31,
+  "type": "permission.changeRolePolicy",
+  "target_ref": {
+    "permission_id": "c0ffee00-0000-4000-8000-000000000061"
+  },
+  "args": {
+    "policy": {
+      "policy_code": "flow_approve",
+      "role_code": "manager",
+      "role_ref": {
+        "permission_ref": {
+          "scope_type": "TENANT",
+          "scope_id": "fixture_tenant",
+          "app_id": "c0ffee00-0000-4000-8000-000000000001",
+          "module_id": null,
+          "asset_type": "PERMISSION",
+          "asset_id": "role_directory",
+          "version": 1,
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "subresource": {
+          "type": "ROLE",
+          "code": "manager"
+        }
+      },
+      "dimension": "FLOW",
+      "effect": "ALLOW",
+      "resource_ref": {
+        "scope_type": "TENANT",
+        "scope_id": "fixture_tenant",
+        "app_id": "c0ffee00-0000-4000-8000-000000000001",
+        "module_id": null,
+        "asset_type": "WORKFLOW",
+        "asset_id": "general_item_flow",
+        "version": 1,
+        "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "subresource": {
+        "type": "STATE",
+        "code": "submitted"
+      },
+      "actions": [
+        "APPROVE"
+      ],
+      "capability_refs": []
+    }
+  }
+}

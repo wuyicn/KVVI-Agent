@@ -1,0 +1,18 @@
+{
+  "command_version": "app-model-command/v1alpha1",
+  "command_id": "c0ffee00-0000-4000-8000-000000001015",
+  "draft_id": "c0ffee00-0000-4000-8000-000000000002",
+  "base_revision": 15,
+  "type": "view.addNode",
+  "target_ref": {
+    "view_id": "c0ffee00-0000-4000-8000-000000000020",
+    "parent_node_id": "c0ffee00-0000-4000-8000-000000000021"
+  },
+  "args": {
+    "componentName": "Section",
+    "props": {
+      "title": "系统字段（只读）"
+    },
+    "position": 1
+  }
+}

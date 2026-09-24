@@ -333,5 +333,5 @@ schema_code, field_type_registry_ref, name, fields
 | 3 | ~~看板在当前契约下没有载体~~ → **已解决**（卡 4） | 原判断过大。产品侧**采用 A**（生产注册表另有图表组件），且核实后：`view_type: "LIST"` **就是**看板载体（根组件 `ListPage`），口径经 `Spec.queries[]` → `DataQueryRef` → `CapabilityRef` 接入 —— **整条通路已端到端跑通并验证**。真正缺的只有**图表组件的名字**。详见 `docs/view-schema-结构约定.md` §5 与 `docs/阶段三-待澄清事项.md` 事项 1 |
 | 4 | **`CAPABILITY` 资产本身没有契约**（卡 4 新发现） | 13 份 MetaSchema 只定义了引用它的 `CapabilityRef`，没有一份定义 `category`/`inputSchema`/`itemKeys` 等字段的合法形态。**引用层能验，登记内容层验不了** —— 已写进卡 4 SKILL.md 的「已知边界」，并记入待澄清事项 4 |
 | 5 | **未定义 Skill 之间的交互协议** | 四张 B 卡如何把产出交给彼此（文件？工具调用？）未定 |
-| 6 | **验收判据尚未实现为可跑的命令** | 已部分解决：`工具/check_skill_output.py` 覆盖全部契约，但**白名单外只有结构校验**；卡 4 的 V6 已补上 `check_invariant.py --input` 通路 |
+| 6 | **验收判据尚未实现为可跑的命令** | ✅ **已解决**：`check_skill_output.py`（逐份契约）+ `check_invariant.py --input`（§9.8.1）+ `check_industry_neutral.py`（`0A-14`，自测 8/8）+ `check_blueprint.py`（`0D-1` 六段闭环，自测 13/13）。**白名单外仍只有结构校验**（见不足 4 与 N9） |
 | 7 | ~~`app-model-command` 用的不是 `Spec` 形态~~ → **已解决** | 它的根定义是 **`#/$defs/Command`**（`$ref` 指向它），不是 `Spec`。检查器已支持传入 entry 名，实测 **78 条用例判定一致 78/78**。**所以卡 5 两部分都有结构校验路径**（仅结构，无语义）——与卡 3 同类 |

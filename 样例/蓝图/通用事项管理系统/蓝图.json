@@ -1,0 +1,252 @@
+{
+  "blueprint_version": "kvvi-blueprint/v1",
+  "app": {
+    "app_id": "c0ffee00-0000-4000-8000-000000000001",
+    "module_code": "general_item",
+    "name": "通用事项管理"
+  },
+  "draft": {
+    "draft_id": "c0ffee00-0000-4000-8000-000000000002"
+  },
+  "ids": {
+    "c0ffee00-0000-4000-8000-000000000020": {
+      "kind": "view",
+      "logical": "general_item_form",
+      "created_by": "blueprint"
+    },
+    "c0ffee00-0000-4000-8000-000000000040": {
+      "kind": "view",
+      "logical": "monthly_sales_dashboard",
+      "created_by": "blueprint"
+    },
+    "c0ffee00-0000-4000-8000-000000000060": {
+      "kind": "workflow",
+      "logical": "general_item_flow",
+      "created_by": "blueprint"
+    },
+    "c0ffee00-0000-4000-8000-000000000061": {
+      "kind": "permission",
+      "logical": "general_item_roles",
+      "created_by": "blueprint"
+    },
+    "c0ffee00-0000-4000-8000-000000000003": {
+      "kind": "module",
+      "logical": "general_item",
+      "created_by": "c0ffee00-0000-4000-8000-000000001000"
+    },
+    "c0ffee00-0000-4000-8000-000000000004": {
+      "kind": "business_object",
+      "logical": "general_item",
+      "created_by": "c0ffee00-0000-4000-8000-000000001001"
+    },
+    "c0ffee00-0000-4000-8000-000000000010": {
+      "kind": "field",
+      "logical": "item_no",
+      "created_by": "c0ffee00-0000-4000-8000-000000001002"
+    },
+    "c0ffee00-0000-4000-8000-000000000011": {
+      "kind": "field",
+      "logical": "title",
+      "created_by": "c0ffee00-0000-4000-8000-000000001003"
+    },
+    "c0ffee00-0000-4000-8000-000000000012": {
+      "kind": "field",
+      "logical": "detail",
+      "created_by": "c0ffee00-0000-4000-8000-000000001004"
+    },
+    "c0ffee00-0000-4000-8000-000000000013": {
+      "kind": "field",
+      "logical": "amount",
+      "created_by": "c0ffee00-0000-4000-8000-000000001005"
+    },
+    "c0ffee00-0000-4000-8000-000000000014": {
+      "kind": "field",
+      "logical": "due_date",
+      "created_by": "c0ffee00-0000-4000-8000-000000001006"
+    },
+    "c0ffee00-0000-4000-8000-000000000015": {
+      "kind": "field",
+      "logical": "item_status",
+      "created_by": "c0ffee00-0000-4000-8000-000000001007"
+    },
+    "c0ffee00-0000-4000-8000-000000000021": {
+      "kind": "node",
+      "logical": "general_item_form/root",
+      "created_by": "c0ffee00-0000-4000-8000-000000001009"
+    },
+    "c0ffee00-0000-4000-8000-000000000022": {
+      "kind": "node",
+      "logical": "general_item_form/basic_section",
+      "created_by": "c0ffee00-0000-4000-8000-000000001010"
+    },
+    "c0ffee00-0000-4000-8000-000000000030": {
+      "kind": "node",
+      "logical": "general_item_form/title",
+      "created_by": "c0ffee00-0000-4000-8000-000000001011"
+    },
+    "c0ffee00-0000-4000-8000-000000000031": {
+      "kind": "node",
+      "logical": "general_item_form/detail",
+      "created_by": "c0ffee00-0000-4000-8000-000000001012"
+    },
+    "c0ffee00-0000-4000-8000-000000000032": {
+      "kind": "node",
+      "logical": "general_item_form/amount",
+      "created_by": "c0ffee00-0000-4000-8000-000000001013"
+    },
+    "c0ffee00-0000-4000-8000-000000000033": {
+      "kind": "node",
+      "logical": "general_item_form/due_date",
+      "created_by": "c0ffee00-0000-4000-8000-000000001014"
+    },
+    "c0ffee00-0000-4000-8000-000000000023": {
+      "kind": "node",
+      "logical": "general_item_form/system_section",
+      "created_by": "c0ffee00-0000-4000-8000-000000001015"
+    },
+    "c0ffee00-0000-4000-8000-000000000036": {
+      "kind": "node",
+      "logical": "general_item_form/item_no",
+      "created_by": "c0ffee00-0000-4000-8000-000000001016"
+    },
+    "c0ffee00-0000-4000-8000-000000000037": {
+      "kind": "node",
+      "logical": "general_item_form/item_status",
+      "created_by": "c0ffee00-0000-4000-8000-000000001017"
+    },
+    "c0ffee00-0000-4000-8000-000000000029": {
+      "kind": "node",
+      "logical": "general_item_form/btn",
+      "created_by": "c0ffee00-0000-4000-8000-000000001022"
+    },
+    "c0ffee00-0000-4000-8000-000000000041": {
+      "kind": "node",
+      "logical": "monthly_sales_dashboard/root",
+      "created_by": "c0ffee00-0000-4000-8000-000000001023"
+    },
+    "c0ffee00-0000-4000-8000-000000000042": {
+      "kind": "node",
+      "logical": "monthly_sales_dashboard/trend",
+      "created_by": "c0ffee00-0000-4000-8000-000000001024"
+    },
+    "c0ffee00-0000-4000-8000-000000000043": {
+      "kind": "node",
+      "logical": "monthly_sales_dashboard/trend_table",
+      "created_by": "c0ffee00-0000-4000-8000-000000001025"
+    },
+    "c0ffee00-0000-4000-8000-000000000044": {
+      "kind": "node",
+      "logical": "monthly_sales_dashboard/dept",
+      "created_by": "c0ffee00-0000-4000-8000-000000001026"
+    },
+    "c0ffee00-0000-4000-8000-000000000045": {
+      "kind": "node",
+      "logical": "monthly_sales_dashboard/dept_table",
+      "created_by": "c0ffee00-0000-4000-8000-000000001027"
+    },
+    "c0ffee00-0000-4000-8000-000000000046": {
+      "kind": "node",
+      "logical": "monthly_sales_dashboard/detail",
+      "created_by": "c0ffee00-0000-4000-8000-000000001028"
+    },
+    "c0ffee00-0000-4000-8000-000000000047": {
+      "kind": "node",
+      "logical": "monthly_sales_dashboard/detail_table",
+      "created_by": "c0ffee00-0000-4000-8000-000000001029"
+    }
+  },
+  "artifacts": [
+    {
+      "part": "数据模型",
+      "code": "general_item",
+      "human_name": "通用事项",
+      "contract": "business-schema/v1",
+      "path": "../../business-schema/通用事项.spec.json",
+      "context": "../../business-schema/context-新建.json",
+      "via": [
+        "c0ffee00-0000-4000-8000-000000001000",
+        "c0ffee00-0000-4000-8000-000000001001",
+        "c0ffee00-0000-4000-8000-000000001002",
+        "c0ffee00-0000-4000-8000-000000001003",
+        "c0ffee00-0000-4000-8000-000000001004",
+        "c0ffee00-0000-4000-8000-000000001005",
+        "c0ffee00-0000-4000-8000-000000001006",
+        "c0ffee00-0000-4000-8000-000000001007",
+        "c0ffee00-0000-4000-8000-000000001008"
+      ]
+    },
+    {
+      "part": "表单",
+      "code": "general_item_form",
+      "human_name": "通用事项登记表单",
+      "contract": "view-schema/lce-safe-v1",
+      "path": "../../view-schema/通用事项登记表单.spec.json",
+      "context": "../../view-schema/context.json",
+      "via": [
+        "c0ffee00-0000-4000-8000-000000001009",
+        "c0ffee00-0000-4000-8000-000000001010",
+        "c0ffee00-0000-4000-8000-000000001015",
+        "c0ffee00-0000-4000-8000-000000001022",
+        "c0ffee00-0000-4000-8000-000000001011",
+        "c0ffee00-0000-4000-8000-000000001012",
+        "c0ffee00-0000-4000-8000-000000001013",
+        "c0ffee00-0000-4000-8000-000000001014",
+        "c0ffee00-0000-4000-8000-000000001016",
+        "c0ffee00-0000-4000-8000-000000001017",
+        "c0ffee00-0000-4000-8000-000000001018",
+        "c0ffee00-0000-4000-8000-000000001019",
+        "c0ffee00-0000-4000-8000-000000001020",
+        "c0ffee00-0000-4000-8000-000000001021"
+      ]
+    },
+    {
+      "part": "看板",
+      "code": "monthly_sales_dashboard",
+      "human_name": "月度销售趋势看板",
+      "contract": "view-schema/lce-safe-v1",
+      "path": "../../view-schema/月度销售看板.spec.json",
+      "context": "../../view-schema/context-看板.json",
+      "via": [
+        "c0ffee00-0000-4000-8000-000000001023",
+        "c0ffee00-0000-4000-8000-000000001024",
+        "c0ffee00-0000-4000-8000-000000001025",
+        "c0ffee00-0000-4000-8000-000000001026",
+        "c0ffee00-0000-4000-8000-000000001027",
+        "c0ffee00-0000-4000-8000-000000001028",
+        "c0ffee00-0000-4000-8000-000000001029"
+      ]
+    },
+    {
+      "part": "流程",
+      "code": "general_item_flow",
+      "human_name": "通用事项审批流",
+      "contract": "workflow-spec/v1alpha1",
+      "path": "../../workflow-spec/通用事项审批流.spec.json",
+      "context": null,
+      "via": [
+        "c0ffee00-0000-4000-8000-000000001030"
+      ]
+    },
+    {
+      "part": "接口",
+      "code": "general_item.get",
+      "human_name": "通用事项查询工具",
+      "contract": "tool-spec/v1alpha1",
+      "path": "../../tool-spec/通用事项查询工具.spec.json",
+      "context": null,
+      "via": [],
+      "via_note": "14 个命令里没有任何一个产出 tool-spec —— 接口不来自命令序列。这是命令词汇表覆盖不到的部分，检查器会显式报出。"
+    }
+  ],
+  "calibers": [
+    {
+      "path": "../../view-schema/看板-口径登记.json"
+    }
+  ],
+  "commands_without_artifact": [
+    "c0ffee00-0000-4000-8000-000000001031",
+    "c0ffee00-0000-4000-8000-000000001032",
+    "c0ffee00-0000-4000-8000-000000001033",
+    "c0ffee00-0000-4000-8000-000000001034"
+  ]
+}

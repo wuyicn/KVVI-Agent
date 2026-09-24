@@ -1,0 +1,44 @@
+{
+  "command_version": "app-model-command/v1alpha1",
+  "command_id": "c0ffee00-0000-4000-8000-000000001007",
+  "draft_id": "c0ffee00-0000-4000-8000-000000000002",
+  "base_revision": 7,
+  "type": "field.add",
+  "target_ref": {
+    "business_object_id": "c0ffee00-0000-4000-8000-000000000004"
+  },
+  "args": {
+    "field_code": "item_status",
+    "field_type": "single_select",
+    "label": "状态",
+    "required": true,
+    "type_config": {
+      "options": [
+        {
+          "code": "draft",
+          "label": "草稿",
+          "order": 0,
+          "enabled": true
+        },
+        {
+          "code": "submitted",
+          "label": "待审批",
+          "order": 1,
+          "enabled": true
+        },
+        {
+          "code": "approved",
+          "label": "已通过",
+          "order": 2,
+          "enabled": true
+        },
+        {
+          "code": "rejected",
+          "label": "已驳回",
+          "order": 3,
+          "enabled": true
+        }
+      ]
+    }
+  }
+}

@@ -12,18 +12,15 @@ DSH="$ROOT/vendor/dsh"
 REG="$ROOT/forks/dsh/改造点清单.md"
 CHECK=(python3 "$ROOT/工具/g2_改造点.py" --check)
 
-HEAD0="$(git -C "$DSH" rev-parse HEAD)"
-RESULT="$(mktemp)"
-cp "$REG" "$RESULT"
-restore() { git -C "$DSH" reset -q --hard "$HEAD0"; git -C "$DSH" clean -qfd; cp "$RESULT" "$REG"; rm -f "$RESULT"; }
-trap restore EXIT
-
-# ⚠️ 开工前必须确认工作区是干净的。
+# ⚠️ 守卫必须在 `trap ... EXIT` **之前**。
 #
 # 本测试靠 `git reset --hard` / `git clean -fd` 撤销自己制造的探针改动，
 # 而这两个命令**不区分「探针改动」与「你自己的未提交改动」** —— 一起删。
-# 已经发生过一次：一份写了两百多行的 SKILL.md 被这里的 restore 抹掉。
-# 所以从这里就拦住，而不是等它删完再解释。
+#
+# 已经发生过两次：一份写了两百多行的 SKILL.md 被这里的 restore 抹掉。
+# 第一次修的时候把守卫放在了 trap **之后** —— 于是 `exit 2` 照样触发 EXIT trap，
+# 照样 `reset --hard`，**守卫形同虚设**。这正是它要防的那类错误：
+# 一个看起来在场、实际不生效的检查。
 if [ -n "$(git -C "$DSH" status --porcelain)" ]; then
   printf '\033[31m✗ vendor/dsh 工作区不干净 —— 拒绝运行\033[0m\n'
   echo "  本自测会执行 git reset --hard 与 git clean -fd，"
@@ -32,6 +29,12 @@ if [ -n "$(git -C "$DSH" status --porcelain)" ]; then
   git -C "$DSH" status --short
   exit 2
 fi
+
+HEAD0="$(git -C "$DSH" rev-parse HEAD)"
+RESULT="$(mktemp)"
+cp "$REG" "$RESULT"
+restore() { git -C "$DSH" reset -q --hard "$HEAD0"; git -C "$DSH" clean -qfd; cp "$RESULT" "$REG"; rm -f "$RESULT"; }
+trap restore EXIT
 
 pass=0; fail=0
 T() {  # T <用例名> <期望退出码> <实际退出码>

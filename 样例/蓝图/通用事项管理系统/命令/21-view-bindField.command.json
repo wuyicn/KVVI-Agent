@@ -1,0 +1,15 @@
+{
+  "command_version": "app-model-command/v1alpha1",
+  "command_id": "c0ffee00-0000-4000-8000-000000001020",
+  "draft_id": "c0ffee00-0000-4000-8000-000000000002",
+  "base_revision": 20,
+  "type": "view.bindField",
+  "target_ref": {
+    "view_id": "c0ffee00-0000-4000-8000-000000000020",
+    "node_id": "c0ffee00-0000-4000-8000-000000000032"
+  },
+  "args": {
+    "business_object_id": "c0ffee00-0000-4000-8000-000000000004",
+    "field_id": "c0ffee00-0000-4000-8000-000000000013"
+  }
+}

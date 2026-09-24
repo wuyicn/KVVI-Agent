@@ -1,0 +1,16 @@
+{
+  "command_version": "app-model-command/v1alpha1",
+  "command_id": "c0ffee00-0000-4000-8000-000000001006",
+  "draft_id": "c0ffee00-0000-4000-8000-000000000002",
+  "base_revision": 6,
+  "type": "field.add",
+  "target_ref": {
+    "business_object_id": "c0ffee00-0000-4000-8000-000000000004"
+  },
+  "args": {
+    "field_code": "due_date",
+    "field_type": "date",
+    "label": "截止日期",
+    "required": false
+  }
+}

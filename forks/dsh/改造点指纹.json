@@ -113,7 +113,7 @@
       "status": "A"
     },
     "packages/preset/agent-presets/presets/kvvi-builder/skills/dashboard-builder/SKILL.md": {
-      "sha256": "76403ed7141cbb039afe3245d562ed53752a2c8abcd47a28a7a2d88f8ac61920",
+      "sha256": "e4c1a09383948e8271fa622871de2bb0df34d0f2d8e2704645ba1a420355eef0",
       "status": "A"
     },
     "packages/preset/agent-presets/presets/kvvi-builder/skills/data-model/SKILL.md": {
@@ -121,7 +121,7 @@
       "status": "A"
     },
     "packages/preset/agent-presets/presets/kvvi-builder/skills/form-builder/SKILL.md": {
-      "sha256": "0cac9bb299a890b207d8122ff98484d22eff1865524a6e3f782a4e89034ed971",
+      "sha256": "93f0b630a3d4a055cf7ff39737252a8e92c8d42ad075239986c45dbf5afa8030",
       "status": "A"
     },
     "packages/preset/agent-presets/presets/kvvi-builder/skills/workflow-builder/SKILL.md": {
@@ -133,7 +133,7 @@
       "status": "A"
     },
     "packages/preset/agent-presets/presets/kvvi-worker/agent.cordis.yml": {
-      "sha256": "b7a86e5c080e0ab68e50d03d63058e8d8e6b088b4d629759a3ce07ac07c25975",
+      "sha256": "fd3091a52a387170c3f4fd12191cee077b13de3a40147c5587a16a08d8eecbcc",
       "status": "A"
     },
     "packages/preset/agent-presets/presets/kvvi-worker/preset.yml": {
@@ -156,7 +156,7 @@
       "upstream_baseline_sha256": "3cb83b2131b5c4841ff07e312b2e1dddd7f2f493f40ab94012240822140f25bd"
     }
   },
-  "fork_head": "834eec5363cb7b30d008636e45fbde3c392f0460",
+  "fork_head": "ef7254fe2ec130acf84f58c018d9a93f38db63da",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "ddefc45fbc7f8e46dd73185e68295696d1297887"

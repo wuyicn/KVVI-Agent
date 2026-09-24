@@ -1,0 +1,24 @@
+{
+  "command_version": "app-model-command/v1alpha1",
+  "command_id": "c0ffee00-0000-4000-8000-000000001027",
+  "draft_id": "c0ffee00-0000-4000-8000-000000000002",
+  "base_revision": 27,
+  "type": "view.addNode",
+  "target_ref": {
+    "view_id": "c0ffee00-0000-4000-8000-000000000040",
+    "parent_node_id": "c0ffee00-0000-4000-8000-000000000044"
+  },
+  "args": {
+    "componentName": "Table",
+    "props": {
+      "text": "各部门完成情况",
+      "data": {
+        "type": "DataBindingRef",
+        "queryCode": "q_dept_completion",
+        "itemKey": "dept",
+        "maxItems": 20
+      }
+    },
+    "position": 3
+  }
+}

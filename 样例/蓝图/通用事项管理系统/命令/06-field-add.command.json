@@ -1,0 +1,20 @@
+{
+  "command_version": "app-model-command/v1alpha1",
+  "command_id": "c0ffee00-0000-4000-8000-000000001005",
+  "draft_id": "c0ffee00-0000-4000-8000-000000000002",
+  "base_revision": 5,
+  "type": "field.add",
+  "target_ref": {
+    "business_object_id": "c0ffee00-0000-4000-8000-000000000004"
+  },
+  "args": {
+    "field_code": "amount",
+    "field_type": "money",
+    "label": "金额",
+    "required": true,
+    "type_config": {
+      "currency_mode": "FIXED",
+      "currency": "CNY"
+    }
+  }
+}

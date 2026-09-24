@@ -7,7 +7,7 @@
 
 | 文件 | 用途 | 校验 |
 |---|---|---|
-| `通用事项登记表单.spec.json` | 表单（卡 2）：`view_type: "FORM"`、9 个节点 | 结构 + 语义 + 引用**三层通过** |
+| `通用事项登记表单.spec.json` | 表单（卡 2）：`view_type: "FORM"`、10 个节点 | 结构 + 语义 + 引用**三层通过** |
 | `context.json` | 上面那份表单的配套上下文 | — |
 | `月度销售看板.spec.json` | 看板（卡 4）：`view_type: "LIST"`、3 条口径、7 个节点 | 结构 + 语义 + 引用**三层通过** |
 | `context-看板.json` | 上面那份看板的配套上下文（比 `context.json` **多两条聚合口径**） | — |
@@ -30,9 +30,11 @@ python3 工具/check_invariant.py --input 样例/view-schema/看板-口径登记
 
 **退出码**：`0` = 通过 / `1` = 未通过 / `2` = 无法执行。
 
-## ⚠️ 为什么看板要单独一份 context
+## ⚠️ 两份上下文都由数据模型样例生成
 
-`context-看板.json` 由 `工具/看板样例上下文.py` 生成，与 `context.json` 的差别**只有两条**：
+`context.json` 与 `context-看板.json` 都由 `工具/视图样例上下文.py` 生成。
+它们内嵌的 `general_item` 模型**就是** `样例/business-schema/通用事项.spec.json` 那一份 ——
+同一份模型、同一个摘要。两者的差别**只有两条聚合口径**：
 
 | 资产 | 含义 | `itemKeys` |
 |---|---|---|
@@ -49,9 +51,26 @@ python3 工具/check_invariant.py --input 样例/view-schema/看板-口径登记
 生成脚本按正确顺序重算，并支持 `--check` 检出手改：
 
 ```bash
-python3 工具/看板样例上下文.py            # 生成
-python3 工具/看板样例上下文.py --check    # 校验现有文件是否与生成结果一致
+python3 工具/视图样例上下文.py            # 生成
+python3 工具/视图样例上下文.py --check    # 校验现有文件是否与生成结果一致
 ```
+
+### 它修掉的是一个真实的断裂
+
+此前两份上下文内嵌的模型**与数据模型样例不是同一份**：
+
+| 来源 | `general_item` 的字段 | 摘要 |
+|---|---|---|
+| `样例/business-schema/通用事项.spec.json` | `item_no` / `title` / `detail` / `amount` / `due_date` / `item_status` | `898c0ae1…` |
+| 视图上下文内嵌的那份（旧） | `title` / `category` / `quantity` / `amount` / `due_date` / `notes` | `518077ba…` |
+
+两边**各自都过校验**，但视图绑定的 `category` / `quantity` / `notes`
+在真正的模型里**根本不存在**。逐份校验永远看不出这个差距 ——
+它是由 `0D-1` 的蓝图闭环检查（把五份产出装成一个系统）才暴露出来的。
+
+同一类问题还有第二处：字段类型注册表在业务侧叫 `fake-business-types`、
+在视图侧叫 `business-field-types-core`，**摘要相同、`asset_id` 不同**，
+而引用校验按 `asset_id` 找 —— 于是找不到。现已统一为前者。
 
 ## 看板样例的两处占位（必须知道）
 

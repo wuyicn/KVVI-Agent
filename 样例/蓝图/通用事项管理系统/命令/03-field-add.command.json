@@ -1,0 +1,17 @@
+{
+  "command_version": "app-model-command/v1alpha1",
+  "command_id": "c0ffee00-0000-4000-8000-000000001002",
+  "draft_id": "c0ffee00-0000-4000-8000-000000000002",
+  "base_revision": 2,
+  "type": "field.add",
+  "target_ref": {
+    "business_object_id": "c0ffee00-0000-4000-8000-000000000004"
+  },
+  "args": {
+    "field_code": "item_no",
+    "field_type": "short_text",
+    "label": "事项编号",
+    "required": true,
+    "write_policy": "CREATE_ONLY"
+  }
+}

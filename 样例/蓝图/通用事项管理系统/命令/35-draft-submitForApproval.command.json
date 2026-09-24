@@ -1,0 +1,9 @@
+{
+  "command_version": "app-model-command/v1alpha1",
+  "command_id": "c0ffee00-0000-4000-8000-000000001034",
+  "draft_id": "c0ffee00-0000-4000-8000-000000000002",
+  "base_revision": 34,
+  "type": "draft.submitForApproval",
+  "target_ref": {},
+  "args": {}
+}

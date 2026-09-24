@@ -1,0 +1,27 @@
+{
+  "contract_version": "approval-attestation/v1alpha1",
+  "canonicalization_profile": "kvvi-json-c14n/v1",
+  "attestation_id": "c0ffee00-0000-4000-8000-000000009004",
+  "artifact_digest": "sha256:26f2405d6c8dbcbb3bfadf181a1439a264886b6e13912c1e0b0b5f181bad17f7",
+  "approver": {
+    "scope_id": "kvvi-platform",
+    "principal_id": "c0ffee00-0000-4000-8000-000000009005"
+  },
+  "permission_version": 1,
+  "approved_at": "2026-09-23T00:01:00Z",
+  "decision": "APPROVE",
+  "opinion": "蓝图与影响报告已核对，同意进入发布。",
+  "presentation_ref": {
+    "evidence_id": "c0ffee00-0000-4000-8000-000000009001",
+    "record_digest": "sha256:26f2405d6c8dbcbb3bfadf181a1439a264886b6e13912c1e0b0b5f181bad17f7"
+  },
+  "audit": {
+    "actor": {
+      "scope_id": "kvvi-platform",
+      "principal_id": "c0ffee00-0000-4000-8000-000000009005"
+    },
+    "recorded_at": "2026-09-23T00:01:00Z",
+    "trace_id": "blueprint_trace"
+  },
+  "attestation_digest": "sha256:26f2405d6c8dbcbb3bfadf181a1439a264886b6e13912c1e0b0b5f181bad17f7"
+}
