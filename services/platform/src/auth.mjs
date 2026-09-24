@@ -32,7 +32,9 @@ import {
 } from './identity.mjs'
 import { publicKeysOf, CLAIM_FIELDS } from './signing.mjs'
 import { pool } from './db.mjs'
-import { TOOL_GATEWAY, toolsForGateway } from './authorization.mjs'
+import {
+  TOOL_GATEWAY, toolsForGateway, isPlatformAdmin, checkSelfGrant,
+} from './authorization.mjs'
 
 /** 登录时可选的公司列表。**只有一个时默认选中**（§9.9.3）。 */
 async function companiesOf(userId) {
@@ -46,6 +48,20 @@ async function companiesOf(userId) {
 /** 从 Authorization 头取原始令牌。 */
 function bearer(req) {
   return (req.headers.authorization ?? '').replace(/^Bearer\s+/iu, '')
+}
+
+/**
+ * 取**操作人**的令牌。
+ *
+ * ⚠️ 管理类端点要两样东西，它们不能共用一个头：
+ *   `Authorization`           —— **进程**凭据（调用方来自受控进程）
+ *   `x-kvvi-actor-token`      —— **人**凭据（谁在操作）
+ *
+ * 共用一个头的结果是：拿到进程令牌就没法知道是谁，于是「管理员角色」判不了 ——
+ * 那正是 N17 的原始形态（只有进程令牌）。
+ */
+function actorToken(req) {
+  return String(req.headers['x-kvvi-actor-token'] ?? '')
 }
 
 /**
@@ -201,27 +217,132 @@ export async function handleAuth({ method, path, body, headers }) {
     return { status: 200, body: { ended } }
   }
 
+  // ── 管理类动作：**人**的判定 ────────────────────────────────────
+  //
+  // N17：原先这三类只要求**进程间令牌**。那说明「浏览器打不到」，
+  // **不等于**「只有管理员能调」。§3.1 的两级授权里，「所有者」是一个人。
+  // 所以现在是**与**：进程间令牌（调用方来自受控进程）**且**调用者持有平台角色。
+  const adminCtx = await verifyToken(actorToken({ headers }))
+
+  const denyAdmin = async (action, reason, extra = {}) => {
+    await appendDenial({
+      companyId: adminCtx?.companyId ?? '00000000-0000-0000-0000-000000000000',
+      actorKind: 'USER', actorId: adminCtx?.userId ?? null, gateway: adminCtx?.gateway ?? null,
+      sessionId: adminCtx?.sessionId ?? null, action, outcome: 'DENY', reason,
+      paramsDigest: digestOf(extra),
+    })
+    return { status: 403, body: { error: reason } }
+  }
+
+  async function requireAdmin(action, extra = {}) {
+    if (!adminCtx) return denyAdmin(action, 'KVVI_ADMIN_TOKEN_REQUIRED', extra)
+    const verdict = await isPlatformAdmin(adminCtx.companyId, adminCtx.userId)
+    if (!verdict.allowed) return denyAdmin(action, verdict.reason, extra)
+    return null
+  }
+
   // ── ④ 账号停用 ──────────────────────────────────────────────────
   const suspend = /^\/auth\/accounts\/([0-9a-fA-F-]{36})\/suspend$/u.exec(path)
   if (suspend && method === 'POST') {
+    const refused = await requireAdmin('auth.suspendAccount', { userId: suspend[1] })
+    if (refused) return refused
     const ended = await suspendAccount(suspend[1])
+    await append({
+      companyId: adminCtx.companyId, actorKind: 'USER', actorId: adminCtx.userId,
+      gateway: adminCtx.gateway, sessionId: adminCtx.sessionId,
+      action: 'auth.suspendAccount', outcome: 'ALLOW',
+      resourceKind: 'user', resourceId: suspend[1],
+    })
     return { status: 200, body: { userId: suspend[1], endedSessions: ended } }
   }
 
   // ── ⑤ 管理员吊销 ────────────────────────────────────────────────
   const revoke = /^\/auth\/sessions\/([0-9a-fA-F-]{36})\/revoke$/u.exec(path)
   if (revoke && method === 'POST') {
+    // 吊销**自己**的会话是允许的（那等于登出）；吊销别人的需要管理员角色。
+    const self = adminCtx && adminCtx.sessionId === revoke[1]
+    if (!self) {
+      const refused = await requireAdmin('auth.revokeSession', { sessionId: revoke[1] })
+      if (refused) return refused
+    }
     const session = await loadSession(revoke[1])
     const ok = await revokeSession(revoke[1])
     if (session) {
       await append({
-        companyId: session.companyId, actorKind: 'USER', actorId: session.userId,
+        companyId: session.companyId, actorKind: 'USER',
+        actorId: adminCtx?.userId ?? session.userId,
         gateway: session.gateway, sessionId: session.sessionId,
-        action: 'auth.revoke', outcome: ok ? 'ALLOW' : 'DENY',
+        action: 'auth.revokeSession', outcome: ok ? 'ALLOW' : 'DENY',
         reason: ok ? null : 'KVVI_SESSION_NOT_ACTIVE',
       })
     }
     return { status: ok ? 200 : 409, body: { ok } }
+  }
+
+  // ── ⑥ 授权：把业务角色授予他人（§9.6.7 的接线）──────────────────
+  //
+  // `checkSelfGrant` 这条规则早就写好了，但**没有入口调用它** ——
+  // 一条没有接线的不变量等于没有。这里把它接到端点上。
+  if (path === '/auth/roles/grant' && method === 'POST') {
+    const refused = await requireAdmin('auth.grantRole', { users: body?.userIds })
+    if (refused) return refused
+
+    const targetUserIds = Array.isArray(body?.userIds) ? body.userIds : []
+    if (targetUserIds.length === 0) {
+      return { status: 400, body: { error: 'KVVI_NO_TARGET_USERS' } }
+    }
+    // ★ §9.6.7：搭建者配置员工业务权限时**不得把自己或关联账号纳入**。
+    // 判据是「被授权人是否就是操作者」，与「他有没有这个权限」无关 ——
+    // 一个**有**配置权限的搭建者同样不能给自己配。
+    const selfGrant = checkSelfGrant(adminCtx.userId, targetUserIds)
+    if (!selfGrant.allowed) {
+      await appendDenial({
+        companyId: adminCtx.companyId, actorKind: 'USER', actorId: adminCtx.userId,
+        gateway: adminCtx.gateway, sessionId: adminCtx.sessionId,
+        action: 'auth.grantRole', outcome: 'DENY',
+        reason: 'KVVI_SELF_GRANT_FORBIDDEN',
+        paramsDigest: digestOf({ targets: targetUserIds }),
+      })
+      return { status: 403, body: { error: 'KVVI_SELF_GRANT_FORBIDDEN',
+                                   detail: '不得把自己纳入配置范围（PRD §9.6.7）' } }
+    }
+
+    const roleCode = body?.roleCode
+    if (typeof roleCode !== 'string' || roleCode.length === 0) {
+      return { status: 400, body: { error: 'KVVI_ROLE_CODE_REQUIRED' } }
+    }
+    // 业务角色**不得占用平台保留 code** —— 否则「谁是所有者」会被业务配置改写。
+    const { PLATFORM_ROLE_CODES } = await import('./authorization.mjs')
+    if (PLATFORM_ROLE_CODES.includes(roleCode)) {
+      return { status: 403, body: { error: 'KVVI_PLATFORM_ROLE_RESERVED', roleCode } }
+    }
+
+    const { pool: p } = await import('./db.mjs')
+    const { rows } = await p('platform').query(
+      `SELECT role_id FROM roles WHERE company_id = $1 AND role_code = $2`,
+      [adminCtx.companyId, roleCode])
+    if (rows.length !== 1) return { status: 404, body: { error: 'KVVI_NO_SUCH_ROLE' } }
+    const roleId = rows[0].role_id
+
+    const granted = []
+    for (const userId of targetUserIds) {
+      const member = await p('platform').query(
+        `SELECT 1 FROM memberships WHERE company_id = $1 AND user_id = $2`,
+        [adminCtx.companyId, userId])
+      if (member.rows.length !== 1) continue          // 非本公司成员：跳过，不报错
+      await p('platform').query(
+        `INSERT INTO role_members (company_id, role_id, user_id)
+         VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, [adminCtx.companyId, roleId, userId])
+      granted.push(userId)
+      await append({
+        companyId: adminCtx.companyId, actorKind: 'USER', actorId: adminCtx.userId,
+        gateway: adminCtx.gateway, sessionId: adminCtx.sessionId,
+        action: 'auth.grantRole', outcome: 'ALLOW',
+        resourceKind: 'user', resourceId: userId,
+        paramsDigest: digestOf({ roleCode }),
+      })
+    }
+    return { status: 200, body: { roleCode, granted } }
   }
 
   return null

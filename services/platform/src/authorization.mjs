@@ -348,3 +348,59 @@ export function checkSelfApproval(actorUserId, proposerUserId, securitySensitive
   }
   return { allowed: true }
 }
+
+/**
+ * 平台级角色判定（N17）。
+ *
+ * ── 为什么需要它 ────────────────────────────────────────────────────────
+ *
+ * 管理类端点（停用账号、吊销会话）原先只要求**进程间令牌**。
+ * 那说明「浏览器打不到」，**不等于**「只有管理员能调」——
+ * 任何能到达该端口的进程都能调。§3.1 的两级授权里，「所有者」是一个**人**，
+ * 不是一个进程；判定必须落到人身上。
+ *
+ * ── 为什么是 `owner` / `admin` 这个约定 ─────────────────────────────────
+ *
+ * 不改表结构：`roles.role_code` 已经是「同一公司内的角色标识」，
+ * `owner` 只是其中一个**保留 code**。加一张平台角色表会把「谁是所有者」
+ * 拆到两处 —— 而两处迟早不一致。
+ */
+
+/** 平台级保留角色 code。**不可被业务角色占用**。 */
+export const PLATFORM_ROLE_CODES = Object.freeze(['owner', 'admin'])
+
+/**
+ * 该账号在该公司是否持有某个平台级角色。
+ * @param {string} companyId 公司
+ * @param {string} userId 账号
+ * @param {string} roleCode `owner` 或 `admin`
+ * @returns {Promise<boolean>} 是否持有
+ */
+export async function holdsPlatformRole(companyId, userId, roleCode) {
+  if (!PLATFORM_ROLE_CODES.includes(roleCode)) {
+    throw new Error(`KVVI_NOT_A_PLATFORM_ROLE: ${roleCode}`)
+  }
+  const { rows } = await pool('platform').query(
+    `SELECT 1 FROM roles r
+       JOIN role_members rm ON rm.role_id = r.role_id
+      WHERE r.company_id = $1 AND r.role_code = $2 AND rm.user_id = $3
+      LIMIT 1`, [companyId, roleCode, userId])
+  return rows.length === 1
+}
+
+/**
+ * 管理类动作的判定：**所有者或管理员**。
+ *
+ * ⚠️ 与「进程间令牌」的关系是**与**，不是**或**：
+ * 令牌保证调用方来自受控进程，角色保证调用方是人且被授权。
+ * 任一单独成立都不够 —— 只有令牌时，任何能到达端口的进程都能调；
+ * 只有角色时，浏览器可以直接伪造请求。
+ * @param {string} companyId 公司
+ * @param {string} userId 账号
+ * @returns {Promise<{allowed: boolean, reason?: string}>} 结论
+ */
+export async function isPlatformAdmin(companyId, userId) {
+  if (await holdsPlatformRole(companyId, userId, 'owner')) return { allowed: true, role: 'owner' }
+  if (await holdsPlatformRole(companyId, userId, 'admin')) return { allowed: true, role: 'admin' }
+  return { allowed: false, reason: 'KVVI_NOT_A_PLATFORM_ADMIN' }
+}

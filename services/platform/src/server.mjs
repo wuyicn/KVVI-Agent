@@ -63,6 +63,7 @@ const PUBLIC_SIGN_PATHS = new Set(['/sign/keys'])
 /** 管理员/平台内部端点：要求进程间令牌（真实管理员角色归阶段五授权服务）。 */
 const INTERNAL_AUTH_PATHS = [
   '/auth/sessions/reap',
+  '/auth/roles/grant',
   /^\/auth\/accounts\/[0-9a-fA-F-]{36}\/suspend$/u,
   /^\/auth\/sessions\/[0-9a-fA-F-]{36}\/revoke$/u,
 ]

@@ -12,7 +12,7 @@ import { spawn } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pool, closeAll } from '../src/db.mjs'
-import { A, B, PASSWORD, resetDatabase } from './harness.mjs'
+import { A, B, PASSWORD, resetDatabase, grantBaseline, grantPlatformRole } from './harness.mjs'
 import { TOOL_GATEWAY, toolsForGateway, checkGateway } from '../src/authorization.mjs'
 import { appendDenial, verifyChain } from '../src/audit.mjs'
 
@@ -36,6 +36,9 @@ async function waitUp(tries = 60) {
 
 before(async () => {
   await resetDatabase()
+  // N17 之后，管理类端点要**人的**角色：先给 alice 所有者身份。
+  await grantBaseline(A.alice)
+  await grantPlatformRole(A.alice, 'owner')
   child = spawn('node', [resolve(HERE, '..', 'src', 'server.mjs')], {
     env: { ...process.env, KVVI_PLATFORM_PORT: String(PORT),
            KVVI_INTERNAL_TOKEN: INTERNAL,
@@ -145,8 +148,14 @@ describe('锚点⑥ 会话生命周期五类事件：入口都在本进程', () 
     // ④ 账号停用
     const l3 = await post('/auth/login', { login: 'alice', password: PASSWORD, companyId: A.company })
     const s3 = await l3.json()
+    // ⚠️ 必须显式选公司：本文件前面的用例给 alice 加了 B 公司成员关系，
+    // 不选会拿到 409，`token` 为 undefined，之后的调用会以 403 失败 ——
+    // 看起来像「管理员判定坏了」，实际是登录没成功。
+    const adminLogin = await post('/auth/login',
+      { login: 'alice', password: PASSWORD, companyId: A.company })
+    const adminToken = (await adminLogin.json()).token
     const susp = await post(`/auth/accounts/${A.alice}/suspend`, undefined,
-      { authorization: `Bearer ${INTERNAL}` })
+      { authorization: `Bearer ${INTERNAL}`, 'x-kvvi-actor-token': adminToken })
     assert.equal(susp.status, 200)
     assert.ok((await susp.json()).endedSessions >= 1)
 
@@ -155,8 +164,11 @@ describe('锚点⑥ 会话生命周期五类事件：入口都在本进程', () 
     const l4 = await post('/auth/login',
       { login: 'alice', password: PASSWORD, companyId: A.company })
     const s4 = await l4.json()
+    const adminLogin2 = await post('/auth/login',
+      { login: 'alice', password: PASSWORD, companyId: A.company })
+    const adminToken2 = (await adminLogin2.json()).token
     const rev = await post(`/auth/sessions/${s4.sessionId}/revoke`, undefined,
-      { authorization: `Bearer ${INTERNAL}` })
+      { authorization: `Bearer ${INTERNAL}`, 'x-kvvi-actor-token': adminToken2 })
     assert.equal(rev.status, 200)
 
     const { rows } = await pool('platform').query(

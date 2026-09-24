@@ -209,6 +209,30 @@ export async function adminQuery(db, sql, params = []) {
   }
 }
 
+/**
+ * 授予**平台级角色**（`owner` / `admin`）—— 管理类端点要的是它（N17）。
+ * @param {string} userId 账号
+ * @param {string} roleCode `owner` 或 `admin`
+ * @param {string} companyId 公司
+ */
+export async function grantPlatformRole(userId, roleCode, companyId = A.company) {
+  const { randomUUID } = await import('node:crypto')
+  const { rows } = await pool('platform').query(
+    `SELECT role_id FROM roles WHERE company_id = $1 AND role_code = $2`,
+    [companyId, roleCode])
+  let roleId = rows[0]?.role_id
+  if (!roleId) {
+    roleId = randomUUID()
+    await pool('platform').query(
+      `INSERT INTO roles (role_id, company_id, role_code, name) VALUES ($1,$2,$3,$4)`,
+      [roleId, companyId, roleCode, roleCode])
+  }
+  await pool('platform').query(
+    `INSERT INTO role_members (company_id, role_id, user_id) VALUES ($1,$2,$3)
+     ON CONFLICT DO NOTHING`, [companyId, roleId, userId])
+  return roleId
+}
+
 /** 直接建一个会话（跳过 HTTP），返回身份上下文。 */
 export async function makeSession(userId, companyId, gateway = 'USER') {
   const { createSession, issueToken, verifyToken } = await import('../src/identity.mjs')
