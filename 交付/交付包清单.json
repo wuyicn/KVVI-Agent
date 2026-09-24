@@ -1,0 +1,95 @@
+{
+  "manifestVersion": "kvvi-delivery/v1",
+  "prdFingerprint": "sha256:0d9206ae0b6e1f510f6a308bb886a726a1b01b8145beabc638fbae5c69b361ca",
+  "components": [
+    {
+      "name": "contracts",
+      "path": "contracts",
+      "kind": "契约层（13 份 MetaSchema + common）",
+      "version": null,
+      "fileCount": 28,
+      "digest": "sha256:847f46f990895227bb07c16d00717735d85642fba9b2c978f0de6d5ab008151f"
+    },
+    {
+      "name": "protocol",
+      "path": "protocol",
+      "kind": "规范层（kvvi-json-c14n 双实现）",
+      "version": null,
+      "fileCount": 6,
+      "digest": "sha256:037deae300c2e148bb3e682a9c75f9cbf3fcd865f1801fb9045bd5095ccd8908"
+    },
+    {
+      "name": "meta-schema-validator",
+      "path": "tools/meta-schema",
+      "kind": "验证器（Node 侧）",
+      "version": null,
+      "fileCount": 46,
+      "digest": "sha256:7809b076937962f6f60c25e6c451970dfe9e028046b047700433787415717136"
+    },
+    {
+      "name": "meta-schema-validator-full",
+      "path": "tools/meta-schema-full",
+      "kind": "验证器（全量结构）",
+      "version": null,
+      "fileCount": 2,
+      "digest": "sha256:205467323bf764da4ba3f3749216ac7e15b6c1e2295532d1dfcf218088200142"
+    },
+    {
+      "name": "platform-service",
+      "path": "services/platform",
+      "kind": "平台服务进程（身份层 / 授权 / 签名 / 认证端点）",
+      "version": "0.1.0",
+      "fileCount": 30,
+      "digest": "sha256:a580fd8f86003b4f6b85576d9fcad9de68db80d9f5761cd3e6dcb69130cbcdf7"
+    },
+    {
+      "name": "runtime-service",
+      "path": "services/runtime",
+      "kind": "Agent 运行时进程（容器入口）",
+      "version": null,
+      "fileCount": 4,
+      "digest": "sha256:328459382433f5350e155994fca70138688dfe3e0b9847e3d814b087d1825f13"
+    },
+    {
+      "name": "agent-preset-builder",
+      "path": "vendor/dsh/packages/preset/agent-presets/presets/kvvi-builder",
+      "kind": "搭建引擎预设（五个 Skill）",
+      "version": null,
+      "fileCount": 8,
+      "digest": "sha256:3e4df51a332fe205f06ed0fb3da2fb352db1612ca3e774becf559332818e62dd"
+    },
+    {
+      "name": "agent-preset-worker",
+      "path": "vendor/dsh/packages/preset/agent-presets/presets/kvvi-worker",
+      "kind": "工作模式预设",
+      "version": null,
+      "fileCount": 2,
+      "digest": "sha256:cf7f98c0b0a62f2412ee752cb8f98bd162c324b125f2499052009b066c8ed186"
+    },
+    {
+      "name": "client-plugin-brand",
+      "path": "vendor/dsh/packages/client/kvvi-brand",
+      "kind": "KVVI 品牌客户端插件",
+      "version": null,
+      "fileCount": 6,
+      "digest": "sha256:50f2de6233a0f6671445c83423808a083fbdedfd2653b6c03998d6d9a06694b5"
+    },
+    {
+      "name": "bundle-kvvi-app",
+      "path": "vendor/dsh/packages/bundle/kvvi-app",
+      "kind": "KVVI Profile Bundle",
+      "version": null,
+      "fileCount": 5,
+      "digest": "sha256:b3ad117fc02861bbef46385fdab09fca485fbdfa46dbda016b0fad903f52baf2"
+    },
+    {
+      "name": "schema-samples",
+      "path": "样例",
+      "kind": "产出样例与蓝图（验收基准）",
+      "version": null,
+      "fileCount": 55,
+      "digest": "sha256:e4b26573c915d90a0bf334af8c1e2a5bf812d10453952554ce9e44d993f52496"
+    }
+  ],
+  "deliveryDigest": "sha256:dda5ab3043cf25cd581436a03227ca25106087a4d9be08e3be22e4aaa8152d3a"
+}

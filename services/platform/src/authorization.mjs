@@ -115,13 +115,27 @@ export async function scopeContext(ctx) {
         WHERE p.company_id = $1 AND rm.user_id = $2 AND p.dimension = 'DATA'`,
       [ctx.companyId, ctx.userId])
     const scopes = rows.map((r) => r.scope).filter((s) => DATA_SCOPES.includes(s))
-    const subtree = ctx.deptId
-      ? await deptSubtree(client, ctx.companyId, ctx.deptId)
-      : []
+
+    // ⚠️ 部门与店铺**从这里查成员关系得到**，不从入参取。
+    //
+    // 早先版本读的是 `ctx.deptId` / `ctx.shopId`，而调用方（业务端点）
+    // 是按令牌声明现拼的 ctx —— 那里面**没有这两个字段**。
+    // 后果不是「报错」，是**静默降级**：`deptSubtree` 变成空数组，
+    // `DEPARTMENT` / `DEPARTMENT_AND_CHILDREN` / `STORE` 三档全部匹配不到任何行，
+    // 于是「五档数据范围」实际只剩 `SELF` 和一档 `COMPANY`。
+    //
+    // 这是 fail-closed 的方向（少给权限而不是多给），所以它不会泄漏 ——
+    // 但它会让合法用户被莫名其妙地拒绝，而且**从测试上看是「正常拒绝」**。
+    // 让上下文自己长出这两个字段，调用方就不必记得传。
+    const { rows: member } = await client.query(
+      'SELECT dept_id, shop_id FROM memberships WHERE company_id = $1 AND user_id = $2',
+      [ctx.companyId, ctx.userId])
+    const deptId = ctx.deptId ?? member[0]?.dept_id ?? null
+    const shopId = ctx.shopId ?? member[0]?.shop_id ?? null
+    const subtree = deptId ? await deptSubtree(client, ctx.companyId, deptId) : []
     return {
       companyId: ctx.companyId, userId: ctx.userId, gateway: ctx.gateway,
-      deptId: ctx.deptId, deptSubtree: subtree, shopId: ctx.shopId,
-      scopes,
+      deptId, deptSubtree: subtree, shopId, scopes,
     }
   } finally {
     client.release()

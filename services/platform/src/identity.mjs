@@ -18,6 +18,27 @@
  */
 import { createHash, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
 import { pool, withTransaction } from './db.mjs'
+import { ACTIVE_CONTRACT_VERSION } from './business.mjs'
+import {
+  loadKeys, rotate, publicKeysOf, signToken, verifyExpiry, verifySignature,
+} from './signing.mjs'
+
+/**
+ * 签名密钥。**懒加载**：进程启动时若无密钥，只有在真正要签发/验签时才报错 ——
+ * 这样「没有私钥的平台进程」仍然能提供 /healthz 与 /topology 取证
+ * （阶段一锚点⑥ 的取证必须能在缺私钥时也能复核）。
+ */
+let keysCache = null
+export function signingKeys() {
+  if (keysCache === null) keysCache = loadKeys()
+  return keysCache
+}
+
+/** 测试/运维用：轮换密钥（新旧公钥并行可验，§9.4.1）。 */
+export function rotateSigningKeys() {
+  keysCache = rotate(signingKeys())
+  return keysCache
+}
 
 /** 会话工具有效期。超时是五类生命周期事件之一（§4.6.5）。 */
 const SESSION_TTL_MS = Number(process.env.KVVI_SESSION_TTL_MS ?? 8 * 60 * 60 * 1000)
@@ -226,15 +247,22 @@ export async function issueToken(sessionId) {
   const session = await loadSession(sessionId)
   if (!session) throw new Error('KVVI_NO_SUCH_SESSION')
   if (session.state !== 'ACTIVE') throw new Error('KVVI_SESSION_ENDED')
-  const raw = `kvvi.${randomUUID()}.${randomUUID()}`
-  const expiresAt = new Date(Date.now() + TOKEN_TTL_MS)
+  const keys = signingKeys()
+  // 声明**全部由服务端从会话状态导出**，调用方无权提供（§9.4.1）。
+  const token = signToken({
+    sub: session.userId, sid: session.sessionId, ten: session.companyId,
+    gw: session.gateway, av: session.authzVersion, cv: ACTIVE_CONTRACT_VERSION,
+  }, keys)
+  const header = JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString('utf8'))
+  const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'))
   await pool('platform').query(
     `INSERT INTO delegation_tokens (token_id, token_digest, session_id, user_id,
        company_id, authz_version, expires_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [randomUUID(), digestOf(raw), sessionId, session.userId, session.companyId,
-     session.authzVersion, expiresAt])
-  return raw
+     VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7))`,
+    [payload.jti, digestOf(token), sessionId, session.userId, session.companyId,
+     session.authzVersion, payload.exp])
+  void header
+  return token
 }
 
 /**
@@ -250,28 +278,38 @@ export async function issueToken(sessionId) {
  */
 export async function verifyToken(raw) {
   if (typeof raw !== 'string' || raw.length === 0) return null
+
+  // ① 本地：验签 + 到期。**不依赖平台**（§9.4.4）——
+  //    但本进程就是平台，所以这里的"本地"是同一进程内。
+  const sig = verifySignature(raw, publicKeysOf(signingKeys()))
+  if (!sig.ok) return null
+  if (!verifyExpiry(sig.claims).ok) return null
+  const claims = sig.claims
+
+  // ② 权威：撤销状态与授权版本。
   const { rows } = await pool('platform').query(
-    `SELECT t.token_id, t.session_id, t.user_id, t.company_id, t.authz_version,
-            t.expires_at, t.revoked_at,
+    `SELECT t.revoked_at,
             s.state AS session_state, s.company_id AS session_company,
-            s.gateway, u.status, u.authz_version AS current_authz,
+            s.authz_version AS session_av, s.gateway,
+            u.status, u.authz_version AS current_authz,
             m.dept_id, m.shop_id
        FROM delegation_tokens t
        JOIN sessions s ON s.session_id = t.session_id
        JOIN users u ON u.user_id = t.user_id
        JOIN memberships m ON m.company_id = s.company_id AND m.user_id = s.user_id
-      WHERE t.token_digest = $1`, [digestOf(raw)])
+      WHERE t.token_id = $1`, [claims.jti])
   if (rows.length !== 1) return null
   const r = rows[0]
   if (r.revoked_at !== null) return null
-  if (new Date(r.expires_at).getTime() <= Date.now()) return null
   if (r.session_state !== 'ACTIVE') return null
-  if (r.company_id !== r.session_company) return null
-  if (r.authz_version !== r.current_authz) return null
+  // 令牌里的租户必须与**会话的租户**一致（§9.9.4）。
+  if (claims.ten !== r.session_company) return null
+  // 授权版本（§9.4.2）：令牌里的版本 = 签发时的版本；任一环节变了都拒。
+  if (claims.av !== r.session_av || claims.av !== r.current_authz) return null
   if (r.status !== 'ACTIVE') return null
   return {
-    tokenId: r.token_id, sessionId: r.session_id, userId: r.user_id,
-    companyId: r.company_id, gateway: r.gateway,
+    tokenId: claims.jti, sessionId: claims.sid, userId: claims.sub,
+    companyId: claims.ten, gateway: claims.gw,
     deptId: r.dept_id, shopId: r.shop_id,
   }
 }

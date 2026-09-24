@@ -16,6 +16,10 @@ import pg from 'pg'
 import { dsns, pool, closeAll } from '../src/db.mjs'
 import { hashPassword } from '../src/identity.mjs'
 
+// 测试用：允许在临时路径生成开发密钥（生产环境缺私钥必须起不来）。
+process.env.KVVI_DEV_KEYS ??= '1'
+process.env.KVVI_SIGNING_KEY_PATH ??= '/tmp/kvvi-test-signing.key'
+
 const { Client } = pg
 const HERE = dirname(fileURLToPath(import.meta.url))
 
@@ -146,6 +150,62 @@ export async function seed() {
     }
   } finally {
     await business.end()
+  }
+}
+
+/**
+ * 给某账号一批**基线授权**：能读能改本公司/本部门的单，字段全可见。
+ *
+ * 单独抽出来是因为：写业务用例时如果忘了授权，失败原因是
+ * 「动作未授予」而不是被测的那件事 —— 测试会红，但红得没有信息量。
+ */
+export async function grantBaseline(userId, companyId = A.company, deptId = A.subDept) {
+  const { randomUUID } = await import('node:crypto')
+  const roleId = randomUUID()
+  await pool('platform').query(
+    `INSERT INTO roles (role_id, company_id, role_code, name) VALUES ($1,$2,$3,'baseline')`,
+    [roleId, companyId, `role_base_${roleId.slice(0, 8)}`])
+  await pool('platform').query(
+    `INSERT INTO role_members (company_id, role_id, user_id) VALUES ($1,$2,$3)`,
+    [companyId, roleId, userId])
+  const rows = [
+    // ⚠️ 刻意**不含 COMPANY**。给了它，本公司的记录全都可见，
+    //    「越权被拒」那几条用例就会因为「其实有权」而失去意义 ——
+    //    测试会绿，但它证的是一件别的事。
+    ['DATA', '*', [], ['SELF', 'DEPARTMENT_AND_CHILDREN'], null],
+    ['FORM', 'general_item',
+     ['read', 'create', 'update', 'submit', 'finalize', 'delete'], [], null],
+    ['FIELD', '*', ['read'], [], 'VISIBLE'],
+  ]
+  for (const [dim, code, actions, scopes, vis] of rows) {
+    await pool('platform').query(
+      `INSERT INTO policies (policy_id, company_id, role_id, dimension, resource_code,
+         actions, data_scopes, field_visibility)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [randomUUID(), companyId, roleId, dim, code, actions, scopes, vis])
+  }
+  void deptId
+  return roleId
+}
+
+/**
+ * 以**超级用户**在某一个库上查一条语句。
+ *
+ * ⚠️ `pool('admin')` 连的是 `postgres` 库 —— 那里没有业务表，也没有审计表。
+ * 「用 admin 池去查业务表」是一个已经犯过两次的错：报错是
+ * `relation "business_records" does not exist`，看起来像表没建，实际是连错库。
+ * 所以这里把「连哪个库」变成必填参数。
+ */
+export async function adminQuery(db, sql, params = []) {
+  const { Client } = pg
+  const client = new Client({
+    connectionString: dsns().admin.replace(/\/[^/]*$/, `/${db}`),
+  })
+  await client.connect()
+  try {
+    return await client.query(sql, params)
+  } finally {
+    await client.end()
   }
 }
 

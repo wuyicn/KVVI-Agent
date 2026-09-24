@@ -38,7 +38,6 @@ const SIGNING_KEY_PATH = process.env.KVVI_SIGNING_KEY_PATH ?? '/run/kvvi-secrets
 
 /** 每个端点的归属阶段：未实现的端点返回 501 而不是假成功。 */
 const PENDING = {
-  '/sign/delegation': '阶段五（身份层签发委派令牌）',
   '/registry/publish': '阶段五（发布通道）',
   '/registry/plugins': '阶段五（插件批准记录查询）',
 }
@@ -54,6 +53,12 @@ const PENDING = {
  * 这些端点各自有自己的鉴权：登录凭账号口令，登出与会话查询凭委派令牌。
  */
 const USER_AUTH_PATHS = new Set(['/auth/login', '/auth/logout', '/auth/session'])
+
+/**
+ * **公开**的签名侧端点：公钥不是秘密，业务系统要拿它配置信任锚点（§9.4.1）。
+ * 需要鉴权的签名端点（签发 / 轮换）不在这里 —— 它们走下面的受控接口段。
+ */
+const PUBLIC_SIGN_PATHS = new Set(['/sign/keys'])
 
 /** 管理员/平台内部端点：要求进程间令牌（真实管理员角色归阶段五授权服务）。 */
 const INTERNAL_AUTH_PATHS = [
@@ -146,6 +151,13 @@ const server = createServer(async (req, res) => {
     return proxyHandler(req, res)
   }
 
+  // ── 公开的签名端点：公钥分发（§9.4.1 信任锚点）────────────────────
+  if (PUBLIC_SIGN_PATHS.has(path)) {
+    const out = await handleAuth({ method, path, body: null, headers: req.headers })
+    if (out === null) return send(res, 405, { ok: false, error: 'method_not_allowed', path })
+    return send(res, out.status, out.body)
+  }
+
   // ── 用户认证端点：不走进程间令牌，走自己的凭据 ────────────────────
   if (USER_AUTH_PATHS.has(path)) {
     const raw = await readBody(req)
@@ -170,8 +182,8 @@ const server = createServer(async (req, res) => {
     }, { 'www-authenticate': 'Bearer' })
   }
 
-  // ── 会话生命周期事件的管理入口（第四、五类）──────────────────────
-  if (needsInternalToken(path)) {
+  // ── 会话生命周期事件的管理入口 + 需要鉴权的签名端点 ──────────────
+  if (needsInternalToken(path) || path.startsWith('/sign/')) {
     const raw = await readBody(req)
     let body = null
     if (raw) { try { body = JSON.parse(raw) } catch { body = null } }
