@@ -1,0 +1,56 @@
+{
+  "recordVersion": "kvvi-foundation-snapshot/v1",
+  "note": "行业扩展包安装**之前**的地基指纹。加包之后必须逐项一致 —— 这是「不改地基」这句承诺的执行点。",
+  "foundation": {
+    "contracts": {
+      "path": "contracts",
+      "digest": "sha256:847f46f990895227bb07c16d00717735d85642fba9b2c978f0de6d5ab008151f",
+      "fileCount": 28
+    },
+    "protocol": {
+      "path": "protocol",
+      "digest": "sha256:037deae300c2e148bb3e682a9c75f9cbf3fcd865f1801fb9045bd5095ccd8908",
+      "fileCount": 6
+    },
+    "meta-schema-validator": {
+      "path": "tools/meta-schema",
+      "digest": "sha256:7809b076937962f6f60c25e6c451970dfe9e028046b047700433787415717136",
+      "fileCount": 46
+    },
+    "meta-schema-validator-full": {
+      "path": "tools/meta-schema-full",
+      "digest": "sha256:205467323bf764da4ba3f3749216ac7e15b6c1e2295532d1dfcf218088200142",
+      "fileCount": 2
+    },
+    "platform-service": {
+      "path": "services/platform",
+      "digest": "sha256:26c6a5f05fab6540210801e9f8bf2c78e86a4ca74d7c06b4be5b84391718a40d",
+      "fileCount": 34
+    },
+    "runtime-service": {
+      "path": "services/runtime",
+      "digest": "sha256:328459382433f5350e155994fca70138688dfe3e0b9847e3d814b087d1825f13",
+      "fileCount": 4
+    },
+    "agent-preset-builder": {
+      "path": "vendor/dsh/packages/preset/agent-presets/presets/kvvi-builder",
+      "digest": "sha256:3e4df51a332fe205f06ed0fb3da2fb352db1612ca3e774becf559332818e62dd",
+      "fileCount": 8
+    },
+    "agent-preset-worker": {
+      "path": "vendor/dsh/packages/preset/agent-presets/presets/kvvi-worker",
+      "digest": "sha256:cf7f98c0b0a62f2412ee752cb8f98bd162c324b125f2499052009b066c8ed186",
+      "fileCount": 2
+    },
+    "client-plugin-brand": {
+      "path": "vendor/dsh/packages/client/kvvi-brand",
+      "digest": "sha256:50f2de6233a0f6671445c83423808a083fbdedfd2653b6c03998d6d9a06694b5",
+      "fileCount": 6
+    },
+    "bundle-kvvi-app": {
+      "path": "vendor/dsh/packages/bundle/kvvi-app",
+      "digest": "sha256:b3ad117fc02861bbef46385fdab09fca485fbdfa46dbda016b0fad903f52baf2",
+      "fileCount": 5
+    }
+  }
+}

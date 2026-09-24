@@ -1,0 +1,161 @@
+{
+  "view_code": "replenishment_request_form",
+  "name": "家具报货申请单",
+  "view_type": "FORM",
+  "businessSchemaRef": {
+    "scope_type": "TENANT",
+    "scope_id": "11111111-1111-4111-8111-111111111111",
+    "app_id": "22222222-2222-4222-8222-222222222222",
+    "module_id": "33333333-3333-4333-8333-333333333333",
+    "asset_type": "BUSINESS_SCHEMA",
+    "asset_id": "replenishment_request",
+    "version": 1,
+    "digest": "sha256:57682687a034820aa4a2ee9244cd687dc0e6ea3e1737974b1760d8c9cd5e5e64"
+  },
+  "componentRegistryRef": {
+    "scope_type": "PLATFORM_CONTROL",
+    "scope_id": "kvvi-platform",
+    "app_id": null,
+    "module_id": null,
+    "asset_type": "COMPONENT_REGISTRY",
+    "asset_id": "vue_element_approved",
+    "version": 1,
+    "digest": "sha256:09b78fdd43ca6556a626e7b532ab05f5bf87ab8012ba4d9a018386af808c34f5"
+  },
+  "queries": [
+    {
+      "query_code": "q_request_items",
+      "query": {
+        "type": "DataQueryRef",
+        "queryRef": {
+          "scope_type": "PLATFORM_CONTROL",
+          "scope_id": "kvvi-platform",
+          "app_id": null,
+          "module_id": null,
+          "asset_type": "CAPABILITY",
+          "capability_code": "request.items.list",
+          "version": 1,
+          "digest": "sha256:a8a1cbf10afd48170a02cfbe91f38cd3bcf3999943b67cf5b59576b533a7170d"
+        },
+        "params": {
+          "businessSchemaRef": {
+            "scope_type": "TENANT",
+            "scope_id": "11111111-1111-4111-8111-111111111111",
+            "app_id": "22222222-2222-4222-8222-222222222222",
+            "module_id": "33333333-3333-4333-8333-333333333333",
+            "asset_type": "BUSINESS_SCHEMA",
+            "asset_id": "replenishment_request",
+            "version": 1,
+            "digest": "sha256:57682687a034820aa4a2ee9244cd687dc0e6ea3e1737974b1760d8c9cd5e5e64"
+          }
+        }
+      }
+    }
+  ],
+  "componentsTree": [
+    {
+      "id": "page_root",
+      "componentName": "FormPage",
+      "children": [
+        {
+          "id": "basic_section",
+          "componentName": "Section",
+          "props": {
+            "title": "报货信息"
+          },
+          "children": [
+            {
+              "id": "f_store",
+              "componentName": "ShortTextField",
+              "props": {
+                "fieldBinding": {
+                  "type": "FieldRef",
+                  "fieldRef": "store_code"
+                }
+              }
+            },
+            {
+              "id": "f_date",
+              "componentName": "DateField",
+              "props": {
+                "fieldBinding": {
+                  "type": "FieldRef",
+                  "fieldRef": "delivery_date"
+                }
+              }
+            },
+            {
+              "id": "f_qty",
+              "componentName": "IntegerField",
+              "props": {
+                "fieldBinding": {
+                  "type": "FieldRef",
+                  "fieldRef": "quantity"
+                }
+              }
+            },
+            {
+              "id": "f_amount",
+              "componentName": "MoneyField",
+              "props": {
+                "fieldBinding": {
+                  "type": "FieldRef",
+                  "fieldRef": "amount"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "items_section",
+          "componentName": "Section",
+          "props": {
+            "title": "报货明细"
+          },
+          "loop": {
+            "type": "DataBindingRef",
+            "queryCode": "q_request_items",
+            "itemKey": "id",
+            "maxItems": 200
+          },
+          "loopArgs": [
+            "item",
+            "index"
+          ],
+          "children": [
+            {
+              "id": "items_table",
+              "componentName": "Table",
+              "props": {
+                "text": "明细行"
+              }
+            }
+          ]
+        },
+        {
+          "id": "notes_section",
+          "componentName": "Section",
+          "props": {
+            "title": "补充说明"
+          },
+          "children": [
+            {
+              "id": "f_notes",
+              "componentName": "LongTextField",
+              "props": {
+                "fieldBinding": {
+                  "type": "FieldRef",
+                  "fieldRef": "notes"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "btn_submit",
+          "componentName": "SubmitButton"
+        }
+      ]
+    }
+  ]
+}

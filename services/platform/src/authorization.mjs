@@ -268,3 +268,83 @@ export function resolveTransition(transitions, fromState, action) {
   }
   return { allowed: true, toState: hits[0].to_state }
 }
+
+/**
+ * 双网关的**四类越界**判定（PRD §3.1、§5.2、§9.5.2、§9.6.1、§9.6.7）。
+ *
+ * ── 为什么这四条要单独有名字 ────────────────────────────────────────────
+ *
+ * 它们各自的失败方式不同，但在实现里很容易被合并成一句「权限不够」：
+ *
+ * | 类别 | 形态 | 正确的拒绝理由 |
+ * |---|---|---|
+ * | **工具串用** | 用员工会话调用搭建工具（或反之） | `KVVI_WRONG_GATEWAY` |
+ * | **数据旁路** | **凭搭建权限**去读生产业务数据 | `KVVI_BUILD_PERMISSION_IS_NOT_DATA_PERMISSION` |
+ * | **自授权** | 搭建者给自己配业务权限 | `KVVI_SELF_GRANT_FORBIDDEN` |
+ * | **自审批** | 搭建者批准自己提出的安全敏感变更 | `KVVI_SELF_APPROVAL_FORBIDDEN` |
+ *
+ * 合并成一句的代价是：**出事时无法回答是哪一条失守了**，
+ * 而 §9.5.2 明说第 2 条是 A2 攻击的核心。
+ */
+
+/** 搭建类工具：**只有它**能改系统结构（§5.2 能力红线 1）。 */
+export function isBuilderTool(tool) {
+  return TOOL_GATEWAY[tool] === 'BUILDER'
+}
+
+/**
+ * 数据旁路判定（§9.5.2「搭建权限 ≠ 数据权限」）。
+ *
+ * ⚠️ 这条**不是**「搭建者不能用业务功能」——§3.1 的表格里搭建者
+ * 「工作模式业务操作 ✅」。禁的是**凭搭建权限**取得业务数据访问。
+ * 所以判据是「有没有业务侧授权」，不是「是不是搭建者」。
+ * @param {'USER'|'BUILDER'} gateway 会话网关
+ * @param {string[]} businessScopes 该账号在该公司的业务数据档位
+ * @param {string} tool 被调用的工具
+ * @returns {{allowed: boolean, reason?: string}}
+ */
+export function checkDataAccess(gateway, businessScopes, tool) {
+  if (isBuilderTool(tool)) return { allowed: false, reason: 'KVVI_WRONG_GATEWAY' }
+  if (gwIsBuildOnly(gateway) && (businessScopes ?? []).length === 0) {
+    return { allowed: false, reason: 'KVVI_BUILD_PERMISSION_IS_NOT_DATA_PERMISSION' }
+  }
+  return { allowed: true }
+}
+
+/** 会话所处网关是否属于「只搭不用」的情形。 */
+function gwIsBuildOnly(gateway) {
+  return gateway === 'BUILDER'
+}
+
+/**
+ * 自授权判定（§9.6.7）。
+ *
+ * 搭建者配置员工业务权限时**不得把自己或关联账号纳入**配置范围。
+ * 判据是「被授权人是否就是操作者」，与「他有没有这个权限」无关 ——
+ * 一个**有**配置权限的搭建者同样不能给自己配。
+ * @param {string} actorUserId 操作者
+ * @param {string[]} targetUserIds 被配置的人
+ * @returns {{allowed: boolean, reason?: string}}
+ */
+export function checkSelfGrant(actorUserId, targetUserIds) {
+  if ((targetUserIds ?? []).includes(actorUserId)) {
+    return { allowed: false, reason: 'KVVI_SELF_GRANT_FORBIDDEN',
+             detail: { actor: actorUserId } }
+  }
+  return { allowed: true }
+}
+
+/**
+ * 自审批判定（§9.6.1）。
+ * **安全敏感变更**不得由提出者自己批准 —— 与「有没有审批权」无关。
+ * @param {string} actorUserId 操作者
+ * @param {string} proposerUserId 变更的提出者
+ * @param {boolean} securitySensitive 是否安全敏感
+ * @returns {{allowed: boolean, reason?: string}}
+ */
+export function checkSelfApproval(actorUserId, proposerUserId, securitySensitive) {
+  if (securitySensitive && actorUserId === proposerUserId) {
+    return { allowed: false, reason: 'KVVI_SELF_APPROVAL_FORBIDDEN' }
+  }
+  return { allowed: true }
+}

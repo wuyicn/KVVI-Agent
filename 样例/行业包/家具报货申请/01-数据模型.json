@@ -1,0 +1,140 @@
+{
+  "schema_code": "replenishment_request",
+  "name": "家具报货申请单",
+  "description": "行业扩展包样例：门店向总部报货",
+  "field_type_registry_ref": {
+    "scope_type": "PLATFORM_CONTROL",
+    "scope_id": "kvvi-platform",
+    "app_id": null,
+    "module_id": null,
+    "asset_type": "FIELD_TYPE_REGISTRY",
+    "asset_id": "fake-business-types",
+    "version": 1,
+    "digest": "sha256:a36716610e06b202ea165484cd58fef645905408aac7534ebdb47791c17649d2"
+  },
+  "fields": [
+    {
+      "field_code": "request_no",
+      "label": "报货单号",
+      "type": "short_text",
+      "required": true,
+      "nullable": false,
+      "write_policy": "CREATE_ONLY",
+      "query": {
+        "searchable": true,
+        "filterable": true,
+        "sortable": true
+      }
+    },
+    {
+      "field_code": "store_code",
+      "label": "门店",
+      "type": "short_text",
+      "required": true,
+      "nullable": false,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": true,
+        "filterable": true,
+        "sortable": true
+      }
+    },
+    {
+      "field_code": "delivery_date",
+      "label": "期望到货日期",
+      "type": "date",
+      "required": true,
+      "nullable": false,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": true,
+        "sortable": true
+      }
+    },
+    {
+      "field_code": "quantity",
+      "label": "报货数量",
+      "type": "integer",
+      "required": true,
+      "nullable": false,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": true,
+        "sortable": true
+      }
+    },
+    {
+      "field_code": "amount",
+      "label": "预估金额",
+      "type": "money",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": true,
+        "sortable": true
+      },
+      "type_config": {
+        "currency_mode": "FIXED",
+        "currency": "CNY"
+      }
+    },
+    {
+      "field_code": "notes",
+      "label": "备注",
+      "type": "long_text",
+      "required": false,
+      "nullable": true,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": true,
+        "filterable": true,
+        "sortable": false
+      }
+    },
+    {
+      "field_code": "request_status",
+      "label": "状态",
+      "type": "single_select",
+      "required": true,
+      "nullable": false,
+      "write_policy": "MUTABLE",
+      "query": {
+        "searchable": false,
+        "filterable": true,
+        "sortable": true
+      },
+      "type_config": {
+        "options": [
+          {
+            "code": "draft",
+            "label": "草稿",
+            "order": 0,
+            "enabled": true
+          },
+          {
+            "code": "submitted",
+            "label": "待总部确认",
+            "order": 1,
+            "enabled": true
+          },
+          {
+            "code": "approved",
+            "label": "已通过",
+            "order": 2,
+            "enabled": true
+          },
+          {
+            "code": "rejected",
+            "label": "已驳回",
+            "order": 3,
+            "enabled": true
+          }
+        ]
+      }
+    }
+  ]
+}

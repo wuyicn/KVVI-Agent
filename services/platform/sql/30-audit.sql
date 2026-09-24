@@ -18,10 +18,10 @@ CREATE TABLE IF NOT EXISTS audit_entries (
   company_id    uuid NOT NULL,
   occurred_at   timestamptz NOT NULL DEFAULT now(),
   -- 谁
-  actor_kind    text NOT NULL CHECK (actor_kind IN ('USER', 'AGENT', 'SYSTEM')),
+  actor_kind    text NOT NULL CHECK (actor_kind IN ('USER', 'AGENT', 'SYSTEM', 'VISITOR')),
   actor_id      uuid,
   -- 从哪个网关发起的。搭建动作与使用动作必须能分开统计（§9.6.5）。
-  gateway       text CHECK (gateway IN ('USER', 'BUILDER')),
+  gateway       text CHECK (gateway IN ('USER', 'BUILDER', 'VISITOR')),
   session_id    uuid,
   -- 做了什么
   action        text NOT NULL,
@@ -38,6 +38,26 @@ CREATE TABLE IF NOT EXISTS audit_entries (
   prev_hash     text NOT NULL,
   entry_hash    text NOT NULL
 );
+
+-- ── 访客通道（PRD §3.5.4）───────────────────────────────────────────
+--
+-- ⚠️ 访客**没有账号**，所以「操作者是谁」这个问题没有直接答案。
+-- §3.5.4 给出的受限落地形式是：追溯单位为
+-- **链接签发人 + 链接 ID + 提交通道**，且**不得把访客冒充成签发人亲自操作**。
+--
+-- 落到本表就是：
+--   `actor_kind = 'VISITOR'`  —— 说清「操作者不是账号持有者」；
+--   `actor_id   = 签发人`      —— 让每一次提交都能定位到为其提供入口的账号。
+-- 两个字段分开表达，才能同时做到「不冒充」和「可追溯」。
+--
+-- 约束用 DROP + ADD 而不是改 CREATE TABLE：老库要能平滑升上来，
+-- 而 `CREATE TABLE IF NOT EXISTS` 对已存在的表不会重跑列定义。
+ALTER TABLE audit_entries DROP CONSTRAINT IF EXISTS audit_entries_gateway_check;
+ALTER TABLE audit_entries ADD CONSTRAINT audit_entries_gateway_check
+  CHECK (gateway IN ('USER', 'BUILDER', 'VISITOR'));
+ALTER TABLE audit_entries DROP CONSTRAINT IF EXISTS audit_entries_actor_kind_check;
+ALTER TABLE audit_entries ADD CONSTRAINT audit_entries_actor_kind_check
+  CHECK (actor_kind IN ('USER', 'AGENT', 'SYSTEM', 'VISITOR'));
 
 CREATE INDEX IF NOT EXISTS audit_by_company ON audit_entries (company_id, seq);
 CREATE INDEX IF NOT EXISTS audit_by_actor ON audit_entries (actor_id, seq);

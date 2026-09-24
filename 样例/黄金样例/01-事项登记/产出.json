@@ -1,0 +1,471 @@
+{
+  "model": {
+    "schema_code": "golden_01",
+    "name": "事项登记",
+    "description": "登记一件需要流转的事项，能填标题、分类、数量、金额与期限。",
+    "field_type_registry_ref": {
+      "scope_type": "PLATFORM_CONTROL",
+      "scope_id": "kvvi-platform",
+      "app_id": null,
+      "module_id": null,
+      "asset_type": "FIELD_TYPE_REGISTRY",
+      "asset_id": "fake-business-types",
+      "version": 1,
+      "digest": "sha256:a36716610e06b202ea165484cd58fef645905408aac7534ebdb47791c17649d2"
+    },
+    "fields": [
+      {
+        "field_code": "title",
+        "label": "标题",
+        "type": "short_text",
+        "required": true,
+        "nullable": false,
+        "write_policy": "MUTABLE",
+        "query": {
+          "searchable": true,
+          "filterable": true,
+          "sortable": true
+        }
+      },
+      {
+        "field_code": "category",
+        "label": "分类",
+        "type": "single_select",
+        "required": true,
+        "nullable": false,
+        "write_policy": "MUTABLE",
+        "query": {
+          "searchable": false,
+          "filterable": true,
+          "sortable": true
+        },
+        "type_config": {
+          "options": [
+            {
+              "code": "draft",
+              "label": "草稿",
+              "order": 0,
+              "enabled": true
+            },
+            {
+              "code": "submitted",
+              "label": "待审批",
+              "order": 1,
+              "enabled": true
+            },
+            {
+              "code": "approved",
+              "label": "已通过",
+              "order": 2,
+              "enabled": true
+            },
+            {
+              "code": "rejected",
+              "label": "已驳回",
+              "order": 3,
+              "enabled": true
+            }
+          ]
+        }
+      },
+      {
+        "field_code": "quantity",
+        "label": "数量",
+        "type": "integer",
+        "required": true,
+        "nullable": false,
+        "write_policy": "MUTABLE",
+        "query": {
+          "searchable": false,
+          "filterable": true,
+          "sortable": true
+        }
+      },
+      {
+        "field_code": "amount",
+        "label": "金额",
+        "type": "money",
+        "required": false,
+        "nullable": true,
+        "write_policy": "MUTABLE",
+        "query": {
+          "searchable": false,
+          "filterable": true,
+          "sortable": true
+        },
+        "type_config": {
+          "currency_mode": "FIXED",
+          "currency": "CNY"
+        }
+      },
+      {
+        "field_code": "due_date",
+        "label": "期限",
+        "type": "date",
+        "required": false,
+        "nullable": true,
+        "write_policy": "MUTABLE",
+        "query": {
+          "searchable": false,
+          "filterable": true,
+          "sortable": true
+        }
+      }
+    ]
+  },
+  "form": {
+    "view_code": "golden_01_form",
+    "name": "事项登记登记表单",
+    "view_type": "FORM",
+    "businessSchemaRef": {
+      "scope_type": "TENANT",
+      "scope_id": "11111111-1111-4111-8111-111111111111",
+      "app_id": "22222222-2222-4222-8222-222222222222",
+      "module_id": "33333333-3333-4333-8333-333333333333",
+      "asset_type": "BUSINESS_SCHEMA",
+      "asset_id": "golden_01",
+      "version": 1,
+      "digest": "sha256:88d7510954da024f0f0ab1772408ea1b264e836c0120e942f657c227039ccbe3"
+    },
+    "componentRegistryRef": {
+      "scope_type": "PLATFORM_CONTROL",
+      "scope_id": "kvvi-platform",
+      "app_id": null,
+      "module_id": null,
+      "asset_type": "COMPONENT_REGISTRY",
+      "asset_id": "vue_element_approved",
+      "version": 1,
+      "digest": "sha256:09b78fdd43ca6556a626e7b532ab05f5bf87ab8012ba4d9a018386af808c34f5"
+    },
+    "componentsTree": [
+      {
+        "id": "page_root",
+        "componentName": "FormPage",
+        "children": [
+          {
+            "id": "main_section",
+            "componentName": "Section",
+            "props": {
+              "title": "基本信息"
+            },
+            "children": [
+              {
+                "id": "f_title",
+                "componentName": "ShortTextField",
+                "props": {
+                  "fieldBinding": {
+                    "type": "FieldRef",
+                    "fieldRef": "title"
+                  }
+                }
+              },
+              {
+                "id": "f_category",
+                "componentName": "SingleSelectField",
+                "props": {
+                  "fieldBinding": {
+                    "type": "FieldRef",
+                    "fieldRef": "category"
+                  }
+                }
+              },
+              {
+                "id": "f_quantity",
+                "componentName": "IntegerField",
+                "props": {
+                  "fieldBinding": {
+                    "type": "FieldRef",
+                    "fieldRef": "quantity"
+                  }
+                }
+              },
+              {
+                "id": "f_amount",
+                "componentName": "MoneyField",
+                "props": {
+                  "fieldBinding": {
+                    "type": "FieldRef",
+                    "fieldRef": "amount"
+                  }
+                }
+              },
+              {
+                "id": "f_due_date",
+                "componentName": "DateField",
+                "props": {
+                  "fieldBinding": {
+                    "type": "FieldRef",
+                    "fieldRef": "due_date"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "btn_submit",
+            "componentName": "SubmitButton"
+          }
+        ]
+      }
+    ]
+  },
+  "workflow": {
+    "businessSchemaRef": {
+      "scope_type": "TENANT",
+      "scope_id": "11111111-1111-4111-8111-111111111111",
+      "app_id": "22222222-2222-4222-8222-222222222222",
+      "module_id": "33333333-3333-4333-8333-333333333333",
+      "asset_type": "BUSINESS_SCHEMA",
+      "asset_id": "golden_01",
+      "version": 1,
+      "digest": "sha256:88d7510954da024f0f0ab1772408ea1b264e836c0120e942f657c227039ccbe3"
+    },
+    "states": [
+      {
+        "state_code": "draft",
+        "name": "草稿",
+        "initial": true,
+        "terminal": false
+      },
+      {
+        "state_code": "submitted",
+        "name": "待审批",
+        "initial": false,
+        "terminal": false
+      },
+      {
+        "state_code": "approved",
+        "name": "已通过",
+        "initial": false,
+        "terminal": true
+      },
+      {
+        "state_code": "rejected",
+        "name": "已驳回",
+        "initial": false,
+        "terminal": false
+      }
+    ],
+    "actions": [
+      {
+        "action_code": "submit",
+        "kind": "SUBMIT",
+        "capability_ref": {
+          "scope_type": "TENANT",
+          "scope_id": "fixture_tenant",
+          "app_id": "11111111-1111-4111-8111-111111111111",
+          "module_id": null,
+          "asset_type": "CAPABILITY",
+          "capability_code": "flow.submit",
+          "version": 1,
+          "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      {
+        "action_code": "approve",
+        "kind": "APPROVE",
+        "capability_ref": {
+          "scope_type": "TENANT",
+          "scope_id": "fixture_tenant",
+          "app_id": "11111111-1111-4111-8111-111111111111",
+          "module_id": null,
+          "asset_type": "CAPABILITY",
+          "capability_code": "flow.submit",
+          "version": 1,
+          "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      {
+        "action_code": "reject",
+        "kind": "REJECT",
+        "capability_ref": {
+          "scope_type": "TENANT",
+          "scope_id": "fixture_tenant",
+          "app_id": "11111111-1111-4111-8111-111111111111",
+          "module_id": null,
+          "asset_type": "CAPABILITY",
+          "capability_code": "flow.submit",
+          "version": 1,
+          "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      }
+    ],
+    "transitions": [
+      {
+        "transition_code": "submit_flow",
+        "from_state": "draft",
+        "to_state": "submitted",
+        "action_code": "submit"
+      },
+      {
+        "transition_code": "approve_done",
+        "from_state": "submitted",
+        "to_state": "approved",
+        "action_code": "approve"
+      },
+      {
+        "transition_code": "reject_back",
+        "from_state": "submitted",
+        "to_state": "rejected",
+        "action_code": "reject"
+      }
+    ],
+    "approverRef": {
+      "kind": "SINGLE",
+      "role_ref": {
+        "permission_ref": {
+          "scope_type": "TENANT",
+          "scope_id": "fixture_tenant",
+          "app_id": "11111111-1111-4111-8111-111111111111",
+          "module_id": null,
+          "asset_type": "PERMISSION",
+          "asset_id": "role_directory",
+          "version": 1,
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "subresource": {
+          "type": "ROLE",
+          "code": "supervisor"
+        }
+      }
+    }
+  },
+  "commands": [
+    {
+      "command_version": "app-model-command/v1alpha1",
+      "command_id": "e0000000-0000-4000-8000-000000000100",
+      "draft_id": "d0000000-0000-4000-8000-000000000001",
+      "base_revision": 0,
+      "type": "app.createModule",
+      "target_ref": {
+        "app_id": "a0000000-0000-4000-8000-000000000001"
+      },
+      "args": {
+        "module_code": "golden_01",
+        "name": "事项登记"
+      }
+    },
+    {
+      "command_version": "app-model-command/v1alpha1",
+      "command_id": "e0000000-0000-4000-8000-000000000101",
+      "draft_id": "d0000000-0000-4000-8000-000000000001",
+      "base_revision": 1,
+      "type": "businessObject.create",
+      "target_ref": {
+        "module_id": "b0000000-0000-4000-8000-000000000001"
+      },
+      "args": {
+        "schema_code": "golden_01",
+        "name": "事项登记",
+        "field_type_registry_ref": {
+          "scope_type": "PLATFORM_CONTROL",
+          "scope_id": "kvvi-platform",
+          "app_id": null,
+          "module_id": null,
+          "asset_type": "FIELD_TYPE_REGISTRY",
+          "asset_id": "fake-business-types",
+          "version": 1,
+          "digest": "sha256:a36716610e06b202ea165484cd58fef645905408aac7534ebdb47791c17649d2"
+        }
+      }
+    },
+    {
+      "command_version": "app-model-command/v1alpha1",
+      "command_id": "e0000000-0000-4000-8000-000000000102",
+      "draft_id": "d0000000-0000-4000-8000-000000000001",
+      "base_revision": 2,
+      "type": "field.add",
+      "target_ref": {
+        "business_object_id": "c0000000-0000-4000-8000-000000000001"
+      },
+      "args": {
+        "field_code": "title",
+        "field_type": "short_text",
+        "label": "标题",
+        "required": true
+      }
+    },
+    {
+      "command_version": "app-model-command/v1alpha1",
+      "command_id": "e0000000-0000-4000-8000-000000000103",
+      "draft_id": "d0000000-0000-4000-8000-000000000001",
+      "base_revision": 3,
+      "type": "field.add",
+      "target_ref": {
+        "business_object_id": "c0000000-0000-4000-8000-000000000001"
+      },
+      "args": {
+        "field_code": "category",
+        "field_type": "single_select",
+        "label": "分类",
+        "required": true
+      }
+    },
+    {
+      "command_version": "app-model-command/v1alpha1",
+      "command_id": "e0000000-0000-4000-8000-000000000104",
+      "draft_id": "d0000000-0000-4000-8000-000000000001",
+      "base_revision": 4,
+      "type": "field.add",
+      "target_ref": {
+        "business_object_id": "c0000000-0000-4000-8000-000000000001"
+      },
+      "args": {
+        "field_code": "quantity",
+        "field_type": "integer",
+        "label": "数量",
+        "required": true
+      }
+    },
+    {
+      "command_version": "app-model-command/v1alpha1",
+      "command_id": "e0000000-0000-4000-8000-000000000105",
+      "draft_id": "d0000000-0000-4000-8000-000000000001",
+      "base_revision": 5,
+      "type": "field.add",
+      "target_ref": {
+        "business_object_id": "c0000000-0000-4000-8000-000000000001"
+      },
+      "args": {
+        "field_code": "amount",
+        "field_type": "money",
+        "label": "金额",
+        "required": false
+      }
+    },
+    {
+      "command_version": "app-model-command/v1alpha1",
+      "command_id": "e0000000-0000-4000-8000-000000000106",
+      "draft_id": "d0000000-0000-4000-8000-000000000001",
+      "base_revision": 6,
+      "type": "field.add",
+      "target_ref": {
+        "business_object_id": "c0000000-0000-4000-8000-000000000001"
+      },
+      "args": {
+        "field_code": "due_date",
+        "field_type": "date",
+        "label": "期限",
+        "required": false
+      }
+    },
+    {
+      "command_version": "app-model-command/v1alpha1",
+      "command_id": "e0000000-0000-4000-8000-000000000107",
+      "draft_id": "d0000000-0000-4000-8000-000000000001",
+      "base_revision": 7,
+      "type": "draft.compile",
+      "target_ref": {},
+      "args": {}
+    },
+    {
+      "command_version": "app-model-command/v1alpha1",
+      "command_id": "e0000000-0000-4000-8000-000000000108",
+      "draft_id": "d0000000-0000-4000-8000-000000000001",
+      "base_revision": 8,
+      "type": "draft.submitForApproval",
+      "target_ref": {},
+      "args": {}
+    }
+  ]
+}

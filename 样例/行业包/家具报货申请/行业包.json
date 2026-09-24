@@ -1,0 +1,18 @@
+{
+  "packVersion": "kvvi-industry-pack/v1",
+  "industry": "家具",
+  "name": "家具报货申请",
+  "note": "行业扩展包：按 PRD §5.7.3，行业内容只允许出现在本目录，地基不得因此改动。",
+  "adds": {
+    "skills": [
+      "skills/家具报货规范/SKILL.md"
+    ],
+    "components": [],
+    "contracts": [
+      "01-数据模型.json",
+      "02-表单.json",
+      "03-流程.json"
+    ]
+  },
+  "foundationUnchanged": "地基未改动.json"
+}

@@ -89,6 +89,7 @@ async function grantPlatform() {
 async function main() {
   const steps = await provision()
   await applyFile('kvvi_platform', '10-platform.sql')
+  await applyFile('kvvi_platform', '15-visitor.sql')
   await applyFile('kvvi_business', '20-business.sql')
   await applyFile('kvvi_audit', '30-audit.sql')
   await grantPlatform()
