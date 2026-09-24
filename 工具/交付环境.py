@@ -55,11 +55,49 @@ def run(cmd, timeout=900):
                           text=True, timeout=timeout)
 
 
+def _secret(key):
+    """三个数据库口令与调用方令牌。
+
+    ⚠️ **干净环境必须自己生成这些值，不能指望 `.kvvi-docker.env`。**
+    那份文件被 `git clean` 清掉之后（本工具第 [2] 步就会清），
+    compose 里写的是 `${KVVI_*_PASSWORD:?}` —— **必填插值**，
+    缺了就 `error while interpolating ... required variable ... is missing a value`。
+    那条报错看着像「部署坏了」，其实只是缺一个随机口令。
+    """
+    if key == 'KVVI_INTERNAL_TOKEN':
+        return os.environ.get(key) or 'clean-%s' % os.urandom(12).hex()
+    return 'k%s' % os.urandom(16).hex()
+
+
 def compose(sub, token, timeout=900):
-    return run('KVVI_INTERNAL_TOKEN=%s KVVI_PLATFORM_PORT=%s docker compose -f %s -p %s %s'
-               % (shlex.quote(token), shlex.quote(HOST_PORT),
+    env = {
+        'KVVI_INTERNAL_TOKEN': token,
+        'KVVI_PLATFORM_PORT': HOST_PORT,
+        'KVVI_PLATFORM_DB_PASSWORD': _secret('KVVI_PLATFORM_DB_PASSWORD'),
+        'KVVI_BUSINESS_DB_PASSWORD': _secret('KVVI_BUSINESS_DB_PASSWORD'),
+        'KVVI_AUDIT_DB_PASSWORD': _secret('KVVI_AUDIT_DB_PASSWORD'),
+    }
+    # 一次性口令必须**在同一次干净部署里保持一致** —— 每次调用重新随机，
+    # 第二次 `up` 就会用新口令去开旧卷，报的会是「密码认证失败」。
+    global _CLEAN_SECRETS
+    if _CLEAN_SECRETS is None:
+        _CLEAN_SECRETS = env
+    else:
+        env = _CLEAN_SECRETS
+    return run('KVVI_INTERNAL_TOKEN=%s KVVI_PLATFORM_PORT=%s '
+               'KVVI_PLATFORM_DB_PASSWORD=%s KVVI_BUSINESS_DB_PASSWORD=%s '
+               'KVVI_AUDIT_DB_PASSWORD=%s '
+               'docker compose -f %s -p %s %s'
+               % (shlex.quote(env['KVVI_INTERNAL_TOKEN']),
+                  shlex.quote(env['KVVI_PLATFORM_PORT']),
+                  shlex.quote(env['KVVI_PLATFORM_DB_PASSWORD']),
+                  shlex.quote(env['KVVI_BUSINESS_DB_PASSWORD']),
+                  shlex.quote(env['KVVI_AUDIT_DB_PASSWORD']),
                   shlex.quote(COMPOSE), shlex.quote(PROJECT), sub),
                timeout=timeout)
+
+
+_CLEAN_SECRETS = None
 
 
 def main() -> int:

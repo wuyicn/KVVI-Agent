@@ -97,6 +97,12 @@
       "from_state": "submitted",
       "to_state": "rejected",
       "action_code": "reject"
+    },
+    {
+      "transition_code": "resubmit",
+      "from_state": "rejected",
+      "to_state": "draft",
+      "action_code": "submit"
     }
   ],
   "approverRef": {

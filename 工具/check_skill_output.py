@@ -10,8 +10,21 @@ PRD §5.6 判定标准：「如果一项产出**不能被 MetaSchema 校验**，
 因为「通过 MetaSchema 校验」的权威定义在那个验证器里，不在本文件里。
 本项目已有的教训是：自制的判定器容易与权威实现漂移。
 
+## complete check 是**另一层**，不是本文件的一部分
+
+`workflow-spec` 的契约 `$comment` 明确把五件事推给 complete check
+（role directory resolution / per-step coverage / graph order /
+selector field matrix / 100-leaf total）。**结构校验不管这五件事** ——
+一份 `states: []` + `transitions: []` 的流程结构完全合法，但它是死流程。
+
+所以本文件在 `workflow-spec` 上加了一层可选的 `--semantics`：
+它调用 `工具/check_workflow_semantics.py`，**并把它的话原样带出来**
+（包括「哪几项已知未做」）。默认不开 —— 因为不把它放在默认路径上，
+「只跑了结构校验」这句话才不会因为顺手多跑了一个命令而变得不准确。
+
 用法：
   python3 工具/check_skill_output.py <产出物.json> [--contract <名>] [--context <ctx.json>]
+                                     [--semantics] [--assets <目录>]
   python3 工具/check_skill_output.py --self-test
 
 退出码：0 = 通过；1 = 未通过；2 = 无法执行（如验证器缺失）
@@ -54,7 +67,8 @@ FULL_CHECKER = os.path.join(ROOT, '工具', 'lib', 'full_bundle_check.mjs')
 EXIT_OK, EXIT_INVALID, EXIT_FAILED = 0, 2, 1
 
 
-def check(path: str, contract: str, context: Optional[str]) -> int:
+def check(path: str, contract: str, context: Optional[str],
+          semantics: bool = False, assets=None) -> int:
     """逐份验收一份产出物。
 
     判定**不在这里** —— 它调用 `工具/lib/contract_check.py`，
@@ -92,6 +106,13 @@ def check(path: str, contract: str, context: Optional[str]) -> int:
         print()
         print('%s⚠ 这只是结构校验 —— 语义与引用未查。'
               '「结构通过」不等于「通过 MetaSchema 校验」。%s' % (C_WARN, C_OFF))
+
+        if semantics and contract == 'workflow-spec/v1alpha1':
+            print()
+            print('%s[complete check] 契约自己声明的五项%s' % (C_OK, C_OFF))
+            rc = _semantics(path, assets or [])
+            if rc != 0:
+                return rc
         return 0 if result.ok else 1
 
     print('%s[1/2] 结构校验%s' % (C_OK, C_OFF))
@@ -131,6 +152,29 @@ def check(path: str, contract: str, context: Optional[str]) -> int:
     return 0 if ok else 1
 
 
+def _semantics(path: str, assets) -> int:
+    """调 complete check，并把它的输出**原样**带出来。
+
+    不在这里复述它的结论：一旦复述，就会出现「两处判据」——
+    而这两处迟早会漂移。这里只负责转达退出码。
+    """
+    script = os.path.join(ROOT, '工具', 'check_workflow_semantics.py')
+    if not os.path.isfile(script):
+        print('  %s✗ 找不到 %s%s' % (C_BAD, os.path.relpath(script, ROOT), C_OFF))
+        return 2
+    args = [sys.executable, script, path] + [a for d in assets for a in ('--assets', d)]
+    r = subprocess.run(args, capture_output=True, text=True)
+    for line in r.stdout.splitlines():
+        if line.strip():
+            print('  ' + line)
+    if r.returncode != 0:
+        print()
+        print('  %s→ complete check 未通过 —— 这一层比结构校验严，'
+              '`states: []` 那种「结构合法但跑不起来」的流程在这里会被拦下%s'
+              % (C_DIM, C_OFF))
+    return r.returncode
+
+
 def _print_errors(result) -> None:
     print('  %s✗ %d 个错误%s' % (C_BAD, len(result.errors), C_OFF))
     for e in result.errors[:10]:
@@ -160,6 +204,44 @@ def self_test() -> int:
     wf = os.path.join(ROOT, '样例', 'workflow-spec', '通用事项审批流.spec.json')
     rc = check(wf, 'workflow-spec/v1alpha1', None)
     results.append(('仅结构校验路径生效', rc == 0, rc))
+
+    print('\n[3b] --semantics 在结构通过之后才判定 —— 两个方向都测')
+    # 正例：结构合法 + 语义合法 → 0
+    rc = check(wf, 'workflow-spec/v1alpha1', None, True)
+    results.append(('语义正例通过', rc == 0, rc))
+
+    # 反例：**结构完全合法、但流程跑不起来**（rejected 非终态却没有出边）。
+    # 这个反例不能少 —— 少了它，「加了 --semantics」就只是一句没用的话。
+    import tempfile
+    fd, broken = tempfile.mkstemp(suffix='.json')
+    with os.fdopen(fd, 'w', encoding='utf-8') as fh:
+        json.dump({
+            'businessSchemaRef': {
+                'scope_type': 'TENANT', 'scope_id': 'fixture_tenant',
+                'app_id': '11111111-1111-4111-8111-111111111111', 'module_id': None,
+                'asset_type': 'BUSINESS_SCHEMA', 'asset_id': 'fixture_asset',
+                'version': 1, 'digest': 'sha256:' + 'a' * 64},
+            'states': [{'state_code': 'draft', 'name': '草稿', 'initial': True, 'terminal': False},
+                       {'state_code': 'rejected', 'name': '已驳回', 'initial': False, 'terminal': False}],
+            'actions': [{'action_code': 'reject', 'kind': 'REJECT',
+                         'capability_ref': {'scope_type': 'TENANT', 'scope_id': 'fixture_tenant',
+                                            'app_id': '11111111-1111-4111-8111-111111111111',
+                                            'module_id': None, 'asset_type': 'CAPABILITY',
+                                            'capability_code': 'fixture.action', 'version': 1,
+                                            'digest': 'sha256:' + 'a' * 64}}],
+            'transitions': [{'transition_code': 't_reject', 'from_state': 'draft',
+                             'to_state': 'rejected', 'action_code': 'reject'}],
+            'approverRef': {'kind': 'SINGLE', 'role_ref': {
+                'permission_ref': {'scope_type': 'TENANT', 'scope_id': 'fixture_tenant',
+                                   'app_id': '11111111-1111-4111-8111-111111111111',
+                                   'module_id': None, 'asset_type': 'PERMISSION',
+                                   'asset_id': 'role_directory', 'version': 1,
+                                   'digest': 'sha256:' + 'a' * 64},
+                'subresource': {'type': 'ROLE', 'code': 'supervisor'}}},
+        }, fh, ensure_ascii=False)
+    rc = check(broken, 'workflow-spec/v1alpha1', None, True)
+    results.append(('结构合法但流程跑不起来 → 被拒', rc == 1, rc))
+    os.unlink(broken)
 
     print('\n[4] 既不在完整校验也不在结构校验列表的契约（期望无法执行）')
     # migration-plan 两者都不在 —— 用它能测出「拒答」而不是「静默跳过」。
@@ -196,12 +278,16 @@ def main() -> int:
     path = args[0]
     contract = 'business-schema/v1'
     context = None
+    assets = []
+    semantics = '--semantics' in args
     for i, a in enumerate(args):
         if a == '--contract' and i + 1 < len(args):
             contract = args[i + 1]
         if a == '--context' and i + 1 < len(args):
             context = args[i + 1]
-    return check(path, contract, context)
+        if a == '--assets' and i + 1 < len(args):
+            assets.append(args[i + 1])
+    return check(path, contract, context, semantics, assets)
 
 
 if __name__ == '__main__':

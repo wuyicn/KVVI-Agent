@@ -56,7 +56,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段一-两进程骨架与-N3-拓扑.txt",
-      "digest": "sha256:91cb9c42145c2580d5d439e325c2a9f9f117fb85ed3c053600aa422be1927df1"
+      "digest": "sha256:765b4803e8a292d68c1c8b40d40f4639b9431aece2fb4074e7209ef683a8d3e2"
     },
     {
       "stage": "阶段一",
@@ -83,7 +83,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-Skill-产出验收.txt",
-      "digest": "sha256:1538f1b025c3367396bec71227251e89ecd7182f0a729df151fc2ae4d8ca7cf0"
+      "digest": "sha256:03f648db36ed47024851027ffb05b71cb733aac857a78a8a0825c6344398b268"
     },
     {
       "stage": "阶段三",
@@ -101,7 +101,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-去行业化自查（0A-14）.txt",
-      "digest": "sha256:80be1d657df2a34caf312777260c678de7504d480fba9b8e1b3b47ff2b88dcd6"
+      "digest": "sha256:2c7ac0a6937be782fe9b42c6e0690423dc42ba27a028c913ee01f49eb3c4dbe7"
     },
     {
       "stage": "阶段三",
@@ -119,7 +119,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段四-锚点①②③④⑥-全量.txt",
-      "digest": "sha256:86542c968bdeb1673b5ae155a1836583bbb4d5f940a732cdb158f085f86d9f2e"
+      "digest": "sha256:77910c9fad7d54bc8b52fcca353ceee58c52a7e35e48d8dd662cd15cfce3c43b"
     },
     {
       "stage": "阶段五",
@@ -128,7 +128,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段五-锚点①②③④-全量.txt",
-      "digest": "sha256:3562e39208615624605faffc7bbf26edbd514a59a4b629831e701733798b2270"
+      "digest": "sha256:b5c6beb36bc417766b919520dbd3a9f0fae504c2cea3e449f7496ef946401b17"
     },
     {
       "stage": "阶段六",
@@ -137,7 +137,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段六-锚点①②③④-全量.txt",
-      "digest": "sha256:91022e62910fd6c48a610e400da79a1c2a39a369c003b0f5bcf4f70aabd2045d"
+      "digest": "sha256:08480d4168e9f2f43d0675690aa7e6a15290e9abac8f17da6348feda8e480f90"
     },
     {
       "stage": "贯穿",
@@ -146,7 +146,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/贯穿-交付包清单_版本_指纹.txt",
-      "digest": "sha256:2bd826f730aad02ebcfe9f46c5797001eb5c06757292d2af2eacf3203ddf6150"
+      "digest": "sha256:5d38db557f753a3b6925b151433905a56692ef24f2c518c09bd272d836487471"
     },
     {
       "stage": "贯穿",
@@ -167,7 +167,7 @@
       "digest": "sha256:29135a461fc72cea7575e99bdb2ec96c4260f8e8304816ab0e5ae00cc05e3fef"
     }
   ],
-  "deliveryDigest": "sha256:97f69723f202b481a3ca18c79717fa00c53793c1a37ad7dfd51e0de754024797",
+  "deliveryDigest": "sha256:7032e6f5acc90d8c4028ed8f37f116f088e580fa8dc631af8ba8a2eeab379b1d",
   "failed": [],
-  "bundleDigest": "sha256:b44965e8d957791c69ccecac337bf6e3e7464c5b3a06a9e3f0ea8890cddeab2a"
+  "bundleDigest": "sha256:3c1382fb19e29c80feacc5f1ae07b4df3241a039857eec9ad88f4e98c41a3536"
 }

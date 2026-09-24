@@ -59,6 +59,9 @@ CONTRACTS = [
     ('03-流程.json', 'workflow-spec/v1alpha1', None),
 ]
 
+# complete check 只对 `workflow-spec` 存在 —— 契约自己把那五项推给了它。
+SEMANTICS = os.path.join(HERE, 'check_workflow_semantics.py')
+
 
 def foundation_digests():
     out = {}
@@ -139,6 +142,23 @@ def main() -> int:
                     print('      %s%s%s' % (C_DIM, line.strip()[:96], C_OFF))
             problems.append('%s 未过契约校验' % rel)
 
+    # ⚠️ **结构校验不管「流程能不能跑」**：`states: []` 的流程结构完全合法。
+    # 行业包恰恰是最需要这一层的地方 —— 包是外挂进来的，它的流程别人看不见。
+    wf = os.path.join(PACK, '03-流程.json')
+    if os.path.isfile(wf):
+        print()
+        print('[1b] 流程的 complete check（契约声明的五项）')
+        r = subprocess.run(['python3', SEMANTICS, wf, '--entry', 'spec',
+                            '--assets', PACK], capture_output=True, text=True)
+        for line in r.stdout.splitlines():
+            if line.strip() and ('[' in line or '✗' in line or '?' in line or '✓' in line):
+                print('  ' + line)
+        if r.returncode == 0:
+            print('  %s✓%s 流程语义通过' % (C_OK, C_OFF))
+        else:
+            problems.append('03-流程.json 未过 complete check')
+            print('  %s✗ 流程语义未通过%s' % (C_BAD, C_OFF))
+
     print()
     print('[2] 地基未被改动（这才是行业包「能装」的判据）')
     if not os.path.isfile(RECORD):
@@ -173,7 +193,7 @@ def main() -> int:
     if problems:
         print('%s✗ 行业包检查未通过：%d 项%s' % (C_BAD, len(problems), C_OFF))
         return 1
-    print('%s✓ 行业包通过：产出物合法，且地基逐项未改动%s' % (C_OK, C_OFF))
+    print('%s✓ 行业包通过：产出物合法、流程语义通过，且地基逐项未改动%s' % (C_OK, C_OFF))
     return 0
 
 

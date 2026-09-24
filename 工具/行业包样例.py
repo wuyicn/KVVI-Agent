@@ -155,7 +155,10 @@ def form_spec(model_ref, form_page=True):
 
 
 def workflow_spec(model_ref):
-    """流程：发起 → 通过 / 驳回（`0C-4`）。"""
+    """流程：发起 → 通过 / 驳回 → 改后重提（`0C-4`）。
+
+    PRD §7.4：草稿→待审批→已通过（终态）/ 已驳回→重新提交。
+    """
     return {
         'businessSchemaRef': model_ref,
         'states': [
@@ -171,6 +174,11 @@ def workflow_spec(model_ref):
             {'action_code': 'approve', 'kind': 'APPROVE', 'capability_ref': ACTION_CAP},
             {'action_code': 'reject', 'kind': 'REJECT', 'capability_ref': ACTION_CAP},
         ],
+        # 「驳回后可以重新提交」——PRD §7.4 的状态机写法是
+        # 「草稿→待审批→已通过（终态）/ 已驳回→重新提交」。
+        # 少了这条回边，`rejected` 就是一个**非终态但没有出边**的状态：
+        # 进得去出不来，正是 workflow-builder Skill 自己点名的
+        # 「最常见的设计缺陷是驳回后无处可去」。
         'transitions': [
             {'transition_code': 'submit_flow', 'from_state': 'draft',
              'to_state': 'submitted', 'action_code': 'submit'},
@@ -178,6 +186,8 @@ def workflow_spec(model_ref):
              'to_state': 'approved', 'action_code': 'approve'},
             {'transition_code': 'reject_back', 'from_state': 'submitted',
              'to_state': 'rejected', 'action_code': 'reject'},
+            {'transition_code': 'resubmit', 'from_state': 'rejected',
+             'to_state': 'draft', 'action_code': 'submit'},
         ],
         'approverRef': {
             'kind': 'SINGLE',

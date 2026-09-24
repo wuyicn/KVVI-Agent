@@ -24,8 +24,8 @@
     },
     "platform-service": {
       "path": "services/platform",
-      "digest": "sha256:18e812c02e42133d805196a79c5d9ecb9b3a9972d43c7965e358070c32374cf0",
-      "fileCount": 48
+      "digest": "sha256:f954e626503044cbf444f3630967db0a77aa411ed04ef92364fd7666bdaf1a25",
+      "fileCount": 51
     },
     "runtime-service": {
       "path": "services/runtime",
@@ -62,6 +62,12 @@
     },
     {
       "reason": "阶段七后补做 P2：平台服务新增发布通道 / 离职交接 / 限流配额 / 身份源适配器 / 审批流运行时五个模块",
+      "changedComponents": [
+        "platform-service"
+      ]
+    },
+    {
+      "reason": "N4 落地（会话消息保留期）给平台服务加了 retention.mjs / 18-retention.sql / retention.test.mjs 三个文件，地基基线随之跟进",
       "changedComponents": [
         "platform-service"
       ]

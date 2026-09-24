@@ -44,6 +44,63 @@ $ python3 工具/check_skill_output.py --self-test
 
 [33m⚠ 这只是结构校验 —— 语义与引用未查。「结构通过」不等于「通过 MetaSchema 校验」。[0m
 
+[3b] --semantics 在结构通过之后才判定 —— 两个方向都测
+[32m=== 搭建产出验收 ===[0m
+  产出物 : 样例/workflow-spec/通用事项审批流.spec.json
+  契约   : workflow-spec/v1alpha1
+
+[33m[仅结构校验][0m
+  [90m本契约在 cli.mjs 的 CONTRACTS 白名单之外，且没有契约专用的语义模块；此结果不含语义校验与引用校验。[0m
+  [32m✓[0m 结构通过
+
+[33m⚠ 这只是结构校验 —— 语义与引用未查。「结构通过」不等于「通过 MetaSchema 校验」。[0m
+
+[32m[complete check] 契约自己声明的五项[0m
+  [32m=== workflow-spec complete check ===[0m
+    产出物 : 样例/workflow-spec/通用事项审批流.spec.json
+    条目   : spec
+    结构   : structure_only（官方验证器；complete check 建立在它之上）
+    [3] graph order                            [32m✓ PASS[0m
+    [2] per-step coverage                      [32m✓ PASS[0m
+    [5] 100-leaf total                         [32m✓ PASS[0m
+          [90m叶总数 8 / 100（状态 4 + 迁移 4 + 分支 0 + 谓词 0）[0m
+    [1] role directory resolution              [32m✓ PASS[0m
+          [90m1 处 role_ref 全部解析到角色目录（样例层角色目录（工具/lib/role_directory.py））[0m
+    [4] selector field matrix（最弱读法：字段存在）       [32m✓ PASS[0m
+          [90m该流程没有选择器字段[0m
+    [90m未覆盖（已知未做，不是「不知道」）：#4 的「字段类型×操作符×值类型」与「分支覆盖矩阵」两种读法 —— 契约只给了名称，没给判据。[0m
+  [32m✓ 通过[0m
+[32m=== 搭建产出验收 ===[0m
+  产出物 : ../../../../var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/tmpmgw7jyw5.json
+  契约   : workflow-spec/v1alpha1
+
+[33m[仅结构校验][0m
+  [90m本契约在 cli.mjs 的 CONTRACTS 白名单之外，且没有契约专用的语义模块；此结果不含语义校验与引用校验。[0m
+  [32m✓[0m 结构通过
+
+[33m⚠ 这只是结构校验 —— 语义与引用未查。「结构通过」不等于「通过 MetaSchema 校验」。[0m
+
+[32m[complete check] 契约自己声明的五项[0m
+  [32m=== workflow-spec complete check ===[0m
+    产出物 : ../../../../var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/tmpmgw7jyw5.json
+    条目   : spec
+    结构   : structure_only（官方验证器；complete check 建立在它之上）
+    [3] graph order                            [32m✓ PASS[0m
+    [2] per-step coverage                      [31m✗ FAIL[0m
+          [90m非终态 rejected 没有出边 —— 进得去出不来（静默卡死）[0m
+          [90m状态 draft 走到终态的路径不存在 —— 一旦进入就永远停不下来[0m
+          [90m状态 rejected 走到终态的路径不存在 —— 一旦进入就永远停不下来[0m
+    [5] 100-leaf total                         [32m✓ PASS[0m
+          [90m叶总数 3 / 100（状态 2 + 迁移 1 + 分支 0 + 谓词 0）[0m
+    [1] role directory resolution              [32m✓ PASS[0m
+          [90m1 处 role_ref 全部解析到角色目录（样例层角色目录（工具/lib/role_directory.py））[0m
+    [4] selector field matrix（最弱读法：字段存在）       [32m✓ PASS[0m
+          [90m该流程没有选择器字段[0m
+    [90m未覆盖（已知未做，不是「不知道」）：#4 的「字段类型×操作符×值类型」与「分支覆盖矩阵」两种读法 —— 契约只给了名称，没给判据。[0m
+  [31m✗ 未通过 —— 1 项 FAIL[0m
+
+  [90m→ complete check 未通过 —— 这一层比结构校验严，`states: []` 那种「结构合法但跑不起来」的流程在这里会被拦下[0m
+
 [4] 既不在完整校验也不在结构校验列表的契约（期望无法执行）
 [31m✗ 验证器不支持契约 'migration-plan/v1alpha1'[0m
   [90m完整校验支持：business-schema/v1、view-schema/lce-safe-v1、app-spec/v1alpha1[0m
@@ -53,6 +110,8 @@ $ python3 工具/check_skill_output.py --self-test
   [32m✓[0m 正例通过                   退出码 0
   [32m✓[0m 修改场景被拒                 退出码 1
   [32m✓[0m 仅结构校验路径生效              退出码 0
+  [32m✓[0m 语义正例通过                 退出码 0
+  [32m✓[0m 结构合法但流程跑不起来 → 被拒       退出码 1
   [32m✓[0m 不支持时拒答                 退出码 2
 
-[32m✓ 4 项全部符合 —— 检查器能区分通过、被拒与无法执行三种结果[0m
+[32m✓ 6 项全部符合 —— 检查器能区分通过、被拒与无法执行三种结果[0m
