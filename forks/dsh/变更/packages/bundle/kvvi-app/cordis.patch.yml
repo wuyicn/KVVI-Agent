@@ -1,0 +1,29 @@
+# The KVVI application bundle patch: the layer KVVI stacks OVER `dsh-web-app`.
+#
+# ── WHY THIS FILE IS SHORT ──────────────────────────────────────────────────
+#
+# Bundles stack in `dsh.profile.bundles` order: app-boot applies each bundle's
+# patch list over the previous one, so a bundle here adds to the layers beneath
+# it rather than replacing them. KVVI keeps every row `dsh-base` and
+# `dsh-web-app` mount — the whole Web surface stays available — and this file
+# carries only what KVVI itself contributes.
+#
+# That is deliberate. Copying dsh-web-app's rows into a KVVI bundle would fork
+# the Web composition: every upstream change to that surface would then have to
+# be hand-ported, and the copies would silently drift. Stacking keeps KVVI's
+# delta equal to what KVVI actually owns.
+#
+# Pruning rows is therefore NOT how KVVI removes a capability it does not want.
+# Hiding an entry point is done by occupying the slot it renders into. Actual
+# pruning waits until the dependencies between upstream rows have been measured;
+# until then a removed row can fail silently rather than loudly.
+
+- insert:
+    # KVVI's own brand occupants for the sidebar's brand slots.
+    #
+    # Upstream's `ui-brand-official` fills the same two slots but registers only
+    # when `DSH_CLIENT_BUILD_PROFILE === 'official'`. KVVI's builds do not set
+    # that profile, so those slots are unfilled and this row takes them — which
+    # is why the KVVI brand requires no edit to any upstream source file.
+    - id: kvvi-brand
+      name: '@deepseek-ai/dsh-client-kvvi-brand'

@@ -156,9 +156,18 @@
       "ok": true,
       "evidence": "交付/证据/贯穿-干净环境部署.txt",
       "digest": "sha256:f271dd1517f28e655d9c62c6d54bb9f868c5e1dbe649ce078e34b8cc575977b4"
+    },
+    {
+      "stage": "贯穿",
+      "name": "fork 可重建（N1/N2）",
+      "command": "python3 工具/fork.py --rebuild --into /tmp/kvvi-evidence-fork",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/贯穿-fork-可重建（N1_N2）.txt",
+      "digest": "sha256:29135a461fc72cea7575e99bdb2ec96c4260f8e8304816ab0e5ae00cc05e3fef"
     }
   ],
   "deliveryDigest": "sha256:97f69723f202b481a3ca18c79717fa00c53793c1a37ad7dfd51e0de754024797",
   "failed": [],
-  "bundleDigest": "sha256:4a9d4bfd6d7b97b48ec8e761620cdb4fcb03b376885aeb62b86d56e5c7c37e98"
+  "bundleDigest": "sha256:b44965e8d957791c69ccecac337bf6e3e7464c5b3a06a9e3f0ea8890cddeab2a"
 }

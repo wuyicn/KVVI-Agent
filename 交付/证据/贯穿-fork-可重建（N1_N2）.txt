@@ -1,0 +1,9 @@
+$ python3 工具/fork.py --rebuild --into /tmp/kvvi-evidence-fork
+
+▸ 第 1 步：取上游干净副本（基线 ddefc45fbc7f，来源 local）
+  ✓ 12071 个文件
+▸ 第 2 步：覆盖我们的改动
+  ✓ 35 个文件
+▸ 第 3 步：逐字节比对指纹
+  [32m✓ 35/35 个文件与指纹一致[0m
+[32m✓ 重建结果与指纹逐字节一致[0m

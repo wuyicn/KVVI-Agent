@@ -12,7 +12,7 @@
     "title": null
   },
   "images": [
-    "[{\"ID\":\"sha256:129d94d7f10ba2702babebe792aa5fc5c12a680d2e17b0321bdb3bef3381dfea\",\"ContainerName\":\"kvvi-clean-platform-1\",\"Repository\":\"kvvi/platform\",\"Tag\":\"dev\",\"Platform\":\"linux/arm64\",\"Size\":80996502,\"Created\":\"2026-09-24T03:04:57.298947792Z\",\"LastTagTime\":\"2026-09-24T03:11:24.075297513Z\"},{\"ID\":\"sha256:d4a6d5e4ca32a7f0330059c9953ccbf9d2cd02324c61484f601bd9538c43202a\",\"ContainerName\":\"kvvi-clean-runtime-1\",\"Repository\":\"kvvi/runtime\",\"Tag\":\"dev\",\"Platform\":\"linux/arm64\",\"Size\":578908600,\"Created\":\"2026-09-24T03:00:54.858897805Z\",\"LastTagTime\":\"2026-09-24T03:11:24.795231972Z\"}]"
+    "[{\"ID\":\"sha256:cfd1adde4ae8e31d7d4b9640bb4b91d3258bfcad61802e7ad7b9e6a615eb463a\",\"ContainerName\":\"kvvi-clean-platform-1\",\"Repository\":\"kvvi/platform\",\"Tag\":\"dev\",\"Platform\":\"linux/arm64\",\"Size\":80996502,\"Created\":\"2026-09-24T03:04:57.298947792Z\",\"LastTagTime\":\"2026-09-24T05:20:27.800670014Z\"},{\"ID\":\"sha256:77f337f655004c89875026b2a7c9f7ba2beec498a50b0d5587c3734feaee6c2c\",\"ContainerName\":\"kvvi-clean-runtime-1\",\"Repository\":\"kvvi/runtime\",\"Tag\":\"dev\",\"Platform\":\"linux/arm64\",\"Size\":578908600,\"Created\":\"2026-09-24T03:00:54.858897805Z\",\"LastTagTime\":\"2026-09-24T05:20:28.648929666Z\"}]"
   ],
   "note": "仍在本主机上执行；「非开发机」这一条未兑现，见 docs/交付文档.md。"
 }

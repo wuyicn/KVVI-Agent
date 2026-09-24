@@ -75,6 +75,8 @@ STAGES = [
     ('贯穿', '交付完整性', [
         ('交付包清单/版本/指纹', ['python3', '工具/交付包.py', '--check']),
         ('干净环境部署', ['python3', '工具/交付环境.py']),
+        ('fork 可重建（N1/N2）', ['python3', '工具/fork.py', '--rebuild',
+                                  '--into', '/tmp/kvvi-evidence-fork']),
     ]),
 ]
 
