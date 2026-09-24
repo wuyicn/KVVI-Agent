@@ -24,7 +24,8 @@ import sys
 from typing import List, Optional, Tuple
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CLI = os.path.join(ROOT, 'tools', 'meta-schema', 'node', 'cli.mjs')
+sys.path.insert(0, os.path.join(ROOT, '工具', 'lib'))
+import contract_check as cc   # noqa: E402  调用官方验证器的统一入口
 
 C_OK, C_BAD, C_WARN, C_DIM, C_OFF = '\033[32m', '\033[31m', '\033[33m', '\033[90m', '\033[0m'
 
@@ -53,71 +54,14 @@ FULL_CHECKER = os.path.join(ROOT, '工具', 'lib', 'full_bundle_check.mjs')
 EXIT_OK, EXIT_INVALID, EXIT_FAILED = 0, 2, 1
 
 
-def run_cli(payload: bytes, contract: str, checks: str,
-            context: Optional[str]) -> Tuple[int, dict]:
-    args = ['node', CLI, '--contract', contract, '--entry', 'spec', '--checks', checks]
-    if context:
-        args += ['--context', context]
-    r = subprocess.run(args, input=payload, capture_output=True, timeout=300)
-    try:
-        return r.returncode, json.loads(r.stdout.decode('utf-8'))
-    except Exception:
-        return r.returncode, {'_raw': (r.stdout + r.stderr).decode('utf-8', 'replace')[:400]}
-
-
-def check_structure_only(path: str, contract: str, contract_id: str, entry: str = 'Spec') -> int:
-    """
-    对 cli.mjs 白名单之外的契约做**结构校验**。
-
-    **本函数不声称完整校验。** 这些契约没有专用语义模块，跑不了语义与引用检查。
-    所以输出里明写 `scope: structure_only`，并按「部分覆盖」呈现结果 ——
-    「结构通过」不等于「通过 MetaSchema 校验」。
-    """
-    if not os.path.isfile(FULL_CHECKER):
-        print('%s✗ 找不到全量结构校验器：%s%s' % (C_BAD, FULL_CHECKER, C_OFF))
-        return 2
-    print('%s=== 搭建产出验收 ===%s' % (C_OK, C_OFF))
-    print('  产出物 : %s' % os.path.relpath(path, ROOT))
-    print('  契约   : %s' % contract)
-    print()
-    r = subprocess.run(['node', FULL_CHECKER, contract_id, path, entry],
-                       capture_output=True, timeout=300)
-    try:
-        doc = json.loads(r.stdout.decode('utf-8'))
-    except Exception:
-        print('  %s✗ 校验器输出无法解析：%s%s'
-              % (C_BAD, (r.stdout + r.stderr).decode('utf-8', 'replace')[:300], C_OFF))
-        return 2
-    if 'error' in doc:
-        print('  %s✗ %s%s' % (C_BAD, doc['error'], C_OFF))
-        if doc.get('detail'):
-            print('     %s' % doc['detail'])
-        return 2
-
-    v = doc.get('validation', {})
-    print('%s[仅结构校验]%s' % (C_WARN, C_OFF))
-    print('  %s%s%s' % (C_DIM, doc.get('coverage_note', ''), C_OFF))
-    if v.get('valid'):
-        print('  %s✓%s 结构通过（%d 错误）' % (C_OK, C_OFF, len(v.get('errors', []))))
-    else:
-        print('  %s✗ %d 个结构错误%s' % (C_BAD, len(v.get('errors', [])), C_OFF))
-        for e in v.get('errors', [])[:10]:
-            print('     %s | %s | %s' % (e.get('code'), e.get('path'),
-                                         str(e.get('message'))[:56]))
-    print()
-    print('%s⚠ 这只是结构校验 —— 语义与引用未查。'
-          '「结构通过」不等于「通过 MetaSchema 校验」。%s' % (C_WARN, C_OFF))
-    return 0 if v.get('valid') else 1
-
-
 def check(path: str, contract: str, context: Optional[str]) -> int:
-    if not os.path.isfile(CLI):
-        print('%s✗ 找不到验证器：%s%s' % (C_BAD, CLI, C_OFF))
-        return 2
-    if contract not in SUPPORTED:
-        if contract in FULL_ONLY:
-            cid, entry = FULL_ONLY[contract]
-            return check_structure_only(path, contract, cid, entry)
+    """逐份验收一份产出物。
+
+    判定**不在这里** —— 它调用 `工具/lib/contract_check.py`，
+    也就是官方验证器（`tools/meta-schema/node/cli.mjs` 与全量结构校验器）。
+    「什么叫通过 MetaSchema 校验」只定义在那一处。
+    """
+    if contract not in SUPPORTED and contract not in FULL_ONLY:
         print('%s✗ 验证器不支持契约 %r%s' % (C_BAD, contract, C_OFF))
         print('  %s完整校验支持：%s%s' % (C_DIM, '、'.join(SUPPORTED), C_OFF))
         print('  %s仅结构校验支持：%s%s' % (C_DIM, '、'.join(sorted(FULL_ONLY)), C_OFF))
@@ -126,60 +70,72 @@ def check(path: str, contract: str, context: Optional[str]) -> int:
         print('%s✗ 产出物不存在：%s%s' % (C_BAD, path, C_OFF))
         return 2
 
-    payload = open(path, 'rb').read()
     print('%s=== 搭建产出验收 ===%s' % (C_OK, C_OFF))
     print('  产出物 : %s' % os.path.relpath(path, ROOT))
     print('  契约   : %s' % contract)
     print()
 
-    ok = True
+    if contract in FULL_ONLY:
+        # 白名单外：**只有结构校验**，且必须明说 ——
+        # 「结构通过」不等于「通过 MetaSchema 校验」。
+        result = cc.validate(path, contract)
+        print('%s[仅结构校验]%s' % (C_WARN, C_OFF))
+        print('  %s本契约在 cli.mjs 的 CONTRACTS 白名单之外，且没有契约专用的语义模块；'
+              '此结果不含语义校验与引用校验。%s' % (C_DIM, C_OFF))
+        if result.scope == 'error':
+            print('  %s✗ 执行失败：%s%s' % (C_BAD, result.detail, C_OFF))
+            return 2
+        if result.ok:
+            print('  %s✓%s 结构通过' % (C_OK, C_OFF))
+        else:
+            _print_errors(result)
+        print()
+        print('%s⚠ 这只是结构校验 —— 语义与引用未查。'
+              '「结构通过」不等于「通过 MetaSchema 校验」。%s' % (C_WARN, C_OFF))
+        return 0 if result.ok else 1
 
     print('%s[1/2] 结构校验%s' % (C_OK, C_OFF))
-    code, doc = run_cli(payload, contract, 'structure', None)
-    v = doc.get('validation', {})
-    if 'execution' in doc:
-        print('  %s✗ 执行失败：%s%s' % (C_BAD, doc['execution'], C_OFF))
+    structural = cc.validate(path, contract, None)
+    if structural.scope == 'error':
+        print('  %s✗ 执行失败：%s%s' % (C_BAD, structural.detail, C_OFF))
         return 2
-    if v.get('valid'):
-        print('  %s✓%s 通过（stage=%s）' % (C_OK, C_OFF, doc.get('stage')))
+    if structural.ok:
+        print('  %s✓%s 通过' % (C_OK, C_OFF))
     else:
-        ok = False
-        print('  %s✗ %d 个结构错误%s' % (C_BAD, len(v.get('errors', [])), C_OFF))
-        for e in v.get('errors', [])[:10]:
-            print('     %s | %s | %s' % (e.get('code'), e.get('path'),
-                                         str(e.get('message'))[:60]))
-
+        _print_errors(structural)
     print()
+
     if not context:
         print('%s[2/2] 语义 + 引用校验 —— 跳过（未提供 --context）%s' % (C_WARN, C_OFF))
         print('  %s→ 只跑了结构校验。锚点① 要求「通过 MetaSchema 校验」，'
               '通常指完整校验，请提供 context%s' % (C_DIM, C_OFF))
+        return 0 if structural.ok else 1
+
+    print('%s[2/2] 语义 + 引用校验%s' % (C_OK, C_OFF))
+    full = cc.validate(path, contract, context)
+    if full.scope == 'error':
+        print('  %s✗ 执行失败：%s%s' % (C_BAD, full.detail, C_OFF))
+        print('  %s→ CONTEXT_INVALID 通常表示 context 缺必需字段；'
+              '完整 context 需 8 项（fixture/suite_revision/current/business/'
+              'fake_assets/snapshots/histories/grants）%s' % (C_DIM, C_OFF))
+        return 2
+    if full.ok:
+        print('  %s✓%s 通过' % (C_OK, C_OFF))
     else:
-        print('%s[2/2] 语义 + 引用校验%s' % (C_OK, C_OFF))
-        code, doc = run_cli(payload, contract, 'complete', context)
-        v = doc.get('validation', {})
-        if 'execution' in doc:
-            print('  %s✗ 执行失败：%s%s' % (C_BAD, doc['execution'], C_OFF))
-            print('  %s→ CONTEXT_INVALID 通常表示 context 缺必需字段；'
-                  '完整 context 需 8 项（fixture/suite_revision/current/business/'
-                  'fake_assets/snapshots/histories/grants）%s' % (C_DIM, C_OFF))
-            return 2
-        if v.get('valid'):
-            print('  %s✓%s 通过（stage=%s）' % (C_OK, C_OFF, doc.get('stage')))
-        else:
-            ok = False
-            print('  %s✗ %d 个错误（stage=%s）%s'
-                  % (C_BAD, len(v.get('errors', [])), doc.get('stage'), C_OFF))
-            for e in v.get('errors', [])[:10]:
-                print('     %s | %s' % (e.get('code'), e.get('path')))
-            print('  %s→ 约束清单见 docs/business-schema-产出约束.md%s' % (C_DIM, C_OFF))
+        _print_errors(full)
+        print('  %s→ 约束清单见 docs/business-schema-产出约束.md%s' % (C_DIM, C_OFF))
 
     print()
-    if ok:
-        print('%s✓ 通过%s' % (C_OK, C_OFF))
-        return 0
-    print('%s✗ 未通过%s' % (C_BAD, C_OFF))
-    return 1
+    ok = structural.ok and full.ok
+    print('%s✓ 通过%s' % (C_OK, C_OFF) if ok else '%s✗ 未通过%s' % (C_BAD, C_OFF))
+    return 0 if ok else 1
+
+
+def _print_errors(result) -> None:
+    print('  %s✗ %d 个错误%s' % (C_BAD, len(result.errors), C_OFF))
+    for e in result.errors[:10]:
+        print('     %s | %s | %s' % (e.get('code'), e.get('path'),
+                                     str(e.get('message'))[:56]))
 
 
 def self_test() -> int:
