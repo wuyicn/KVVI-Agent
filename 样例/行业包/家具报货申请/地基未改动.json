@@ -24,8 +24,8 @@
     },
     "platform-service": {
       "path": "services/platform",
-      "digest": "sha256:50cdcb57ceed9daab39d97a2eddb23d999475b0e00d6b891b7a5e5ecde3423ef",
-      "fileCount": 34
+      "digest": "sha256:18e812c02e42133d805196a79c5d9ecb9b3a9972d43c7965e358070c32374cf0",
+      "fileCount": 48
     },
     "runtime-service": {
       "path": "services/runtime",
@@ -56,6 +56,12 @@
   "rebases": [
     {
       "reason": "加固平台镜像：Dockerfile 归一化文件权限（构建机 umask 泄漏导致容器 EACCES 启动失败）",
+      "changedComponents": [
+        "platform-service"
+      ]
+    },
+    {
+      "reason": "阶段七后补做 P2：平台服务新增发布通道 / 离职交接 / 限流配额 / 身份源适配器 / 审批流运行时五个模块",
       "changedComponents": [
         "platform-service"
       ]
