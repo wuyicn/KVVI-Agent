@@ -2,12 +2,12 @@ $ python3 工具/check_stage8.py --run-only
 
 [role_policy] $ node --test --test-concurrency=1 tests/mode-policy.test.mjs
 ▶ Stage 8：搭建模式资格由服务端按公司判定
-  ✔ 普通员工不能进入 BUILDER (3.951042ms)
-  ✔ 所有者与被所有者明确授权的成员可以进入 BUILDER (11.334ms)
-  ✔ 搭建权限严格按公司隔离 (2.240709ms)
-  ✔ 非所有者不能授予或收回搭建权限 (1.188541ms)
-  ✔ 收回权限会终止已有 Builder 会话并提高授权版本 (12.129667ms)
-✔ Stage 8：搭建模式资格由服务端按公司判定 (69.478709ms)
+  ✔ 普通员工不能进入 BUILDER (2.761042ms)
+  ✔ 所有者与被所有者明确授权的成员可以进入 BUILDER (11.480625ms)
+  ✔ 搭建权限严格按公司隔离 (2.316417ms)
+  ✔ 非所有者不能授予或收回搭建权限 (1.289666ms)
+  ✔ 收回权限会终止已有 Builder 会话并提高授权版本 (12.8405ms)
+✔ Stage 8：搭建模式资格由服务端按公司判定 (67.21275ms)
 ℹ tests 5
 ℹ suites 1
 ℹ pass 5
@@ -15,64 +15,64 @@ $ python3 工具/check_stage8.py --run-only
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 486.491458
+ℹ duration_ms 496.418625
 [role_policy] exit=0
 [login_api] $ node --test --test-concurrency=1 tests/auth.test.mjs tests/login-gate.test.mjs tests/gateway.test.mjs
 ▶ 锚点⑥ 认证端点在平台服务进程内闭合（§4.6.5）
-  ✔ 普通员工伪造 BUILDER 意图会被服务端拒绝 (57.878833ms)
-  ✔ 登录在本进程应答 —— 运行时进程不存在也能登录 (37.586667ms)
-  ✔ 登录端点**不需要**进程间令牌（那是进程间凭据，不是用户凭据） (33.533375ms)
-  ✔ 口令错 → 401；且不区分「账号不存在」与「口令错」 (35.363209ms)
-  ✔ 多公司账号必须**显式选**公司，不替用户选 (30.006458ms)
-  ✔ 会话查询返回网关与该网关的工具集 (50.988333ms)
-  ✔ 登出后旧令牌立即失效（§9.4.2） (68.328625ms)
-  ✔ 管理类入口需要进程间鉴别（不能被浏览器直接打到） (6.760917ms)
-✔ 锚点⑥ 认证端点在平台服务进程内闭合（§4.6.5） (499.187709ms)
+  ✔ 普通员工伪造 BUILDER 意图会被服务端拒绝 (68.925959ms)
+  ✔ 登录在本进程应答 —— 运行时进程不存在也能登录 (42.6515ms)
+  ✔ 登录端点**不需要**进程间令牌（那是进程间凭据，不是用户凭据） (37.441208ms)
+  ✔ 口令错 → 401；且不区分「账号不存在」与「口令错」 (39.692459ms)
+  ✔ 多公司账号必须**显式选**公司，不替用户选 (32.144458ms)
+  ✔ 会话查询返回网关与该网关的工具集 (51.731125ms)
+  ✔ 登出后旧令牌立即失效（§9.4.2） (70.653334ms)
+  ✔ 管理类入口需要进程间鉴别（不能被浏览器直接打到） (6.765458ms)
+✔ 锚点⑥ 认证端点在平台服务进程内闭合（§4.6.5） (532.786125ms)
 ▶ 锚点⑥ 会话生命周期五类事件：入口都在本进程
-  ✔ 五类事件都能触发，且都留下 session_events 记录 (260.867875ms)
-✔ 锚点⑥ 会话生命周期五类事件：入口都在本进程 (261.000625ms)
+  ✔ 五类事件都能触发，且都留下 session_events 记录 (286.171916ms)
+✔ 锚点⑥ 会话生命周期五类事件：入口都在本进程 (286.304458ms)
 ▶ 锚点① 员工看不到搭建引擎（§9.6.5）
-  ✔ 产品级分类是冻结常量：搭建工具全部在 BUILDER 侧 (0.134833ms)
-  ✔ ★ 启用白名单**不能**把搭建工具带进员工侧（交集只减不增） (0.046041ms)
-  ✔ 调用搭建工具被服务端拒绝，且**拒绝留痕** (20.078584ms)
-  ✔ 员工会话的工具集里没有任何搭建工具 (40.084125ms)
-✔ 锚点① 员工看不到搭建引擎（§9.6.5） (60.47025ms)
+  ✔ 产品级分类是冻结常量：搭建工具全部在 BUILDER 侧 (0.130542ms)
+  ✔ ★ 启用白名单**不能**把搭建工具带进员工侧（交集只减不增） (0.046042ms)
+  ✔ 调用搭建工具被服务端拒绝，且**拒绝留痕** (21.405625ms)
+  ✔ 员工会话的工具集里没有任何搭建工具 (43.493417ms)
+✔ 锚点① 员工看不到搭建引擎（§9.6.5） (65.230708ms)
 ▶ 锚点③ 一、工具串用：员工会话不得调用搭建工具
-  ✔ 正向对照：员工会话里有工具，且**全部**属于 USER 网关 (0.427542ms)
-  ✔ 员工会话调用搭建工具 → 拒，理由是 WRONG_GATEWAY（不是「权限不够」） (0.116583ms)
-  ✔ ★ 判定看**分类表**，不看调用方声明：自称 BUILDER 也不改变结果 (0.071416ms)
-  ✔ 未登记的工具 → 拒（不是「没在表里就默认放行」） (0.068167ms)
-  ✔ ★ 拒绝必须留痕（且链仍然自洽） (12.631458ms)
-✔ 锚点③ 一、工具串用：员工会话不得调用搭建工具 (62.44325ms)
+  ✔ 正向对照：员工会话里有工具，且**全部**属于 USER 网关 (0.442542ms)
+  ✔ 员工会话调用搭建工具 → 拒，理由是 WRONG_GATEWAY（不是「权限不够」） (0.116209ms)
+  ✔ ★ 判定看**分类表**，不看调用方声明：自称 BUILDER 也不改变结果 (0.073417ms)
+  ✔ 未登记的工具 → 拒（不是「没在表里就默认放行」） (0.056958ms)
+  ✔ ★ 拒绝必须留痕（且链仍然自洽） (13.492917ms)
+✔ 锚点③ 一、工具串用：员工会话不得调用搭建工具 (65.95325ms)
 ▶ 锚点③ 二、生产数据旁路：搭建权限 ≠ 数据权限（§9.5.2）
-  ✔ ★ 只有搭建权限、没有任何业务授权的账号读业务数据 → 拒 (0.115208ms)
-  ✔ 正向对照：有业务授权的搭建者**可以**用业务功能（§3.1 表格） (0.060584ms)
-  ✔ ★ 端到端：没有数据档位时，绕过网关判定也读不到记录 (15.033917ms)
-  ✔ 搭建侧工具走搭建网关，不被上面的数据判定影响 (0.110334ms)
-✔ 锚点③ 二、生产数据旁路：搭建权限 ≠ 数据权限（§9.5.2） (15.494833ms)
+  ✔ ★ 只有搭建权限、没有任何业务授权的账号读业务数据 → 拒 (0.124125ms)
+  ✔ 正向对照：有业务授权的搭建者**可以**用业务功能（§3.1 表格） (0.060708ms)
+  ✔ ★ 端到端：没有数据档位时，绕过网关判定也读不到记录 (15.490375ms)
+  ✔ 搭建侧工具走搭建网关，不被上面的数据判定影响 (0.106333ms)
+✔ 锚点③ 二、生产数据旁路：搭建权限 ≠ 数据权限（§9.5.2） (15.966708ms)
 ▶ 锚点③ 三、自授权：搭建者不得为自己配权（§9.6.7）
-  ✔ ★ 搭建者把自己纳入配置范围 → 拒 (0.094625ms)
-  ✔ 正向对照：配置他人是允许的 (0.031584ms)
-  ✔ ★ 判定与「有没有这个权限」无关：有配置权也不能给自己配 (0.029083ms)
-  ✔ 空目标集不误报 (0.041292ms)
-✔ 锚点③ 三、自授权：搭建者不得为自己配权（§9.6.7） (0.27075ms)
+  ✔ ★ 搭建者把自己纳入配置范围 → 拒 (0.098084ms)
+  ✔ 正向对照：配置他人是允许的 (0.035625ms)
+  ✔ ★ 判定与「有没有这个权限」无关：有配置权也不能给自己配 (0.03075ms)
+  ✔ 空目标集不误报 (0.031ms)
+✔ 锚点③ 三、自授权：搭建者不得为自己配权（§9.6.7） (0.271167ms)
 ▶ 锚点③ 四、自审批：安全敏感变更不得自己批（§9.6.1）
-  ✔ ★ 提出者本人批准自己的安全敏感变更 → 拒 (0.047542ms)
-  ✔ 正向对照：他人批准 → 允许 (0.026833ms)
-  ✔ 非安全敏感的变更可以自己批（不把规则扩大化） (0.029042ms)
-  ✔ ★ 端到端：审批记录的 approver 不能等于提出者（R3 场景） (0.25375ms)
-✔ 锚点③ 四、自审批：安全敏感变更不得自己批（§9.6.1） (0.42025ms)
+  ✔ ★ 提出者本人批准自己的安全敏感变更 → 拒 (0.046917ms)
+  ✔ 正向对照：他人批准 → 允许 (0.0365ms)
+  ✔ 非安全敏感的变更可以自己批（不把规则扩大化） (0.0215ms)
+  ✔ ★ 端到端：审批记录的 approver 不能等于提出者（R3 场景） (0.199917ms)
+✔ 锚点③ 四、自审批：安全敏感变更不得自己批（§9.6.1） (0.3635ms)
 ▶ 锚点③ 交叉：两个网关的会话各自只在自己那一侧
-  ✔ 同一个账号、同一时刻的两个会话，工具集**不相交** (0.085209ms)
-  ✔ 网关绑定在会话上：两个会话的 gateway 不同，且来自各自令牌 (0.039625ms)
-  ✔ 业务数据档位与网关**无关**：两边的判定用的是同一份业务授权 (2.066042ms)
-✔ 锚点③ 交叉：两个网关的会话各自只在自己那一侧 (2.255291ms)
+  ✔ 同一个账号、同一时刻的两个会话，工具集**不相交** (0.091791ms)
+  ✔ 网关绑定在会话上：两个会话的 gateway 不同，且来自各自令牌 (0.054917ms)
+  ✔ 业务数据档位与网关**无关**：两边的判定用的是同一份业务授权 (1.927042ms)
+✔ 锚点③ 交叉：两个网关的会话各自只在自己那一侧 (2.1495ms)
 ▶ Stage 8：工作台与搭建台使用独立登录入口
-  ✔ 两个入口显示不同标题且不暴露对方功能清单 (0.644125ms)
-  ✔ 搭建者入口创建服务端绑定的 BUILDER 会话 (49.852ms)
-  ✔ 普通员工从搭建者入口登录会被拒绝 (30.058292ms)
-  ✔ 员工入口始终创建 USER 会话 (29.713083ms)
-✔ Stage 8：工作台与搭建台使用独立登录入口 (149.283ms)
+  ✔ 两个入口显示不同标题且不暴露对方功能清单 (0.62825ms)
+  ✔ 搭建者入口创建服务端绑定的 BUILDER 会话 (42.102084ms)
+  ✔ 普通员工从搭建者入口登录会被拒绝 (26.163625ms)
+  ✔ 员工入口始终创建 USER 会话 (28.139583ms)
+✔ Stage 8：工作台与搭建台使用独立登录入口 (140.282083ms)
 ℹ tests 37
 ℹ suites 9
 ℹ pass 37
@@ -80,13 +80,13 @@ $ python3 工具/check_stage8.py --run-only
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 2379.085083
+ℹ duration_ms 2442.05325
 [login_api] exit=0
 [runtime_preset/platform] $ node --test --test-concurrency=1 tests/runtime-routing.test.mjs
 ▶ Stage 8：平台到运行时的模式上下文
-  ✔ 浏览器伪造的 x-kvvi-* 会被删除并由服务端上下文替换 (0.505875ms)
-  ✔ 篡改任一模式字段会使签名失效 (0.184625ms)
-✔ Stage 8：平台到运行时的模式上下文 (1.07325ms)
+  ✔ 浏览器伪造的 x-kvvi-* 会被删除并由服务端上下文替换 (0.518209ms)
+  ✔ 篡改任一模式字段会使签名失效 (0.193375ms)
+✔ Stage 8：平台到运行时的模式上下文 (1.108083ms)
 ℹ tests 2
 ℹ suites 1
 ℹ pass 2
@@ -94,7 +94,7 @@ $ python3 工具/check_stage8.py --run-only
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 44.091916
+ℹ duration_ms 45.231209
 [runtime_preset/platform] exit=0
 [runtime_preset/rebuild] $ python3 工具/fork.py --rebuild --into /tmp/kvvi-stage8-g6-fork
 ▸ 第 1 步：取上游干净副本（基线 ddefc45fbc7f，来源 local）
@@ -111,14 +111,14 @@ native/system/packages/linux-arm64       | [WARN] Unsupported platform: wanted: 
 native/system/packages/linux-x64         | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
 Scope: all 318 workspace projects
 [WARN] There are cyclic workspace dependencies: /private/tmp/kvvi-stage8-g6-fork/apps/web, /private/tmp/kvvi-stage8-g6-fork/packages/test-support/client-runtime, /private/tmp/kvvi-stage8-g6-fork/packages/bundle/web-app; /private/tmp/kvvi-stage8-g6-fork/packages/api/remotes, /private/tmp/kvvi-stage8-g6-fork/packages/client/file-upload; /private/tmp/kvvi-stage8-g6-fork/packages/client/ui-conversation, /private/tmp/kvvi-stage8-g6-fork/packages/client/ui-workspace, /private/tmp/kvvi-stage8-g6-fork/packages/client/ui-sidebar; /private/tmp/kvvi-stage8-g6-fork/packages/compaction/compaction-basic, /private/tmp/kvvi-stage8-g6-fork/packages/compaction/compaction-image-offload; /private/tmp/kvvi-stage8-g6-fork/packages/core/agent-loop, /private/tmp/kvvi-stage8-g6-fork/packages/llm/llm-pi-ai, /private/tmp/kvvi-stage8-g6-fork/packages/llm/llm-deepseek, /private/tmp/kvvi-stage8-g6-fork/packages/session/session-log-deepseek, /private/tmp/kvvi-stage8-g6-fork/packages/feedback/command-feedback, /private/tmp/kvvi-stage8-g6-fork/packages/test-support/agent-loop-testkit; /private/tmp/kvvi-stage8-g6-fork/packages/sandbox/sandbox-local, /private/tmp/kvvi-stage8-g6-fork/packages/sandbox/sandbox-windows-acl; /private/tmp/kvvi-stage8-g6-fork/packages/ssh/fs-ssh, /private/tmp/kvvi-stage8-g6-fork/packages/ssh/ssh; /private/tmp/kvvi-stage8-g6-fork/packages/subagent/subagent-spawn-in-process, /private/tmp/kvvi-stage8-g6-fork/packages/subagent/tool-subagent; /private/tmp/kvvi-stage8-g6-fork/vendor/cordis, /private/tmp/kvvi-stage8-g6-fork/vendor/include
-✓ Lockfile passes supply-chain policies (verified 27m ago)
+✓ Lockfile passes supply-chain policies (verified 32m ago)
 Lockfile is up to date, resolution step is skipped
 Progress: resolved 1, reused 0, downloaded 0, added 0
 Packages: +1319
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Progress: resolved 1319, reused 1314, downloaded 0, added 449
-Progress: resolved 1319, reused 1314, downloaded 0, added 917
-Progress: resolved 1319, reused 1314, downloaded 0, added 1207
+Progress: resolved 1319, reused 1314, downloaded 0, added 451
+Progress: resolved 1319, reused 1314, downloaded 0, added 915
+Progress: resolved 1319, reused 1314, downloaded 0, added 1195
 Progress: resolved 1319, reused 1314, downloaded 0, added 1319, done
 .../node_modules/protobufjs postinstall$ node scripts/postinstall
 .../.pnpm/koffi@3.1.1/node_modules/koffi install$ node ./cnoke.cjs -P . -D src/koffi --prebuild --release
@@ -193,7 +193,7 @@ packages/subprocess/subprocess-local postinstall: Done
 [WARN] Failed to create bin at /private/tmp/kvvi-stage8-g6-fork/apps/desktop-host/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage8-g6-fork/apps/desktop-host/node_modules/@deepseek-ai/dsh/lib/bin.js'
 [WARN] Failed to create bin at /private/tmp/kvvi-stage8-g6-fork/packages/sdk/client/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage8-g6-fork/packages/sdk/client/node_modules/@deepseek-ai/dsh/lib/bin.js'
 [WARN] Failed to create bin at /private/tmp/kvvi-stage8-g6-fork/python/sdk-runtime/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage8-g6-fork/python/sdk-runtime/node_modules/@deepseek-ai/dsh/lib/bin.js'
-Done in 6.5s using pnpm v11.7.0
+Done in 6.6s using pnpm v11.7.0
 [runtime_preset/install] exit=0
 [runtime_preset/dsh] $ pnpm --filter @deepseek-ai/dsh-host-kvvi-mode-router test
 native/system/packages/darwin-x64        | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["darwin"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
@@ -205,8 +205,8 @@ native/system/packages/linux-x64         | [WARN] Unsupported platform: wanted: 
 
  Test Files  1 passed (1)
       Tests  7 passed (7)
-   Start at  00:13:16
-   Duration  180ms (transform 88ms, setup 95ms, import 12ms, tests 7ms, environment 0ms)
+   Start at  00:18:00
+   Duration  357ms (transform 208ms, setup 214ms, import 17ms, tests 7ms, environment 0ms)
 
 $ vitest run --root ../../.. packages/host/kvvi-mode-router/tests/mode-router.spec.ts
 The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
