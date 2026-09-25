@@ -44,10 +44,10 @@
       "stage": "阶段一",
       "name": "G2 fork 改造点",
       "command": "python3 工具/g2_改造点.py --check",
-      "exitCode": 1,
-      "ok": false,
+      "exitCode": 0,
+      "ok": true,
       "evidence": "交付/证据/阶段一-G2-fork-改造点.txt",
-      "digest": "sha256:b9a7211015bd9ad1f9e7fb635954d21767c17d414f53acece5112062466cd94b"
+      "digest": "sha256:7cf22b038e2e0f5e6081d0bef375c23ed11c22f3e2b46c0e45266bb0d75d9089"
     },
     {
       "stage": "阶段一",
@@ -83,7 +83,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-Skill-产出验收.txt",
-      "digest": "sha256:e987b56ee963b53c5512fcc4fa1745f2e89e8e340e800a6a81d1c5f734f85464"
+      "digest": "sha256:5a198e29701bce50d0e6801706b6bde059729c10903304e0157822e1ce64d72e"
     },
     {
       "stage": "阶段三",
@@ -101,7 +101,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-去行业化自查（0A-14）.txt",
-      "digest": "sha256:66976496e439a6ea94186af5c9ac0b3f73e5a54c355ca966cd344aacc0290c3a"
+      "digest": "sha256:e8c8f33907aa870be205576b3a44cd7a7c7d9081b089ce180a0263720e8d2448"
     },
     {
       "stage": "阶段三",
@@ -164,12 +164,10 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/贯穿-fork-可重建（N1_N2）.txt",
-      "digest": "sha256:29135a461fc72cea7575e99bdb2ec96c4260f8e8304816ab0e5ae00cc05e3fef"
+      "digest": "sha256:80a05cbb8faaf943e5a362a87fb4b35cd74ef1511aec9638b11cf31b8dec5d64"
     }
   ],
   "deliveryDigest": "sha256:d0afaee0a05d43056bde6126cf177910645e1500df48e90df3448ebebf59074f",
-  "failed": [
-    "阶段一/G2 fork 改造点"
-  ],
-  "bundleDigest": "sha256:18f51792ea3052a5ea1a900907d169645c7ebfcc9fe3c300ba1bb61d6fe18239"
+  "failed": [],
+  "bundleDigest": "sha256:ec33c4eff7b9712084529b80fa2fcd3562502de7dd674b1455d0e7cd6f4a8faa"
 }

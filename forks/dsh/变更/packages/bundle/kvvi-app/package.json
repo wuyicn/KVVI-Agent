@@ -31,7 +31,8 @@
     }
   },
   "dependencies": {
-    "@deepseek-ai/dsh-client-kvvi-brand": "workspace:^"
+    "@deepseek-ai/dsh-client-kvvi-brand": "workspace:^",
+    "@deepseek-ai/dsh-client-kvvi-panel": "workspace:^"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^"
