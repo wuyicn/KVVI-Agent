@@ -124,6 +124,9 @@ declare module '@deepseek-ai/cordis' {
       next: () => Promise<void>): Promise<void>
     /** Authorize one decoded Remote endpoint before dispatch. @mode serial */
     'typert-gateway/request'(endpoint: string, payload: unknown): void | Promise<void>
+    /** Project or suppress one outbound stream frame. @mode waterfall */
+    'typert-gateway/project'(endpoint: string, value: unknown,
+      next: () => Promise<unknown>): Promise<unknown>
   }
 }
 
@@ -391,10 +394,10 @@ export class TypertGatewayService extends Service implements TypertGateway {
     signal: AbortSignal,
   ): Promise<AsyncIterable<unknown>> {
     await this.ctx.serial('typert-gateway/request', endpoint, payload)
-    if (endpoint === REMOTE_EVENT_STREAM_ENDPOINT) {
-      return this.openRemoteEvents(payload, signal)
-    }
-    return this.stream(remoteRequest(endpoint, payload, signal))
+    const source = endpoint === REMOTE_EVENT_STREAM_ENDPOINT
+      ? this.openRemoteEvents(payload, signal)
+      : await this.stream(remoteRequest(endpoint, payload, signal))
+    return projectedStream(this.ctx, endpoint, source)
   }
 
   private async *openRemoteEvents(
@@ -999,6 +1002,18 @@ async function *cancellableStream(
   } finally {
     signal.removeEventListener('abort', onAbort)
     await iterator.return?.()
+  }
+}
+
+async function *projectedStream(
+  ctx: Context,
+  endpoint: string,
+  source: AsyncIterable<unknown>,
+): AsyncGenerator<unknown> {
+  for await (const value of source) {
+    const projected = await ctx.waterfall('typert-gateway/project', endpoint, value,
+      async () => value)
+    if (projected !== undefined) yield projected
   }
 }
 

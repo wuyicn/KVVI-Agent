@@ -204,6 +204,25 @@ export function filterControlFrame(frame: unknown, mode: ModeContext): unknown |
   return undefined
 }
 
+/** Remove shared-runtime lifecycle events belonging to another KVVI identity. */
+export function projectRuntimeFrame(frame: unknown, mode: ModeContext): unknown | undefined {
+  if (typeof frame !== 'object' || frame === null) return frame
+  const value = frame as Record<string, unknown>
+  if (value.type === 'emit' && typeof value.event === 'string'
+    && value.event.startsWith('api-session/') && Array.isArray(value.args)) {
+    const first = value.args[0]
+    const sessionId = typeof first === 'string' ? first
+      : typeof first === 'object' && first !== null
+        ? (first as Record<string, unknown>).sessionId : undefined
+    if (typeof sessionId !== 'string') return undefined
+    try { assertOwnedSessionId(sessionId, mode) } catch { return undefined }
+  }
+  if (value.type === 'waterfall' && typeof value.agentId === 'string') {
+    try { assertOwnedSessionId(value.agentId, mode) } catch { return undefined }
+  }
+  return frame
+}
+
 async function *filteredControl(source: AsyncIterable<unknown>,
   mode: ModeContext): AsyncGenerator<unknown> {
   for await (const frame of source) {
@@ -226,6 +245,8 @@ declare module '@deepseek-ai/cordis' {
     'typert-gateway/upgrade'(request: IncomingMessage, socket: Duplex, head: Buffer,
       next: () => Promise<void>): Promise<void>
     'typert-gateway/request'(endpoint: string, payload: unknown): void | Promise<void>
+    'typert-gateway/project'(endpoint: string, value: unknown,
+      next: () => Promise<unknown>): Promise<unknown>
   }
 }
 
@@ -256,6 +277,10 @@ export class KvviModeRouter extends Service {
     })
     ctx.on('typert-gateway/request', (endpoint, wirePayload) => {
       authorizeRuntimeRequest(endpoint, wirePayload, this.requireMode())
+    })
+    ctx.on('typert-gateway/project', async (_endpoint, _value, next) => {
+      const mode = this.requireMode()
+      return projectRuntimeFrame(await next(), mode)
     })
 
     const sessionController = ctx.sessionController

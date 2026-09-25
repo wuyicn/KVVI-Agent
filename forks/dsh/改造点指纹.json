@@ -12,7 +12,7 @@
       "upstream_baseline_sha256": "9b54d57eea00f2fdd1affe6e7999a4209a515755f12ac1a3299da2d55e178d4c"
     },
     "packages/api/gateway/src/index.ts": {
-      "sha256": "e94ddcc4714f5f0179a38f479786cd58ff0cca2c7819aa4e353b968460eacd11",
+      "sha256": "93143a87962641782cc909193d3b3db950180afe14097710c1336f64dc20eb33",
       "status": "M",
       "upstream_baseline_sha256": "8dd9c7895d8059419ca416d344e308a07d55e436ae3b9930393047dee1b9f5f5"
     },
@@ -123,11 +123,11 @@
       "status": "A"
     },
     "packages/host/kvvi-mode-router/src/index.ts": {
-      "sha256": "7bd2e31c88f4c80278f93f3c1a4ab846f631593cc23b94d64d480dba67ba4a5b",
+      "sha256": "0d9003a2ad96f63a88615b7abf7c5e864b5fce74e0465d0b82e11e9733c73077",
       "status": "A"
     },
     "packages/host/kvvi-mode-router/tests/mode-router.spec.ts": {
-      "sha256": "7c6f6629cadd991762473ed5d4633298db078ae68059714376987cec6375ab40",
+      "sha256": "13046c91bb1f0d8aa4c4f96f18d98e585f78cd0ae3a31dfb7698c85c659dc983",
       "status": "A"
     },
     "packages/host/kvvi-mode-router/tsconfig.json": {

@@ -3,7 +3,7 @@ import { Context } from '@deepseek-ai/cordis'
 import {
   assertOwnedSessionId, assertPresetAllowed, authorizeRuntimeRequest,
   enforceCreateRequest, filterControlFrame, KvviModeRouter, ownedSessionId,
-  signModeHeaders, verifyModeHeaders, presetFor,
+  projectRuntimeFrame, signModeHeaders, verifyModeHeaders, presetFor,
 } from '../src/index.ts'
 
 const secret = 'stage8-mode-router-secret'
@@ -80,6 +80,11 @@ describe('KVVI mode router', () => {
     } })
     expect(filterControlFrame({ type: 'jobs', sessionId: builderId, jobs: [] }, worker))
       .toBeUndefined()
+    expect(projectRuntimeFrame({ type: 'emit', event: 'api-session/added',
+      args: [{ sessionId: builderId }] }, worker)).toBeUndefined()
+    expect(projectRuntimeFrame({ type: 'emit', event: 'api-session/status',
+      args: [workerId, true] }, worker)).toEqual({ type: 'emit',
+      event: 'api-session/status', args: [workerId, true] })
   })
 
   it('binds create and preset-select calls to the signed request context', async () => {
