@@ -177,8 +177,8 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段八-G6-身份与模式路由.txt",
-      "digest": "sha256:879491fbe69f3e0716af2eb30887e0a96a16c3318face4dc8a02df11aebf6cac",
-      "commit": "8f49efc0eeae6359c0edde9ef3e8b485935b8c19",
+      "digest": "sha256:a581b9d924215a09ace52d16553f439e7fc36441bd49d8a7624a8a85ee0232b7",
+      "commit": "5805d4396a82f9b06c5bbc5eb2fffdac4ef39360",
       "evidenceClasses": [
         "role_policy",
         "login_api",
@@ -186,19 +186,24 @@
         "topology"
       ],
       "sourceDigests": {
+        "services/platform/src/auth.mjs": "sha256:0b100185d77454c7326e495fa499b3028026cb952b553ab23b0276f64851859e",
         "services/platform/src/mode-policy.mjs": "sha256:dc9a28e1a5e831e8ea27aaeefb40203082a72c774b0bf5da983e6adfa0ccbbcd",
         "services/platform/src/gate.mjs": "sha256:a8a69223b4f88b47f9e476711d6354fcb6106f6fe67254b7e49764b5450e31fb",
         "services/platform/src/proxy.mjs": "sha256:a1f8c4da3228593ce908316671b97fa43de71920135e5bb476931180e3ed60a4",
-        "services/platform/src/runtime-auth.mjs": "sha256:a7dad22f6918ec020c352799a118081f999ef1c5b217c820c679af6cf0ec101b",
+        "services/platform/src/runtime-auth.mjs": "sha256:126e896a8f0ed1a8455df96cf0b807ade86e8f7025df63e69a0c235f80d5dd10",
         "services/platform/tests/mode-policy.test.mjs": "sha256:09a3c4bcb32c71272578f67d6142a131cf8f5d2d46a1799782d5b675f248cf0e",
         "services/platform/tests/login-gate.test.mjs": "sha256:4aa016e679171764b36a78e82a34741ccf36730b6290e887ecd853a76a6ada25",
-        "services/platform/tests/runtime-routing.test.mjs": "sha256:8a7f2561326e7672328c61a1b107a395c984b51816ea9a1410e075e87fcadd54",
-        "forks/dsh/变更/packages/host/kvvi-mode-router/src/index.ts": "sha256:4808ad8f16fd1014884dec3ad6e7e77330c099e57bf8cf90fa4679f8f7e21dc9",
-        "forks/dsh/变更/packages/host/kvvi-mode-router/tests/mode-router.spec.ts": "sha256:eadd8ed5f1a7af88159d5e849c878fb665d3638bd01efc2ba97549f757cd742c"
+        "services/platform/tests/runtime-routing.test.mjs": "sha256:904f851aa44259de335b37ab9bd7d648b2685329462c6a6d51b9719363e991d2",
+        "services/platform/tests/auth.test.mjs": "sha256:3fa9d89ffdbfae7c4ccf68575f8122bb9765c6f6bd0ed610be2903833f678371",
+        "forks/dsh/变更/packages/api/gateway/src/index.ts": "sha256:e94ddcc4714f5f0179a38f479786cd58ff0cca2c7819aa4e353b968460eacd11",
+        "forks/dsh/变更/packages/bundle/kvvi-app/cordis.patch.yml": "sha256:ac267bb3550769c59f5d46c5c560909ff506666f369f2d447ebe5b42d4fddeec",
+        "forks/dsh/变更/packages/host/kvvi-mode-router/src/index.ts": "sha256:7bd2e31c88f4c80278f93f3c1a4ab846f631593cc23b94d64d480dba67ba4a5b",
+        "forks/dsh/变更/packages/host/kvvi-mode-router/tests/mode-router.spec.ts": "sha256:7c6f6629cadd991762473ed5d4633298db078ae68059714376987cec6375ab40",
+        "工具/check_stage8.py": "sha256:ca4c5da41ca4ad19fc2e346c62ae76c20ff21ec47224b075d5bc2d25b4f6b52d"
       }
     }
   ],
   "deliveryDigest": "sha256:575e21977d1099bd4c3283d0b17a78a35c211a79e2eeed5f97593dd28401dcb8",
   "failed": [],
-  "bundleDigest": "sha256:a43e5bb00f03ba3ba8545b46b3e11bf236c160bc67b33089b9f12568e79d732c"
+  "bundleDigest": "sha256:6830a0f5763775e9931c31eb4ee5404bb76d526c8e8e63f2ee7ea159b3d1e884"
 }
