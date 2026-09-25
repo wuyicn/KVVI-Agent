@@ -83,7 +83,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-Skill-产出验收.txt",
-      "digest": "sha256:c8b1b5d0c65ec51147aaca65e5a001c2eb0fc05326a27588cd9bf9d888285b7f"
+      "digest": "sha256:c19416c45e0ddf257f9502542d1773d8b288b81ca9411f1bcbb55e50b4cc1421"
     },
     {
       "stage": "阶段三",
@@ -169,5 +169,5 @@
   ],
   "deliveryDigest": "sha256:dfd948f5414c8946097f87b18cdc5ad6b76ecd67f4e3ab4bc25ec5ed190ea79c",
   "failed": [],
-  "bundleDigest": "sha256:e3bb6f382b44778b9fbfd783487fea3396cc70be1672c1c0ab8826de343b9d9b"
+  "bundleDigest": "sha256:eeb8897c28b0c74f75cd1717ed8eff42a6582738f01c9a52ab2976e4c255ec4f"
 }
