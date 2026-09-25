@@ -149,7 +149,8 @@ function visitSessionIds(value: unknown, mode: ModeContext, seen = new Set<objec
   if (typeof value !== 'object' || value === null || seen.has(value)) return
   seen.add(value)
   for (const [key, child] of Object.entries(value)) {
-    if ((key === 'sessionId' || key === 'parentSessionId') && typeof child === 'string') {
+    if ((key === 'sessionId' || key === 'parentSessionId' || key === 'agentId')
+      && typeof child === 'string') {
       assertOwnedSessionId(child, mode)
     } else {
       visitSessionIds(child, mode, seen)
@@ -157,8 +158,66 @@ function visitSessionIds(value: unknown, mode: ModeContext, seen = new Set<objec
   }
 }
 
+function nestedString(value: unknown, key: string, seen = new Set<object>()): string | undefined {
+  if (typeof value !== 'object' || value === null || seen.has(value)) return undefined
+  seen.add(value)
+  for (const [candidate, child] of Object.entries(value)) {
+    if (candidate === key && typeof child === 'string') return child
+    const found = nestedString(child, key, seen)
+    if (found !== undefined) return found
+  }
+  return undefined
+}
+
+/** Bounded ownership cache for correlation and plugin ids whose later calls omit an Agent. */
+export class RuntimeOwnership {
+  private readonly requests = new Map<string, string>()
+  private readonly inspections = new Map<string, string>()
+  private readonly plugins = new Map<string, string>()
+
+  private remember(map: Map<string, string>, id: string, mode: ModeContext): void {
+    map.delete(id)
+    map.set(id, ownerToken(mode))
+    if (map.size > 2048) map.delete(map.keys().next().value as string)
+  }
+
+  rememberRequest(id: string, mode: ModeContext): void { this.remember(this.requests, id, mode) }
+  rememberInspection(id: string, mode: ModeContext): void { this.remember(this.inspections, id, mode) }
+  rememberPlugin(id: string, mode: ModeContext): void { this.remember(this.plugins, id, mode) }
+
+  assertRequest(id: string | undefined, mode: ModeContext): void {
+    if (id === undefined || this.requests.get(id) !== ownerToken(mode)) {
+      throw new Error('KVVI_DYNAMIC_REQUEST_ACCESS_DENIED')
+    }
+  }
+
+  assertInspection(id: string | undefined, mode: ModeContext): void {
+    if (id === undefined || this.inspections.get(id) !== ownerToken(mode)) {
+      throw new Error('KVVI_DYNAMIC_INSPECTION_ACCESS_DENIED')
+    }
+  }
+
+  assertPlugin(id: string | undefined, mode: ModeContext): void {
+    if (id === undefined || this.plugins.get(id) !== ownerToken(mode)) {
+      throw new Error('KVVI_DYNAMIC_PLUGIN_ACCESS_DENIED')
+    }
+  }
+
+  ownsRequest(id: string | undefined, mode: ModeContext): boolean {
+    return id !== undefined && this.requests.get(id) === ownerToken(mode)
+  }
+
+  ownsInspection(id: string | undefined, mode: ModeContext): boolean {
+    return id !== undefined && this.inspections.get(id) === ownerToken(mode)
+  }
+
+  ownsPlugin(id: string | undefined, mode: ModeContext): boolean {
+    return id !== undefined && this.plugins.get(id) === ownerToken(mode)
+  }
+}
+
 export function authorizeRuntimeRequest(endpoint: string, wirePayload: unknown,
-  mode: ModeContext): void {
+  mode: ModeContext, ownership = new RuntimeOwnership()): void {
   if (endpoint.startsWith('pluginManager/')) {
     throw new Error('KVVI_PLUGIN_MANAGEMENT_DISABLED')
   }
@@ -166,6 +225,16 @@ export function authorizeRuntimeRequest(endpoint: string, wirePayload: unknown,
     throw new Error('KVVI_SESSION_FORK_DISABLED')
   }
   if (endpoint !== 'session/create') visitSessionIds(wirePayload, mode)
+  if (endpoint === 'dynamicCordisRunner/resolveRequestRun') {
+    ownership.assertRequest(nestedString(wirePayload, 'requestId'), mode)
+  }
+  if (endpoint === 'dynamicCordisRunner/resolveInspectQuery') {
+    ownership.assertInspection(nestedString(wirePayload, 'requestId'), mode)
+  }
+  if (endpoint.startsWith('dynamicCordisRunner/')) {
+    const pluginId = nestedString(wirePayload, 'pluginId')
+    if (pluginId !== undefined) ownership.assertPlugin(pluginId, mode)
+  }
 }
 
 function filterItems<T extends SessionListValueLike | SessionSearchValueLike>(
@@ -204,18 +273,78 @@ export function filterControlFrame(frame: unknown, mode: ModeContext): unknown |
   return undefined
 }
 
-/** Remove shared-runtime lifecycle events belonging to another KVVI identity. */
-export function projectRuntimeFrame(frame: unknown, mode: ModeContext): unknown | undefined {
+function eventArgument(frame: Record<string, unknown>): unknown {
+  return Array.isArray(frame.args) ? frame.args[0] : undefined
+}
+
+function eventSessionId(event: string, first: unknown): string | undefined {
+  if (event === 'agent-preset/selected') return typeof first === 'string' ? first : undefined
+  if (event.startsWith('api-session/') && typeof first === 'string') return first
+  if (typeof first !== 'object' || first === null) return undefined
+  const record = first as Record<string, unknown>
+  if (event.startsWith('api-session/')) return typeof record.sessionId === 'string'
+    ? record.sessionId : undefined
+  if (event === 'goal/activation-changed') return typeof record.sessionId === 'string'
+    ? record.sessionId : undefined
+  if (event === 'cordis/request-run' || event === 'cordis/inspect-query') {
+    return typeof record.agentId === 'string' ? record.agentId : undefined
+  }
+  return undefined
+}
+
+/** Remove shared-runtime values and lifecycle events belonging to another KVVI identity. */
+export function projectRuntimeFrame(endpoint: string, frame: unknown, mode: ModeContext,
+  ownership = new RuntimeOwnership()): unknown | undefined {
+  if (endpoint === 'dynamicCordisRunner/inventory') {
+    if (!Array.isArray(frame)) return undefined
+    return frame.filter(row => typeof row === 'object' && row !== null
+      && typeof (row as Record<string, unknown>).agentId === 'string'
+      && (() => {
+        try {
+          assertOwnedSessionId((row as Record<string, unknown>).agentId as string, mode)
+          const pluginId = (row as Record<string, unknown>).pluginId
+          if (typeof pluginId === 'string') ownership.rememberPlugin(pluginId, mode)
+          return true
+        } catch { return false }
+      })())
+  }
   if (typeof frame !== 'object' || frame === null) return frame
   const value = frame as Record<string, unknown>
-  if (value.type === 'emit' && typeof value.event === 'string'
-    && value.event.startsWith('api-session/') && Array.isArray(value.args)) {
-    const first = value.args[0]
-    const sessionId = typeof first === 'string' ? first
-      : typeof first === 'object' && first !== null
-        ? (first as Record<string, unknown>).sessionId : undefined
-    if (typeof sessionId !== 'string') return undefined
-    try { assertOwnedSessionId(sessionId, mode) } catch { return undefined }
+  if (value.type === 'emit' && typeof value.event === 'string') {
+    const event = value.event
+    const first = eventArgument(value)
+    if (event.startsWith('plugin-manager/')) return undefined
+    if (event === 'cordis/request-run-resolved') {
+      const requestId = nestedString(first, 'requestId')
+      return ownership.ownsRequest(requestId, mode) ? frame : undefined
+    }
+    if (event === 'cordis/inspect-query-resolved') {
+      const requestId = nestedString(first, 'requestId')
+      return ownership.ownsInspection(requestId, mode) ? frame : undefined
+    }
+    if (event === 'cordis/dynamic-package' || event === 'cordis/dynamic-retract') {
+      const pluginId = nestedString(first, 'pluginId')
+      return ownership.ownsPlugin(pluginId, mode) ? frame : undefined
+    }
+    const scoped = event.startsWith('api-session/') || event === 'agent-preset/selected'
+      || event === 'goal/activation-changed' || event === 'cordis/request-run'
+      || event === 'cordis/inspect-query'
+    if (scoped) {
+      const sessionId = eventSessionId(event, first)
+      if (typeof sessionId !== 'string') return undefined
+      try { assertOwnedSessionId(sessionId, mode) } catch { return undefined }
+      if (typeof first === 'object' && first !== null) {
+        const requestId = nestedString(first, 'requestId')
+        const pluginId = nestedString(first, 'pluginId')
+        if (event === 'cordis/request-run' && requestId !== undefined) {
+          ownership.rememberRequest(requestId, mode)
+        }
+        if (event === 'cordis/inspect-query' && requestId !== undefined) {
+          ownership.rememberInspection(requestId, mode)
+        }
+        if (pluginId !== undefined) ownership.rememberPlugin(pluginId, mode)
+      }
+    }
   }
   if (value.type === 'waterfall' && typeof value.agentId === 'string') {
     try { assertOwnedSessionId(value.agentId, mode) } catch { return undefined }
@@ -256,31 +385,50 @@ export class KvviModeRouter extends Service {
   static Config: z<Config> = z.object({ secret: z.string().required() })
 
   private readonly current = new AsyncLocalStorage<ModeContext>()
+  private readonly ownership = new RuntimeOwnership()
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'kvviModeRouter')
     if (config.secret.length === 0) throw new Error('KVVI_RUNTIME_CONTEXT_SECRET_REQUIRED')
 
     ctx.on('connection/request', async (request, response, next) => {
+      let mode: ModeContext
       try {
-        const mode = verifyModeHeaders(request.headers as HeaderBag, config.secret)
-        await this.current.run(mode, next)
+        mode = verifyModeHeaders(request.headers as HeaderBag, config.secret)
       } catch (error) {
         response.writeHead(401, { 'content-type': 'application/json; charset=utf-8' })
         response.end(JSON.stringify({ error: error instanceof Error
           ? error.message : 'KVVI_RUNTIME_CONTEXT_INVALID' }))
+        return
       }
+      await this.current.run(mode, next)
     })
     ctx.on('typert-gateway/upgrade', async (request, _socket, _head, next) => {
       const mode = verifyModeHeaders(request.headers as HeaderBag, config.secret)
-      await this.current.run(mode, next)
+      const socket = _socket as Duplex & { emit: (...args: unknown[]) => boolean }
+      const originalEmit = socket.emit
+      const boundEmit = function (this: typeof socket, ...args: unknown[]): boolean {
+        return thisRouter.current.run(mode, () => originalEmit.apply(this, args))
+      }
+      const thisRouter = this
+      socket.emit = boundEmit
+      const restore = (): void => {
+        if (socket.emit === boundEmit) socket.emit = originalEmit
+      }
+      socket.once('close', restore)
+      try {
+        await this.current.run(mode, next)
+      } catch (error) {
+        restore()
+        throw error
+      }
     })
     ctx.on('typert-gateway/request', (endpoint, wirePayload) => {
-      authorizeRuntimeRequest(endpoint, wirePayload, this.requireMode())
+      authorizeRuntimeRequest(endpoint, wirePayload, this.requireMode(), this.ownership)
     })
-    ctx.on('typert-gateway/project', async (_endpoint, _value, next) => {
+    ctx.on('typert-gateway/project', async (endpoint, _value, next) => {
       const mode = this.requireMode()
-      return projectRuntimeFrame(await next(), mode)
+      return projectRuntimeFrame(endpoint, await next(), mode, this.ownership)
     })
 
     const sessionController = ctx.sessionController
