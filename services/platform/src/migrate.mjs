@@ -187,7 +187,7 @@ async function grantPlatform() {
     await client.query(`GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO kvvi_platform`)
     // 限流记账需要 DELETE（清理过期窗口）。它是**唯一**需要 DELETE 的表 ——
     // 权限按表给，不按库给。
-    await client.query(`GRANT DELETE ON rate_events TO kvvi_platform`)
+    await client.query(`GRANT DELETE ON rate_events, platform_mode_grants TO kvvi_platform`)
     await client.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO kvvi_platform`)
   } finally {
     await client.end()

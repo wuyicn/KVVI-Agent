@@ -34,6 +34,7 @@ export const SESSION_COOKIE = 'kvvi-session'
  */
 const ALLOW_BEFORE_LOGIN = new Set([
   '/kvvi/login',      // 登录页与登录提交
+  '/kvvi/builder/login', // 搭建者登录页与登录提交
   '/kvvi/panel',      // 面板数据端点自己会判令牌，返回 401 而不是重定向
   '/healthz',         // 健康检查：部署与监控要用，且不含任何用户数据
   '/topology',        // 运行期取证：§4.6.5 要求无凭据可复核
@@ -94,6 +95,7 @@ const MESSAGES = {
   KVVI_ACCOUNT_NOT_ACTIVE: '账号已停用，请联系管理员。',
   KVVI_NOT_A_MEMBER: '该账号不属于任何公司。',
   KVVI_BAD_GATEWAY: '入口类型不对。',
+  KVVI_BUILDER_ACCESS_REQUIRED: '该账号没有此公司的搭建模式权限。',
   KVVI_COMPANY_SELECTION_REQUIRED: '这个账号属于多家公司，请选择本次要进入的公司。',
 }
 
@@ -132,7 +134,10 @@ button:disabled{opacity:.6}
  * @param input - `{ message }`：要显示的错误，或空。
  * @returns 完整 HTML。
  */
-function loginPage({ message = '', companies = null } = {}) {
+function loginPage({ message = '', companies = null, gateway = 'USER' } = {}) {
+  const builder = gateway === 'BUILDER'
+  const action = builder ? '/kvvi/builder/login' : '/kvvi/login'
+  const title = builder ? 'KVVI 搭建台' : 'KVVI 工作台'
   const pick = companies === null ? '' : `
     <div class="pick">${companies.map((c) =>
       `<button type="submit" name="companyId" value="${esc(c.companyId)}">${esc(c.name ?? c.companyId)}</button>`).join('')}</div>`
@@ -141,13 +146,14 @@ function loginPage({ message = '', companies = null } = {}) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KVVI 工作台 · 登录</title>
+<title>${title} · 登录</title>
 <style>${PAGE_CSS}</style>
 </head>
 <body>
-<form method="post" action="/kvvi/login" autocomplete="on">
+<form method="post" action="${action}" autocomplete="on">
+  <input type="hidden" name="requestedGateway" value="${gateway}">
   <div class="mark">KV</div>
-  <h1>KVVI 工作台</h1>
+  <h1>${title}</h1>
   <div class="lead">用你的账号登录</div>
   <label for="login">账号</label>
   <input id="login" name="login" type="text" autocomplete="username" required autofocus>
@@ -190,15 +196,18 @@ const OK = (html, headers = {}) => ({
  *   否则 `null`。
  */
 export async function handleGate({ method, path, query, body, headers, login, verify }) {
+  const loginEntry = path === '/kvvi/login' || path === '/kvvi/builder/login'
+  const requestedGateway = path === '/kvvi/builder/login' ? 'BUILDER' : 'USER'
+
   // ① 登录页
-  if (path === '/kvvi/login' && method === 'GET') {
+  if (loginEntry && method === 'GET') {
     const params = new URLSearchParams(query ?? '')
     const message = params.get('error') ? (MESSAGES[params.get('error')] ?? params.get('error')) : ''
-    return OK(loginPage({ message }))
+    return OK(loginPage({ message, gateway: requestedGateway }))
   }
 
   // ② 登录提交
-  if (path === '/kvvi/login' && method === 'POST') {
+  if (loginEntry && method === 'POST') {
     const form = new URLSearchParams(body ?? '')
     const loginName = form.get('login') ?? ''
     const password = form.get('password') ?? ''
@@ -208,7 +217,7 @@ export async function handleGate({ method, path, query, body, headers, login, ve
     }
     let out
     try {
-      out = await login({ login: loginName, password, companyId, gateway: 'USER' })
+      out = await login({ login: loginName, password, companyId, requestedGateway })
     } catch (error) {
       return { status: 503, body: {
         error: 'KVVI_IDENTITY_UNAVAILABLE',
@@ -231,12 +240,15 @@ export async function handleGate({ method, path, query, body, headers, login, ve
     }
     if (out?.status === 409 && out.body?.error === 'KVVI_COMPANY_SELECTION_REQUIRED') {
       // 多公司账号**必须显式选**：替用户选等于悄悄替他决定了租户（§9.9.3）。
-      return OK(loginPage({ message: MESSAGES.KVVI_COMPANY_SELECTION_REQUIRED, companies: out.body.companies ?? [] }))
+      return OK(loginPage({ message: MESSAGES.KVVI_COMPANY_SELECTION_REQUIRED,
+        companies: out.body.companies ?? [], gateway: requestedGateway }))
     }
     const code = out?.body?.error ?? `HTTP ${String(out?.status ?? 0)}`
     return {
       status: 303,
-      headers: { location: '/kvvi/login?error=' + encodeURIComponent(code), 'cache-control': 'no-store' },
+      headers: { location: (requestedGateway === 'BUILDER'
+        ? '/kvvi/builder/login' : '/kvvi/login') + '?error=' + encodeURIComponent(code),
+      'cache-control': 'no-store' },
     }
   }
 
@@ -265,3 +277,9 @@ export async function handleGate({ method, path, query, body, headers, login, ve
 
 /** 供测试直接取错误文案表。 */
 export { MESSAGES as GATE_MESSAGES }
+
+/** 平台登录门自己处理的 `/kvvi/*` 路径；其余仍交给业务面板。 */
+export function isGatePath(pathname) {
+  return pathname === '/kvvi/login' || pathname === '/kvvi/builder/login'
+    || pathname === '/kvvi/logout'
+}

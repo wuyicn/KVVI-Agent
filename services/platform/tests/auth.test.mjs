@@ -62,6 +62,15 @@ const post = (path, body, headers = {}) => fetch(`${BASE}${path}`, {
 })
 
 describe('锚点⑥ 认证端点在平台服务进程内闭合（§4.6.5）', () => {
+  test('普通员工伪造 BUILDER 意图会被服务端拒绝', async () => {
+    const r = await post('/auth/login', {
+      login: 'bob', password: PASSWORD, companyId: A.company,
+      requestedGateway: 'BUILDER',
+    })
+    assert.equal(r.status, 403)
+    assert.deepEqual(await r.json(), { error: 'KVVI_BUILDER_ACCESS_REQUIRED' })
+  })
+
   test('登录在本进程应答 —— 运行时进程不存在也能登录', async () => {
     const r = await post('/auth/login', { login: 'alice', password: PASSWORD })
     assert.equal(r.status, 201)
@@ -108,6 +117,12 @@ describe('锚点⑥ 认证端点在平台服务进程内闭合（§4.6.5）', ()
     const body = await r.json()
     assert.equal(body.gateway, 'USER')
     assert.ok(body.tools.length > 0, '员工会话一个工具都没有 —— 那不是隔离，是没实现')
+    assert.equal(Object.hasOwn(body, 'toolsOfOtherGateway'), false,
+      '公开会话响应泄露了另一模式的能力目录')
+    const serialized = JSON.stringify(body)
+    for (const tool of toolsForGateway('BUILDER', Object.keys(TOOL_GATEWAY))) {
+      assert.equal(serialized.includes(tool), false, `员工响应泄露了搭建工具名 ${tool}`)
+    }
   })
 
   test('登出后旧令牌立即失效（§9.4.2）', async () => {

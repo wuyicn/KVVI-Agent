@@ -1,0 +1,238 @@
+$ python3 工具/check_stage8.py --run-only
+
+[role_policy] $ node --test --test-concurrency=1 tests/mode-policy.test.mjs
+▶ Stage 8：搭建模式资格由服务端按公司判定
+  ✔ 普通员工不能进入 BUILDER (2.710459ms)
+  ✔ 所有者与被所有者明确授权的成员可以进入 BUILDER (12.365958ms)
+  ✔ 搭建权限严格按公司隔离 (2.412667ms)
+  ✔ 非所有者不能授予或收回搭建权限 (1.168333ms)
+  ✔ 收回权限会终止已有 Builder 会话并提高授权版本 (12.624042ms)
+✔ Stage 8：搭建模式资格由服务端按公司判定 (66.700042ms)
+ℹ tests 5
+ℹ suites 1
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 505.353375
+[role_policy] exit=0
+[login_api] $ node --test --test-concurrency=1 tests/auth.test.mjs tests/login-gate.test.mjs tests/gateway.test.mjs
+▶ 锚点⑥ 认证端点在平台服务进程内闭合（§4.6.5）
+  ✔ 普通员工伪造 BUILDER 意图会被服务端拒绝 (73.287084ms)
+  ✔ 登录在本进程应答 —— 运行时进程不存在也能登录 (47.925583ms)
+  ✔ 登录端点**不需要**进程间令牌（那是进程间凭据，不是用户凭据） (38.190584ms)
+  ✔ 口令错 → 401；且不区分「账号不存在」与「口令错」 (40.1105ms)
+  ✔ 多公司账号必须**显式选**公司，不替用户选 (31.403375ms)
+  ✔ 会话查询返回网关与该网关的工具集 (54.062125ms)
+  ✔ 登出后旧令牌立即失效（§9.4.2） (67.959791ms)
+  ✔ 管理类入口需要进程间鉴别（不能被浏览器直接打到） (7.024625ms)
+✔ 锚点⑥ 认证端点在平台服务进程内闭合（§4.6.5） (545.737958ms)
+▶ 锚点⑥ 会话生命周期五类事件：入口都在本进程
+  ✔ 五类事件都能触发，且都留下 session_events 记录 (277.080125ms)
+✔ 锚点⑥ 会话生命周期五类事件：入口都在本进程 (277.215458ms)
+▶ 锚点① 员工看不到搭建引擎（§9.6.5）
+  ✔ 产品级分类是冻结常量：搭建工具全部在 BUILDER 侧 (0.13425ms)
+  ✔ ★ 启用白名单**不能**把搭建工具带进员工侧（交集只减不增） (0.048333ms)
+  ✔ 调用搭建工具被服务端拒绝，且**拒绝留痕** (19.819208ms)
+  ✔ 员工会话的工具集里没有任何搭建工具 (42.897958ms)
+✔ 锚点① 员工看不到搭建引擎（§9.6.5） (63.028125ms)
+▶ 锚点③ 一、工具串用：员工会话不得调用搭建工具
+  ✔ 正向对照：员工会话里有工具，且**全部**属于 USER 网关 (0.3795ms)
+  ✔ 员工会话调用搭建工具 → 拒，理由是 WRONG_GATEWAY（不是「权限不够」） (0.080917ms)
+  ✔ ★ 判定看**分类表**，不看调用方声明：自称 BUILDER 也不改变结果 (0.049166ms)
+  ✔ 未登记的工具 → 拒（不是「没在表里就默认放行」） (0.044709ms)
+  ✔ ★ 拒绝必须留痕（且链仍然自洽） (12.751ms)
+✔ 锚点③ 一、工具串用：员工会话不得调用搭建工具 (64.939458ms)
+▶ 锚点③ 二、生产数据旁路：搭建权限 ≠ 数据权限（§9.5.2）
+  ✔ ★ 只有搭建权限、没有任何业务授权的账号读业务数据 → 拒 (0.116875ms)
+  ✔ 正向对照：有业务授权的搭建者**可以**用业务功能（§3.1 表格） (0.060541ms)
+  ✔ ★ 端到端：没有数据档位时，绕过网关判定也读不到记录 (16.258125ms)
+  ✔ 搭建侧工具走搭建网关，不被上面的数据判定影响 (0.114708ms)
+✔ 锚点③ 二、生产数据旁路：搭建权限 ≠ 数据权限（§9.5.2） (16.72325ms)
+▶ 锚点③ 三、自授权：搭建者不得为自己配权（§9.6.7）
+  ✔ ★ 搭建者把自己纳入配置范围 → 拒 (0.096458ms)
+  ✔ 正向对照：配置他人是允许的 (0.032542ms)
+  ✔ ★ 判定与「有没有这个权限」无关：有配置权也不能给自己配 (0.028666ms)
+  ✔ 空目标集不误报 (0.02975ms)
+✔ 锚点③ 三、自授权：搭建者不得为自己配权（§9.6.7） (0.264ms)
+▶ 锚点③ 四、自审批：安全敏感变更不得自己批（§9.6.1）
+  ✔ ★ 提出者本人批准自己的安全敏感变更 → 拒 (0.066917ms)
+  ✔ 正向对照：他人批准 → 允许 (0.032666ms)
+  ✔ 非安全敏感的变更可以自己批（不把规则扩大化） (0.037125ms)
+  ✔ ★ 端到端：审批记录的 approver 不能等于提出者（R3 场景） (0.255709ms)
+✔ 锚点③ 四、自审批：安全敏感变更不得自己批（§9.6.1） (0.473125ms)
+▶ 锚点③ 交叉：两个网关的会话各自只在自己那一侧
+  ✔ 同一个账号、同一时刻的两个会话，工具集**不相交** (0.089084ms)
+  ✔ 网关绑定在会话上：两个会话的 gateway 不同，且来自各自令牌 (0.041625ms)
+  ✔ 业务数据档位与网关**无关**：两边的判定用的是同一份业务授权 (2.127333ms)
+✔ 锚点③ 交叉：两个网关的会话各自只在自己那一侧 (2.328791ms)
+▶ Stage 8：工作台与搭建台使用独立登录入口
+  ✔ 两个入口显示不同标题且不暴露对方功能清单 (0.733791ms)
+  ✔ 搭建者入口创建服务端绑定的 BUILDER 会话 (46.933292ms)
+  ✔ 普通员工从搭建者入口登录会被拒绝 (28.283375ms)
+  ✔ 员工入口始终创建 USER 会话 (28.48225ms)
+✔ Stage 8：工作台与搭建台使用独立登录入口 (148.355041ms)
+ℹ tests 37
+ℹ suites 9
+ℹ pass 37
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2459.212542
+[login_api] exit=0
+[runtime_preset/platform] $ node --test --test-concurrency=1 tests/runtime-routing.test.mjs
+▶ Stage 8：平台到运行时的模式上下文
+  ✔ 浏览器伪造的 x-kvvi-* 会被删除并由服务端上下文替换 (0.509125ms)
+  ✔ 篡改任一模式字段会使签名失效 (0.194792ms)
+✔ Stage 8：平台到运行时的模式上下文 (1.105292ms)
+ℹ tests 2
+ℹ suites 1
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 45.39625
+[runtime_preset/platform] exit=0
+[runtime_preset/rebuild] $ python3 工具/fork.py --rebuild --into /tmp/kvvi-stage8-g6-fork
+▸ 第 1 步：取上游干净副本（基线 ddefc45fbc7f，来源 local）
+  ✓ 12071 个文件
+▸ 第 2 步：覆盖我们的改动
+  ✓ 48 个文件
+▸ 第 3 步：逐字节比对指纹
+  [32m✓ 48/48 个文件与指纹一致[0m
+[32m✓ 重建结果与指纹逐字节一致[0m
+[runtime_preset/rebuild] exit=0
+[runtime_preset/install] $ pnpm install --frozen-lockfile --offline
+native/system/packages/darwin-x64        | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["darwin"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/system/packages/linux-arm64       | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/system/packages/linux-x64         | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 318 workspace projects
+[WARN] There are cyclic workspace dependencies: /private/tmp/kvvi-stage8-g6-fork/apps/web, /private/tmp/kvvi-stage8-g6-fork/packages/test-support/client-runtime, /private/tmp/kvvi-stage8-g6-fork/packages/bundle/web-app; /private/tmp/kvvi-stage8-g6-fork/packages/api/remotes, /private/tmp/kvvi-stage8-g6-fork/packages/client/file-upload; /private/tmp/kvvi-stage8-g6-fork/packages/client/ui-conversation, /private/tmp/kvvi-stage8-g6-fork/packages/client/ui-workspace, /private/tmp/kvvi-stage8-g6-fork/packages/client/ui-sidebar; /private/tmp/kvvi-stage8-g6-fork/packages/compaction/compaction-basic, /private/tmp/kvvi-stage8-g6-fork/packages/compaction/compaction-image-offload; /private/tmp/kvvi-stage8-g6-fork/packages/core/agent-loop, /private/tmp/kvvi-stage8-g6-fork/packages/llm/llm-pi-ai, /private/tmp/kvvi-stage8-g6-fork/packages/llm/llm-deepseek, /private/tmp/kvvi-stage8-g6-fork/packages/session/session-log-deepseek, /private/tmp/kvvi-stage8-g6-fork/packages/feedback/command-feedback, /private/tmp/kvvi-stage8-g6-fork/packages/test-support/agent-loop-testkit; /private/tmp/kvvi-stage8-g6-fork/packages/sandbox/sandbox-local, /private/tmp/kvvi-stage8-g6-fork/packages/sandbox/sandbox-windows-acl; /private/tmp/kvvi-stage8-g6-fork/packages/ssh/fs-ssh, /private/tmp/kvvi-stage8-g6-fork/packages/ssh/ssh; /private/tmp/kvvi-stage8-g6-fork/packages/subagent/subagent-spawn-in-process, /private/tmp/kvvi-stage8-g6-fork/packages/subagent/tool-subagent; /private/tmp/kvvi-stage8-g6-fork/vendor/cordis, /private/tmp/kvvi-stage8-g6-fork/vendor/include
+✓ Lockfile passes supply-chain policies (verified 17m ago)
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +1319
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 1319, reused 1314, downloaded 0, added 348
+Progress: resolved 1319, reused 1314, downloaded 0, added 791
+Progress: resolved 1319, reused 1314, downloaded 0, added 1080
+Progress: resolved 1319, reused 1314, downloaded 0, added 1319, done
+.../node_modules/protobufjs postinstall$ node scripts/postinstall
+.../.pnpm/koffi@3.1.1/node_modules/koffi install$ node ./cnoke.cjs -P . -D src/koffi --prebuild --release
+.../lefthook@2.1.9/node_modules/lefthook postinstall$ node postinstall.js
+.../node_modules/protobufjs postinstall: Done
+.../lefthook@2.1.9/node_modules/lefthook postinstall: │  > git rev-parse --path-format=absolute --show-toplevel --git-path hooks --git-path info --git-dir
+.../lefthook@2.1.9/node_modules/lefthook postinstall: │    fatal: not a git repository (or any of the parent directories): .git
+.../lefthook@2.1.9/node_modules/lefthook postinstall: │
+.../lefthook@2.1.9/node_modules/lefthook postinstall: exit status 128
+.../lefthook@2.1.9/node_modules/lefthook postinstall: Done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: Done
+.../node_modules/@google/genai preinstall$ echo 'preinstall: no-op'
+.../node_modules/@google/genai preinstall: preinstall: no-op
+.../node_modules/@google/genai preinstall: Done
+[WARN] Failed to create bin at /private/tmp/kvvi-stage8-g6-fork/apps/desktop-host/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage8-g6-fork/apps/cli/lib/bin.js'
+[WARN] Failed to create bin at /private/tmp/kvvi-stage8-g6-fork/packages/sdk/client/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage8-g6-fork/apps/cli/lib/bin.js'
+[WARN] Failed to create bin at /private/tmp/kvvi-stage8-g6-fork/python/sdk-runtime/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage8-g6-fork/apps/cli/lib/bin.js'
+
+devDependencies:
++ @deepseek-ai/dsh-agent 0.1.6-alpha.2 <- packages/core/agent
++ @deepseek-ai/dsh-browser-use 0.1.6-alpha.2 <- packages/browser-use/browser-use
++ @deepseek-ai/dsh-computer-use 0.1.6-alpha.2 <- packages/computer-use/computer-use
++ @deepseek-ai/dsh-experimental-browser-use-chrome-devtools-mcp 0.1.6-alpha.2 <- packages/experimental/browser-use-chrome-devtools-mcp
++ @deepseek-ai/dsh-experimental-browser-use-playwright-mcp 0.1.6-alpha.2 <- packages/experimental/browser-use-playwright-mcp
++ @deepseek-ai/dsh-experimental-browser-use-runtime 0.1.6-alpha.2 <- packages/experimental/browser-use-runtime
++ @deepseek-ai/dsh-experimental-browser-use-stagehand-native 0.1.6-alpha.2 <- packages/experimental/browser-use-stagehand-native
++ @deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp 0.1.6-alpha.2 <- packages/experimental/computer-use-cua-driver-mcp
++ @deepseek-ai/dsh-experimental-computer-use-cua-driver-native 0.1.6-alpha.2 <- packages/experimental/computer-use-cua-driver-native
++ @deepseek-ai/dsh-llm-replay 0.1.6-alpha.2 <- packages/test-support/llm-replay
++ @deepseek-ai/dsh-skill-office 0.1.6-alpha.2 <- packages/skill/skill-office
++ @deepseek-ai/dsh-tool-session-query 0.1.6-alpha.2 <- packages/session-query/tool-session-query
++ @deepseek-ai/dsh-web-fetch-http 0.1.6-alpha.2 <- packages/web/web-fetch-http
++ @stylistic/eslint-plugin 5.10.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/js-yaml 4.0.9
++ @types/jsdom 28.0.3
++ @types/mdast 4.0.4
++ @types/node 22.20.0
++ @types/spdx-expression-parse 4.0.0
++ @vitest/coverage-v8 4.1.8
++ @yao-pkg/pkg 6.21.0
++ @yarnpkg/cli-dist 4.17.1
++ eslint-plugin-sonarjs 4.1.0
++ execa 10.0.0
++ fast-check 4.8.0
++ istanbul-lib-report 3.0.1
++ js-yaml 4.2.0
++ jscpd 5.0.12
++ jsdom 29.1.1
++ lefthook 2.1.9
++ lightningcss 1.32.0
++ mdast-util-from-markdown 2.0.3
++ mdast-util-gfm 3.1.0
++ mermaid 11.16.0
++ micromark-extension-gfm 3.0.0
++ oxlint 1.76.0
++ oxlint-tsgolint 7.0.2001
++ publint 0.3.21
++ smol-toml 1.7.1
++ spdx-expression-parse 5.0.0
++ tsdown 0.22.2
++ tsx 4.22.4
++ typescript 6.0.3
++ vite-tsconfig-paths 6.1.1
++ vitest 4.1.8
+
+packages/subprocess/subprocess-local postinstall$ node scripts/ensure-spawn-helper.mjs
+packages/subprocess/subprocess-local postinstall: Done
+. postinstall$ node scripts/install-lefthook.mjs
+. postinstall: Done
+[WARN] Failed to create bin at /private/tmp/kvvi-stage8-g6-fork/apps/desktop-host/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage8-g6-fork/apps/desktop-host/node_modules/@deepseek-ai/dsh/lib/bin.js'
+[WARN] Failed to create bin at /private/tmp/kvvi-stage8-g6-fork/packages/sdk/client/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage8-g6-fork/packages/sdk/client/node_modules/@deepseek-ai/dsh/lib/bin.js'
+[WARN] Failed to create bin at /private/tmp/kvvi-stage8-g6-fork/python/sdk-runtime/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage8-g6-fork/python/sdk-runtime/node_modules/@deepseek-ai/dsh/lib/bin.js'
+Done in 7s using pnpm v11.7.0
+[runtime_preset/install] exit=0
+[runtime_preset/dsh] $ pnpm --filter @deepseek-ai/dsh-host-kvvi-mode-router test
+native/system/packages/darwin-x64        | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["darwin"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/system/packages/linux-arm64       | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/system/packages/linux-x64         | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+
+ RUN  v4.1.8 /private/tmp/kvvi-stage8-g6-fork
+
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  00:41:31
+   Duration  454ms (transform 131ms, setup 99ms, import 105ms, tests 182ms, environment 0ms)
+
+$ vitest run --root ../../.. packages/host/kvvi-mode-router/tests/mode-router.spec.ts
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+[runtime_preset/dsh] exit=0
+[runtime_preset/cross-boundary] $ pnpm exec tsx --eval import {verifyModeHeaders as v} from './packages/host/kvvi-mode-router/src/index.ts';const c=v(JSON.parse(process.env.KVVI_HEADERS!),'stage8-cross-boundary-secret');if(c.gateway!=='USER'||c.preset!=='kvvi-worker') throw new Error('MODE_MISMATCH');console.log('UI/session USER -> runtime kvvi-worker')
+UI/session USER -> runtime kvvi-worker
+[runtime_preset/cross-boundary] exit=0
+[topology] $ python3 工具/check_topology.py --static
+[32m=== 两进程骨架取证（PRD §4.6.5 · 锚点 ②⑥）===[0m
+
+[32m[静态] compose 配置[0m
+  [32m✓[0m 长期运行的进程恰好两个：platform, runtime（另有 3 个库容器、1 个一次性任务）
+  [32m✓[0m 只读共享（有意）：runtime-data
+  [32m✓[0m 无共享卷：platform=[('platform-data', 'rw'), ('runtime-data', 'ro')]  runtime=[('runtime-data', 'rw')]
+  [32m✓[0m 未共享 pid/ipc namespace（禁止跨进程调试）
+  [32m✓[0m platform 受控接口要求调用方鉴别（KVVI_INTERNAL_TOKEN）
+  [32m✓[0m 唯一对外入口：platform 映射宿主端口，runtime 不映射
+  [32m✓[0m audit-db 设置 no-new-privileges
+  [32m✓[0m business-db 设置 no-new-privileges
+  [32m✓[0m migrate 设置 no-new-privileges
+  [32m✓[0m platform 设置 no-new-privileges
+  [32m✓[0m platform-db 设置 no-new-privileges
+  [32m✓[0m runtime 设置 no-new-privileges
+
+[32m✓ 通过[0m
+[topology] exit=0
+✓ G6 通过：普通员工在界面、API、会话和工具四层均无法获得搭建能力

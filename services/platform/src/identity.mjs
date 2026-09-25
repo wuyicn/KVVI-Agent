@@ -19,6 +19,7 @@
 import { createHash, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
 import { pool, withTransaction } from './db.mjs'
 import { ACTIVE_CONTRACT_VERSION } from './business.mjs'
+import { allowedGateways } from './mode-policy.mjs'
 import {
   loadKeys, rotate, publicKeysOf, signToken, verifyExpiry, verifySignature,
 } from './signing.mjs'
@@ -85,10 +86,8 @@ export async function authenticate(login, password) {
  * @param {string} userId 账号
  * @returns {Promise<string[]>} 可选的网关
  */
-export function gatewaysFor() {
-  // 目前每个账号两个网关都可能具备；真正的资格判定在阶段五的授权服务里。
-  // 此处只声明取值域，避免调用方自己发明字符串。
-  return ['USER', 'BUILDER']
+export function gatewaysFor(companyId, userId) {
+  return allowedGateways(companyId, userId)
 }
 
 /**

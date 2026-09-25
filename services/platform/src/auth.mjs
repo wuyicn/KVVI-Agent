@@ -75,20 +75,14 @@ function actorToken(req) {
  * @param {string} input.path
  * @param {object|null} input.body
  * @param {object} input.headers
- * @param {boolean} [input.omitOtherGateway]
- *   省略 `toolsOfOtherGateway`。**只有工作台页面会用到**。
- *   那组字段是给复核者核对「两个集合确实不相交」的取证材料，
- *   而工作台的响应会直接渲染进员工浏览器 —— 让界面拿到
- *   「另一个模式有哪些能力」，正是 §2.3 界面隔离要挡的东西。
- *   审计与取证路径继续带它，不受影响。
  */
-export async function handleAuth({ method, path, body, headers, omitOtherGateway = false }) {
+export async function handleAuth({ method, path, body, headers }) {
   const fake = { headers }
 
   // ── ① 登录 ──────────────────────────────────────────────────────
   if (path === '/auth/login' && method === 'POST') {
-    const { login, password, companyId, gateway = 'USER' } = body ?? {}
-    if (!gatewaysFor().includes(gateway)) {
+    const { login, password, companyId, requestedGateway = 'USER' } = body ?? {}
+    if (!['USER', 'BUILDER'].includes(requestedGateway)) {
       return { status: 400, body: { error: 'KVVI_BAD_GATEWAY' } }
     }
     const account = await authenticate(login, password)
@@ -96,7 +90,7 @@ export async function handleAuth({ method, path, body, headers, omitOtherGateway
       // ⚠️ 失败也留痕，但**不记明文口令**，只记摘要。
       await appendDenial({
         companyId: companyId ?? '00000000-0000-0000-0000-000000000000',
-        actorKind: 'SYSTEM', action: 'auth.login', gateway,
+        actorKind: 'SYSTEM', action: 'auth.login', gateway: requestedGateway,
         outcome: 'DENY', reason: 'KVVI_BAD_CREDENTIALS',
         paramsDigest: digestOf({ login }),
       })
@@ -121,6 +115,19 @@ export async function handleAuth({ method, path, body, headers, omitOtherGateway
       }
       chosen = companies[0].companyId
     }
+    const allowed = await gatewaysFor(chosen, account.userId)
+    if (!allowed.includes(requestedGateway)) {
+      await appendDenial({
+        companyId: chosen, actorKind: 'USER', actorId: account.userId,
+        action: 'auth.login', gateway: requestedGateway,
+        reason: requestedGateway === 'BUILDER'
+          ? 'KVVI_BUILDER_ACCESS_REQUIRED' : 'KVVI_NOT_A_MEMBER',
+        paramsDigest: digestOf({ login, companyId: chosen }),
+      })
+      return { status: 403, body: { error: requestedGateway === 'BUILDER'
+        ? 'KVVI_BUILDER_ACCESS_REQUIRED' : 'KVVI_NOT_A_MEMBER' } }
+    }
+    const gateway = requestedGateway
     const session = await createSession({ userId: account.userId,
                                           companyId: chosen, gateway })
     const token = await issueToken(session.sessionId)
@@ -184,11 +191,6 @@ export async function handleAuth({ method, path, body, headers, omitOtherGateway
       gateway: ctx.gateway, state: session.state, createdAt: session.createdAt,
       login, companyName,
       tools: toolsForGateway(ctx.gateway, enabled),
-    }
-    if (!omitOtherGateway) {
-      // 让复核者能自己核对：两个集合都报出来。
-      payload.toolsOfOtherGateway =
-        toolsForGateway(ctx.gateway === 'USER' ? 'BUILDER' : 'USER', enabled)
     }
     return { status: 200, body: payload }
   }

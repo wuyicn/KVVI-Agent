@@ -19,9 +19,10 @@ import { timingSafeEqual } from 'node:crypto'
 import { topologySnapshot, SERVICE_ROOT } from './topology.mjs'
 import { isOwnedPath, resolveTarget, createProxyHandler, createUpgradeHandler } from './proxy.mjs'
 import { isPanelPath, handlePanel } from './panel.mjs'
-import { handleGate, gated } from './gate.mjs'
-import { runtimeCookie, runtimeCredentialAvailable } from './runtime-auth.mjs'
+import { handleGate, gated, isGatePath, tokenFromCookie } from './gate.mjs'
+import { runtimeCookie, runtimeCredentialAvailable, runtimeContextHeaders } from './runtime-auth.mjs'
 import { handleAuth } from './auth.mjs'
+import { verifyToken } from './identity.mjs'
 
 const PORT = Number(process.env.KVVI_PLATFORM_PORT ?? 7400)
 const HOST = process.env.KVVI_PLATFORM_HOST ?? '0.0.0.0'
@@ -86,7 +87,14 @@ const RUNTIME_TARGET = resolveTarget(process.env.KVVI_RUNTIME_URL)
 /** 非本进程路径一律转发给运行时进程。 */
 // 运行时栅栏要的 Cookie 由本进程按运行时的格式注入 —— 见 runtime-auth.mjs
 // 对「这不是绕过检查」的说明。
-const proxyHandler = createProxyHandler(RUNTIME_TARGET, runtimeCookie)
+async function trustedRuntimeContext(req) {
+  const raw = tokenFromCookie(req.headers.cookie)
+  if (raw === undefined) return undefined
+  const ctx = await verifyToken(raw)
+  return ctx === null ? undefined : runtimeContextHeaders(ctx)
+}
+
+const proxyHandler = createProxyHandler(RUNTIME_TARGET, runtimeCookie, trustedRuntimeContext)
 
 /** 常量时间比较，避免按字符早退泄漏令牌长度。 */
 function tokenMatches(presented) {
@@ -176,7 +184,7 @@ const server = createServer(async (req, res) => {
   // `/kvvi/login` 与 `/kvvi/logout` 归登录门（下面那一段），不归面板数据端点：
   // 两个模块都认 `/kvvi/` 前缀，**顺序错了就会让登录页返回「面板端点不存在」**。
   // 判据由模块自己给出，不在这里重复前缀字符串。
-  if (isPanelPath(path) && path !== '/kvvi/login' && path !== '/kvvi/logout') {
+  if (isPanelPath(path) && !isGatePath(path)) {
     const out = await handlePanel({
       method, path, headers: req.headers,
       // ★ 复用认证模块自己的会话端点，**不另算一遍**网关与能力：
@@ -184,7 +192,6 @@ const server = createServer(async (req, res) => {
       loadSession: (token) => handleAuth({
         method: 'GET', path: '/auth/session', body: null,
         headers: { ...req.headers, authorization: 'Bearer ' + token },
-        omitOtherGateway: true,
       }),
     })
     if (out !== null) return send(res, out.status, out.body)
@@ -209,7 +216,6 @@ const server = createServer(async (req, res) => {
         const r = await handleAuth({
           method: 'GET', path: '/auth/session', body: null,
           headers: { ...req.headers, authorization: 'Bearer ' + token },
-          omitOtherGateway: true,
         })
         return r?.status === 200
       },
@@ -287,7 +293,7 @@ const server = createServer(async (req, res) => {
   return send(res, 404, { ok: false, error: 'not_found', path })
 })
 
-server.on('upgrade', createUpgradeHandler(RUNTIME_TARGET, runtimeCookie))
+server.on('upgrade', createUpgradeHandler(RUNTIME_TARGET, runtimeCookie, trustedRuntimeContext))
 
 server.listen(PORT, HOST, () => {
   const snap = topologySnapshot()
