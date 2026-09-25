@@ -213,9 +213,18 @@ describe('KVVI mode router', () => {
       args: { pluginId: 'worker-plugin' }, pluginId: 'builder-plugin',
       pluginRunId: 'run', method: 'method',
     } }, worker, ownership)).toThrow('KVVI_DYNAMIC_PLUGIN_ACCESS_DENIED')
+    expect(() => authorizeRuntimeRequest('dynamicCordisRunner/invoke', { args: {
+      args: { agentId: 'customer-42', sessionId: 'business-record-id' },
+      pluginId: 'worker-plugin', pluginRunId: 'run', method: 'method',
+    } }, worker, ownership)).not.toThrow()
     expect(() => authorizeRuntimeRequest('dynamicCordisRunner/resolveRequestRun', { args: {
       resolution: { ok: false, requestId: 'worker-request' }, requestId: 'builder-request',
     } }, worker, ownership)).toThrow('KVVI_DYNAMIC_REQUEST_ACCESS_DENIED')
+    expect(() => authorizeRuntimeRequest('dynamicCordisRunner/syncInspectManifest',
+      { args: { providers: [] } }, worker, ownership))
+      .toThrow('KVVI_DYNAMIC_INSPECTION_MANIFEST_DISABLED')
+    expect(() => authorizeRuntimeRequest('dynamicCordisRunner/syncInspectManifest',
+      { args: { providers: [] } }, builder, ownership)).not.toThrow()
     expect(projectRuntimeFrame('dynamicCordisRunner/inventory', [
       { agentId: workerId, pluginId: 'worker-plugin' },
       { agentId: builderId, pluginId: 'builder-plugin' },

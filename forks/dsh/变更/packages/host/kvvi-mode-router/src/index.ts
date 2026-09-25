@@ -169,6 +169,13 @@ function wireArgument(payload: unknown, key: string): string | undefined {
   return directString((payload as Record<string, unknown>).args, key)
 }
 
+function assertDirectWireIdentity(payload: unknown, mode: ModeContext): void {
+  for (const key of ['sessionId', 'parentSessionId', 'agentId']) {
+    const value = wireArgument(payload, key)
+    if (value !== undefined) assertOwnedSessionId(value, mode)
+  }
+}
+
 /** Bounded ownership cache for correlation and plugin ids whose later calls omit an Agent. */
 export class RuntimeOwnership {
   private readonly requests = new Map<string, string>()
@@ -224,7 +231,13 @@ export function authorizeRuntimeRequest(endpoint: string, wirePayload: unknown,
   if (endpoint === 'session/fork') {
     throw new Error('KVVI_SESSION_FORK_DISABLED')
   }
-  if (endpoint !== 'session/create') visitSessionIds(wirePayload, mode)
+  if (endpoint !== 'session/create') assertDirectWireIdentity(wirePayload, mode)
+  if (endpoint.startsWith('session/') && endpoint !== 'session/create') {
+    visitSessionIds(wirePayload, mode)
+  }
+  if (endpoint === 'dynamicCordisRunner/syncInspectManifest' && mode.gateway !== 'BUILDER') {
+    throw new Error('KVVI_DYNAMIC_INSPECTION_MANIFEST_DISABLED')
+  }
   if (endpoint === 'dynamicCordisRunner/resolveRequestRun') {
     ownership.assertRequest(wireArgument(wirePayload, 'requestId'), mode)
   }
