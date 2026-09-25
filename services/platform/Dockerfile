@@ -18,10 +18,6 @@ COPY services/platform/package.json services/platform/package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 COPY services/platform/src/ ./src/
 COPY services/platform/sql/ ./sql/
-# 工作台页面：KVVI 自己的前端，与平台服务**同镜像发布**。
-# 分开发布（比如静态托管）会引入一条独立部署路径，
-# 而那条路径上的内容不受本镜像的指纹覆盖 —— 「部署的是什么」就说不清了。
-COPY services/platform/ui/ ./ui/
 # 开发工具（造演示账号）。它**不在** `src/`，这是刻意的：
 # `工具/check_publish_channel.py` 静态核查「`src/` 里只有发布通道能写 policies」，
 # 而种子脚本要插 `policies` 的固定装置 —— 放进 `src/` 就会被正确地报成旁路。
@@ -34,7 +30,7 @@ COPY services/platform/dev/ ./dev/
 # `EACCES: permission denied, open '/app/src/auth.mjs'` 然后无限重启。
 # 那个报错看起来像代码 bug，实际是构建机的 umask 泄漏进了镜像。
 # 镜像的可运行性不该取决于构建机的 umask，所以在这里抹平。
-RUN chmod -R a+rX /app/src /app/sql /app/ui /app/dev /app/node_modules
+RUN chmod -R a+rX /app/src /app/sql /app/dev /app/node_modules
 
 # 阶段四起本进程需要一个数据库驱动（`pg`）—— 它要访问平台库。
 #

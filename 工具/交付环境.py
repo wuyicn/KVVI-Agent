@@ -161,17 +161,6 @@ def main() -> int:
             'dshPackagesPresent:b.dshPackagesPresent}));'
             ' const r=await fetch(base+\'/\'); console.log(JSON.stringify({root:r.status,'
             'title:(await r.text()).match(/<title>([^<]*)</)?.[1]||null}));'
-            # KVVI 工作台：由**平台进程自己**应答，不经运行时进程。
-            # 干净环境里验它，是因为「页面文件有没有被打进镜像」这件事
-            # 只有在镜像里才验得到 —— 开发机上文件一直在，看不出来。
-            ' const w=await fetch(base+\'/workbench\');'
-            ' const wt=await w.text();'
-            ' console.log(JSON.stringify({workbench:w.status,'
-            'contentType:w.headers.get(\'content-type\'),'
-            'byPlatform:w.headers.get(\'x-kvvi-process\'),'
-            'hasTitle:/KVVI 工作台/.test(wt)}));'
-            ' const noTok=await fetch(base+\'/workbench/api/session\');'
-            ' console.log(JSON.stringify({workbenchApiNoToken:noTok.status}));'
             '})().catch(e=>{console.error(String(e));process.exit(1)})"'
             % (shlex.quote(COMPOSE), shlex.quote(PROJECT)), timeout=180)
         void = HOST_PORT
@@ -198,21 +187,6 @@ def main() -> int:
             print('  %s✓ 根路径 %s（到达 DSH web，未带 token 时这是预期结果）%s'
                   % (C_OK, root.get('root'), C_OFF))
 
-        # ── KVVI 工作台：员工侧入口 ──────────────────────────────────────
-        wb = next((f for f in facts if 'workbench' in f), {})
-        wbapi = next((f for f in facts if 'workbenchApiNoToken' in f), {})
-        if wb.get('workbench') == 200 and wb.get('hasTitle'):
-            print('  %s✓ 工作台 /workbench 200（由 %s 应答，页面标题正确）%s'
-                  % (C_OK, wb.get('byPlatform'), C_OFF))
-        else:
-            print('  %s✗ 工作台 /workbench 未通过：%s%s' % (C_BAD, wb, C_OFF))
-            return 1
-        if wbapi.get('workbenchApiNoToken') == 401:
-            print('  %s✓ 未带令牌读工作台会话 → 401（不回落到默认身份）%s' % (C_OK, C_OFF))
-        else:
-            print('  %s✗ 未带令牌读工作台会话返回 %r，期望 401%s'
-                  % (C_BAD, wbapi.get('workbenchApiNoToken'), C_OFF))
-            return 1
 
         print()
         print('[6] 记证据')

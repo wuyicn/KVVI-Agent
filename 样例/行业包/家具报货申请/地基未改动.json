@@ -24,8 +24,8 @@
     },
     "platform-service": {
       "path": "services/platform",
-      "digest": "sha256:76c0f0b19764ebb6968109db057432f9fe48ce849bbf19ad4eaff0250851e70a",
-      "fileCount": 55
+      "digest": "sha256:2ad14e0e3ca6c4b3b69702285fcc617b3be3594d1762a6f858aaf1a916d3b3d0",
+      "fileCount": 52
     },
     "runtime-service": {
       "path": "services/runtime",
@@ -80,6 +80,12 @@
     },
     {
       "reason": "工作台界面改版：修掉 send() 把 HTML 当 JSON 序列化（页面全白）的缺陷，能力码加中文标签与分组，会话投影补展示名",
+      "changedComponents": [
+        "platform-service"
+      ]
+    },
+    {
+      "reason": "撤掉 KVVI 自建工作台：界面路线改为在 DSH 自带界面上加功能（走 DSH 的槽位系统），不再另做一套前端",
       "changedComponents": [
         "platform-service"
       ]

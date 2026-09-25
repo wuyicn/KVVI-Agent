@@ -83,7 +83,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-Skill-产出验收.txt",
-      "digest": "sha256:0bce2fb0ad05ade0f9228ce8ab1c0ea39a42600e5ddee3b2c76795b798e1d4c7"
+      "digest": "sha256:d514ca8054367003e9b5e219c5184235e2614dcb135a17f0e7b1d30afdc7d6a6"
     },
     {
       "stage": "阶段三",
@@ -101,7 +101,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-去行业化自查（0A-14）.txt",
-      "digest": "sha256:9b0c4e59557520168fdfd2b30bcf913868c92abed32e15aa12f662f89804ecdf"
+      "digest": "sha256:0a5eee98dec849a9ead33ab8a946540c3841a575c2504d291b16009e6b5b14b5"
     },
     {
       "stage": "阶段三",
@@ -119,7 +119,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段四-锚点①②③④⑥-全量.txt",
-      "digest": "sha256:f823bb0f339d7ef625c0b92a9a7673ad43f2fed9998ba40b5ce238f52be40a6b"
+      "digest": "sha256:77910c9fad7d54bc8b52fcca353ceee58c52a7e35e48d8dd662cd15cfce3c43b"
     },
     {
       "stage": "阶段五",
@@ -128,7 +128,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段五-锚点①②③④-全量.txt",
-      "digest": "sha256:2d9d972965bfe1798626ab99590c25da0f13c621f0a54e50854ce06a5b98d0ec"
+      "digest": "sha256:b5c6beb36bc417766b919520dbd3a9f0fae504c2cea3e449f7496ef946401b17"
     },
     {
       "stage": "阶段六",
@@ -146,7 +146,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/贯穿-交付包清单_版本_指纹.txt",
-      "digest": "sha256:d66264f6f0308d5fec7b3d785500cb05ec2b74d0564e8d93de66b92f3a208e76"
+      "digest": "sha256:a076916abc09badf0ae57ae112162a6dde88092972e9f2bc623dac92eff38ecf"
     },
     {
       "stage": "贯穿",
@@ -155,7 +155,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/贯穿-干净环境部署.txt",
-      "digest": "sha256:15e4cad77590549643bfa33ec037d812becb16e022d807e967c3e0b458e9bbf6"
+      "digest": "sha256:f271dd1517f28e655d9c62c6d54bb9f868c5e1dbe649ce078e34b8cc575977b4"
     },
     {
       "stage": "贯穿",
@@ -167,7 +167,7 @@
       "digest": "sha256:29135a461fc72cea7575e99bdb2ec96c4260f8e8304816ab0e5ae00cc05e3fef"
     }
   ],
-  "deliveryDigest": "sha256:75fbcaf6023a3162d47833dcc316b511cb61d1056c7b425f8d1acd2774d88bc1",
+  "deliveryDigest": "sha256:869f0236e039d00c521a5d8cc40c2dc9a702a83678b7e14024be327aa2823c22",
   "failed": [],
-  "bundleDigest": "sha256:4f01e8d292bab426ce6b864c0ae59075c67fcff9f56a58268d8dfac1ca7e4ef7"
+  "bundleDigest": "sha256:615eadf6e5c0bca79180551e7d59934b9fd0af8fa4b60dcd43b317226401d0cb"
 }

@@ -71,7 +71,7 @@ $ python3 工具/check_skill_output.py --self-test
     [90m未覆盖（已知未做，不是「不知道」）：#4 的「字段类型×操作符×值类型」与「分支覆盖矩阵」两种读法 —— 契约只给了名称，没给判据。[0m
   [32m✓ 通过[0m
 [32m=== 搭建产出验收 ===[0m
-  产出物 : ../../../../var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/tmpow8i194j.json
+  产出物 : ../../../../var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/tmp001495ql.json
   契约   : workflow-spec/v1alpha1
 
 [33m[仅结构校验][0m
@@ -82,7 +82,7 @@ $ python3 工具/check_skill_output.py --self-test
 
 [32m[complete check] 契约自己声明的五项[0m
   [32m=== workflow-spec complete check ===[0m
-    产出物 : ../../../../var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/tmpow8i194j.json
+    产出物 : ../../../../var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/tmp001495ql.json
     条目   : spec
     结构   : structure_only（官方验证器；complete check 建立在它之上）
     [3] graph order                            [32m✓ PASS[0m
