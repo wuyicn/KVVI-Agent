@@ -28,11 +28,21 @@ const PLATFORM_BASE = ''
  */
 const KVVI_OPEN_EVENT = 'kvvi-panel:open'
 
+interface PublishedSystem {
+  readonly systemId: string
+  readonly assetId: string
+  readonly name: string
+  readonly schemaCode: string
+  readonly publishedAt: string
+}
+
 interface PanelData {
   readonly error?: string
   readonly companyName?: string | null
   readonly login?: string | null
   readonly capabilities?: readonly string[]
+  readonly systems?: readonly PublishedSystem[]
+  readonly sources?: Readonly<Record<string, { wired: boolean; reason?: string }>>
 }
 
 /**
@@ -72,6 +82,11 @@ interface Block {
  * @returns blocks to render, in employee-priority order.
  */
 function blocksOf(data: PanelData): readonly Block[] {
+  const once = data.sources ?? {}
+  const wired = (name: string): boolean => once[name]?.wired === true
+  const reason = (name: string): string =>
+    `尚未接通：${once[name]?.reason ?? '原因未标注'}`
+
   return [
     {
       title: '待办',
@@ -83,7 +98,12 @@ function blocksOf(data: PanelData): readonly Block[] {
     {
       title: '我的系统',
       hint: '本公司已发布的业务系统',
-      lines: ['发布通道的已发布版本还没有对外列表接口'],
+      lines: !wired('systems')
+        ? [reason('systems')]
+        : (data.systems ?? []).length === 0
+          // 空列表与「读不到」是两件事：前者是事实，后者要去看原因。
+          ? ['本公司还没有已发布的业务系统']
+          : (data.systems ?? []).map(s => `${s.name}（${s.assetId}）`),
     },
     {
       title: '我的权限',
