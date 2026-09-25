@@ -46,12 +46,96 @@ const isSingleAdmin = new Set(Object.values(ADMIN_BY_DB)).size === 1
 const adminFor = (db) =>
   new Client({ connectionString: ADMIN_BY_DB[db].replace(/\/[^/]*$/, `/${db}`) })
 
-/** 逐库执行一段 SQL。pg 的 simple query 支持多语句，但整段是一个事务单位。 */
-async function applyFile(db, file) {
+/**
+ * **已应用过的迁移不再重跑。**
+ *
+ * ── 为什么必须有这张表 ────────────────────────────────────────────────────
+ *
+ * 迁移器此前只是逐文件跑 `CREATE TABLE IF NOT EXISTS`。那个形状有一个
+ * **不会报错**的失败：往一个**已跑过的文件**里加新表，
+ * 对已有数据的库永远不生效 —— 实测就是这么撞上的：
+ * `published_contracts` 跑完迁移仍然不存在，而迁移日志说「成功」。
+ *
+ * 手工补表不是修法：交付给客户时没人知道该补什么。
+ *
+ * ── 对**已经存在**的库怎么处理 ────────────────────────────────────────────
+ *
+ * 那类库没有这张表，但它们**显然已经应用过**那些文件（表都在）。
+ * 所以不能「没记录就全部重跑」—— 重跑 `30-audit.sql` 会重复建函数。
+ *
+ * 判据用**库自己的结构**：看 `users` 在不在。在，说明基线迁移已经应用过，
+ * 于是把基线文件记为已应用，只跑**基线之后新增**的那些。
+ * 这与「看记录表」不同 —— 记录表是这次才有的，不能拿它判断历史。
+ */
+const MIGRATION_LEDGER = `CREATE TABLE IF NOT EXISTS schema_migrations (
+  file       text PRIMARY KEY,
+  applied_at timestamptz NOT NULL DEFAULT now()
+)`
+
+/**
+ * 首版就存在的迁移文件。对**已有数据的库**，这些视为已应用 ——
+ * 它们的表已经在库里，重跑只会出错。**新增迁移一律另起编号，不要动这批。**
+ *
+ * ⚠️ 这份名单必须**完整**。第一次写时漏了 `20` 与 `30`（业务库与审计库），
+ * 结果是它们在已有数据的库上被重跑了一遍。那次没炸纯属运气 ——
+ * 两个文件里的 DDL 都恰好是幂等的。换成一个 `CREATE FUNCTION` 就会直接失败，
+ * 而失败信息里看不出「因为漏登记所以要重跑」。
+ */
+const BASELINE_FILES = Object.freeze([
+  '10-platform.sql', '15-visitor.sql', '16-publish.sql',
+  '17-rate.sql', '18-retention.sql', '20-business.sql', '30-audit.sql',
+])
+
+/**
+ * 这个库在**本轮迁移开始之前**是不是空的。
+ *
+ * ⚠️ 探针必须在**开跑之前**做一次，不能在每个文件执行时现查。
+ *
+ * 第一版就是每个文件现查 `users` 在不在，结果是：全新库上
+ * `10-platform.sql` 刚把 `users` 建出来，接着处理 `16-publish.sql` 时
+ * 探针说「在」→ 判为已应用 → 跳过 → 而 `21` 要 `publish_records` 外键，
+ * 于是整个迁移以 `relation "publish_records" does not exist` 失败。
+ *
+ * **一个只看「现在有没有表」的探针，会把本轮刚建的算成历史遗留。**
+ * @param client 管理连接
+ * @returns 库里已经有基线结构时为 true
+ */
+async function preexistingDatabase(client) {
+  const probe = await client.query(
+    `SELECT to_regclass('public.users') IS NOT NULL AS present`)
+  return probe.rows[0].present === true
+}
+
+/**
+ * 逐库执行一段 SQL，并在账本里记下已应用。
+ *
+ * @param db 目标库
+ * @param file 迁移文件名
+ * @param {boolean} preexisting 该库在本轮开始前是否已有结构
+ * @returns {Promise<{file: string, state: string}>} 三种状态之一
+ */
+async function applyFile(db, file, preexisting) {
   const client = adminFor(db)
   await client.connect()
   try {
+    await client.query(MIGRATION_LEDGER)
+    const before = await client.query(
+      'SELECT 1 FROM schema_migrations WHERE file = $1', [file])
+    if (before.rows.length === 1) return { file, state: 'already-applied' }
+
+    // 已有数据的库：没有账本记录，但基线迁移确实跑过（表都在）。
+    // 全新库：一个都不算跑过，全部照跑。
+    if (preexisting && BASELINE_FILES.includes(file)) {
+      await client.query(
+        'INSERT INTO schema_migrations (file) VALUES ($1) ON CONFLICT DO NOTHING',
+        [file])
+      return { file, state: 'bootstrapped-as-applied' }
+    }
+
     await client.query(readFileSync(resolve(SQL_DIR, file), 'utf8'))
+    await client.query(
+      'INSERT INTO schema_migrations (file) VALUES ($1) ON CONFLICT DO NOTHING', [file])
+    return { file, state: 'applied' }
   } finally {
     await client.end()
   }
@@ -132,19 +216,33 @@ async function main() {
       ...await provision({ dsn: ADMIN_BY_DB.kvvi_business, roles: ['kvvi_business'], databases: ['kvvi_business'], passwords }),
       ...await provision({ dsn: ADMIN_BY_DB.kvvi_audit, roles: ['kvvi_audit_writer', 'kvvi_audit_reader'], databases: ['kvvi_audit'], passwords }),
     ]
-  await applyFile('kvvi_platform', '10-platform.sql')
-  await applyFile('kvvi_platform', '15-visitor.sql')
-  await applyFile('kvvi_platform', '16-publish.sql')
-  await applyFile('kvvi_platform', '17-rate.sql')
-  await applyFile('kvvi_platform', '18-retention.sql')
-  await applyFile('kvvi_business', '20-business.sql')
-  await applyFile('kvvi_audit', '30-audit.sql')
+  // ★ 每个库各探一次，**在本轮任何迁移之前**。
+  const pre = {}
+  for (const db of ['kvvi_platform', 'kvvi_business', 'kvvi_audit']) {
+    const client = adminFor(db)
+    await client.connect()
+    try { pre[db] = await preexistingDatabase(client) } finally { await client.end() }
+  }
+
+  const migrations = []
+  migrations.push(await applyFile('kvvi_platform', '10-platform.sql', pre.kvvi_platform))
+  migrations.push(await applyFile('kvvi_platform', '15-visitor.sql', pre.kvvi_platform))
+  migrations.push(await applyFile('kvvi_platform', '16-publish.sql', pre.kvvi_platform))
+  migrations.push(await applyFile('kvvi_platform', '17-rate.sql', pre.kvvi_platform))
+  migrations.push(await applyFile('kvvi_platform', '18-retention.sql', pre.kvvi_platform))
+  migrations.push(await applyFile('kvvi_platform', '21-systems-and-contracts.sql', pre.kvvi_platform))
+  migrations.push(await applyFile('kvvi_business', '20-business.sql', pre.kvvi_business))
+  migrations.push(await applyFile('kvvi_audit', '30-audit.sql', pre.kvvi_audit))
   await grantPlatform()
   await grantBusiness()
   await grantAudit()
   console.log(JSON.stringify({
     event: 'kvvi-migrate-done',
     provision: steps,
+    // **三种状态分列**：`applied` 这次真跑了，`already-applied` 之前跑过，
+    // `bootstrapped-as-applied` 是**已有数据的库**被认定为跑过。
+    // 混成一个「成功」会把「新迁移压根没生效」藏起来。
+    migrations,
     databases: ['kvvi_platform', 'kvvi_business', 'kvvi_audit'],
   }))
 }

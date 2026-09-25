@@ -383,10 +383,18 @@ def check_dynamic() -> bool:
         if rc == 0 and '<title>KVVI' in body and code2.strip().startswith('2'):
             print('  %s✓%s 端到端：KVVI 账号登录 → 到达界面（复访 HTTP %s）%s'
                   % (C_OK, C_OFF, code2.strip(), C_OFF))
+        elif '<title>KVVI' in body:
+            # 页面是 KVVI 页面，但复访被门拦回了登录页 —— **最常见的原因是没建演示账号**。
+            # 空库登录必然失败，而这条失败若只报 HTTP 303，读的人会去查门，
+            # 而门是对的。所以把「大概是什么」直接说出来。
+            print('  %s✗ 端到端失败：登录后被拦回登录页（HTTP %r）%s'
+                  % (C_BAD, code2.strip(), C_OFF))
+            print('    %s→ 最常见原因：**库里没有演示账号**。先跑：%s'
+                  % (C_DIM, './scripts/kvvi-up.sh --seed-dev', C_OFF))
+            ok = False
         else:
             ok = False
-            print('  %s✗ 端到端失败：复访 HTTP %r；页面含 KVVI 标题=%s；'
-                  '（需要已建演示账号：scripts/kvvi-up.sh --seed-dev）%s'
+            print('  %s✗ 端到端失败：复访 HTTP %r；页面含 KVVI 标题=%s%s'
                   % (C_BAD, code2.strip(), '<title>KVVI' in body, C_OFF))
 
     return ok

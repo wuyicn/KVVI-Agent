@@ -1,9 +1,9 @@
 {
   "check": "delivery-bundle",
   "file": "交付/包/kvvi-delivery.tar.gz",
-  "entries": 12401,
-  "bytes": 26384107,
-  "sha256": "543b72a7bcf1b359d98d48f6ece49e3ded8fa71d3a5e306db839cbfc037362d3",
+  "entries": 12404,
+  "bytes": 26390657,
+  "sha256": "0ec9af228f845acd93fa364e931ff6d2e2f83633bb6c82bcd81a5e65ced9f33c",
   "forkUpstream": "local-archive",
   "note": "fork 取自**重建产物**而非工作副本；重建结果已与指纹逐字节比对。"
 }

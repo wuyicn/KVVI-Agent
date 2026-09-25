@@ -11,12 +11,12 @@ PRD 指纹 : sha256:0d9206ae0b6e1f510f6a308bb886a726a1b01b8145beabc638fbae5c69b3
   [32m✓[0m protocol                   v—             6 个文件  sha256:037deae300c2e148bb3e682
   [32m✓[0m meta-schema-validator      v—            46 个文件  sha256:7809b076937962f6f60c25e
   [32m✓[0m meta-schema-validator-full v—             2 个文件  sha256:205467323bf764da4ba3f37
-  [32m✓[0m platform-service           v0.1.0        57 个文件  sha256:69d1dda9bd4e3af2d80286c
+  [32m✓[0m platform-service           v0.1.0        58 个文件  sha256:6f62e249f10b2c8d6d9eae3
   [32m✓[0m runtime-service            v—             4 个文件  sha256:328459382433f5350e15599
   [32m✓[0m agent-preset-builder       v—             8 个文件  sha256:3e4df51a332fe205f06ed0f
   [32m✓[0m agent-preset-worker        v—             2 个文件  sha256:cf7f98c0b0a62f2412ee752
   [32m✓[0m client-plugin-brand        v—             6 个文件  sha256:50f2de6233a0f6671445c83
   [32m✓[0m bundle-kvvi-app            v—             5 个文件  sha256:60eec2d3760035fd5fe897c
-  [32m✓[0m schema-samples             v—            94 个文件  sha256:eede3b7fae5a3448aac5aaa
+  [32m✓[0m schema-samples             v—            94 个文件  sha256:6ce4fd40a4b63d08a0cf38a
 
 [32m✓ 组件清单、版本与指纹三者一致；交付内容中无私钥[0m

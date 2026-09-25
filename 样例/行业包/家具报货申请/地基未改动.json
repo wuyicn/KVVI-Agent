@@ -24,8 +24,8 @@
     },
     "platform-service": {
       "path": "services/platform",
-      "digest": "sha256:69d1dda9bd4e3af2d80286ce8aad2cc3299d0a403451745e39050bfd3ceb3529",
-      "fileCount": 57
+      "digest": "sha256:6f62e249f10b2c8d6d9eae3429163912510032bac0f83299ca73e1cd12e494ff",
+      "fileCount": 58
     },
     "runtime-service": {
       "path": "services/runtime",
@@ -125,6 +125,12 @@
     },
     {
       "reason": "契约存储：新增 published_contracts 表与 contracts.mjs，发布时在同一个事务里登记契约内容",
+      "changedComponents": [
+        "platform-service"
+      ]
+    },
+    {
+      "reason": "迁移加版本账本：schema_migrations 表 + 编号迁移文件，新结构不再加进已跑过的文件",
       "changedComponents": [
         "platform-service"
       ]

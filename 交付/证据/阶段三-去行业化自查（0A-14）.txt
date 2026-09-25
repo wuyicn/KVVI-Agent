@@ -4,7 +4,7 @@ $ python3 工具/check_industry_neutral.py
 判据：代码里没有「报货单」这类家具词（KVVI-Builder progress.json）
 
 [1] 扫描面
-  文件 1515 个，词表 40 个词（8 个行业）
+  文件 1516 个，词表 40 个词（8 个行业）
 
 [2] 负向：地基里没有行业词
   ✓ 0 处违规
