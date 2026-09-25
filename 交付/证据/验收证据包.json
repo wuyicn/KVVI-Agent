@@ -28,6 +28,10 @@
     {
       "stage": "贯穿",
       "title": "交付完整性"
+    },
+    {
+      "stage": "阶段八",
+      "title": "身份入口闭环"
     }
   ],
   "entries": [
@@ -165,9 +169,36 @@
       "ok": true,
       "evidence": "交付/证据/贯穿-fork-可重建（N1_N2）.txt",
       "digest": "sha256:80a05cbb8faaf943e5a362a87fb4b35cd74ef1511aec9638b11cf31b8dec5d64"
+    },
+    {
+      "stage": "阶段八",
+      "name": "G6 身份与模式路由",
+      "command": "python3 工具/check_stage8.py --run-only",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段八-G6-身份与模式路由.txt",
+      "digest": "sha256:879491fbe69f3e0716af2eb30887e0a96a16c3318face4dc8a02df11aebf6cac",
+      "commit": "8f49efc0eeae6359c0edde9ef3e8b485935b8c19",
+      "evidenceClasses": [
+        "role_policy",
+        "login_api",
+        "runtime_preset",
+        "topology"
+      ],
+      "sourceDigests": {
+        "services/platform/src/mode-policy.mjs": "sha256:dc9a28e1a5e831e8ea27aaeefb40203082a72c774b0bf5da983e6adfa0ccbbcd",
+        "services/platform/src/gate.mjs": "sha256:a8a69223b4f88b47f9e476711d6354fcb6106f6fe67254b7e49764b5450e31fb",
+        "services/platform/src/proxy.mjs": "sha256:a1f8c4da3228593ce908316671b97fa43de71920135e5bb476931180e3ed60a4",
+        "services/platform/src/runtime-auth.mjs": "sha256:a7dad22f6918ec020c352799a118081f999ef1c5b217c820c679af6cf0ec101b",
+        "services/platform/tests/mode-policy.test.mjs": "sha256:09a3c4bcb32c71272578f67d6142a131cf8f5d2d46a1799782d5b675f248cf0e",
+        "services/platform/tests/login-gate.test.mjs": "sha256:4aa016e679171764b36a78e82a34741ccf36730b6290e887ecd853a76a6ada25",
+        "services/platform/tests/runtime-routing.test.mjs": "sha256:8a7f2561326e7672328c61a1b107a395c984b51816ea9a1410e075e87fcadd54",
+        "forks/dsh/变更/packages/host/kvvi-mode-router/src/index.ts": "sha256:4808ad8f16fd1014884dec3ad6e7e77330c099e57bf8cf90fa4679f8f7e21dc9",
+        "forks/dsh/变更/packages/host/kvvi-mode-router/tests/mode-router.spec.ts": "sha256:eadd8ed5f1a7af88159d5e849c878fb665d3638bd01efc2ba97549f757cd742c"
+      }
     }
   ],
   "deliveryDigest": "sha256:575e21977d1099bd4c3283d0b17a78a35c211a79e2eeed5f97593dd28401dcb8",
   "failed": [],
-  "bundleDigest": "sha256:32efe7981c58c948f9b0026c071a380155f3562361f42a52e1cac185dd7813cd"
+  "bundleDigest": "sha256:a43e5bb00f03ba3ba8545b46b3e11bf236c160bc67b33089b9f12568e79d732c"
 }
