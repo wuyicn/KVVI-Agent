@@ -27,3 +27,10 @@
     # is why the KVVI brand requires no edit to any upstream source file.
     - id: kvvi-brand
       name: '@deepseek-ai/dsh-client-kvvi-brand'
+    # KVVI's own business panel: a sidebar entry plus an overlay page
+    # (pending approvals, systems, permissions, aggregates). It fills two
+    # `list` slots declared by upstream (`sidebar.footer.action` from
+    # ui-sidebar, `shell.overlay` from ui-layout), so it appends rather than
+    # replaces and needs no upstream source edit.
+    - id: kvvi-panel
+      name: '@deepseek-ai/dsh-client-kvvi-panel'
