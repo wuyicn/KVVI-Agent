@@ -242,10 +242,14 @@ describe('KVVI mode router', () => {
         requestId: 'builder-request', agentId: builderId, pluginId: 'builder-plugin',
       }] }
       broadcast.publish(leaked)
+      broadcast.publish({ type: 'emit', event: 'commands/change', args: [] })
       await vi.waitFor(() => {
         expect(builderClient.frames.some(frame => frame.type === 'item'
           && typeof frame.value === 'object' && frame.value !== null
           && Reflect.get(frame.value, 'event') === 'cordis/request-run')).toBe(true)
+        expect(workerClient.frames.some(frame => frame.type === 'item'
+          && typeof frame.value === 'object' && frame.value !== null
+          && Reflect.get(frame.value, 'event') === 'commands/change')).toBe(true)
       })
       expect(workerClient.frames.some(frame => frame.type === 'item'
         && typeof frame.value === 'object' && frame.value !== null
