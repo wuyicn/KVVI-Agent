@@ -83,7 +83,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-Skill-产出验收.txt",
-      "digest": "sha256:23464c2a62dc4831188aba31b83abaf5ec7feec14efc0e488e11d5e00643562b"
+      "digest": "sha256:a2644d303c424923c9448ce5a1aba58729a75198b47048530a9a3188d37daed6"
     },
     {
       "stage": "阶段三",
@@ -101,7 +101,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-去行业化自查（0A-14）.txt",
-      "digest": "sha256:4958c929700c21679386d739388b035b4b791126a774f06a80a2d13df215d806"
+      "digest": "sha256:21b5053d3e6845afa348c9c3a8b164a618fce9dfeb092612c6f2f2c5b03a33d0"
     },
     {
       "stage": "阶段三",
@@ -119,7 +119,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段四-锚点①②③④⑥-全量.txt",
-      "digest": "sha256:77910c9fad7d54bc8b52fcca353ceee58c52a7e35e48d8dd662cd15cfce3c43b"
+      "digest": "sha256:1d654b346121fccf963a4e0a781c7242cefadc700fd97506e4286cf271b2004f"
     },
     {
       "stage": "阶段五",
@@ -128,7 +128,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段五-锚点①②③④-全量.txt",
-      "digest": "sha256:b5c6beb36bc417766b919520dbd3a9f0fae504c2cea3e449f7496ef946401b17"
+      "digest": "sha256:37117ce6292bf9c3c609a40e41f14114a16de7ce82e31ceb76cc83280cf908d3"
     },
     {
       "stage": "阶段六",
@@ -146,7 +146,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/贯穿-交付包清单_版本_指纹.txt",
-      "digest": "sha256:483895d0686ff603cbf7743fc58bf38de9f5c109275f83f4bde0967558de213c"
+      "digest": "sha256:85e4abd9da5ffa7b97a3ffd55d0b8e1e7ddbe7c0a7b3aecf21414f7030a0444a"
     },
     {
       "stage": "贯穿",
@@ -167,7 +167,7 @@
       "digest": "sha256:80a05cbb8faaf943e5a362a87fb4b35cd74ef1511aec9638b11cf31b8dec5d64"
     }
   ],
-  "deliveryDigest": "sha256:ba44a3abaddb022d641ad1bfa3025c473e8a22ecd349d86d5ae6c3a92276ef61",
+  "deliveryDigest": "sha256:d45cd24cf04868ab6b2f225c13a279ae234d6f44a3dc1836045f0b9443f8307f",
   "failed": [],
-  "bundleDigest": "sha256:8b180773689b4532b738015ab2b522c2a65a293f6fb41a986d512b005a005192"
+  "bundleDigest": "sha256:4700ab0c0f3208e7b3d193347992eafb29d0ffe56e4471a3a11e59e7b149265f"
 }

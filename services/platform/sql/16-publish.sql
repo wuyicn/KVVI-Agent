@@ -86,3 +86,46 @@ CREATE TABLE IF NOT EXISTS systems (
 );
 
 CREATE INDEX IF NOT EXISTS systems_by_company ON systems (company_id);
+
+-- 已发布契约的**内容**。
+--
+-- ── 为什么需要它（这是四个功能共同的坑）────────────────────────────────────
+--
+-- 发布通道此前只记「发布了」这件事（草案、审批、发布记录、已发布系统名），
+-- 而**契约内容本身没有被任何服务持有**。于是四件事同时做不成：
+--   1. 工作台列得出系统名，但**打不开系统界面**（界面要 view-schema）；
+--   2. 待办说不清「哪些单在我这一步」（要读 workflow-spec 的状态机）；
+--   3. 聚合口径列不出来（口径随 business-schema 走）；
+--   4. 员工客户端登录后**同步不到系统定义**（B 路线的断点）。
+--
+-- 不是四个问题，是同一个：**契约内容没有落点**。
+--
+-- ── 这张表刻意不做什么 ────────────────────────────────────────────────────
+--
+-- 它**不校验**契约是否合法 —— 那是官方验证器（tools/meta-schema）的事，
+-- 在本服务里再判一遍就是第二份判据，而两份判据迟早分叉。
+-- 它只做两件事：**原样存**（带内容指纹）与**按版本读**。
+--
+-- 它**不合并版本**。每次发布产生一行新版本，旧行保留 ——
+-- §4.1.1 五要求「每次发布产生新的契约版本，版本号单调递增」，
+-- 覆盖式写入会让「回滚」与「版本不符即拒绝」两条都失去依据。
+CREATE TABLE IF NOT EXISTS published_contracts (
+  contract_id   bigserial PRIMARY KEY,
+  company_id    uuid NOT NULL REFERENCES companies(company_id),
+  -- 契约类型。用契约自己的 `contract_version` 前缀，不另发明一套枚举。
+  contract_type text NOT NULL,
+  -- 系统代号。与 systems.asset_id 对齐；非系统级契约（如平台级配置）可为空。
+  asset_id      text,
+  -- 版本：同一 (公司, 类型, 代号) 内单调递增。
+  version       integer NOT NULL,
+  -- 内容指纹。**同版本不同内容 = 有人改过**，读取时据此拒绝。
+  digest        text NOT NULL,
+  content       jsonb NOT NULL,
+  -- 它是哪一次发布带进来的。删除发布记录时本行跟着走。
+  published_record bigint NOT NULL REFERENCES publish_records(record_id),
+  published_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (company_id, contract_type, asset_id, version)
+);
+
+CREATE INDEX IF NOT EXISTS published_contracts_latest
+  ON published_contracts (company_id, contract_type, asset_id, version DESC);

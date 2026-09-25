@@ -24,8 +24,8 @@
     },
     "platform-service": {
       "path": "services/platform",
-      "digest": "sha256:bce2cf10d0781eca963202971397202d6166e0adf08798b94da698eb7d63fb59",
-      "fileCount": 55
+      "digest": "sha256:69d1dda9bd4e3af2d80286ce8aad2cc3299d0a403451745e39050bfd3ceb3529",
+      "fileCount": 57
     },
     "runtime-service": {
       "path": "services/runtime",
@@ -119,6 +119,12 @@
     },
     {
       "reason": "已发布业务系统登记表（systems）：发布通道首次记录「发布的是哪个系统」，工作台据此列出「我的系统」",
+      "changedComponents": [
+        "platform-service"
+      ]
+    },
+    {
+      "reason": "契约存储：新增 published_contracts 表与 contracts.mjs，发布时在同一个事务里登记契约内容",
       "changedComponents": [
         "platform-service"
       ]

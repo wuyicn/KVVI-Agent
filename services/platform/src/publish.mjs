@@ -23,6 +23,7 @@
  */
 import { createHash, randomUUID } from 'node:crypto'
 import { pool, withTransaction } from './db.mjs'
+import { recordContracts } from './contracts.mjs'
 import { append, appendDenial } from './audit.mjs'
 import { checkSelfApproval, isPlatformAdmin, checkGateway } from './authorization.mjs'
 
@@ -191,9 +192,14 @@ export async function approveDraft({ ctx, draftId, decision, opinion = null, cha
  * @param {object} [input.system] 本次发布**产出的业务系统**：
  *   `{ assetId, name, schemaCode }`。缺省时不登记 —— 但那样工作台的
  *   「我的系统」列不出这一项，所以正常路径必须给。
+ * @param {Array<{contractType: string, assetId: string|null, content: unknown}>} [input.contracts]
+ *   本次发布的**契约内容**。缺省时不登记 —— 但那样员工端同步不到系统定义、
+ *   待办与聚合口径也读不到，所以正常路径必须给。
  * @returns {Promise<object>} 发布结果
  */
-export async function publishDraft({ ctx, draftId, apply, system = null }) {
+export async function publishDraft({
+  ctx, draftId, apply, system = null, contracts = [],
+}) {
   const { rows } = await pool('platform').query(
     `SELECT * FROM publish_drafts WHERE draft_id = $1`, [draftId])
   if (rows.length !== 1) throw new PublishError('KVVI_NO_SUCH_DRAFT')
@@ -242,6 +248,18 @@ export async function publishDraft({ ctx, draftId, apply, system = null }) {
                published_at = EXCLUDED.published_at`,
         [randomUUID(), draft.company_id, system.assetId, system.name,
          system.schemaCode, rec.rows[0].record_id])
+    }
+    // ★ 契约内容与发布记录**同事务**。
+    //
+    // 契约内容是权限判定与界面渲染的输入。分开写会留下「发布了但内容没到」
+    // 的窗口 —— 那个窗口里员工能打开一个系统名却打不开界面，
+    // 而排查线索只有一条时序。
+    if (contracts.length > 0) {
+      await recordContracts(client, {
+        companyId: draft.company_id,
+        contracts,
+        publishedRecord: rec.rows[0].record_id,
+      })
     }
   })
   await append({
