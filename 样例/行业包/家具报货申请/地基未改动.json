@@ -24,7 +24,7 @@
     },
     "platform-service": {
       "path": "services/platform",
-      "digest": "sha256:85b7495e757c453ef23c47a8483a3e2d13898080d7b131d3163aae370bf73abe",
+      "digest": "sha256:bce2cf10d0781eca963202971397202d6166e0adf08798b94da698eb7d63fb59",
       "fileCount": 55
     },
     "runtime-service": {
@@ -116,6 +116,12 @@
     {
       "reason": "登录门接线（gate.mjs / runtime-auth.mjs / 只读挂载运行时凭据）后的最终指纹对齐",
       "changedComponents": []
+    },
+    {
+      "reason": "已发布业务系统登记表（systems）：发布通道首次记录「发布的是哪个系统」，工作台据此列出「我的系统」",
+      "changedComponents": [
+        "platform-service"
+      ]
     }
   ]
 }

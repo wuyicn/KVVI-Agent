@@ -29,6 +29,7 @@
 
 /** 会话 Cookie 名。与登录门共用同一个常量，避免两处各写一个字符串。 */
 import { tokenFromCookie } from './gate.mjs'
+import { publishedSystems } from './publish.mjs'
 
 /** 面板数据的路径前缀，与浏览器半的相对路径一致。 */
 const PREFIX = '/kvvi'
@@ -87,25 +88,40 @@ export async function handlePanel({ method, path, headers, loadSession }) {
   if (!out) return { status: 401, body: { error: 'KVVI_INVALID_TOKEN' } }
   if (out.status !== 200) return out
 
+  const p = out.body
+  const companyId = p.companyId ?? null
+
+  // 「我的系统」：本公司已发布的业务系统。查询只按会话绑定的公司过滤 ——
+  // 跨公司的行在这里**根本不可能出现**，因为公司来自会话而不是请求参数。
+  let systems = []
+  let systemsError = null
+  try {
+    systems = companyId === null ? [] : await publishedSystems(companyId)
+  } catch (error) {
+    systemsError = String(error && error.message ? error.message : error).slice(0, 160)
+  }
+
   // ⚠️ **显式挑选字段**，不展开后删键：将来会话上下文加了新字段，
   // 默认是**不出现**，而不是默认泄露到浏览器。
-  const p = out.body
   return {
     status: 200,
     body: {
       ok: true,
       login: p.login ?? null,
       companyName: p.companyName ?? null,
-      companyId: p.companyId ?? null,
+      companyId,
       gateway: p.gateway ?? null,
       capabilities: Array.isArray(p.tools) ? p.tools : [],
+      systems,
       // 四个业务块的数据源状态。**如实标出哪个还没接通** ——
       // 让界面把「没有这一步」渲染成「暂无」，等于告诉员工「你没有待办」。
       sources: {
-        pending: { wired: false, reason: '待办口径还没做成端点' },
-        systems: { wired: false, reason: '发布通道还没有列出已发布版本的接口' },
+        pending: { wired: false, reason: '待办口径还没做成端点：契约（业务模型与流程定义）在平台侧不可读' },
+        systems: systemsError === null
+          ? { wired: true }
+          : { wired: false, reason: '读取已发布系统失败：' + systemsError },
         capabilities: { wired: true },
-        aggregates: { wired: false, reason: '聚合口径还没有列表接口' },
+        aggregates: { wired: false, reason: '聚合口径还没做成端点：口径定义随契约走，平台侧不可读' },
       },
     },
   }

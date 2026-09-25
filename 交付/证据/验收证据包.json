@@ -83,7 +83,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-Skill-产出验收.txt",
-      "digest": "sha256:5d261350dd7f65ef397bda84e262f56aa8fdf055b8ecc0628bc4965f860aba89"
+      "digest": "sha256:23464c2a62dc4831188aba31b83abaf5ec7feec14efc0e488e11d5e00643562b"
     },
     {
       "stage": "阶段三",
@@ -146,7 +146,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/贯穿-交付包清单_版本_指纹.txt",
-      "digest": "sha256:a0b9232c30d61d645f8b12e1f6783a14fa34a71f047e4f5dcc7bfe45596c55b4"
+      "digest": "sha256:483895d0686ff603cbf7743fc58bf38de9f5c109275f83f4bde0967558de213c"
     },
     {
       "stage": "贯穿",
@@ -167,7 +167,7 @@
       "digest": "sha256:80a05cbb8faaf943e5a362a87fb4b35cd74ef1511aec9638b11cf31b8dec5d64"
     }
   ],
-  "deliveryDigest": "sha256:9530e9d351b695a61ae6b33a728fc73f2d0037d53e725ee4698a26c8a53416f9",
+  "deliveryDigest": "sha256:ba44a3abaddb022d641ad1bfa3025c473e8a22ecd349d86d5ae6c3a92276ef61",
   "failed": [],
-  "bundleDigest": "sha256:3ba4ea229e9d91b0eed8b5e4cd9a1cd021095c52728bac221b84d69331cf96bc"
+  "bundleDigest": "sha256:8b180773689b4532b738015ab2b522c2a65a293f6fb41a986d512b005a005192"
 }

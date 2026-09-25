@@ -183,7 +183,17 @@ export async function approveDraft({ ctx, draftId, decision, opinion = null, cha
  * @param {object} input 入参
  * @returns {Promise<object>} 结论
  */
-export async function publishDraft({ ctx, draftId, apply }) {
+/**
+ * @param {object} input 入参
+ * @param {object} input.ctx 调用上下文
+ * @param {string} input.draftId 草案
+ * @param {(input: object) => Promise<object>} input.apply 应用变更的回调
+ * @param {object} [input.system] 本次发布**产出的业务系统**：
+ *   `{ assetId, name, schemaCode }`。缺省时不登记 —— 但那样工作台的
+ *   「我的系统」列不出这一项，所以正常路径必须给。
+ * @returns {Promise<object>} 发布结果
+ */
+export async function publishDraft({ ctx, draftId, apply, system = null }) {
   const { rows } = await pool('platform').query(
     `SELECT * FROM publish_drafts WHERE draft_id = $1`, [draftId])
   if (rows.length !== 1) throw new PublishError('KVVI_NO_SUCH_DRAFT')
@@ -209,12 +219,30 @@ export async function publishDraft({ ctx, draftId, apply }) {
     await client.query(
       `UPDATE publish_drafts SET status = 'PUBLISHED', published_at = now()
         WHERE draft_id = $1`, [draftId])
-    await client.query(
+    const rec = await client.query(
       `INSERT INTO publish_records (draft_id, company_id, change_digest,
          approved_by, published_by, diff_digest)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
+       VALUES ($1,$2,$3,$4,$5,$6)
+       RETURNING record_id`,
       [draftId, draft.company_id, draft.change_digest, draft.approved_by,
        ctx.userId, diffDigest])
+    // ★ 与发布**同事务**登记业务系统。
+    //
+    // 分两次写会留下一个窗口：「发布记录在、系统不在」或反过来 ——
+    // 而这两件事在语义上是一件事。放在同一个事务里，要么都有、要么都没有。
+    if (system !== null) {
+      await client.query(
+        `INSERT INTO systems (system_id, company_id, asset_id, name, schema_code,
+           published_record, published_at)
+         VALUES ($1,$2,$3,$4,$5,$6, now())
+         ON CONFLICT (company_id, asset_id) DO UPDATE
+           SET name = EXCLUDED.name,
+               schema_code = EXCLUDED.schema_code,
+               published_record = EXCLUDED.published_record,
+               published_at = EXCLUDED.published_at`,
+        [randomUUID(), draft.company_id, system.assetId, system.name,
+         system.schemaCode, rec.rows[0].record_id])
+    }
   })
   await append({
     companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
@@ -224,6 +252,27 @@ export async function publishDraft({ ctx, draftId, apply }) {
     paramsDigest: diffDigest,
   })
   return { ok: true, status: 'PUBLISHED', diffDigest, applied }
+}
+
+/**
+ * 本公司**已发布的业务系统**。
+ *
+ * 只按公司过滤：这条查询服务的是「员工看自己公司的系统」，
+ * 跨公司的行在这里**根本不可能出现** —— 公司来自会话，不是来自请求参数。
+ * @param {string} companyId 会话绑定的公司
+ * @returns {Promise<object[]>} 已发布系统，按发布时间倒序
+ */
+export async function publishedSystems(companyId) {
+  const { rows } = await pool('platform').query(
+    `SELECT system_id, asset_id, name, schema_code, published_at
+       FROM systems WHERE company_id = $1 ORDER BY published_at DESC`, [companyId])
+  return rows.map((r) => ({
+    systemId: r.system_id,
+    assetId: r.asset_id,
+    name: r.name,
+    schemaCode: r.schema_code,
+    publishedAt: r.published_at,
+  }))
 }
 
 /** 发布记录（谁批的、谁发的、什么时候、批的是哪一份）。 */

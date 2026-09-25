@@ -74,7 +74,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/Panel.tsx": {
-      "sha256": "78f291ad5f9f1ea5c21f5b5dedcf3f269b41de31020ba2bb3c73fad493928eda",
+      "sha256": "c716dc841c6f3ac3a8251b7e83abbfb4f8b839a7b527b35342728df607ad8d13",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/index.ts": {
@@ -184,7 +184,7 @@
       "upstream_baseline_sha256": "3cb83b2131b5c4841ff07e312b2e1dddd7f2f493f40ab94012240822140f25bd"
     }
   },
-  "fork_head": "400a81c3492e2c437dded5d98a539aefc32a3f9d",
+  "fork_head": "1b2c1de8caa281a02d7f8b423aed957b4dacb2ae",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "ddefc45fbc7f8e46dd73185e68295696d1297887"

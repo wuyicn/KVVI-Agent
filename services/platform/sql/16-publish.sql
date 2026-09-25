@@ -53,3 +53,36 @@ CREATE TABLE IF NOT EXISTS publish_records (
   -- 发布时**重算**的差异报告摘要。与审批时不一致 = 批的不是这一份。
   diff_digest   text NOT NULL
 );
+
+-- 已发布业务系统。
+--
+-- ── 为什么要有这张表 ──────────────────────────────────────────────────────
+--
+-- 发布通道此前只记「发布动作」本身（草案 → 审批 → 发布记录），
+-- 而**没有任何地方记「发布的是哪个业务系统」**。于是两件事都做不成：
+--   1. 工作台的「我的系统」列不出东西 —— 不是缺一个端点，是没有这个事实；
+--   2. 待办面板说不出「哪张单属于哪个系统」。
+--
+-- 这张表补的就是那条事实。它由 `publishDraft` 在发布成功时**同事务**写入，
+-- 所以「已发布」这件事与它**同生共死**：不会出现「系统在列表里但没发布记录」
+-- 或反过来。
+--
+-- ⚠️ 它记的是**系统的存在与代号**，不是系统的内容。
+-- 系统自身的定义（业务模型、表单、流程）落在契约里，两者的读取接口是分开的 ——
+-- 把内容也塞进来会让这张表变成第二份契约存储，而契约只能有一份。
+CREATE TABLE IF NOT EXISTS systems (
+  system_id        uuid PRIMARY KEY,
+  company_id       uuid NOT NULL REFERENCES companies(company_id),
+  -- 系统代号。同公司内唯一 —— 员工看到的就是它。
+  asset_id         text NOT NULL,
+  name             text NOT NULL,
+  -- 业务模型的代号。待办与聚合要按它去查契约。
+  schema_code      text NOT NULL,
+  -- 生效的那次发布。删除发布记录时本表跟着走（外键），
+  -- 因为「一个没有发布来源的系统」不是合法状态。
+  published_record bigint NOT NULL REFERENCES publish_records(record_id),
+  published_at     timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (company_id, asset_id)
+);
+
+CREATE INDEX IF NOT EXISTS systems_by_company ON systems (company_id);
