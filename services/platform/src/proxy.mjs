@@ -77,8 +77,10 @@ export function resolveTarget(raw) {
  * @param target - 转发目标。
  * @returns 转发用请求头。
  */
-export function forwardHeaders(headers, target, extraCookie) {
-  const out = { ...headers, host: target.host }
+export function forwardHeaders(headers, target, extraCookie, trustedContext = {}) {
+  const out = Object.fromEntries(Object.entries(headers)
+    .filter(([name]) => !name.toLowerCase().startsWith('x-kvvi-')))
+  out.host = target.host
   out['x-forwarded-host'] = headers.host ?? ''
   out['x-forwarded-proto'] = 'http'
   // ⚠️ **换掉浏览器的 Cookie，不是叠加**。
@@ -88,6 +90,7 @@ export function forwardHeaders(headers, target, extraCookie) {
   // 两份混在一起发，运行时会看到一个既陌生又不完整的 Cookie 集合。
   if (extraCookie !== undefined) out.cookie = extraCookie
   else delete out.cookie
+  Object.assign(out, trustedContext)
   return out
 }
 
@@ -96,20 +99,27 @@ export function forwardHeaders(headers, target, extraCookie) {
  * @param target - 转发目标 URL。
  * @returns node:http 的请求处理器。
  */
-export function createProxyHandler(target, credential) {
+export function createProxyHandler(target, credential, contextProvider) {
   const send = target.protocol === 'https:' ? httpsRequest : httpRequest
   // 运行时栅栏要的那张凭据只在启动时取一次：它是**通道**凭据，
   // 不随人变化（每个请求重新签一次既无意义又增加出错面）。
   const upstreamCookie = credential?.(target.host)
 
-  return (req, res) => {
+  return async (req, res) => {
+    const trustedContext = contextProvider === undefined
+      ? {} : await contextProvider(req)
+    if (trustedContext === undefined) {
+      res.writeHead(401, { 'content-type': 'application/json; charset=utf-8' })
+      res.end('{"ok":false,"error":"KVVI_INVALID_SESSION"}\n')
+      return
+    }
     const upstream = send({
       protocol: target.protocol,
       hostname: target.hostname,
       port: target.port || (target.protocol === 'https:' ? 443 : 80),
       path: req.url,
       method: req.method,
-      headers: forwardHeaders(req.headers, target, upstreamCookie),
+      headers: forwardHeaders(req.headers, target, upstreamCookie, trustedContext),
     }, (up) => {
       res.writeHead(up.statusCode ?? 502, up.headers)
       // pipe 同时覆盖普通响应与 SSE 长连接：两者都是同一个流。
@@ -148,19 +158,25 @@ export function createProxyHandler(target, credential) {
  * @param target - 转发目标 URL。
  * @returns node:http 的 upgrade 处理器。
  */
-export function createUpgradeHandler(target, credential) {
+export function createUpgradeHandler(target, credential, contextProvider) {
   const port = target.port || (target.protocol === 'https:' ? 443 : 80)
   // WebSocket 也要带同一张凭据：升级握手同样过运行时的栅栏，
   // 少了它 REST 一切正常而实时通道静默失败 —— 那种「一半可用」最难定位。
   const upstreamCookie = credential?.(target.host)
 
-  return (req, clientSocket, head) => {
+  return async (req, clientSocket, head) => {
+    const trustedContext = contextProvider === undefined
+      ? {} : await contextProvider(req)
+    if (trustedContext === undefined) {
+      clientSocket.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n')
+      return
+    }
     const upstream = httpRequest({
       hostname: target.hostname,
       port,
       path: req.url,
       method: req.method,
-      headers: forwardHeaders(req.headers, target, upstreamCookie),
+      headers: forwardHeaders(req.headers, target, upstreamCookie, trustedContext),
     })
 
     upstream.on('upgrade', (upRes, upSocket, upHead) => {

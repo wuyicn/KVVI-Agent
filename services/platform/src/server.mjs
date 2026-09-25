@@ -19,9 +19,10 @@ import { timingSafeEqual } from 'node:crypto'
 import { topologySnapshot, SERVICE_ROOT } from './topology.mjs'
 import { isOwnedPath, resolveTarget, createProxyHandler, createUpgradeHandler } from './proxy.mjs'
 import { isPanelPath, handlePanel } from './panel.mjs'
-import { handleGate, gated, isGatePath } from './gate.mjs'
-import { runtimeCookie, runtimeCredentialAvailable } from './runtime-auth.mjs'
+import { handleGate, gated, isGatePath, tokenFromCookie } from './gate.mjs'
+import { runtimeCookie, runtimeCredentialAvailable, runtimeContextHeaders } from './runtime-auth.mjs'
 import { handleAuth } from './auth.mjs'
+import { verifyToken } from './identity.mjs'
 
 const PORT = Number(process.env.KVVI_PLATFORM_PORT ?? 7400)
 const HOST = process.env.KVVI_PLATFORM_HOST ?? '0.0.0.0'
@@ -86,7 +87,14 @@ const RUNTIME_TARGET = resolveTarget(process.env.KVVI_RUNTIME_URL)
 /** 非本进程路径一律转发给运行时进程。 */
 // 运行时栅栏要的 Cookie 由本进程按运行时的格式注入 —— 见 runtime-auth.mjs
 // 对「这不是绕过检查」的说明。
-const proxyHandler = createProxyHandler(RUNTIME_TARGET, runtimeCookie)
+async function trustedRuntimeContext(req) {
+  const raw = tokenFromCookie(req.headers.cookie)
+  if (raw === undefined) return undefined
+  const ctx = await verifyToken(raw)
+  return ctx === null ? undefined : runtimeContextHeaders(ctx)
+}
+
+const proxyHandler = createProxyHandler(RUNTIME_TARGET, runtimeCookie, trustedRuntimeContext)
 
 /** 常量时间比较，避免按字符早退泄漏令牌长度。 */
 function tokenMatches(presented) {
@@ -287,7 +295,7 @@ const server = createServer(async (req, res) => {
   return send(res, 404, { ok: false, error: 'not_found', path })
 })
 
-server.on('upgrade', createUpgradeHandler(RUNTIME_TARGET, runtimeCookie))
+server.on('upgrade', createUpgradeHandler(RUNTIME_TARGET, runtimeCookie, trustedRuntimeContext))
 
 server.listen(PORT, HOST, () => {
   const snap = topologySnapshot()

@@ -1948,6 +1948,9 @@ importers:
       '@deepseek-ai/dsh-client-kvvi-panel':
         specifier: workspace:^
         version: link:../../client/kvvi-panel
+      '@deepseek-ai/dsh-host-kvvi-mode-router':
+        specifier: workspace:^
+        version: link:../../host/kvvi-mode-router
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -7871,6 +7874,25 @@ importers:
       '@deepseek-ai/dsh-host-webserver':
         specifier: workspace:^
         version: link:../webserver
+
+  packages/host/kvvi-mode-router:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-agent-presets':
+        specifier: workspace:^
+        version: link:../../preset/agent-presets
+      '@deepseek-ai/dsh-api-session-controller':
+        specifier: workspace:^
+        version: link:../../api/session-controller
+      '@deepseek-ai/dsh-client-connection':
+        specifier: workspace:^
+        version: link:../../client/connection
 
   packages/host/open-in-app:
     dependencies:

@@ -1,5 +1,5 @@
 {
-  "count": 42,
+  "count": 47,
   "files": {
     "apps/cli/package.json": {
       "sha256": "feb03472086c533043c56d6da85830c0239adac678cbe3987e0bd38793b397a4",
@@ -16,11 +16,11 @@
       "status": "A"
     },
     "packages/bundle/kvvi-app/cordis.patch.yml": {
-      "sha256": "492d5a8b45ed7ca4211c43c1ca09bfcf94a17217861cc1b9fceb53f8010c24e9",
+      "sha256": "0ac0558e63cd95720196a23fe66a1bac491f970d83e6cdc5a6a71d84d962804a",
       "status": "A"
     },
     "packages/bundle/kvvi-app/package.json": {
-      "sha256": "76e61603cbe32e728ef441207022c574fc757a92eafda98e252283038a4f912c",
+      "sha256": "3e304f31448472dfc6c7c2a63f0d6e6a218ae30eae10b8eb8b69f5b7780822cc",
       "status": "A"
     },
     "packages/bundle/kvvi-app/src/index.ts": {
@@ -113,6 +113,22 @@
       "status": "M",
       "upstream_baseline_sha256": "cd48aa5feb060159a98bf82694d1f7cc9b6a7677544045a39feaeaf7215c35b7"
     },
+    "packages/host/kvvi-mode-router/package.json": {
+      "sha256": "dfb197319735ccace26c7499d0e1dceb27e64bbcf7dd9bc3961f3ec9e2323104",
+      "status": "A"
+    },
+    "packages/host/kvvi-mode-router/src/index.ts": {
+      "sha256": "4808ad8f16fd1014884dec3ad6e7e77330c099e57bf8cf90fa4679f8f7e21dc9",
+      "status": "A"
+    },
+    "packages/host/kvvi-mode-router/tests/mode-router.spec.ts": {
+      "sha256": "eadd8ed5f1a7af88159d5e849c878fb665d3638bd01efc2ba97549f757cd742c",
+      "status": "A"
+    },
+    "packages/host/kvvi-mode-router/tsconfig.json": {
+      "sha256": "bb4323e36a0ebd0d6c9bb2f1bf771f55c2556e57ed07aa31efed0618dcbb9476",
+      "status": "A"
+    },
     "packages/host/webserver/README.md": {
       "sha256": "a313e3708e021cd347d5cc3c130fca02a3c50305ec75516475bbf16323ef2a26",
       "status": "M",
@@ -169,9 +185,14 @@
       "status": "A"
     },
     "pnpm-lock.yaml": {
-      "sha256": "b3223efa3934b72d6649aeaa768914b0ba7c67d996ad13b71e91160db66f2cbf",
+      "sha256": "92c48fa62527aaff51321464c4bc86f56493d4a5c685adc82d2ad08f870f092d",
       "status": "M",
       "upstream_baseline_sha256": "72523ca50bd34e3e21d07c82e1cedfdb91b17e1bcd83006c645e8dc6e0786fe0"
+    },
+    "tsconfig.base.json": {
+      "sha256": "7673eb4756e1fbd342e659902dc4ce1370264c147fc088d34f82b77467db2c46",
+      "status": "M",
+      "upstream_baseline_sha256": "dab17021b5fa628c060f12d2423689f2d82238a6dbf1e6a28e9fe0eb987d352e"
     },
     "tsconfig.client.json": {
       "sha256": "5413aa3b799aee9f3ab9cf66a2287b6aead579779301e3f73e916786bc4404a5",
@@ -179,7 +200,7 @@
       "upstream_baseline_sha256": "60e4e3f716094efe1c2ea68975295985d00d0f767841c384f0cbde1cb084c9ee"
     },
     "tsconfig.host.json": {
-      "sha256": "7e340f024d8e6f74279e8c52de40cd03892daadb4ec933ae2e96c973073ef1df",
+      "sha256": "954018f465ef7af13942649293d2e763da764c26b9709154b1fac431c30f0c79",
       "status": "M",
       "upstream_baseline_sha256": "3cb83b2131b5c4841ff07e312b2e1dddd7f2f493f40ab94012240822140f25bd"
     }
