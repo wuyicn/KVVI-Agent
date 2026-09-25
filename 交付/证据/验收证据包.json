@@ -177,8 +177,8 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段八-G6-身份与模式路由.txt",
-      "digest": "sha256:885d5d30c069c791221f73fcf2e0ee418c280f083d7cbea5d0d4cbfb250e27c4",
-      "commit": "6adc1c04d87e2aa07083d387adf3d911a4988063",
+      "digest": "sha256:2d3a6302f0ecb366b45230d9368539d6b4a437cad2282708243792283dc66e99",
+      "commit": "b6bf5c928eed1345ffdb2afc36249c412297af77",
       "evidenceClasses": [
         "role_policy",
         "login_api",
@@ -195,15 +195,15 @@
         "services/platform/tests/login-gate.test.mjs": "sha256:4aa016e679171764b36a78e82a34741ccf36730b6290e887ecd853a76a6ada25",
         "services/platform/tests/runtime-routing.test.mjs": "sha256:904f851aa44259de335b37ab9bd7d648b2685329462c6a6d51b9719363e991d2",
         "services/platform/tests/auth.test.mjs": "sha256:3fa9d89ffdbfae7c4ccf68575f8122bb9765c6f6bd0ed610be2903833f678371",
-        "forks/dsh/变更/packages/api/gateway/src/index.ts": "sha256:93143a87962641782cc909193d3b3db950180afe14097710c1336f64dc20eb33",
+        "forks/dsh/变更/packages/api/gateway/src/index.ts": "sha256:f7bf258dfc84bf6021b3dba156f7ea53f67d2f168b92cc883b862869bbbde07f",
         "forks/dsh/变更/packages/bundle/kvvi-app/cordis.patch.yml": "sha256:ac267bb3550769c59f5d46c5c560909ff506666f369f2d447ebe5b42d4fddeec",
-        "forks/dsh/变更/packages/host/kvvi-mode-router/src/index.ts": "sha256:57673e29cd196dceff891d3ea603125d0d39dc1f55489ae57398c834b69a838a",
-        "forks/dsh/变更/packages/host/kvvi-mode-router/tests/mode-router.spec.ts": "sha256:08519abcdce2b207c310cf45d018d2a05dcf16a90016558fa423f7942cd69850",
+        "forks/dsh/变更/packages/host/kvvi-mode-router/src/index.ts": "sha256:97ade421c962f559b953d969b03f74750b135afe8fa8241f57506f3d5755b3ac",
+        "forks/dsh/变更/packages/host/kvvi-mode-router/tests/mode-router.spec.ts": "sha256:d4894521fd99a9ca1d361de8f03924bcd66eb75892fd30a8faafe77ac9828212",
         "工具/check_stage8.py": "sha256:ca4c5da41ca4ad19fc2e346c62ae76c20ff21ec47224b075d5bc2d25b4f6b52d"
       }
     }
   ],
   "deliveryDigest": "sha256:575e21977d1099bd4c3283d0b17a78a35c211a79e2eeed5f97593dd28401dcb8",
   "failed": [],
-  "bundleDigest": "sha256:4f355ae19be4e4738baa1af1993418566cab42ac8a5c6f2fbab2f674f0dc2e42"
+  "bundleDigest": "sha256:42cee6beba42eee2fc281c854f2a5eea8dcdfecfde34e9e4c0704700760034cf"
 }
