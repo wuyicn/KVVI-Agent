@@ -20,7 +20,7 @@ $ python3 工具/check_topology.py
   [32m✓[0m runtime 容器 healthy
   [32m✓@deepseek-ai platform 容器内无 [0m/ 目录 —— 加载不了插件是能力缺失
   [32m✓[0m platform /healthz pluginsLoaded = 0（dshPackagesPresent=False）
-  [32m✓[0m runtime 组合出 164 个插件行（对照：platform 0 个）
+  [32m✓[0m runtime 组合出 165 个插件行（对照：platform 0 个）
 
 [32m[N3] 唯一入口与代理[0m
   [32m✓7401 直连 runtime 宿主端口 [0m 失败 —— 它没有对外暴露

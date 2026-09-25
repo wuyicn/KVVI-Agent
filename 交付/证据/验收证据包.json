@@ -44,10 +44,10 @@
       "stage": "阶段一",
       "name": "G2 fork 改造点",
       "command": "python3 工具/g2_改造点.py --check",
-      "exitCode": 0,
-      "ok": true,
+      "exitCode": 1,
+      "ok": false,
       "evidence": "交付/证据/阶段一-G2-fork-改造点.txt",
-      "digest": "sha256:9abd7264ca07062e7e4c84a1fd9342eb696b5a65bfefb20b3d0150d07aaf77fe"
+      "digest": "sha256:b9a7211015bd9ad1f9e7fb635954d21767c17d414f53acece5112062466cd94b"
     },
     {
       "stage": "阶段一",
@@ -56,7 +56,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段一-两进程骨架与-N3-拓扑.txt",
-      "digest": "sha256:ad53bb3db9d061f2be03f44181bc7d237d27d0f481281c25f097cbbc6124e7f9"
+      "digest": "sha256:005a518dddc6a08bd740539a88e3aba58520aec87fd7541792049e69c9e47d7a"
     },
     {
       "stage": "阶段一",
@@ -65,7 +65,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段一-构建配置.txt",
-      "digest": "sha256:4e87c62e1f829f2fa382c1b8c7437c9a64c565d6a863c10cb427ca3d4ac56b23"
+      "digest": "sha256:2d8109e687d027c743cc720059743004850b0a84b5b78164363102be4c18c31f"
     },
     {
       "stage": "阶段二",
@@ -83,7 +83,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-Skill-产出验收.txt",
-      "digest": "sha256:d514ca8054367003e9b5e219c5184235e2614dcb135a17f0e7b1d30afdc7d6a6"
+      "digest": "sha256:e987b56ee963b53c5512fcc4fa1745f2e89e8e340e800a6a81d1c5f734f85464"
     },
     {
       "stage": "阶段三",
@@ -101,7 +101,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-去行业化自查（0A-14）.txt",
-      "digest": "sha256:0a5eee98dec849a9ead33ab8a946540c3841a575c2504d291b16009e6b5b14b5"
+      "digest": "sha256:66976496e439a6ea94186af5c9ac0b3f73e5a54c355ca966cd344aacc0290c3a"
     },
     {
       "stage": "阶段三",
@@ -146,7 +146,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/贯穿-交付包清单_版本_指纹.txt",
-      "digest": "sha256:a076916abc09badf0ae57ae112162a6dde88092972e9f2bc623dac92eff38ecf"
+      "digest": "sha256:e7e664058768abb6012e34e67941b67d746493d85b55e30ef2e9ea926b82a2a2"
     },
     {
       "stage": "贯穿",
@@ -167,7 +167,9 @@
       "digest": "sha256:29135a461fc72cea7575e99bdb2ec96c4260f8e8304816ab0e5ae00cc05e3fef"
     }
   ],
-  "deliveryDigest": "sha256:869f0236e039d00c521a5d8cc40c2dc9a702a83678b7e14024be327aa2823c22",
-  "failed": [],
-  "bundleDigest": "sha256:615eadf6e5c0bca79180551e7d59934b9fd0af8fa4b60dcd43b317226401d0cb"
+  "deliveryDigest": "sha256:d0afaee0a05d43056bde6126cf177910645e1500df48e90df3448ebebf59074f",
+  "failed": [
+    "阶段一/G2 fork 改造点"
+  ],
+  "bundleDigest": "sha256:18f51792ea3052a5ea1a900907d169645c7ebfcc9fe3c300ba1bb61d6fe18239"
 }

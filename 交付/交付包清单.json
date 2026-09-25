@@ -39,8 +39,8 @@
       "path": "services/platform",
       "kind": "平台服务进程（身份层 / 授权 / 签名 / 认证端点）",
       "version": "0.1.0",
-      "fileCount": 52,
-      "digest": "sha256:2ad14e0e3ca6c4b3b69702285fcc617b3be3594d1762a6f858aaf1a916d3b3d0"
+      "fileCount": 53,
+      "digest": "sha256:d55d4dbd8450257bcf7b649d195e387320abb8350421bc2ddc7f90029cdd30e0"
     },
     {
       "name": "runtime-service",
@@ -80,7 +80,7 @@
       "kind": "KVVI Profile Bundle",
       "version": null,
       "fileCount": 5,
-      "digest": "sha256:b3ad117fc02861bbef46385fdab09fca485fbdfa46dbda016b0fad903f52baf2"
+      "digest": "sha256:60eec2d3760035fd5fe897c786613b7dd074f6b617467e0c7a80e5ea3958e2f6"
     },
     {
       "name": "schema-samples",
@@ -88,8 +88,8 @@
       "kind": "产出样例与蓝图（验收基准）",
       "version": null,
       "fileCount": 94,
-      "digest": "sha256:afdfcc8b3dc3f153f583aab5dbf39c87bd0eb163f02cef48e76674c3300f46d0"
+      "digest": "sha256:a988eb9e27944a2961d128caf2b6b63f4e831b9c006a3bd1e8b43fe220bd42dd"
     }
   ],
-  "deliveryDigest": "sha256:869f0236e039d00c521a5d8cc40c2dc9a702a83678b7e14024be327aa2823c22"
+  "deliveryDigest": "sha256:d0afaee0a05d43056bde6126cf177910645e1500df48e90df3448ebebf59074f"
 }

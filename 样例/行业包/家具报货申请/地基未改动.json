@@ -24,8 +24,8 @@
     },
     "platform-service": {
       "path": "services/platform",
-      "digest": "sha256:2ad14e0e3ca6c4b3b69702285fcc617b3be3594d1762a6f858aaf1a916d3b3d0",
-      "fileCount": 52
+      "digest": "sha256:d55d4dbd8450257bcf7b649d195e387320abb8350421bc2ddc7f90029cdd30e0",
+      "fileCount": 53
     },
     "runtime-service": {
       "path": "services/runtime",
@@ -49,7 +49,7 @@
     },
     "bundle-kvvi-app": {
       "path": "vendor/dsh/packages/bundle/kvvi-app",
-      "digest": "sha256:b3ad117fc02861bbef46385fdab09fca485fbdfa46dbda016b0fad903f52baf2",
+      "digest": "sha256:60eec2d3760035fd5fe897c786613b7dd074f6b617467e0c7a80e5ea3958e2f6",
       "fileCount": 5
     }
   },
@@ -88,6 +88,13 @@
       "reason": "撤掉 KVVI 自建工作台：界面路线改为在 DSH 自带界面上加功能（走 DSH 的槽位系统），不再另做一套前端",
       "changedComponents": [
         "platform-service"
+      ]
+    },
+    {
+      "reason": "面板数据端点 /kvvi/panel 落在平台进程上，并把 /kvvi/ 纳入自有前缀 —— 面板界面由运行时提供、数据由平台同源提供，产品恢复单一入口",
+      "changedComponents": [
+        "platform-service",
+        "bundle-kvvi-app"
       ]
     }
   ]

@@ -18,6 +18,7 @@ import { readFileSync, existsSync } from 'node:fs'
 import { timingSafeEqual } from 'node:crypto'
 import { topologySnapshot, SERVICE_ROOT } from './topology.mjs'
 import { isOwnedPath, resolveTarget, createProxyHandler, createUpgradeHandler } from './proxy.mjs'
+import { isPanelPath, handlePanel } from './panel.mjs'
 import { handleAuth } from './auth.mjs'
 
 const PORT = Number(process.env.KVVI_PLATFORM_PORT ?? 7400)
@@ -154,6 +155,28 @@ const server = createServer(async (req, res) => {
   // 「可核验」是自相矛盾的。
   if (path === '/topology' && method === 'GET') {
     return send(res, 200, topologySnapshot())
+  }
+
+  // ── KVVI 业务面板的数据端点 ────────────────────────────────────────
+  //
+  // 必须排在 Web UI 转发**之前**：`/kvvi/panel` 是本进程自己的接口，
+  // 转发给运行时会得到 404 —— 而那条 404 在界面上的表现是
+  // 「连不上平台服务」，与真正的原因（拓扑配错）差得很远。
+  //
+  // 也排在进程间令牌鉴别之前：它认的是**用户**令牌（会话凭据），
+  // 不是进程间凭据。用后者拦它，浏览器永远读不到自己的业务上下文。
+  if (isPanelPath(path)) {
+    const out = await handlePanel({
+      method, path, headers: req.headers,
+      // ★ 复用认证模块自己的会话端点，**不另算一遍**网关与能力：
+      //   两份实现的漂移方向恰好是「界面多出能力」。
+      loadSession: (token) => handleAuth({
+        method: 'GET', path: '/auth/session', body: null,
+        headers: { ...req.headers, authorization: 'Bearer ' + token },
+        omitOtherGateway: true,
+      }),
+    })
+    if (out !== null) return send(res, out.status, out.body)
   }
 
   // ── Web UI 转发必须排在鉴别之前 ────────────────────────────────────

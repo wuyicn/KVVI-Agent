@@ -31,8 +31,15 @@ const DEFAULT_TARGET = 'http://runtime:7401'
 /** 连接与响应超时。上限取一个明确值，不用无限等待掩盖对端失联。 */
 const UPSTREAM_TIMEOUT_MS = 30_000
 
-/** 由本进程自己处理的路径前缀；其余全部转发。 */
-const OWNED_PREFIXES = ['/healthz', '/topology', '/auth/', '/sign/', '/registry/']
+/**
+ * 由本进程自己处理的路径前缀；其余全部转发。
+ *
+ * ⚠️ `/kvvi/` **必须在这里**。它是业务面板的数据端点，而面板界面由运行时
+ * 提供 —— 浏览器从「加载界面的那个 origin」发相对路径请求，那个 origin 就是
+ * 本进程。少了这一条，`/kvvi/panel` 会被转发给运行时并回 404，
+ * 而症状看起来像「面板连不上平台服务」。
+ */
+const OWNED_PREFIXES = ['/healthz', '/topology', '/auth/', '/sign/', '/registry/', '/kvvi/']
 
 /**
  * 该路径是否属于本进程。

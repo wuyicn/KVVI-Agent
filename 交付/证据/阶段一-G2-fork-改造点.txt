@@ -1,3 +1,13 @@
 $ python3 工具/g2_改造点.py --check
 
-[32m✓ 通过：35 个改动文件全部已登记，15 条登记全部有效，声明数字全部相符[0m
+[31m✗ 未登记的改动 7 处[0m —— 违反 §7.5.3「未登记不得合并」
+    A  packages/client/kvvi-panel/README.md
+    A  packages/client/kvvi-panel/package.json
+    A  packages/client/kvvi-panel/src/client/Panel.tsx
+    A  packages/client/kvvi-panel/src/client/index.ts
+    A  packages/client/kvvi-panel/src/index.ts
+    A  packages/client/kvvi-panel/tsconfig.json
+    A  packages/client/kvvi-panel/tsdown.config.ts
+  [90m→ 请登记进 forks/dsh/改造点清单.md，或撤销该改动[0m
+
+  基线: ddefc45fbc7f8e46dd73185e68295696d1297887   实际改动: 42 个文件   登记: 15 条
