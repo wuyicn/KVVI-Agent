@@ -192,7 +192,6 @@ const server = createServer(async (req, res) => {
       loadSession: (token) => handleAuth({
         method: 'GET', path: '/auth/session', body: null,
         headers: { ...req.headers, authorization: 'Bearer ' + token },
-        omitOtherGateway: true,
       }),
     })
     if (out !== null) return send(res, out.status, out.body)
@@ -217,7 +216,6 @@ const server = createServer(async (req, res) => {
         const r = await handleAuth({
           method: 'GET', path: '/auth/session', body: null,
           headers: { ...req.headers, authorization: 'Bearer ' + token },
-          omitOtherGateway: true,
         })
         return r?.status === 200
       },

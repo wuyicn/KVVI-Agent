@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -19,7 +20,7 @@ import time
 ROOT = Path(__file__).resolve().parent.parent
 PLATFORM = ROOT / 'services' / 'platform'
 MANIFEST = ROOT / '交付' / '证据' / '验收证据包.json'
-CONTAINER = 'kvvi-stage8-pg'
+CONTAINER = f'kvvi-stage8-pg-{os.getpid()}'
 
 CHECKS = {
     'role_policy': ['mode-policy.test.mjs'],
@@ -43,18 +44,19 @@ def print_result(label, cmd, result):
 
 
 def start_db():
-    for name in (CONTAINER, 'kvvi-stage4-pg', 'kvvi-stage5-pg', 'kvvi-stage6-pg'):
-        run(['docker', 'rm', '-f', name], timeout=60)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(('127.0.0.1', 0))
+        port = probe.getsockname()[1]
     result = run([
         'docker', 'run', '-d', '--name', CONTAINER,
         '-e', 'POSTGRES_PASSWORD=kvvi-test', '-e', 'POSTGRES_USER=kvvi',
-        '-p', '127.0.0.1:55432:5432', 'postgres:17-alpine',
+        '-p', f'127.0.0.1:{port}:5432', 'postgres:17-alpine',
     ], timeout=120)
     if result.returncode != 0:
         raise RuntimeError((result.stderr or result.stdout).strip())
     for _ in range(60):
         if run(['docker', 'exec', CONTAINER, 'pg_isready', '-U', 'kvvi']).returncode == 0:
-            return
+            return port
         time.sleep(0.5)
     raise RuntimeError('PostgreSQL did not become ready')
 
@@ -125,7 +127,14 @@ def run_gate():
                 'KVVI_SIGNING_KEY_PATH': '/tmp/kvvi-stage8-signing.key'})
     link = None
     try:
-        start_db()
+        port = start_db()
+        env.update({
+            'KVVI_ADMIN_DSN': f'postgres://kvvi:kvvi-test@127.0.0.1:{port}/postgres',
+            'KVVI_PLATFORM_DSN': f'postgres://kvvi_platform:kvvi-test@127.0.0.1:{port}/kvvi_platform',
+            'KVVI_BUSINESS_DSN': f'postgres://kvvi_business:kvvi-test@127.0.0.1:{port}/kvvi_business',
+            'KVVI_AUDIT_DSN': f'postgres://kvvi_audit_writer:kvvi-test@127.0.0.1:{port}/kvvi_audit',
+            'KVVI_AUDITREAD_DSN': f'postgres://kvvi_audit_reader:kvvi-test@127.0.0.1:{port}/kvvi_audit',
+        })
         node_suite('role_policy', CHECKS['role_policy'], env)
         node_suite('login_api', CHECKS['login_api'], env)
         node_suite('runtime_preset/platform', ['runtime-routing.test.mjs'], env)
@@ -142,12 +151,12 @@ def run_gate():
             raise RuntimeError('DSH dependency install failed')
         dsh_test = run(['pnpm', '--filter', '@deepseek-ai/dsh-host-kvvi-mode-router', 'test'], cwd=fork)
         dsh_body = print_result('runtime_preset/dsh', dsh_test.args, dsh_test)
-        if dsh_test.returncode != 0 or 'Tests  5 passed' not in dsh_body:
+        if dsh_test.returncode != 0 or not re.search(r'Tests\s+(?:[7-9]|[1-9]\d+) passed', dsh_body):
             raise RuntimeError('runtime preset tests failed or were skipped')
 
         platform_module = (PLATFORM / 'src' / 'runtime-auth.mjs').as_uri()
         js = ("import {runtimeContextHeaders as h} from '" + platform_module + "';"
-              "console.log(JSON.stringify(h({sessionId:'s',companyId:'c',gateway:'USER'},"
+              "console.log(JSON.stringify(h({sessionId:'s',userId:'u',companyId:'c',gateway:'USER'},"
               "'stage8-cross-boundary-secret')))" )
         signed = run(['node', '--input-type=module', '--eval', js])
         if signed.returncode != 0:

@@ -45,3 +45,11 @@
 # generic DSH preset picker. The direct RPC is also locked by kvvi-mode-router.
 - id: ui-agent-preset
   disabled: true
+
+# Stage 12 will expose owner-approved signed extension packages. Until that
+# audited surface exists, neither employees nor builders may use upstream's
+# unrestricted package manager or inventory UI.
+- id: ui-plugin-manager
+  disabled: true
+- id: ui-settings-plugin-inventory
+  disabled: true

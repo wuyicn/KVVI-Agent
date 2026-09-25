@@ -111,8 +111,9 @@ export function runtimeCredentialAvailable() {
 const RUNTIME_CONTEXT_VERSION = 'v1'
 const RUNTIME_CONTEXT_MAX_AGE_MS = 60_000
 
-function contextPayload({ sessionId, companyId, gateway, issuedAt }) {
-  return [RUNTIME_CONTEXT_VERSION, sessionId, companyId, gateway, String(issuedAt)].join('\n')
+function contextPayload({ sessionId, userId, companyId, gateway, issuedAt }) {
+  return [RUNTIME_CONTEXT_VERSION, sessionId, userId, companyId, gateway,
+    String(issuedAt)].join('\n')
 }
 
 function singleHeader(headers, name) {
@@ -133,12 +134,14 @@ export function runtimeContextHeaders(ctx, secret = process.env.KVVI_INTERNAL_TO
   }
   const issuedAt = Number(now)
   const fields = {
-    sessionId: String(ctx.sessionId), companyId: String(ctx.companyId),
+    sessionId: String(ctx.sessionId), userId: String(ctx.userId),
+    companyId: String(ctx.companyId),
     gateway: ctx.gateway, issuedAt,
   }
   const signature = createHmac('sha256', secret).update(contextPayload(fields)).digest('hex')
   return {
     'x-kvvi-session': fields.sessionId,
+    'x-kvvi-user': fields.userId,
     'x-kvvi-company': fields.companyId,
     'x-kvvi-gateway': fields.gateway,
     'x-kvvi-issued-at': String(issuedAt),
@@ -150,11 +153,12 @@ export function runtimeContextHeaders(ctx, secret = process.env.KVVI_INTERNAL_TO
 export function verifyRuntimeContextHeaders(headers, secret = process.env.KVVI_INTERNAL_TOKEN,
   now = Date.now()) {
   const sessionId = singleHeader(headers, 'x-kvvi-session')
+  const userId = singleHeader(headers, 'x-kvvi-user')
   const companyId = singleHeader(headers, 'x-kvvi-company')
   const gateway = singleHeader(headers, 'x-kvvi-gateway')
   const rawIssuedAt = singleHeader(headers, 'x-kvvi-issued-at')
   const signature = singleHeader(headers, 'x-kvvi-signature')
-  if (!sessionId || !companyId || !gateway || !rawIssuedAt || !signature) {
+  if (!sessionId || !userId || !companyId || !gateway || !rawIssuedAt || !signature) {
     throw new Error('KVVI_RUNTIME_CONTEXT_REQUIRED')
   }
   const issuedAt = Number(rawIssuedAt)
@@ -164,10 +168,10 @@ export function verifyRuntimeContextHeaders(headers, secret = process.env.KVVI_I
   }
   if (!['USER', 'BUILDER'].includes(gateway)) throw new Error('KVVI_GATEWAY_INVALID')
   const expected = createHmac('sha256', secret)
-    .update(contextPayload({ sessionId, companyId, gateway, issuedAt })).digest()
+    .update(contextPayload({ sessionId, userId, companyId, gateway, issuedAt })).digest()
   const actual = Buffer.from(signature, 'hex')
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
     throw new Error('KVVI_RUNTIME_CONTEXT_INVALID')
   }
-  return { sessionId, companyId, gateway, issuedAt }
+  return { sessionId, userId, companyId, gateway, issuedAt }
 }

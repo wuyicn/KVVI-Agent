@@ -6,6 +6,7 @@ import { runtimeContextHeaders, verifyRuntimeContextHeaders } from '../src/runti
 const secret = 'stage8-runtime-context-secret'
 const ctx = {
   sessionId: 'a0000000-0000-4000-8000-000000000099',
+  userId: 'a0000000-0000-4000-8000-000000000002',
   companyId: 'a0000000-0000-4000-8000-000000000001',
   gateway: 'USER',
 }
@@ -20,6 +21,7 @@ describe('Stage 8：平台到运行时的模式上下文', () => {
     }, new URL('http://runtime:7401'), 'dsh-auth=channel', trusted)
 
     assert.equal(out['x-kvvi-gateway'], 'USER')
+    assert.equal(out['x-kvvi-user'], ctx.userId)
     assert.equal(out['x-kvvi-company'], ctx.companyId)
     assert.equal(out.cookie, 'dsh-auth=channel')
     assert.equal(verifyRuntimeContextHeaders(out, secret, 1_700_000_000_500).gateway, 'USER')

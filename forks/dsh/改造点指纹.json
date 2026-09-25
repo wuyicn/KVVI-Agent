@@ -1,5 +1,5 @@
 {
-  "count": 47,
+  "count": 48,
   "files": {
     "apps/cli/package.json": {
       "sha256": "feb03472086c533043c56d6da85830c0239adac678cbe3987e0bd38793b397a4",
@@ -11,12 +11,17 @@
       "status": "M",
       "upstream_baseline_sha256": "9b54d57eea00f2fdd1affe6e7999a4209a515755f12ac1a3299da2d55e178d4c"
     },
+    "packages/api/gateway/src/index.ts": {
+      "sha256": "e94ddcc4714f5f0179a38f479786cd58ff0cca2c7819aa4e353b968460eacd11",
+      "status": "M",
+      "upstream_baseline_sha256": "8dd9c7895d8059419ca416d344e308a07d55e436ae3b9930393047dee1b9f5f5"
+    },
     "packages/bundle/kvvi-app/README.md": {
       "sha256": "2ba32779ca1c9df01d5cf239658fb14a26fba317da05b655fdf380a4a3db9d64",
       "status": "A"
     },
     "packages/bundle/kvvi-app/cordis.patch.yml": {
-      "sha256": "0ac0558e63cd95720196a23fe66a1bac491f970d83e6cdc5a6a71d84d962804a",
+      "sha256": "ac267bb3550769c59f5d46c5c560909ff506666f369f2d447ebe5b42d4fddeec",
       "status": "A"
     },
     "packages/bundle/kvvi-app/package.json": {
@@ -118,11 +123,11 @@
       "status": "A"
     },
     "packages/host/kvvi-mode-router/src/index.ts": {
-      "sha256": "4808ad8f16fd1014884dec3ad6e7e77330c099e57bf8cf90fa4679f8f7e21dc9",
+      "sha256": "7bd2e31c88f4c80278f93f3c1a4ab846f631593cc23b94d64d480dba67ba4a5b",
       "status": "A"
     },
     "packages/host/kvvi-mode-router/tests/mode-router.spec.ts": {
-      "sha256": "eadd8ed5f1a7af88159d5e849c878fb665d3638bd01efc2ba97549f757cd742c",
+      "sha256": "7c6f6629cadd991762473ed5d4633298db078ae68059714376987cec6375ab40",
       "status": "A"
     },
     "packages/host/kvvi-mode-router/tsconfig.json": {
