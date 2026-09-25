@@ -177,8 +177,8 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段八-G6-身份与模式路由.txt",
-      "digest": "sha256:2d3a6302f0ecb366b45230d9368539d6b4a437cad2282708243792283dc66e99",
-      "commit": "b6bf5c928eed1345ffdb2afc36249c412297af77",
+      "digest": "sha256:ac2b71aacdd931d4b1f7a7061acc83c8ac239c9dc5451cf2d72559481302c565",
+      "commit": "e6852539a443e6485b9a201c7640b42d7c8d417a",
       "evidenceClasses": [
         "role_policy",
         "login_api",
@@ -198,12 +198,12 @@
         "forks/dsh/变更/packages/api/gateway/src/index.ts": "sha256:f7bf258dfc84bf6021b3dba156f7ea53f67d2f168b92cc883b862869bbbde07f",
         "forks/dsh/变更/packages/bundle/kvvi-app/cordis.patch.yml": "sha256:ac267bb3550769c59f5d46c5c560909ff506666f369f2d447ebe5b42d4fddeec",
         "forks/dsh/变更/packages/host/kvvi-mode-router/src/index.ts": "sha256:97ade421c962f559b953d969b03f74750b135afe8fa8241f57506f3d5755b3ac",
-        "forks/dsh/变更/packages/host/kvvi-mode-router/tests/mode-router.spec.ts": "sha256:d4894521fd99a9ca1d361de8f03924bcd66eb75892fd30a8faafe77ac9828212",
+        "forks/dsh/变更/packages/host/kvvi-mode-router/tests/mode-router.spec.ts": "sha256:a42accd417a9d11ac355e25f2f950a6f08984e19c9ab95e1538900a7714dd941",
         "工具/check_stage8.py": "sha256:ca4c5da41ca4ad19fc2e346c62ae76c20ff21ec47224b075d5bc2d25b4f6b52d"
       }
     }
   ],
   "deliveryDigest": "sha256:575e21977d1099bd4c3283d0b17a78a35c211a79e2eeed5f97593dd28401dcb8",
   "failed": [],
-  "bundleDigest": "sha256:42cee6beba42eee2fc281c854f2a5eea8dcdfecfde34e9e4c0704700760034cf"
+  "bundleDigest": "sha256:c3a08aff15dc7b3b1bdae8a33039acce6cf07badb82bce6d274ae46c5de924c7"
 }
