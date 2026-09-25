@@ -66,6 +66,23 @@ CREATE TABLE IF NOT EXISTS memberships (
   FOREIGN KEY (company_id, shop_id) REFERENCES shops(company_id, shop_id)
 );
 
+-- ── 平台模式授权 ────────────────────────────────────────────────────
+--
+-- USER 来自成员关系，天然具备；BUILDER 必须来自所有者身份或这里的显式授权。
+-- 授权按公司保存，避免同一账号在 A 公司获准后自动进入 B 公司的搭建模式。
+CREATE TABLE IF NOT EXISTS platform_mode_grants (
+  company_id uuid NOT NULL REFERENCES companies(company_id),
+  user_id    uuid NOT NULL REFERENCES users(user_id),
+  gateway    text NOT NULL CHECK (gateway = 'BUILDER'),
+  granted_by uuid NOT NULL REFERENCES users(user_id),
+  granted_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (company_id, user_id, gateway),
+  FOREIGN KEY (company_id, user_id) REFERENCES memberships(company_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS platform_mode_grants_by_granter
+  ON platform_mode_grants (company_id, granted_by);
+
 -- ── 角色与策略 ──────────────────────────────────────────────────────
 --
 -- 一次策略覆盖四个维度（0B-4 表单 / 0B-5 字段 / 0B-6 数据范围 / 0B-7 流程）。
