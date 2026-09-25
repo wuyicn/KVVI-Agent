@@ -108,6 +108,11 @@ def digest_of(text: str) -> str:
     return 'sha256:' + hashlib.sha256(text.encode('utf-8')).hexdigest()
 
 
+def canonical_output(text: str) -> str:
+    """只去掉终端渲染产生的行尾空格；保留行、顺序与所有可见内容。"""
+    return '\n'.join(line.rstrip() for line in text.split('\n'))
+
+
 def file_digest(rel: str) -> str:
     h = hashlib.sha256()
     with open(os.path.join(ROOT, rel), 'rb') as fh:
@@ -136,7 +141,7 @@ def collect() -> int:
             try:
                 r = run(cmd)
                 ok = r.returncode == 0
-                out = r.stdout + (('\n[stderr]\n' + r.stderr) if r.stderr else '')
+                out = canonical_output(r.stdout + (('\n[stderr]\n' + r.stderr) if r.stderr else ''))
             except subprocess.TimeoutExpired:
                 ok, out = False, 'TIMEOUT'
             slug = '%s-%s' % (stage, name.replace(' ', '-').replace('/', '_'))
@@ -211,7 +216,7 @@ def append_stage8() -> int:
     stage, title, checks = STAGE8
     name, cmd = checks[0]
     result = run(cmd)
-    out = result.stdout + (('\n[stderr]\n' + result.stderr) if result.stderr else '')
+    out = canonical_output(result.stdout + (('\n[stderr]\n' + result.stderr) if result.stderr else ''))
     path = os.path.join(EVID, '%s-%s.txt' %
                         (stage, name.replace(' ', '-').replace('/', '_')))
     with open(path, 'w', encoding='utf-8') as fh:
@@ -260,7 +265,7 @@ def refresh_stage8() -> int:
     stage, _title, checks = STAGE8
     name, cmd = checks[0]
     result = run(cmd)
-    out = result.stdout + (('\n[stderr]\n' + result.stderr) if result.stderr else '')
+    out = canonical_output(result.stdout + (('\n[stderr]\n' + result.stderr) if result.stderr else ''))
     path = os.path.join(EVID, '%s-%s.txt' %
                         (stage, name.replace(' ', '-').replace('/', '_')))
     with open(path, 'w', encoding='utf-8') as fh:
