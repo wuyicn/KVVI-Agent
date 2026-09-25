@@ -31,6 +31,7 @@
     python3 工具/验收证据包.py            # 跑全部判据并生成证据包
     python3 工具/验收证据包.py --verify          # 只复核证据包与指纹
     python3 工具/验收证据包.py --append-stage8   # 保留旧条目，只追加 G6
+    python3 工具/验收证据包.py --refresh-stage8  # 仅复验并替换尚未交付的 G6
 """
 
 import hashlib
@@ -86,6 +87,7 @@ STAGE8 = ('阶段八', '身份入口闭环', [
 ])
 
 STAGE8_SOURCES = [
+    'services/platform/src/auth.mjs',
     'services/platform/src/mode-policy.mjs',
     'services/platform/src/gate.mjs',
     'services/platform/src/proxy.mjs',
@@ -93,8 +95,12 @@ STAGE8_SOURCES = [
     'services/platform/tests/mode-policy.test.mjs',
     'services/platform/tests/login-gate.test.mjs',
     'services/platform/tests/runtime-routing.test.mjs',
+    'services/platform/tests/auth.test.mjs',
+    'forks/dsh/变更/packages/api/gateway/src/index.ts',
+    'forks/dsh/变更/packages/bundle/kvvi-app/cordis.patch.yml',
     'forks/dsh/变更/packages/host/kvvi-mode-router/src/index.ts',
     'forks/dsh/变更/packages/host/kvvi-mode-router/tests/mode-router.spec.ts',
+    '工具/check_stage8.py',
 ]
 
 
@@ -238,6 +244,55 @@ def append_stage8() -> int:
     return 0
 
 
+def refresh_stage8() -> int:
+    """只复验阶段八；历史阶段一至七的记录与证据文件保持逐字节不变。"""
+    if verify() != 0:
+        print('%s✗ 旧证据包未通过指纹复核，拒绝复验%s' % (C_BAD, C_OFF))
+        return 1
+    with open(MANIFEST, encoding='utf-8') as fh:
+        payload = json.load(fh)
+    indexes = [i for i, entry in enumerate(payload.get('entries', []))
+               if entry.get('stage') == '阶段八']
+    if len(indexes) != 1:
+        print('%s✗ 阶段八记录不是唯一一条，拒绝模糊替换%s' % (C_BAD, C_OFF))
+        return 1
+
+    stage, _title, checks = STAGE8
+    name, cmd = checks[0]
+    result = run(cmd)
+    out = result.stdout + (('\n[stderr]\n' + result.stderr) if result.stderr else '')
+    path = os.path.join(EVID, '%s-%s.txt' %
+                        (stage, name.replace(' ', '-').replace('/', '_')))
+    with open(path, 'w', encoding='utf-8') as fh:
+        fh.write('$ %s\n\n%s' % (' '.join(cmd), out))
+    payload['entries'][indexes[0]] = {
+        'stage': stage,
+        'name': name,
+        'command': ' '.join(cmd),
+        'exitCode': result.returncode,
+        'ok': result.returncode == 0,
+        'evidence': os.path.relpath(path, ROOT),
+        'digest': digest_of(out),
+        'commit': run(['git', 'rev-parse', 'HEAD']).stdout.strip(),
+        'evidenceClasses': ['role_policy', 'login_api', 'runtime_preset', 'topology'],
+        'sourceDigests': {rel: file_digest(rel) for rel in STAGE8_SOURCES},
+    }
+    payload['failed'] = [item for item in payload.get('failed', [])
+                         if not item.startswith('阶段八/')]
+    if result.returncode != 0:
+        payload['failed'].append('%s/%s' % (stage, name))
+    payload.pop('bundleDigest', None)
+    payload['bundleDigest'] = digest_of(json.dumps(payload, ensure_ascii=False,
+                                                   sort_keys=True))
+    with open(MANIFEST, 'w', encoding='utf-8') as fh:
+        fh.write(json.dumps(payload, ensure_ascii=False, indent=2) + '\n')
+    if result.returncode != 0:
+        print('%s✗ G6 复验失败；历史证据未改写%s' % (C_BAD, C_OFF))
+        return 1
+    print('%s✓ G6 已复验并替换；历史阶段一至七证据未改写%s' % (C_OK, C_OFF))
+    return 0
+
+
 def verify() -> int:
     if not os.path.isfile(MANIFEST):
         print('%s✗ 证据包不存在（先不带 --verify 跑一次）%s' % (C_BAD, C_OFF))
@@ -272,6 +327,8 @@ def verify() -> int:
 
 
 def main() -> int:
+    if '--refresh-stage8' in sys.argv:
+        return refresh_stage8()
     if '--append-stage8' in sys.argv:
         return append_stage8()
     if '--verify' in sys.argv:
