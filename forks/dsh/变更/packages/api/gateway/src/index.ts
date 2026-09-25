@@ -397,7 +397,20 @@ export class TypertGatewayService extends Service implements TypertGateway {
     const source = endpoint === REMOTE_EVENT_STREAM_ENDPOINT
       ? this.openRemoteEvents(payload, signal)
       : await this.stream(remoteRequest(endpoint, payload, signal))
-    return projectedStream(this.ctx, endpoint, source)
+    let eventClientId: RemoteEventClientId | undefined
+    return projectedStream(this.ctx, endpoint, source, (value, projected) => {
+      if (endpoint !== REMOTE_EVENT_STREAM_ENDPOINT || !isObject(value)) return
+      if (Reflect.get(value, 'type') === 'ready') {
+        const candidate = Reflect.get(value, 'clientId') as unknown
+        if (typeof candidate === 'string') eventClientId = candidate as RemoteEventClientId
+        return
+      }
+      if (projected !== undefined || eventClientId === undefined
+        || Reflect.get(value, 'type') !== 'waterfall') return
+      const eventId = Reflect.get(value, 'eventId') as unknown
+      if (typeof eventId === 'string') this.skipRemoteEventDelivery(eventClientId,
+        eventId as RemoteEventId)
+    })
   }
 
   private async *openRemoteEvents(
@@ -562,6 +575,15 @@ export class TypertGatewayService extends Service implements TypertGateway {
   private removeRemoteEventDelivery(pending: PendingRemoteEvent, client: RemoteEventClient): void {
     pending.deliveries.delete(client)
     client.deliveries.delete(pending.id)
+  }
+
+  /** Treat an identity-projected waterfall as an explicit `next`, without browser delivery. */
+  private skipRemoteEventDelivery(clientId: RemoteEventClientId, eventId: RemoteEventId): void {
+    const client = this.remoteEventClients.get(clientId)
+    const pending = this.pendingRemoteEvents.get(eventId)
+    if (client === undefined || pending === undefined || !pending.deliveries.has(client)) return
+    this.removeRemoteEventDelivery(pending, client)
+    if (pending.deliveries.size === 0) this.settleRemoteEvent(pending, { kind: 'next' })
   }
 
   private removeRemoteEventClient(client: RemoteEventClient): void {
@@ -1009,10 +1031,12 @@ async function *projectedStream(
   ctx: Context,
   endpoint: string,
   source: AsyncIterable<unknown>,
+  observe?: (value: unknown, projected: unknown | undefined) => void,
 ): AsyncGenerator<unknown> {
   for await (const value of source) {
     const projected = await ctx.waterfall('typert-gateway/project', endpoint, value,
       async () => value)
+    observe?.(value, projected)
     if (projected !== undefined) yield projected
   }
 }

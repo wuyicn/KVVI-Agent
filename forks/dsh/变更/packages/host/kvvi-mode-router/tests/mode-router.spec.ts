@@ -3,7 +3,9 @@ import { PassThrough } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
 import WebSocket, { type RawData } from 'ws'
 import { Context } from '@deepseek-ai/cordis'
-import TypertGatewayService, { type TypertRemoteEventDispatch } from '@deepseek-ai/dsh-api-gateway'
+import TypertGatewayService, {
+  type TypertRemoteEventDispatch, type TypertRemoteEventOutcome,
+} from '@deepseek-ai/dsh-api-gateway'
 import WebServer from '@deepseek-ai/dsh-host-webserver'
 import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
 import {
@@ -192,6 +194,9 @@ describe('KVVI mode router', () => {
     builder, ownership)
     projectRuntimeFrame('$events', { type: 'emit', event: 'cordis/inspect-query',
       args: [{ requestId: 'builder-inspect', agentId: builderId }] }, builder, ownership)
+    projectRuntimeFrame('$events', { type: 'emit', event: 'cordis/request-run',
+      args: [{ requestId: 'worker-request', agentId: workerId, pluginId: 'worker-plugin' }] },
+    worker, ownership)
 
     expect(() => authorizeRuntimeRequest('dynamicCordisRunner/resolveRequestRun',
       { args: { requestId: 'builder-request', resolution: { ok: false } } }, worker, ownership))
@@ -204,6 +209,13 @@ describe('KVVI mode router', () => {
       { args: { pluginId: 'builder-plugin', pluginRunId: 'run', method: 'method', args: {} } },
       worker, ownership))
       .toThrow('KVVI_DYNAMIC_PLUGIN_ACCESS_DENIED')
+    expect(() => authorizeRuntimeRequest('dynamicCordisRunner/invoke', { args: {
+      args: { pluginId: 'worker-plugin' }, pluginId: 'builder-plugin',
+      pluginRunId: 'run', method: 'method',
+    } }, worker, ownership)).toThrow('KVVI_DYNAMIC_PLUGIN_ACCESS_DENIED')
+    expect(() => authorizeRuntimeRequest('dynamicCordisRunner/resolveRequestRun', { args: {
+      resolution: { ok: false, requestId: 'worker-request' }, requestId: 'builder-request',
+    } }, worker, ownership)).toThrow('KVVI_DYNAMIC_REQUEST_ACCESS_DENIED')
     expect(projectRuntimeFrame('dynamicCordisRunner/inventory', [
       { agentId: workerId, pluginId: 'worker-plugin' },
       { agentId: builderId, pluginId: 'builder-plugin' },
@@ -238,11 +250,11 @@ describe('KVVI mode router', () => {
     const builderClient = await openEvents(ctx.webServer.port,
       signModeHeaders(builderContext, secret), 'builder-events')
     try {
-      const leaked = { type: 'emit' as const, event: 'cordis/request-run', args: [{
+      const leaked = { event: 'cordis/request-run', args: [{
         requestId: 'builder-request', agentId: builderId, pluginId: 'builder-plugin',
       }] }
       broadcast.publish(leaked)
-      broadcast.publish({ type: 'emit', event: 'commands/change', args: [] })
+      broadcast.publish({ event: 'commands/change', args: [] })
       await vi.waitFor(() => {
         expect(builderClient.frames.some(frame => frame.type === 'item'
           && typeof frame.value === 'object' && frame.value !== null
@@ -261,6 +273,23 @@ describe('KVVI mode router', () => {
           args: { requestId: 'builder-request', resolution: { ok: false } },
         })
       })).rejects.toThrow('KVVI_DYNAMIC_REQUEST_ACCESS_DENIED')
+
+      const builderClosed = once(builderClient.socket, 'close')
+      builderClient.socket.terminate()
+      await builderClosed
+      const settled = Promise.withResolvers<TypertRemoteEventOutcome>()
+      const builderAgent = {}
+      broadcast.publish({
+        event: 'approval/request',
+        request: { agent: builderAgent, prompt: 'builder-only' },
+        context: { value: ctx, subject: builderAgent as never, agentId: builderId as never },
+        resolve: settled.resolve,
+        reject: settled.reject,
+      })
+      await expect(settled.promise).resolves.toEqual({ kind: 'next' })
+      expect(workerClient.frames.some(frame => frame.type === 'item'
+        && typeof frame.value === 'object' && frame.value !== null
+        && Reflect.get(frame.value, 'event') === 'approval/request')).toBe(false)
     } finally {
       workerClient.socket.close()
       builderClient.socket.close()

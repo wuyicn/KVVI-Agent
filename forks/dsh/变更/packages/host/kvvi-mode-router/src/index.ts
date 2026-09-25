@@ -158,15 +158,15 @@ function visitSessionIds(value: unknown, mode: ModeContext, seen = new Set<objec
   }
 }
 
-function nestedString(value: unknown, key: string, seen = new Set<object>()): string | undefined {
-  if (typeof value !== 'object' || value === null || seen.has(value)) return undefined
-  seen.add(value)
-  for (const [candidate, child] of Object.entries(value)) {
-    if (candidate === key && typeof child === 'string') return child
-    const found = nestedString(child, key, seen)
-    if (found !== undefined) return found
-  }
-  return undefined
+function directString(value: unknown, key: string): string | undefined {
+  if (typeof value !== 'object' || value === null) return undefined
+  const candidate = (value as Record<string, unknown>)[key]
+  return typeof candidate === 'string' ? candidate : undefined
+}
+
+function wireArgument(payload: unknown, key: string): string | undefined {
+  if (typeof payload !== 'object' || payload === null) return undefined
+  return directString((payload as Record<string, unknown>).args, key)
 }
 
 /** Bounded ownership cache for correlation and plugin ids whose later calls omit an Agent. */
@@ -226,13 +226,13 @@ export function authorizeRuntimeRequest(endpoint: string, wirePayload: unknown,
   }
   if (endpoint !== 'session/create') visitSessionIds(wirePayload, mode)
   if (endpoint === 'dynamicCordisRunner/resolveRequestRun') {
-    ownership.assertRequest(nestedString(wirePayload, 'requestId'), mode)
+    ownership.assertRequest(wireArgument(wirePayload, 'requestId'), mode)
   }
   if (endpoint === 'dynamicCordisRunner/resolveInspectQuery') {
-    ownership.assertInspection(nestedString(wirePayload, 'requestId'), mode)
+    ownership.assertInspection(wireArgument(wirePayload, 'requestId'), mode)
   }
   if (endpoint.startsWith('dynamicCordisRunner/')) {
-    const pluginId = nestedString(wirePayload, 'pluginId')
+    const pluginId = wireArgument(wirePayload, 'pluginId')
     if (pluginId !== undefined) ownership.assertPlugin(pluginId, mode)
   }
 }
@@ -315,15 +315,15 @@ export function projectRuntimeFrame(endpoint: string, frame: unknown, mode: Mode
     const first = eventArgument(value)
     if (event.startsWith('plugin-manager/')) return undefined
     if (event === 'cordis/request-run-resolved') {
-      const requestId = nestedString(first, 'requestId')
+      const requestId = directString(first, 'requestId')
       return ownership.ownsRequest(requestId, mode) ? frame : undefined
     }
     if (event === 'cordis/inspect-query-resolved') {
-      const requestId = nestedString(first, 'requestId')
+      const requestId = directString(first, 'requestId')
       return ownership.ownsInspection(requestId, mode) ? frame : undefined
     }
     if (event === 'cordis/dynamic-package' || event === 'cordis/dynamic-retract') {
-      const pluginId = nestedString(first, 'pluginId')
+      const pluginId = directString(first, 'pluginId')
       return ownership.ownsPlugin(pluginId, mode) ? frame : undefined
     }
     const scoped = event.startsWith('api-session/') || event === 'agent-preset/selected'
@@ -334,8 +334,8 @@ export function projectRuntimeFrame(endpoint: string, frame: unknown, mode: Mode
       if (typeof sessionId !== 'string') return undefined
       try { assertOwnedSessionId(sessionId, mode) } catch { return undefined }
       if (typeof first === 'object' && first !== null) {
-        const requestId = nestedString(first, 'requestId')
-        const pluginId = nestedString(first, 'pluginId')
+        const requestId = directString(first, 'requestId')
+        const pluginId = directString(first, 'pluginId')
         if (event === 'cordis/request-run' && requestId !== undefined) {
           ownership.rememberRequest(requestId, mode)
         }
