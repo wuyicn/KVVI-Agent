@@ -9,8 +9,15 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { SidebarFooterActionOwnerProps } from '@deepseek-ai/dsh-client-ui-sidebar/client'
 
-/** Platform base. A deployment-varying address, so it is build-time public content. */
-const PLATFORM_BASE: string = process.env.DSH_CLIENT_KVVI_PLATFORM_BASE ?? 'http://127.0.0.1:7400'
+/**
+ * Platform base for the panel's data reads.
+ *
+ * Empty means **same origin**: the browser asks whichever origin served this
+ * bundle, and that origin is the KVVI platform service. Hardcoding a different
+ * port here was the bug — the client's origin and the platform's origin are the
+ * same one in the product deployment, because the platform is the only entry.
+ */
+const PLATFORM_BASE = ''
 
 /**
  * Event the sidebar entry raises to ask the overlay to open.
