@@ -19,7 +19,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { topologySnapshot, SERVICE_ROOT } from './topology.mjs'
 import { isOwnedPath, resolveTarget, createProxyHandler, createUpgradeHandler } from './proxy.mjs'
 import { isPanelPath, handlePanel } from './panel.mjs'
-import { handleGate, gated } from './gate.mjs'
+import { handleGate, gated, isGatePath } from './gate.mjs'
 import { runtimeCookie, runtimeCredentialAvailable } from './runtime-auth.mjs'
 import { handleAuth } from './auth.mjs'
 
@@ -176,7 +176,7 @@ const server = createServer(async (req, res) => {
   // `/kvvi/login` 与 `/kvvi/logout` 归登录门（下面那一段），不归面板数据端点：
   // 两个模块都认 `/kvvi/` 前缀，**顺序错了就会让登录页返回「面板端点不存在」**。
   // 判据由模块自己给出，不在这里重复前缀字符串。
-  if (isPanelPath(path) && path !== '/kvvi/login' && path !== '/kvvi/logout') {
+  if (isPanelPath(path) && !isGatePath(path)) {
     const out = await handlePanel({
       method, path, headers: req.headers,
       // ★ 复用认证模块自己的会话端点，**不另算一遍**网关与能力：

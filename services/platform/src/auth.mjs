@@ -87,8 +87,8 @@ export async function handleAuth({ method, path, body, headers, omitOtherGateway
 
   // ── ① 登录 ──────────────────────────────────────────────────────
   if (path === '/auth/login' && method === 'POST') {
-    const { login, password, companyId, gateway = 'USER' } = body ?? {}
-    if (!gatewaysFor().includes(gateway)) {
+    const { login, password, companyId, requestedGateway = 'USER' } = body ?? {}
+    if (!['USER', 'BUILDER'].includes(requestedGateway)) {
       return { status: 400, body: { error: 'KVVI_BAD_GATEWAY' } }
     }
     const account = await authenticate(login, password)
@@ -96,7 +96,7 @@ export async function handleAuth({ method, path, body, headers, omitOtherGateway
       // ⚠️ 失败也留痕，但**不记明文口令**，只记摘要。
       await appendDenial({
         companyId: companyId ?? '00000000-0000-0000-0000-000000000000',
-        actorKind: 'SYSTEM', action: 'auth.login', gateway,
+        actorKind: 'SYSTEM', action: 'auth.login', gateway: requestedGateway,
         outcome: 'DENY', reason: 'KVVI_BAD_CREDENTIALS',
         paramsDigest: digestOf({ login }),
       })
@@ -121,6 +121,19 @@ export async function handleAuth({ method, path, body, headers, omitOtherGateway
       }
       chosen = companies[0].companyId
     }
+    const allowed = await gatewaysFor(chosen, account.userId)
+    if (!allowed.includes(requestedGateway)) {
+      await appendDenial({
+        companyId: chosen, actorKind: 'USER', actorId: account.userId,
+        action: 'auth.login', gateway: requestedGateway,
+        reason: requestedGateway === 'BUILDER'
+          ? 'KVVI_BUILDER_ACCESS_REQUIRED' : 'KVVI_NOT_A_MEMBER',
+        paramsDigest: digestOf({ login, companyId: chosen }),
+      })
+      return { status: 403, body: { error: requestedGateway === 'BUILDER'
+        ? 'KVVI_BUILDER_ACCESS_REQUIRED' : 'KVVI_NOT_A_MEMBER' } }
+    }
+    const gateway = requestedGateway
     const session = await createSession({ userId: account.userId,
                                           companyId: chosen, gateway })
     const token = await issueToken(session.sessionId)
