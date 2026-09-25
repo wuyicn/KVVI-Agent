@@ -157,9 +157,32 @@ export async function handleAuth({ method, path, body, headers, omitOtherGateway
     //   **一个搭建工具都没有**，而且这不是「本接口过滤的」——
     //   分类表是冻结常量，交集只减不增（见 toolsForGateway）。
     const enabled = Object.keys(TOOL_GATEWAY)
+    // 展示用的名字。**不是装饰**：界面只给 uuid 时，员工没法确认
+    // 「我现在在哪个公司的身份下」—— 而公司是会话创建时绑定、不可切换的
+    // （§9.9.3），那正是最该被看到的一件事。
+    // 出错不阻断会话读取：名字取不到只是不好看，认证事实不受影响。
+    let login = null
+    let companyName = null
+    try {
+      const r = await pool('platform').query(
+        `SELECT u.login, c.name AS company_name
+           FROM users u, companies c
+          WHERE u.user_id = $1 AND c.company_id = $2`,
+        [ctx.userId, ctx.companyId])
+      if (r.rows.length === 1) {
+        login = r.rows[0].login
+        companyName = r.rows[0].company_name
+      }
+    } catch (error) {
+      console.error(JSON.stringify({
+        event: 'auth-session-name-lookup-failed',
+        error: String(error && error.message ? error.message : error),
+      }))
+    }
     const payload = {
       sessionId: ctx.sessionId, userId: ctx.userId, companyId: ctx.companyId,
       gateway: ctx.gateway, state: session.state, createdAt: session.createdAt,
+      login, companyName,
       tools: toolsForGateway(ctx.gateway, enabled),
     }
     if (!omitOtherGateway) {

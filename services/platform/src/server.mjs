@@ -93,9 +93,24 @@ function tokenMatches(presented) {
 }
 
 function send(res, status, body, extraHeaders = {}) {
-  const payload = `${JSON.stringify(body, null, 2)}\n`
+  // ⚠️ **字符串原样送出，不做 JSON 序列化。**
+  //
+  // 本函数此前无条件 `JSON.stringify(body)`。对 HTML 页面来说那不是「格式化」，
+  // 而是**把整份文档变成一行 JSON 字符串**：引号前多出反斜杠、换行变成字面
+  // `\n`，浏览器把它当纯文本渲染 —— 页面全白，什么都点不动。
+  //
+  // 这个 bug 能活下来，是因为它的**表面症状全部正常**：
+  // HTTP 200、`content-type: text/html`、响应体非空、
+  // 连 `grep "<title>"` 都命中（标题就在那串字符串里）。
+  // 只有真正解析 DOM 才看得出来 —— **「curl 说 200」不等于「页面能用」**。
+  //
+  // 判据：字符串 = 已经序列化好的内容（HTML）；对象 = 交给 JSON。
+  const asText = typeof body === 'string'
+  const payload = asText ? body : `${JSON.stringify(body, null, 2)}\n`
   res.writeHead(status, {
-    'content-type': 'application/json; charset=utf-8',
+    'content-type': asText
+      ? 'text/plain; charset=utf-8'
+      : 'application/json; charset=utf-8',
     'x-kvvi-process': 'platform-service',
     'x-kvvi-plugins-loaded': String(topologySnapshot().pluginsLoaded),
     ...extraHeaders,

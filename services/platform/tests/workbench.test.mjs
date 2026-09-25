@@ -89,6 +89,28 @@ describe('工作台：页面由平台进程自己提供（§2.6.1 入口决定�
     assert.equal(r.headers.get('x-kvvi-process'), 'platform-service')
   })
 
+  test('★ 响应体是**真正的 HTML**，不是被 JSON 序列化过的字符串', async () => {
+    // 这条是回归测试，起因是一个真实故障：`send()` 此前无条件
+    // `JSON.stringify(body)`，于是 HTML 被送成**一行带反斜杠转义的 JSON 字符串**，
+    // 浏览器当纯文本渲染 —— 页面全白。
+    //
+    // ⚠️ 它为什么能溜过前面那些断言：**表面症状全部正常**。
+    // HTTP 200、`content-type: text/html`、响应体非空、
+    // 连 `assert.match(html, /KVVI 工作台/)` 都通过（标题就在那串字符串里）。
+    //
+    // 所以这条断言不能只查「包含某个字串」，必须查**它是以什么开头的**：
+    // 序列化过的响应第一个字符是引号，真正的 HTML 第一个字符是 `<`。
+    const r = await fetch(`${BASE}/workbench`)
+    const html = await r.text()
+    assert.ok(html.startsWith('<!DOCTYPE html>'),
+      '响应体不是以 <!DOCTYPE html> 开头 —— 大概率被 JSON 序列化了：' + html.slice(0, 60))
+    assert.ok(!html.startsWith('"'), '响应体以引号开头 —— HTML 被当成 JSON 字符串送出了')
+    assert.ok(html.includes('\n'), '响应体里没有换行 —— 整份文档被压成了一行，说明被序列化过')
+    // 反向：不能出现 JSON 转义残留。
+    assert.ok(!html.includes('\\"'), '响应体里出现了 \\" —— 引号被转义了，这是 JSON 序列化的痕迹')
+    assert.ok(!html.includes('\\n'), '响应体里出现了字面 \\n —— 换行被转义了')
+  })
+
   test('页面是自包含的：不允许被别的站点嵌进 iframe', async () => {
     const r = await fetch(`${BASE}/workbench`)
     assert.equal(r.headers.get('x-frame-options'), 'DENY')
@@ -161,6 +183,25 @@ describe('工作台会话投影：界面隔离是数据层事实（§2.3）', ()
     assert.equal(body.otherGatewayCapabilitiesOmitted, true,
       '省略必须是**声明过的**：否则「没带」与「漏带」无法区分')
     assert.equal(body.toolsOfOtherGateway, undefined)
+  })
+
+  test('带上了展示用的名字（否则界面只能显示 uuid）', async () => {
+    // 这条测的是「界面有没有东西可渲染」。只给 uuid 的话，
+    // 员工没法确认「我现在在哪个公司的身份下」—— 而公司是会话创建时
+    // 绑定、不可切换的（§9.9.3），那正是最该被看到的一件事。
+    const token = await login()
+    const r = await fetch(`${BASE}/workbench/api/session`, {
+      headers: { authorization: `Bearer ${token}` },
+    })
+    const body = await r.json()
+    assert.equal(body.login, 'alice')
+    assert.ok(typeof body.companyName === 'string' && body.companyName.length > 0,
+      'companyName 应当有值，实际：' + JSON.stringify(body.companyName))
+    // 展示名不能把搭建类信息顺带带出来。
+    for (const marker of BUILDER_MARKERS) {
+      assert.ok(!JSON.stringify(body).includes(marker),
+        '加了展示名之后响应里出现了搭建类字样：' + marker)
+    }
   })
 
   test('对照：取证端点 /auth/session 仍然报出两个集合（省略只对工作台生效）', async () => {

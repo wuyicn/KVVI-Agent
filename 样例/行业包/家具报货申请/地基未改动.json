@@ -24,7 +24,7 @@
     },
     "platform-service": {
       "path": "services/platform",
-      "digest": "sha256:aa193d0b0f83f754a045fb3f444b982900619a370d599096e874223978624caf",
+      "digest": "sha256:76c0f0b19764ebb6968109db057432f9fe48ce849bbf19ad4eaff0250851e70a",
       "fileCount": 55
     },
     "runtime-service": {
@@ -74,6 +74,12 @@
     },
     {
       "reason": "工作台：平台服务新增 workbench.mjs 与 ui/workbench.html（KVVI 自己的员工侧入口），前端与后端同镜像发布；配套把开发种子移出 src/ 以便发布通道静态核查成立",
+      "changedComponents": [
+        "platform-service"
+      ]
+    },
+    {
+      "reason": "工作台界面改版：修掉 send() 把 HTML 当 JSON 序列化（页面全白）的缺陷，能力码加中文标签与分组，会话投影补展示名",
       "changedComponents": [
         "platform-service"
       ]

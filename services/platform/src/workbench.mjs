@@ -130,7 +130,9 @@ export async function handleWorkbench({ method, path, headers, loadSession }) {
       body: {
         sessionId: p.sessionId,
         userId: p.userId,
+        login: p.login ?? null,
         companyId: p.companyId,
+        companyName: p.companyName ?? null,
         gateway: p.gateway,
         state: p.state,
         createdAt: p.createdAt,
