@@ -127,7 +127,7 @@
       "status": "A"
     },
     "packages/host/kvvi-mode-router/tests/mode-router.spec.ts": {
-      "sha256": "d4894521fd99a9ca1d361de8f03924bcd66eb75892fd30a8faafe77ac9828212",
+      "sha256": "a42accd417a9d11ac355e25f2f950a6f08984e19c9ab95e1538900a7714dd941",
       "status": "A"
     },
     "packages/host/kvvi-mode-router/tsconfig.json": {

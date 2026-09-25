@@ -277,6 +277,10 @@ describe('KVVI mode router', () => {
       const builderClosed = once(builderClient.socket, 'close')
       builderClient.socket.terminate()
       await builderClosed
+      await vi.waitFor(() => {
+        const clients = Reflect.get(ctx.typertGateway, 'remoteEventClients') as Map<unknown, unknown>
+        expect(clients.size).toBe(1)
+      })
       const settled = Promise.withResolvers<TypertRemoteEventOutcome>()
       const builderAgent = {}
       broadcast.publish({
