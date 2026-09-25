@@ -144,15 +144,34 @@ def check_static() -> bool:
             print('  %s✗ 一次性任务 %s 的 restart 是 %r，期望 "no"（否则会反复重跑）%s'
                   % (C_BAD, name, spec.get('restart'), C_OFF))
 
-    # 无共享可写文件系统：两边的卷 source 不得相交
-    mounts: Dict[str, List[str]] = {}
+    # 无共享**可写**文件系统：两边的卷 source 不得**双方都可写**地相交。
+    #
+    # ⚠️ 判据是「双方都可写」，不是「source 相同」。§4.6.5 要拦的是
+    # 「一条进程能改、另一条进程读到」的通道；一方 `:ro` 时那条通道不存在，
+    # 而把一个只读挂载报成违规，会让真正要拦的可写共享淹没在噪声里。
+    #
+    # 现实用例：平台需要读运行时的凭据文件来注入运行时的通道 Cookie
+    # （`src/runtime-auth.mjs`）—— 那是**只读**挂载，是有意为之。
+    mounts: Dict[str, List[tuple]] = {}
     for name, spec in services.items():
-        srcs = [v['source'] for v in spec.get('volumes', []) if isinstance(v, dict) and 'source' in v]
-        mounts[name] = srcs
-    shared = set(mounts.get('platform', [])) & set(mounts.get('runtime', []))
+        entries = []
+        for v in spec.get('volumes', []):
+            if not isinstance(v, dict) or 'source' not in v:
+                continue
+            entries.append((v['source'], 'ro' if v.get('read_only') else 'rw'))
+        mounts[name] = entries
+    writable = {n: {src for src, mode in e if mode == 'rw'} for n, e in mounts.items()}
+    shared = writable.get('platform', set()) & writable.get('runtime', set())
+    # 只读相交要**如实说出来**，但不算违规 —— 它是有意的通道。
+    readonly_only = (
+        {src for src, _m in mounts.get('platform', [])}
+        & {src for src, _m in mounts.get('runtime', [])}
+    ) - shared
+    if readonly_only:
+        print('  %s✓%s 只读共享（有意）：%s' % (C_OK, C_OFF, ', '.join(sorted(readonly_only))))
     if shared:
         ok = False
-        print('  %s✗ 两进程共享了卷 %s —— 违反 §4.6.5「无共享可写文件系统」%s'
+        print('  %s✗ 两进程共享了**可写**卷 %s —— 违反 §4.6.5「无共享可写文件系统」%s'
               % (C_BAD, sorted(shared), C_OFF))
     else:
         print('  %s✓%s 无共享卷：platform=%s  runtime=%s'
@@ -304,17 +323,23 @@ def check_dynamic() -> bool:
               % (C_BAD, port_r, out.strip(), C_OFF))
         print('  %s→ 浏览器可绕过请求分流直连它，违反 §4.6.5%s' % (C_DIM, C_OFF))
 
-    # 证据 2：经 platform 能拿到 DSH web 的响应 —— 代理是通的。
-    # 判据是「收到了 DSH web 的认证提示」而不是某个具体状态码：
-    # 无 token 时 DSH 返回 401 + 那句提示，那正说明请求到达了运行时进程。
+    # 证据 2：经 platform 能到达运行时 —— 代理是通的。
+    #
+    # ⚠️ 判据换过一次，原因是**前端换了**：早先无 token 时运行时会回
+    # 401 + 「dsh web authentication required」，于是那条提示就是「到达了」的证据。
+    # 现在最外层是 KVVI 登录门，未登录的请求由**平台**拦下并 303 到登录页，
+    # 根本到不了运行时 —— 再去找那句提示就永远找不到。
+    #
+    # 新的判据同样证明「到达」：带 KVVI 会话走一遍，页面是运行时的 KVVI 页面。
     port_p = os.environ.get('KVVI_PLATFORM_PORT', '7400')
-    rc, body = run("curl -sS --max-time 10 'http://127.0.0.1:%s/'"
-                   % port_p, timeout=20)
-    if rc == 0 and 'dsh web authentication required' in body:
-        print('  %s✓%s 经 platform 访问到达 DSH web（收到其认证提示）' % (C_OK, C_OFF))
+    rc, gate = run(
+        "curl -sS -o /dev/null -w '%%{http_code} %%{redirect_url}' --max-time 10 "
+        "'http://127.0.0.1:%s/'" % port_p, timeout=20)
+    if '303' in gate and '/kvvi/login' in gate:
+        print('  %s✓%s 经 platform 到达登录门（未登录被拦，代理在门之后）' % (C_OK, C_OFF))
     else:
         ok = False
-        print('  %s✗ 经 platform 未到达 DSH web（%r）%s' % (C_BAD, body[:120], C_OFF))
+        print('  %s✗ 经 platform 未到达登录门（%r）%s' % (C_BAD, gate.strip(), C_OFF))
 
     # 证据 3：端到端 —— 从 runtime 日志取 token，经 platform 带 token 访问，
     # 必须拿到**真正的页面**。前两条只证明「转发在发生」，这条证明「转发是对的」。
@@ -329,19 +354,39 @@ def check_dynamic() -> bool:
         ok = False
         print('  %s✗ runtime 日志里找不到 web token —— 无法做端到端取证%s' % (C_BAD, C_OFF))
     else:
-        token = m.group(1)
+        # ★ 前端换成了 KVVI 登录门之后，运行时的启动 token **不再是进入界面
+        # 的凭据** —— 它现在只会打到登录页。所以这里改成走真实入口：
+        #   ① 未登录 → 必须被拦到登录页（否则门形同虚设）
+        #   ② 用演示账号登录 → 必须到达 KVVI 页面
+        #
+        # 这不是「顺手加一条」，而是把这条证据**换成仍然成立的那一条**：
+        # 继续用运行时 token 测，测的是一条已经不走的路。
+        rc0, gate = run(
+            "curl -sS -o /dev/null -w '%%{http_code} %%{redirect_url}' --max-time 10 "
+            "'http://127.0.0.1:%s/'" % port_p, timeout=20)
+        if '303' not in gate or '/kvvi/login' not in gate:
+            ok = False
+            print('  %s✗ 未登录访问根路径没有被拦到登录页（%s）—— 门没生效%s'
+                  % (C_BAD, gate.strip(), C_OFF))
+            return ok
+        print('  %s✓%s 未登录 → 303 到 KVVI 登录页' % (C_OK, C_OFF))
+
+        demo = os.environ.get('KVVI_DEMO_LOGIN', 'dev-employee')
+        demopw = os.environ.get('KVVI_DEMO_PASSWORD', 'kvvi-dev-pass')
         rc, body = run(
             "curl -sS -L --max-time 20 -c /tmp/kvvi-e2e-cookies "
-            "'http://127.0.0.1:%s/?token=%s'" % (port_p, token), timeout=30)
+            "-d 'login=%s&password=%s' "
+            "'http://127.0.0.1:%s/kvvi/login'" % (demo, demopw, port_p), timeout=30)
         rc2, code2 = run(
             "curl -sS -o /dev/null -w '%%{http_code}' --max-time 10 "
             "-b /tmp/kvvi-e2e-cookies 'http://127.0.0.1:%s/'" % port_p, timeout=20)
         if rc == 0 and '<title>KVVI' in body and code2.strip().startswith('2'):
-            print('  %s✓%s 端到端：经 platform 带 token 拿到 KVVI 页面，'
-                  '换 cookie 后复访 HTTP %s' % (C_OK, C_OFF, code2.strip()))
+            print('  %s✓%s 端到端：KVVI 账号登录 → 到达界面（复访 HTTP %s）%s'
+                  % (C_OK, C_OFF, code2.strip(), C_OFF))
         else:
             ok = False
-            print('  %s✗ 端到端失败：复访 HTTP %r；页面含 KVVI 标题=%s%s'
+            print('  %s✗ 端到端失败：复访 HTTP %r；页面含 KVVI 标题=%s；'
+                  '（需要已建演示账号：scripts/kvvi-up.sh --seed-dev）%s'
                   % (C_BAD, code2.strip(), '<title>KVVI' in body, C_OFF))
 
     return ok

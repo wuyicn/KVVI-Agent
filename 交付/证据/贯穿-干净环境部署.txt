@@ -17,7 +17,7 @@ $ python3 工具/交付环境.py
 
 [5] 端到端：经唯一入口到达 Web UI
   [32m✓ 平台 /healthz 200，pluginsLoaded=0，dshPackagesPresent=False[0m
-  [32m✓ 根路径 401（到达 DSH web，未带 token 时这是预期结果）[0m
+  [32m✓ 根路径 200，标题 'KVVI 工作台 · 登录'[0m
 
 [6] 记证据
   ✓ 已写入 交付/证据/干净环境部署.json

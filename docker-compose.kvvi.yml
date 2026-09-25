@@ -156,6 +156,15 @@ services:
       # 平台服务进程自己的状态目录。**数据在 platform-db 里**，
       # 这个卷只放进程自己的东西 —— 两者不是一回事，别合并。
       - platform-data:/var/lib/kvvi
+      # 运行时的凭据文件，**只读**挂进来。
+      #
+      # 为什么需要：运行时有一道自己的浏览器栅栏，它要的 Cookie 的 authority
+      # 是转发目标（runtime:7401），而浏览器只跟本进程说话 —— 那张 Cookie
+      # 浏览器不可能有，只能由本进程在转发时注入。
+      #
+      # ⚠️ 挂的是**文件所在目录**且只读：本进程读它、不改它。
+      # 写权限留不给本进程，动作最小。理由与顺序见 src/runtime-auth.mjs。
+      - runtime-data:/run/kvvi-runtime-credentials:ro
     networks:
       - control
       - data

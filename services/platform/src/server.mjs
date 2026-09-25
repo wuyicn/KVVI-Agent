@@ -19,6 +19,8 @@ import { timingSafeEqual } from 'node:crypto'
 import { topologySnapshot, SERVICE_ROOT } from './topology.mjs'
 import { isOwnedPath, resolveTarget, createProxyHandler, createUpgradeHandler } from './proxy.mjs'
 import { isPanelPath, handlePanel } from './panel.mjs'
+import { handleGate, gated } from './gate.mjs'
+import { runtimeCookie, runtimeCredentialAvailable } from './runtime-auth.mjs'
 import { handleAuth } from './auth.mjs'
 
 const PORT = Number(process.env.KVVI_PLATFORM_PORT ?? 7400)
@@ -82,7 +84,9 @@ const startedAt = Date.now()
 const RUNTIME_TARGET = resolveTarget(process.env.KVVI_RUNTIME_URL)
 
 /** 非本进程路径一律转发给运行时进程。 */
-const proxyHandler = createProxyHandler(RUNTIME_TARGET)
+// 运行时栅栏要的 Cookie 由本进程按运行时的格式注入 —— 见 runtime-auth.mjs
+// 对「这不是绕过检查」的说明。
+const proxyHandler = createProxyHandler(RUNTIME_TARGET, runtimeCookie)
 
 /** 常量时间比较，避免按字符早退泄漏令牌长度。 */
 function tokenMatches(presented) {
@@ -146,6 +150,10 @@ const server = createServer(async (req, res) => {
       // 健康检查刻意只报结论与最关键的一条证据，完整证据在 /topology。
       dshPackagesPresent: snap.evidence.dshPackagesPresent,
       signingKeyMounted: existsSync(SIGNING_KEY_PATH),
+      // 运行时凭据是否可用。**必须暴露**：不可用时界面打不开，
+      // 而那条报错来自运行时（「dsh web authentication required」），
+      // 看不出缺的是本进程这里的挂载。
+      runtimeCredentialInjected: runtimeCredentialAvailable(),
       uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
     })
   }
@@ -165,7 +173,10 @@ const server = createServer(async (req, res) => {
   //
   // 也排在进程间令牌鉴别之前：它认的是**用户**令牌（会话凭据），
   // 不是进程间凭据。用后者拦它，浏览器永远读不到自己的业务上下文。
-  if (isPanelPath(path)) {
+  // `/kvvi/login` 与 `/kvvi/logout` 归登录门（下面那一段），不归面板数据端点：
+  // 两个模块都认 `/kvvi/` 前缀，**顺序错了就会让登录页返回「面板端点不存在」**。
+  // 判据由模块自己给出，不在这里重复前缀字符串。
+  if (isPanelPath(path) && path !== '/kvvi/login' && path !== '/kvvi/logout') {
     const out = await handlePanel({
       method, path, headers: req.headers,
       // ★ 复用认证模块自己的会话端点，**不另算一遍**网关与能力：
@@ -177,6 +188,37 @@ const server = createServer(async (req, res) => {
       }),
     })
     if (out !== null) return send(res, out.status, out.body)
+  }
+
+  // ── KVVI 登录门 ────────────────────────────────────────────────────
+  //
+  // 排在 Web UI 转发**之前**：没登录就不该看到 Agent 界面。
+  // 也排在进程间令牌鉴别之前 —— 它认的是**用户**凭据（Cookie 里的会话令牌），
+  // 不是进程间凭据。
+  //
+  // 认证逻辑一行都不在这里：登录提交转发给身份层的 `/auth/login`，
+  // 令牌校验转发给 `/auth/session`。这里只做「放行 / 打回登录页」。
+  if (gated(path) || path.startsWith('/kvvi/')) {
+    const rawBody = await readBody(req)
+    const out = await handleGate({
+      method, path, query: req.url ?? '', body: rawBody, headers: req.headers,
+      login: async (credentials) => handleAuth({
+        method: 'POST', path: '/auth/login', body: credentials, headers: req.headers,
+      }),
+      verify: async (token) => {
+        const r = await handleAuth({
+          method: 'GET', path: '/auth/session', body: null,
+          headers: { ...req.headers, authorization: 'Bearer ' + token },
+          omitOtherGateway: true,
+        })
+        return r?.status === 200
+      },
+    })
+    if (out !== null) {
+      if (out.html !== undefined) return send(res, out.status, out.html, out.headers ?? {})
+      if (out.body !== undefined) return send(res, out.status, out.body, out.headers ?? {})
+      return send(res, out.status, '', out.headers ?? {})
+    }
   }
 
   // ── Web UI 转发必须排在鉴别之前 ────────────────────────────────────
@@ -245,7 +287,7 @@ const server = createServer(async (req, res) => {
   return send(res, 404, { ok: false, error: 'not_found', path })
 })
 
-server.on('upgrade', createUpgradeHandler(RUNTIME_TARGET))
+server.on('upgrade', createUpgradeHandler(RUNTIME_TARGET, runtimeCookie))
 
 server.listen(PORT, HOST, () => {
   const snap = topologySnapshot()

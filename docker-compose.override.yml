@@ -36,4 +36,7 @@ services:
       KVVI_SIGNING_KEY_PATH: /run/kvvi-secrets/signing.key
     tmpfs:
       - /tmp
-      - /run/kvvi-secrets
+      # ⚠️ 必须给 `mode`：tmpfs 默认由 root 拥有，而容器以 uid 1000 运行，
+      # 于是 signing.mjs 写密钥时拿 EACCES —— 报错指向签名模块，
+      # 原因却在挂载属主。这就是本仓库 N22 那个形态的又一次出现。
+      - /run/kvvi-secrets:mode=1777

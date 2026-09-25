@@ -4,7 +4,8 @@ $ python3 工具/check_topology.py
 
 [32m[静态] compose 配置[0m
   [32m✓[0m 长期运行的进程恰好两个：platform, runtime（另有 3 个库容器、1 个一次性任务）
-  [32m✓[0m 无共享卷：platform=['platform-data']  runtime=['runtime-data']
+  [32m✓[0m 只读共享（有意）：runtime-data
+  [32m✓[0m 无共享卷：platform=[('platform-data', 'rw'), ('runtime-data', 'ro')]  runtime=[('runtime-data', 'rw')]
   [32m✓[0m 未共享 pid/ipc namespace（禁止跨进程调试）
   [32m✓[0m platform 受控接口要求调用方鉴别（KVVI_INTERNAL_TOKEN）
   [32m✓[0m 唯一对外入口：platform 映射宿主端口，runtime 不映射
@@ -24,7 +25,8 @@ $ python3 工具/check_topology.py
 
 [32m[N3] 唯一入口与代理[0m
   [32m✓7401 直连 runtime 宿主端口 [0m 失败 —— 它没有对外暴露
-  [32m✓[0m 经 platform 访问到达 DSH web（收到其认证提示）
-  [32m✓[0m 端到端：经 platform 带 token 拿到 KVVI 页面，换 cookie 后复访 HTTP 200
+  [32m✓[0m 经 platform 到达登录门（未登录被拦，代理在门之后）
+  [32m✓[0m 未登录 → 303 到 KVVI 登录页
+  [32m✓[0m 端到端：KVVI 账号登录 → 到达界面（复访 HTTP 200）[0m
 
 [32m✓ 通过[0m

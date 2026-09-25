@@ -27,6 +27,9 @@
  * 而分叉的方向恰好是「界面多出能力」。
  */
 
+/** 会话 Cookie 名。与登录门共用同一个常量，避免两处各写一个字符串。 */
+import { tokenFromCookie } from './gate.mjs'
+
 /** 面板数据的路径前缀，与浏览器半的相对路径一致。 */
 const PREFIX = '/kvvi'
 
@@ -62,8 +65,15 @@ export async function handlePanel({ method, path, headers, loadSession }) {
     return { status: 405, body: { error: 'method_not_allowed' } }
   }
 
-  const token = (headers?.authorization ?? '').replace(/^Bearer\s+/iu, '')
-  if (!token) return { status: 401, body: { error: 'KVVI_TOKEN_REQUIRED' } }
+  // 两种凭据都认：
+  //   - `Authorization: Bearer …` —— 显式调用方（脚本、另一个前端）
+  //   - 同源 Cookie —— 登录门设的 HttpOnly Cookie，浏览器自动带上
+  // `SameSite=Strict` 让 Cookie 不被跨站请求携带，所以这条路不引入 CSRF 面。
+  const fromHeader = (headers?.authorization ?? '').replace(/^Bearer\s+/iu, '')
+  const token = fromHeader !== '' ? fromHeader : tokenFromCookie(headers?.cookie)
+  if (token === undefined || token === '') {
+    return { status: 401, body: { error: 'KVVI_TOKEN_REQUIRED' } }
+  }
 
   let out
   try {

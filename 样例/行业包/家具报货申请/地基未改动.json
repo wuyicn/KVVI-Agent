@@ -24,8 +24,8 @@
     },
     "platform-service": {
       "path": "services/platform",
-      "digest": "sha256:d55d4dbd8450257bcf7b649d195e387320abb8350421bc2ddc7f90029cdd30e0",
-      "fileCount": 53
+      "digest": "sha256:85b7495e757c453ef23c47a8483a3e2d13898080d7b131d3163aae370bf73abe",
+      "fileCount": 55
     },
     "runtime-service": {
       "path": "services/runtime",
@@ -96,6 +96,26 @@
         "platform-service",
         "bundle-kvvi-app"
       ]
+    },
+    {
+      "reason": "登录门与运行时凭据桥：平台新增 gate.mjs / runtime-auth.mjs，/kvvi/ 提供登录页，并只读挂载运行时凭据以注入运行时的通道 Cookie",
+      "changedComponents": [
+        "platform-service"
+      ]
+    },
+    {
+      "reason": "登录门接线：gate.mjs / runtime-auth.mjs / 平台只读挂载运行时凭据，以及门对平台自有端点的放行",
+      "changedComponents": [
+        "platform-service"
+      ]
+    },
+    {
+      "reason": "登录门接线后刷新交付清单指纹",
+      "changedComponents": []
+    },
+    {
+      "reason": "登录门接线（gate.mjs / runtime-auth.mjs / 只读挂载运行时凭据）后的最终指纹对齐",
+      "changedComponents": []
     }
   ]
 }
