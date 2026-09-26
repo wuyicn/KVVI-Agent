@@ -156,14 +156,14 @@ git commit -m "feat: add local cluster bring-up and production bootstrap"
 - Create: `distribution/lib/upgrade.py`
 - Create: `distribution/tests/test_backup_restore.py`
 - Create: `distribution/tests/test_upgrade.py`
-- Create: `services/platform/sql/00-migration-ledger.sql`
+- Create: `services/platform/sql/00-migration-ledger.sql` (deferred: the ledger already exists inline in `migrate.mjs`, and the `reversible` flag is read conservatively until a migration declares otherwise)
 - Modify: `services/platform/src/migrate.mjs`
 - Modify: `distribution/bin/kvvi-admin`
 
 **Interfaces:**
 - Produces: `kvvi-admin backup`, `restore --plan|--apply`, `upgrade --plan|--apply`, `rollback --plan|--apply`, `uninstall [--purge-data]`; migration ledger entries with a reversibility flag.
 
-- [ ] **Step 1: Write failing digest, ledger, and in-place-upgrade tests**
+- [x] **Step 1: Write failing digest, ledger, and in-place-upgrade tests**
 
 ```python
 def test_restore_rejects_tampered_archive(backup):
@@ -183,22 +183,22 @@ def test_uninstall_keeps_data_unless_named(tmp_path):
     assert 'pgdata' in uninstall_plan(tmp_path, purge_data=True).removes
 ```
 
-- [ ] **Step 2: Run and verify the lifecycle modules are missing**
+- [x] **Step 2: Run and verify the lifecycle modules are missing**
 
 Run: `python3 -m unittest distribution.tests.test_backup_restore distribution.tests.test_upgrade -v`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement full-state archives, the ledger, and the export-based major upgrade**
+- [x] **Step 3: Implement full-state archives, the ledger, and the export-based major upgrade**
 
 Back up the three databases separately with `pg_dump -Fc`, plus runtime state and instance config without decrypted secrets, the release/version manifest, and per-file SHA-256. Upgrade always backs up first and records each migration. A PostgreSQL **major** upgrade is `pg_dump` → new cluster on the new major → `pg_restore` → row-count and digest recheck → switch. `pg_upgrade` is never used, because an in-place failure damages the only copy of the data.
 
-- [ ] **Step 4: Run lifecycle tests and a local rehearsal**
+- [x] **Step 4: Run lifecycle tests and a local rehearsal**
 
 Run: `python3 -m unittest distribution.tests.test_backup_restore distribution.tests.test_upgrade -v`
 Run: `python3 工具/交付环境.py`
 Expected: PASS; restore reproduces record counts, contract digests, account membership, and audit chain.
 
-- [ ] **Step 5: Commit lifecycle tooling**
+- [x] **Step 5: Commit lifecycle tooling**
 
 ```bash
 git add distribution services/platform/sql/00-migration-ledger.sql services/platform/src/migrate.mjs

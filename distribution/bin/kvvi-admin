@@ -40,10 +40,13 @@ argparse 的用法错误改到 1。
     kvvi-admin stop  --plan|--apply [--yes]
     kvvi-admin status [--json]
     kvvi-admin launchd            # 打印 plist，不自安装
-    kvvi-admin backup|restore|upgrade|rollback|uninstall
+    kvvi-admin backup  --plan|--yes [--out <目录>]
+    kvvi-admin restore <备份包> --plan|--yes
+    kvvi-admin uninstall [--purge-data] --plan|--yes
+    kvvi-admin rollback [--target-version <v>]
 
-备份/恢复/升级/回滚/卸载在后续任务接上，未接上的会**明确报未实现**并给出退出码 1
-—— 一个静默什么都不做的运维命令比没有更坏。
+数据库大版本升级（`upgrade`）在后续任务接上，未接上的会**明确报未实现**
+并给出退出码 1 —— 一个静默什么都不做的运维命令比没有更坏。
 """
 
 import argparse
@@ -56,9 +59,14 @@ _DISTRIBUTION = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_DISTRIBUTION.parent))
 
 from distribution.lib.preflight import preflight  # noqa: E402
+from distribution.lib.backup import (  # noqa: E402
+    backup_plan, restore_plan, uninstall_plan, verify_backup,
+)
 from distribution.lib.install import (  # noqa: E402
     DEFAULT_HOME, install_plan, release_root_path,
 )
+from distribution.lib.pg import pg_bin_dir  # noqa: E402
+from distribution.lib.upgrade import migrations_from_ledger, rollback_plan  # noqa: E402
 
 #: 发行版根目录。**从 `install.py` 取，不在这里另算一遍** —— 见那里的说明。
 HERE = release_root_path()
@@ -74,12 +82,13 @@ EXIT_APPLY_FAILED = 3
 DEFAULT_HOME = '~/Library/Application Support/KVVI-Agent'
 
 #: 已实现的子命令。
-IMPLEMENTED = ('preflight', 'install', 'start', 'stop', 'status')
+IMPLEMENTED = ('preflight', 'install', 'start', 'stop', 'status',
+               'backup', 'restore', 'uninstall', 'rollback')
 
 #: 后续任务接上的子命令。**列出来**是为了让「还没做」与「打错字」区分开：
 #: 前者说「尚未实现」，后者说「没有这个子命令」。混成一句话，
 #: 客户会以为是自己的命令写错了。
-PLANNED = ('backup', 'restore', 'upgrade', 'rollback', 'uninstall')
+PLANNED = ('upgrade',)
 
 
 def load_config(path):
@@ -261,6 +270,148 @@ def cmd_status(args):
     return EXIT_OK
 
 
+def _superuser_password(config):
+    """
+    读超级用户口令。备份与恢复都要它。
+    @param config 安装配置
+    @returns 口令
+    @throws SystemExit 读不到时（退出码 2 —— 前置条件不满足，不是用法错误）
+    """
+    path = Path(config['home']) / 'secrets' / 'postgres-superuser.password'
+    if not path.is_file():
+        print(f'✗ 找不到 {path}。', file=sys.stderr)
+        print('  备份与恢复需要超级用户口令（它不进配置文件、也不进备份包）。', file=sys.stderr)
+        print('  这个文件由 install --apply 生成；缺失说明这个实例不完整。', file=sys.stderr)
+        raise SystemExit(EXIT_PREFLIGHT_FAILED)
+    return path.read_text().strip()
+
+
+def cmd_backup(args):
+    """
+    `backup`：三个库分别导出 + 运行期状态 + 逐文件摘要。
+    @param args 已解析的参数
+    @returns 退出码
+    """
+    config = load_config(args.config)
+    out_dir = Path(args.out) if args.out else Path(config['home']) / 'backups'
+    plan = backup_plan(home=Path(config['home']), pg_port=config['pg_port'],
+                       out_dir=out_dir, superuser='kvvi_admin',
+                       superpass=_superuser_password(config))
+    if args.plan:
+        print(plan.describe())
+        return EXIT_OK
+    if not args.yes and not sys.stdin.isatty():
+        print('✗ 非交互环境下需要 --yes 才执行。', file=sys.stderr)
+        return EXIT_USAGE
+    result = plan.apply(pg_bin_dir())
+    if not result['ok']:
+        for error in result['errors']:
+            print(f'  ✗ {error}', file=sys.stderr)
+        return EXIT_APPLY_FAILED
+    for line in result['steps']:
+        print(f'  ✓ {line}')
+    print(f'✓ 备份完成：{result["archive"]}')
+    return EXIT_OK
+
+
+def cmd_restore(args):
+    """
+    `restore`：先核摘要，再覆盖恢复。
+    @param args 已解析的参数
+    @returns 退出码
+    """
+    config = load_config(args.config)
+    if not args.archive:
+        print('✗ restore 需要一个备份包：restore <备份包>', file=sys.stderr)
+        return EXIT_USAGE
+    plan = restore_plan(archive=Path(args.archive), home=Path(config['home']),
+                        pg_port=config['pg_port'], superuser='kvvi_admin',
+                        superpass=_superuser_password(config))
+    if args.plan:
+        print(plan.describe())
+        return EXIT_OK
+    if not args.yes and not sys.stdin.isatty():
+        print('✗ 非交互环境下需要 --yes 才执行。', file=sys.stderr)
+        return EXIT_USAGE
+    result = plan.apply(pg_bin_dir())
+    if not result['ok']:
+        for error in result['errors']:
+            print(f'  ✗ {error}', file=sys.stderr)
+        if result['errors'][0].get('kind') == 'verify':
+            print('  **数据库一个字节都没动。**', file=sys.stderr)
+        return EXIT_APPLY_FAILED
+    for line in result['steps']:
+        print(f'  ✓ {line}')
+    print('✓ 恢复完成')
+    return EXIT_OK
+
+
+def cmd_uninstall(args):
+    """
+    `uninstall`：默认**保留数据**。
+    @param args 已解析的参数
+    @returns 退出码
+    """
+    config = load_config(args.config)
+    plan = uninstall_plan(home=Path(config['home']), purge_data=args.purge_data)
+    if args.plan or not args.yes:
+        print(plan.describe())
+        if not args.plan and not args.yes:
+            print()
+            print('  确认无误后加 --yes 执行。')
+        return EXIT_OK
+    result = plan.apply()
+    for line in result['steps']:
+        print(f'  ✓ 已删除 {line}')
+    for line in result['kept']:
+        print(f'  · 已保留 {line}')
+    # ⚠️ 收尾那句话**必须跟着实际做了什么走**。
+    #    第一版无论删没删数据都说「数据仍在」—— 而 `--purge-data` 刚把
+    #    公司、账号与全部业务数据删掉。一句与实际相反的收尾话，
+    #    比不打印任何话更坏：它是客户对「我到底删了什么」的最后印象。
+    print('✓ 卸载完成。' + ('已按 --purge-data 清除数据。' if plan.purge_data
+                            else '数据仍在，重新安装后可用。'))
+    return EXIT_OK
+
+
+def cmd_rollback(args):
+    """
+    `rollback`：不可逆迁移存在时**拒绝**。
+    @param args 已解析的参数
+    @returns 退出码
+    """
+    config = load_config(args.config)
+    migrations = _applied_migrations(config)
+    plan = rollback_plan(home=Path(config['home']), migrations=migrations,
+                         target_version=args.target_version or '(上一个版本)')
+    print(plan.describe())
+    return EXIT_OK if plan.allowed else EXIT_PREFLIGHT_FAILED
+
+
+def _applied_migrations(config):
+    """
+    从迁移账本读已应用的迁移。
+    @param config 安装配置
+    @returns 迁移记录
+    """
+    import subprocess
+    password = _superuser_password(config)
+    env = dict(os.environ, PGPASSWORD=password, LC_ALL='en_US.UTF-8')
+    query = 'SELECT file, false AS reversible FROM schema_migrations ORDER BY file'
+    result = subprocess.run(
+        [str(pg_bin_dir() / 'psql'), '-h', '127.0.0.1', '-p', str(config['pg_port']),
+         '-U', 'kvvi_admin', '-d', 'kvvi_platform', '-tAc',
+         "SELECT json_agg(row_to_json(t)) FROM (" + query + ") t"],
+        capture_output=True, text=True, env=env, timeout=60)
+    if result.returncode != 0 or not result.stdout.strip():
+        return []
+    import json as _json
+    try:
+        return migrations_from_ledger(_json.loads(result.stdout.strip()))
+    except ValueError:
+        return []
+
+
 def main(argv=None):
     """
     解析参数并分派。
@@ -281,6 +432,29 @@ def main(argv=None):
         done.add_argument('--apply', action='store_true', help='执行')
         done.add_argument('--yes', action='store_true', help='非交互环境下的确认')
         done.add_argument('--config', default=None)
+
+    backup = sub.add_parser('backup', help='备份三个库与运行期状态')
+    backup.add_argument('--plan', action='store_true')
+    backup.add_argument('--yes', action='store_true')
+    backup.add_argument('--out', default=None, help='输出目录（缺省 $KVVI_HOME/backups）')
+    backup.add_argument('--config', default=None)
+
+    restore = sub.add_parser('restore', help='先核摘要，再恢复')
+    restore.add_argument('archive', nargs='?', default=None, help='备份包路径')
+    restore.add_argument('--plan', action='store_true')
+    restore.add_argument('--yes', action='store_true')
+    restore.add_argument('--config', default=None)
+
+    uninstall = sub.add_parser('uninstall', help='卸载（默认保留数据）')
+    uninstall.add_argument('--plan', action='store_true')
+    uninstall.add_argument('--yes', action='store_true')
+    uninstall.add_argument('--purge-data', action='store_true',
+                           help='连公司、账号与业务数据一起删（不可恢复）')
+    uninstall.add_argument('--config', default=None)
+
+    rollback = sub.add_parser('rollback', help='回滚到上一个版本（不可逆迁移会阻止）')
+    rollback.add_argument('--target-version', default=None)
+    rollback.add_argument('--config', default=None)
 
     status = sub.add_parser('status', help='报告两个进程的状态与已知降级')
     status.add_argument('--json', action='store_true')
@@ -312,6 +486,14 @@ def main(argv=None):
         return cmd_stop(args)
     if args.command == 'status':
         return cmd_status(args)
+    if args.command == 'backup':
+        return cmd_backup(args)
+    if args.command == 'restore':
+        return cmd_restore(args)
+    if args.command == 'uninstall':
+        return cmd_uninstall(args)
+    if args.command == 'rollback':
+        return cmd_rollback(args)
     if args.command == 'launchd':
         config = load_config(args.config)
         print(launchd_plist(home=Path(config['home']), release_root=HERE,

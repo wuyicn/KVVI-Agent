@@ -39,8 +39,8 @@
       "path": "distribution",
       "kind": "macOS 试点发行版（安装向导 / 前置检查 / 备份恢复 / 升级）",
       "version": null,
-      "fileCount": 12,
-      "digest": "sha256:1137a2da289370cf33e462adf68ca47bcdd218f8f6f4dd76d76bc89674454c0a"
+      "fileCount": 15,
+      "digest": "sha256:7638aa0564416c648058d8498a0b6ded635ecba9a1c116992d36377323dcf066"
     },
     {
       "name": "platform-service",
@@ -99,5 +99,5 @@
       "digest": "sha256:c0c9fe33ba8f6aeef9135be6f2386101d7c7837b0f5edf30abfacc68166aa128"
     }
   ],
-  "deliveryDigest": "sha256:5b37d74057ecc8117a2f1015061cec25cc73d0fcc2df4e432bf87174f94847ef"
+  "deliveryDigest": "sha256:83b72a36c07233be100a627e133bff2b3ab759f4a0029bfeedb10dabfdef5805"
 }

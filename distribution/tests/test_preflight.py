@@ -295,16 +295,27 @@ class AdminCliTest(unittest.TestCase):
     def test_unknown_subcommand_is_usage_error(self):
         self.assertEqual(self._run('frobnicate').returncode, 1)
 
-    def test_planned_but_unimplemented_says_so_and_exits_usage(self):
-        # 「尚未实现」与「没有这个子命令」必须分开：混成一句话，客户会以为是自己打错字了。
-        #
-        # ⚠️ 用 `backup` 而不是 `install`：`install` 已经实现了，这条用例在
-        #    实现它的那一天就会红 —— 而红的原因是**用例选错了样本**，
-        #    不是「未实现」这条行为变了。PLANNED 里还有哪个，这里就用哪个。
-        result = self._run('backup', '--plan')
-        self.assertEqual(result.returncode, 1)
-        self.assertIn('尚未实现', result.stdout)
-        self.assertIn('preflight', result.stdout)
+    def test_every_planned_command_is_actually_unimplemented(self):
+        """
+        「尚未实现」与「没有这个子命令」必须分开：混成一句话，客户会以为是自己打错字了。
+
+        ⚠️ 这条用例的样本**从 `PLANNED` 里取**，不写死。
+        第一版写死的是 `install`，实现它的那天就红了；
+        第二版写死 `backup`，同样在实现它的那天红了。
+        **两次都不是行为变了，是用例选错了样本。**
+        现在它遍历清单，实现一个就自动少测一个，永远不会误报。
+        """
+        from importlib.machinery import SourceFileLoader
+        admin = SourceFileLoader('kvvi_admin', str(
+            Path(__file__).resolve().parents[1] / 'bin' / 'kvvi-admin'))
+        planned = admin.load_module().PLANNED
+        self.assertTrue(planned, 'PLANNED 空了 —— 那这条测试已经没有意义，应删除')
+        for name in planned:
+            with self.subTest(command=name):
+                result = self._run(name, '--plan')
+                self.assertEqual(result.returncode, 1, f'{name} 的退出码不是用法错误')
+                self.assertIn('尚未实现', result.stdout)
+                self.assertIn('preflight', result.stdout)
 
     def test_preflight_exit_code_matches_the_environment(self):
         # 不把环境结果写死：这台机器装了 PostgreSQL 就 0，没装就 2 —— 两者都合法，
