@@ -309,6 +309,11 @@ const server = createServer(async (req, res) => {
         })
         return r?.status === 200
       },
+      // 未初始化时，门把客户送到 `/kvvi/bootstrap` —— 那里才有他能做的那件事。
+      // 判据只有一处：`bootstrapState()`（`instance_bootstrap` 那行在不在）。
+      bootstrapPending: async () => !(await bootstrapRoutes({
+        method: 'GET', path: '/bootstrap/state', body: null, expectedToken: BOOTSTRAP_TOKEN,
+      })).body.completed,
     })
     if (out !== null) {
       if (out.html !== undefined) return send(res, out.status, out.html, out.headers ?? {})

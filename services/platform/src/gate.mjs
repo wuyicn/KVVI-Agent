@@ -97,6 +97,109 @@ const MESSAGES = {
   KVVI_BAD_GATEWAY: '入口类型不对。',
   KVVI_BUILDER_ACCESS_REQUIRED: '该账号没有此公司的搭建模式权限。',
   KVVI_COMPANY_SELECTION_REQUIRED: '这个账号属于多家公司，请选择本次要进入的公司。',
+  // 首次初始化。文案与 `bootstrap.mjs` 的错误码一一对应 —— 那边只给码，这边给话。
+  KVVI_BOOTSTRAP_CLOSED: '这个实例已经初始化过了。请直接登录。',
+  KVVI_BOOTSTRAP_TOKEN_REQUIRED: '需要初始化令牌。它由安装过程生成。',
+  KVVI_BOOTSTRAP_TOKEN_INVALID: '初始化令牌不对。',
+  KVVI_BOOTSTRAP_BAD_REQUEST: '企业名称与所有者账号都不能为空。',
+  KVVI_BOOTSTRAP_WEAK_PASSWORD: '口令至少 8 位。',
+  KVVI_LOGIN_EXISTS: '这个账号名已经有人用了，换一个。',
+}
+
+/* ── 首次初始化页面 ──────────────────────────────────────────────────── */
+
+/**
+ * 首次初始化页面。**自包含**（样式与脚本内联、无外部资源），理由与登录页相同。
+ *
+ * ── 为什么它必须存在 ────────────────────────────────────────────────────
+ *
+ * 第一版只有 `POST /bootstrap/owner` 这个端点，**没有任何页面用它**。
+ * 于是 `安装手册.md` §4 写的「界面会要一次性初始化令牌」是一句空话：
+ * 客户打开界面只能看到「账号 / 口令 / 登录」，而这两个框他一个都没有。
+ * 唯一的走法是自己拼 `curl` —— 那是我们能走的、不是客户能走的。
+ *
+ * 这件事在 G9 里看不出来，因为 G9 的验收旅程**直接调 API**：
+ * 它走的正是客户走不到的那条路。
+ *
+ * 提交走 `fetch` + JSON，端点是**已有的那个** `/bootstrap/owner` ——
+ * 判断「能不能初始化」「令牌对不对」「口令够不够长」的判据全在 `bootstrap.mjs` 里，
+ * 这里一行都不重复。页面只负责把话说明白。
+ *
+ * @param input - `{message}`：要显示的错误，或空。
+ * @returns 完整 HTML。
+ */
+function bootstrapPage({ message = '' } = {}) {
+  const messages = JSON.stringify(MESSAGES).replace(/</g, '\\u003c')
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KVVI 工作台 · 首次初始化</title>
+<style>${PAGE_CSS}</style>
+</head>
+<body>
+<form id="boot" autocomplete="off">
+  <div class="mark">KV</div>
+  <h1>KVVI 工作台</h1>
+  <div class="lead">第一次使用：建企业与所有者账号</div>
+  <label for="token">初始化令牌</label>
+  <input id="token" name="token" type="text" required autofocus>
+  <label for="companyName">企业名称</label>
+  <input id="companyName" name="companyName" type="text" required>
+  <label for="login">所有者账号</label>
+  <input id="login" name="login" type="text" required>
+  <label for="password">所有者口令</label>
+  <input id="password" name="password" type="password" required minlength="8">
+  <button type="submit" id="submit">创建并继续</button>
+  <div class="msg" id="msg">${esc(message)}</div>
+  <div class="foot">令牌由安装过程生成：安装输出里打印过它，
+    也在 <code>$KVVI_HOME/secrets/bootstrap.token</code> 里。<br>
+    这一步<strong>只会成功一次</strong>；之后再打开这个页面会跳回登录页。</div>
+</form>
+<script>
+(function () {
+  var MESSAGES = ${messages};
+  var form = document.getElementById('boot');
+  var msg = document.getElementById('msg');
+  var button = document.getElementById('submit');
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    var body = {
+      token: document.getElementById('token').value,
+      companyName: document.getElementById('companyName').value,
+      login: document.getElementById('login').value,
+      password: document.getElementById('password').value
+    };
+    button.disabled = true;
+    msg.textContent = '正在创建…';
+    fetch('/bootstrap/owner', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (response) {
+      return response.json().then(function (data) {
+        return { status: response.status, data: data };
+      });
+    }).then(function (out) {
+      if (out.status === 201) {
+        msg.textContent = '创建完成，正在跳到登录…';
+        window.location.replace('/kvvi/login');
+        return;
+      }
+      button.disabled = false;
+      // 服务端只给码，话在这张表里 —— 不在这里另写一份判断。
+      msg.textContent = MESSAGES[out.data && out.data.error]
+        || ('创建失败：' + (out.data && out.data.error ? out.data.error : out.status));
+    }).catch(function (error) {
+      button.disabled = false;
+      msg.textContent = '创建失败：' + String(error && error.message ? error.message : error);
+    });
+  });
+}());
+</script>
+</body>
+</html>`
 }
 
 const PAGE_CSS = `
@@ -192,15 +295,35 @@ const OK = (html, headers = {}) => ({
  *   转发给身份层的登录端点 —— **不在这里再写一份认证逻辑**。
  * @param {(token: string) => Promise<boolean>} input.verify
  *   令牌是否属于一个有效会话（验签 + 撤销 + 授权版本，都在身份层做）。
+ * @param {() => Promise<boolean>} [input.bootstrapPending]
+ *   这个实例是否**还没**初始化过。未提供时按「已初始化」处理 ——
+ *   那种情况下 `/kvvi/bootstrap` 一律跳登录页，不会变成一个可反复调用的入口。
  * @returns {Promise<object|null>} 要自己应答时给出 `{status, html?/body?, headers?}`；
  *   否则 `null`。
  */
-export async function handleGate({ method, path, query, body, headers, login, verify }) {
+export async function handleGate({ method, path, query, body, headers, login, verify,
+                                   bootstrapPending }) {
   const loginEntry = path === '/kvvi/login' || path === '/kvvi/builder/login'
   const requestedGateway = path === '/kvvi/builder/login' ? 'BUILDER' : 'USER'
+  // 只在**要显示初始化页**时才去问一次库：其余路径一次查询都不多发。
+  const pending = async () => (bootstrapPending === undefined ? false : await bootstrapPending())
+
+  // ⓪ 首次初始化
+  //
+  // 排在登录页之前：一个还没初始化的实例上，客户**没有任何账号可以登录**，
+  // 把他丢到登录页等于把他丢进死胡同 —— 而手册承诺的是「界面会要一次性初始化令牌」。
+  if (path === BOOTSTRAP_PATH && method === 'GET') {
+    if (!await pending()) {
+      return { status: 303, headers: { location: '/kvvi/login', 'cache-control': 'no-store' } }
+    }
+    return OK(bootstrapPage())
+  }
 
   // ① 登录页
   if (loginEntry && method === 'GET') {
+    if (await pending()) {
+      return { status: 303, headers: { location: BOOTSTRAP_PATH, 'cache-control': 'no-store' } }
+    }
     const params = new URLSearchParams(query ?? '')
     const message = params.get('error') ? (MESSAGES[params.get('error')] ?? params.get('error')) : ''
     return OK(loginPage({ message, gateway: requestedGateway }))
@@ -265,10 +388,13 @@ export async function handleGate({ method, path, query, body, headers, login, ve
   const token = tokenFromCookie(headers?.cookie)
   if (token !== undefined && await verify(token)) return null
   // 没有有效会话 —— 带 Cookie 的先清掉，免得留一个坏 cookie 反复失败。
+  // ⚠️ 未初始化时**跳初始化页**，不跳登录页：这个实例上还没有任何账号，
+  //    跳到登录页就是死胡同，而界面上看不出「其实该先初始化」。
+  const location = await pending() ? BOOTSTRAP_PATH : '/kvvi/login'
   return {
     status: 303,
     headers: {
-      location: '/kvvi/login',
+      location,
       'cache-control': 'no-store',
       ...(token === undefined ? {} : { 'set-cookie': clearedCookie() }),
     },
@@ -278,8 +404,11 @@ export async function handleGate({ method, path, query, body, headers, login, ve
 /** 供测试直接取错误文案表。 */
 export { MESSAGES as GATE_MESSAGES }
 
+/** 首次初始化页面的路径。它由登录门自己提供，不属于业务面板。 */
+export const BOOTSTRAP_PATH = '/kvvi/bootstrap'
+
 /** 平台登录门自己处理的 `/kvvi/*` 路径；其余仍交给业务面板。 */
 export function isGatePath(pathname) {
   return pathname === '/kvvi/login' || pathname === '/kvvi/builder/login'
-    || pathname === '/kvvi/logout'
+    || pathname === '/kvvi/logout' || pathname === BOOTSTRAP_PATH
 }
