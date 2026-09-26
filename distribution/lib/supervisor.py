@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from distribution.lib.pg import cluster_is_running, pg_bin_dir
+from distribution.lib.pg import cluster_is_running, cluster_start_step, pg_bin_dir
 
 #: 启动顺序即元组顺序。平台在前。
 PROGRAMS = ('platform', 'runtime')
@@ -129,6 +129,19 @@ class ProcessPlan:
             return {'ok': not errors, 'steps': done, 'errors': errors, 'pids': pids}
 
         for step in self.steps:
+            if step['kind'] == 'ensure-cluster':
+                # ⚠️ **集群没在跑就把它拉起来，而不是拒绝启动。**
+                #
+                # `start` 曾经要求集群已经跑着 —— 于是「重启电脑」之后，
+                # `kvvi-admin start` 直接退出码 2，而手册 §3 的 launchd 自启
+                # 跑的正是这条命令：每次开机必然失败，然后被 KeepAlive 反复重试。
+                # 现在判据反过来：集群在就不动它，不在就起它（幂等）。
+                outcome = self._ensure_cluster(step)
+                done.append(outcome['detail'])
+                if not outcome['ok']:
+                    errors.append({'kind': step['kind'], 'stderr': outcome['detail']})
+                    return {'ok': False, 'steps': done, 'errors': errors, 'pids': pids}
+                continue
             if step['kind'] == 'prepare-dsh-profile':
                 profile_dir = self.home / 'profiles' / DSH_PROFILE
                 profile_dir.mkdir(parents=True, exist_ok=True)
@@ -162,6 +175,30 @@ class ProcessPlan:
             else:
                 done.append(step['kind'] + ': 只读')
         return {'ok': not errors, 'steps': done, 'errors': errors, 'pids': pids}
+
+    def _ensure_cluster(self, step: dict) -> dict:
+        """
+        集群在跑就跳过，不在跑就起来。**幂等。**
+
+        失败时把 postgres 的日志尾几行带回来 —— 「集群没起来」本身不是可诊断的信息，
+        而它真正的理由（locale、socket 目录、端口占用）只在日志里。
+
+        @param step `ensure-cluster` 那一步（含 `cluster`）
+        @returns `{ok, detail}`
+        """
+        cluster = step['cluster']
+        pg_bin = Path(cluster['pgBin'])
+        if cluster_is_running(self.home, pg_bin):
+            return {'ok': True, 'detail': 'ensure-cluster: 已在运行，跳过'}
+        result = subprocess.run([str(a) for a in cluster['argv']],
+                                capture_output=True, text=True,
+                                env=cluster.get('env'), timeout=120)
+        if result.returncode != 0 or not cluster_is_running(self.home, pg_bin):
+            tail = _tail_of(self.home / 'log' / 'postgres.log')
+            reason = (result.stderr.strip() or result.stdout.strip() or '未知原因')[:300]
+            return {'ok': False,
+                    'detail': f'数据库集群起不来：{reason}' + (f'｜{tail}' if tail else '')}
+        return {'ok': True, 'detail': 'ensure-cluster: 已拉起'}
 
     def _await_alive(self, pid: int, seconds: int) -> Optional[str]:
         """
@@ -262,10 +299,20 @@ def readiness_report(home: Path, platform_port: int, runtime_port: int = DEFAULT
         issues.append({'code': 'KVVI_PG_NOT_FOUND',
                        'guidance': '找不到 PostgreSQL 二进制；见 kvvi-admin preflight'})
 
-    if resolved_bin is not None and not cluster_is_running(home, resolved_bin):
-        issues.append({'code': 'KVVI_CLUSTER_NOT_RUNNING',
-                       'guidance': f'数据库集群没在运行。先跑 kvvi-admin install --apply，'
-                                   f'或手动起：pg_ctl -D {home / "pgdata"} start'})
+    # ⚠️ **这里曾经判的是「集群在不在跑」，而 `start` 并不去起它。**
+    #
+    # 于是「重启电脑」这个场景下：集群停了 → `start` 拒绝启动 → 提示去手工跑
+    # `pg_ctl -D … start`（那条命令又缺 `LC_ALL`，照做会撞上另一个报错）——
+    # 而手册 §3 的 launchd 自启跑的就是 `kvvi-admin start`，
+    # 也就是**每次开机必然失败、然后被 KeepAlive 反复重试**。
+    #
+    # 现在的判据换成「能不能起」：集群已经在跑就跳过，没跑就由 `start` 把它拉起来
+    # （见 `start_plan` 的 `ensure-cluster` 步骤）。装到一半、目录不全的实例
+    # 仍然会在这里被挡下 —— 那才是这条检查真正要抓的东西。
+    if resolved_bin is not None and not (home / 'pgdata' / 'PG_VERSION').is_file():
+        issues.append({'code': 'KVVI_CLUSTER_NOT_INITIALIZED',
+                       'guidance': f'找不到 {home / "pgdata" / "PG_VERSION"} —— '
+                                   f'这个实例没有装完，请重新运行 kvvi-admin install --apply'})
 
     if not (home / 'kvvi.env').is_file():
         issues.append({'code': 'KVVI_CONFIG_MISSING',
@@ -296,6 +343,12 @@ def start_plan(home: Path, release_root: Path, platform_port: int = DEFAULT_PLAT
     """
     home = Path(home)
     root = Path(release_root)
+    # 起集群要用它。`pg_bin` 没给时按同一套候选目录找 —— 与 `preflight` 用的
+    # 是同一个函数，不用在这里再列一遍路径。
+    try:
+        resolved_pg_bin = Path(pg_bin) if pg_bin is not None else pg_bin_dir()
+    except RuntimeError:
+        resolved_pg_bin = Path(pg_bin) if pg_bin is not None else Path('/usr/bin/false')
     # ⚠️ **整份配置都进子进程环境，不逐键挑。**
     #
     # 第一版只挑了 `KVVI_INTERNAL_TOKEN` 与 `KVVI_BOOTSTRAP_TOKEN` 两项，
@@ -310,9 +363,14 @@ def start_plan(home: Path, release_root: Path, platform_port: int = DEFAULT_PLAT
         internal_token = env_file.get('KVVI_INTERNAL_TOKEN', '')
 
     prepare = [
-        {'kind': 'check-cluster', 'writes': False, 'program': 'platform', 'argv': []},
         {'kind': 'check-config', 'writes': False, 'program': 'platform', 'argv': []},
         {'kind': 'check-ports', 'writes': False, 'program': 'platform', 'argv': []},
+        # ⚠️ `ensure-cluster` 是**写**步骤（集群没在跑就把它拉起来），所以它必须排在
+        #    两个只读检查**之后** —— 「先看计划、再执行」这条纪律对 `start` 同样成立：
+        #    配置缺了或端口被占，就不该先把数据库拉起来。
+        #    理由与后果见 `readiness_report` 里那一段。
+        {'kind': 'ensure-cluster', 'writes': True, 'program': 'platform', 'argv': [],
+         'cluster': dict(cluster_start_step(home, resolved_pg_bin), pgBin=str(resolved_pg_bin))},
     ]
     platform_step = {
         'kind': 'start-platform', 'writes': True, 'program': 'platform',
@@ -401,6 +459,20 @@ def status_report(home: Path, release_root: Path,
         report.update(processes)
     return {'home': str(home), 'releaseRoot': str(release_root),
             'processes': report, 'degradations': list(DEGRADATIONS)}
+
+
+def _tail_of(path: Path, lines: int = 6) -> str:
+    """
+    某个日志文件的尾部若干行。
+    @param path 日志路径
+    @param lines 取几行
+    @returns 日志尾；读不到时为空串
+    """
+    try:
+        body = Path(path).read_text(errors='replace').strip().splitlines()
+    except OSError:
+        return ''
+    return ' / '.join(body[-lines:])[:600]
 
 
 def _user_name() -> str:

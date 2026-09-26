@@ -263,6 +263,32 @@ class ClusterPlan:
         return {'ok': True, 'steps': done, 'errors': []}
 
 
+def cluster_start_step(home: Path, pg_bin: Path) -> dict:
+    """
+    起集群的那一步：`{kind, argv, env}`。**只有这一处定义。**
+
+    `cluster_plan()` 与 `supervisor.start_plan()` 都用它 —— 起集群的命令写在两处，
+    就是「两处会漂移」的老问题：其中一处漏了 `LC_ALL` 的那种漂移，
+    症状是「按提示手动起一下」这句建议**本身跑不起来**。
+
+    ⚠️ `LC_ALL` 必须给。macOS 上不给会得到
+    `FATAL: postmaster became multithreaded during startup`，
+    而报错里除了那行 HINT 一个字都没提 locale。
+
+    @param home `$KVVI_HOME`
+    @param pg_bin PostgreSQL 二进制目录
+    @returns 一个可执行的步骤（含 `argv` 与 `env`）
+    """
+    home = Path(home)
+    pg_bin = Path(pg_bin)
+    return {
+        'kind': 'start-cluster',
+        'argv': [str(pg_bin / 'pg_ctl'), '-D', str(home / 'pgdata'),
+                 '-l', str(home / 'log' / 'postgres.log'), '-w', '-t', '60', 'start'],
+        'env': dict(os.environ, LC_ALL='en_US.UTF-8'),
+    }
+
+
 def cluster_plan(home: Path, pg_port: int, pg_bin: Path,
                  superuser_password: Optional[str] = None) -> ClusterPlan:
     """
@@ -290,10 +316,9 @@ def cluster_plan(home: Path, pg_port: int, pg_bin: Path,
         '--auth-local=trust', '--auth-host=scram-sha-256',
         '-E', 'UTF8',
     ]
-    start_argv = [
-        str(pg_bin / 'pg_ctl'), '-D', str(data_dir),
-        '-l', str(log_file), '-w', '-t', '60', 'start',
-    ]
+    # 起集群的命令**不在这里再写一遍**：见 `cluster_start_step()`。
+    # 这里只把步骤名换成 `cluster_plan` 自己的那一个（`apply()` 按它判幂等）。
+    start_step = dict(cluster_start_step(home, pg_bin), kind='start-server', writes=True)
     steps = [
         {'kind': 'verify-binaries', 'argv': [str(pg_bin / 'initdb'), '--version'],
          'writes': False},
@@ -306,11 +331,7 @@ def cluster_plan(home: Path, pg_port: int, pg_bin: Path,
         #    「为什么端口、监听地址和 socket 目录必须写进 postgresql.conf」。
         {'kind': 'write-cluster-config', 'writes': True,
          'content': cluster_conf_block(pg_port, socket_dir)},
-        # ⚠️ `LC_ALL` 必须给。macOS 上不给会得到
-        #    `FATAL: postmaster became multithreaded during startup` ——
-        #    报错里除了那行 HINT 一个字都没提 locale。
-        {'kind': 'start-server', 'argv': start_argv, 'writes': True,
-         'env': dict(os.environ, LC_ALL='en_US.UTF-8')},
+        start_step,
     ]
     return ClusterPlan(home=home, data_dir=data_dir, socket_dir=socket_dir,
                        pg_port=pg_port, pg_bin=pg_bin, log_file=log_file,

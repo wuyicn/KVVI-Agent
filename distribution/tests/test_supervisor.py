@@ -256,20 +256,56 @@ class ReadinessTest(unittest.TestCase):
         self.home = Path(self._tmp.name) / 'kvvi'
         self.addCleanup(self._tmp.cleanup)
 
-    def test_missing_cluster_is_reported_first_and_alone(self):
-        # 集群没起、配置也没有 —— **两件都是事实，都要报**（「一次报完」）。
+    def test_uninitialized_cluster_is_reported_first(self):
+        # 集群没装完、配置也没有 —— **两件都是事实，都要报**（「一次报完」）。
         # 但顺序有意义：先说最早的那道坎，客户才知道从哪开始。
+        #
+        # ⚠️ 这条判据换过一次，换的原因值得记下来：
+        #    第一版判的是「集群**没在跑**」，而 `start` 并不去起它 ——
+        #    于是「重启电脑」之后 `kvvi-admin start` 直接拒绝启动，
+        #    手册 §3 的 launchd 自启每次开机必然失败。
+        #    现在判的是「集群**根本没装出来**」（缺 `PG_VERSION`）——
+        #    那才是这条检查真正能拦、也应该拦的东西。
         report = readiness_report(home=self.home, platform_port=free_port())
         codes = [i['code'] for i in report['issues']]
-        self.assertEqual(codes[:1], ['KVVI_CLUSTER_NOT_RUNNING'],
-                         '第一项不是「集群没起」——客户会先去查错的东西')
+        self.assertEqual(codes[:1], ['KVVI_CLUSTER_NOT_INITIALIZED'],
+                         '第一项不是「集群没装出来」——客户会先去查错的东西')
         self.assertIn('KVVI_CONFIG_MISSING', codes)
 
-    def test_missing_config_is_reported_after_the_cluster(self):
-        # 造一个「pid 文件在、但 pg_ctl status 说没在跑」的形态 —— 判定读的是
-        # `pg_ctl status`，不是「pid 文件存不存在」。后者在崩溃后会留下假阳性。
+    def test_stopped_cluster_is_not_an_issue(self):
+        # ⚠️ 回归：集群**装了但没在跑**，不是前置检查该拦的事 —— `start` 会拉起它。
+        #    第一版把这条判成 KVVI_CLUSTER_NOT_RUNNING，于是「重启电脑」这个
+        #    最常见的场景反而过不去。装上 `PG_VERSION` 再用一个没人在跑的实例问一次。
         (self.home / 'pgdata').mkdir(parents=True)
-        (self.home / 'pgdata' / 'postmaster.pid').write_text('1234\n')
+        (self.home / 'pgdata' / 'PG_VERSION').write_text('17\n')
+        report = readiness_report(home=self.home, platform_port=free_port())
+        self.assertNotIn('KVVI_CLUSTER_NOT_RUNNING', [i['code'] for i in report['issues']],
+                         '集群只是没在跑，却被前置检查拦住 —— 开机自启会永远失败')
+        self.assertNotIn('KVVI_CLUSTER_NOT_INITIALIZED',
+                         [i['code'] for i in report['issues']])
+
+    def test_start_plan_brings_the_cluster_up(self):
+        # 起集群的命令必须在**启动计划里**，而且排在两个进程之前 ——
+        # 否则「重启电脑后跑 start」这件事只能靠客户自己去读文档。
+        (self.home / 'pgdata').mkdir(parents=True)
+        (self.home / 'pgdata' / 'PG_VERSION').write_text('17\n')
+        plan = start_plan(home=self.home, release_root=Path('/tmp/release'),
+                          platform_port=free_port())
+        kinds = [s['kind'] for s in plan.steps]
+        self.assertIn('ensure-cluster', kinds)
+        self.assertLess(kinds.index('ensure-cluster'), kinds.index('start-platform'))
+        self.assertLess(kinds.index('ensure-cluster'), kinds.index('start-runtime'))
+        cluster = next(s for s in plan.steps if s['kind'] == 'ensure-cluster')
+        # ⚠️ `LC_ALL` 必须在。缺了它，「按提示手动起一下集群」这句建议本身
+        #    会撞上 `postmaster became multithreaded during startup` ——
+        #    实测就是这么发生的一次。同一个坑不许出现第二遍。
+        self.assertIn('LC_ALL', cluster['cluster']['env'])
+        self.assertIn('pg_ctl', ' '.join(cluster['cluster']['argv']))
+        self.assertIn('start', cluster['cluster']['argv'])
+
+    def test_missing_config_is_reported_after_the_cluster(self):
+        (self.home / 'pgdata').mkdir(parents=True)
+        (self.home / 'pgdata' / 'PG_VERSION').write_text('17\n')
         report = readiness_report(home=self.home, platform_port=free_port())
         self.assertIn('KVVI_CONFIG_MISSING', [i['code'] for i in report['issues']])
 
