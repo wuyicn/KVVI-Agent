@@ -34,22 +34,3 @@
     # replaces and needs no upstream source edit.
     - id: kvvi-panel
       name: '@deepseek-ai/dsh-client-kvvi-panel'
-    # Server-bound USER/BUILDER context selects and locks the corresponding
-    # Agent preset. It rejects unsigned direct-runtime API requests.
-    - id: kvvi-mode-router
-      name: '@deepseek-ai/dsh-host-kvvi-mode-router'
-      config:
-        secret: !!js process.env.KVVI_INTERNAL_TOKEN
-
-# KVVI mode is selected by the authenticated platform entry, never by the
-# generic DSH preset picker. The direct RPC is also locked by kvvi-mode-router.
-- id: ui-agent-preset
-  disabled: true
-
-# Stage 12 will expose owner-approved signed extension packages. Until that
-# audited surface exists, neither employees nor builders may use upstream's
-# unrestricted package manager or inventory UI.
-- id: ui-plugin-manager
-  disabled: true
-- id: ui-settings-plugin-inventory
-  disabled: true

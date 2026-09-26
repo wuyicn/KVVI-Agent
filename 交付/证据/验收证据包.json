@@ -51,7 +51,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段一-G2-fork-改造点.txt",
-      "digest": "sha256:7cf22b038e2e0f5e6081d0bef375c23ed11c22f3e2b46c0e45266bb0d75d9089"
+      "digest": "sha256:0a0baf9aca42acc47a7a15ab93868dae8bfa4a22d11cecae6b494b834347db66"
     },
     {
       "stage": "阶段一",
@@ -87,7 +87,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-Skill-产出验收.txt",
-      "digest": "sha256:4c7ccbed0e3db97f19ef8135b6bae086bf09b83505bcdc7970e01fe5d76c3c4e"
+      "digest": "sha256:cc5197aca3cd9803d8297aa3df5e5a4b23040416f463489baf5eba12ce763b99"
     },
     {
       "stage": "阶段三",
@@ -105,7 +105,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-去行业化自查（0A-14）.txt",
-      "digest": "sha256:4433667454d94a3db28b3d2b4e5e2af1493374e236f382044c76b3eb5ce59fd4"
+      "digest": "sha256:9b74bb6e2d6127bea63347cfdc6d91e5f6194d2057206a50dbd720d0e6fa7354"
     },
     {
       "stage": "阶段三",
@@ -123,7 +123,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段四-锚点①②③④⑥-全量.txt",
-      "digest": "sha256:1d654b346121fccf963a4e0a781c7242cefadc700fd97506e4286cf271b2004f"
+      "digest": "sha256:f8cd09c75456fdefe5546bc7512559250a53eb1cc4eb06825f64d77bbe88ed70"
     },
     {
       "stage": "阶段五",
@@ -132,7 +132,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段五-锚点①②③④-全量.txt",
-      "digest": "sha256:37117ce6292bf9c3c609a40e41f14114a16de7ce82e31ceb76cc83280cf908d3"
+      "digest": "sha256:f59fb7df39e2ecfa6cc020433c05bb697fd43ce408928510f884decd04eca4fd"
     },
     {
       "stage": "阶段六",
@@ -150,7 +150,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/贯穿-交付包清单_版本_指纹.txt",
-      "digest": "sha256:c757dd6e4d3d71029d91cc44471e2cb13411cf46e575d1c966263970da001300"
+      "digest": "sha256:35233fbbc186ce0661b595ceaa90537b1e6330580b6606ce10cff357e3f751aa"
     },
     {
       "stage": "贯穿",
@@ -168,7 +168,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/贯穿-fork-可重建（N1_N2）.txt",
-      "digest": "sha256:80a05cbb8faaf943e5a362a87fb4b35cd74ef1511aec9638b11cf31b8dec5d64"
+      "digest": "sha256:6ff217652418fab58e2b94a1ef69fe03c50e2afff3c08b887c11bb8945de8475"
     },
     {
       "stage": "阶段八",
@@ -177,8 +177,8 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段八-G6-身份与模式路由.txt",
-      "digest": "sha256:32d51814b473a51925ce973a931026da110c7f1f05e0bdf7d6ff20a6dffd2bb9",
-      "commit": "da29c60b8b6bd271b2e8924402298e813b59cd8e",
+      "digest": "sha256:ae6e28fbec2c9423bee3741f34f87ad463190e3cd45f9122c1b898cd4903413d",
+      "commit": "928a6bf37db5516ab6ad1084f19a04379dd48400",
       "evidenceClasses": [
         "role_policy",
         "login_api",
@@ -196,14 +196,14 @@
         "services/platform/tests/runtime-routing.test.mjs": "sha256:904f851aa44259de335b37ab9bd7d648b2685329462c6a6d51b9719363e991d2",
         "services/platform/tests/auth.test.mjs": "sha256:3fa9d89ffdbfae7c4ccf68575f8122bb9765c6f6bd0ed610be2903833f678371",
         "forks/dsh/变更/packages/api/gateway/src/index.ts": "sha256:f7bf258dfc84bf6021b3dba156f7ea53f67d2f168b92cc883b862869bbbde07f",
-        "forks/dsh/变更/packages/bundle/kvvi-app/cordis.patch.yml": "sha256:ac267bb3550769c59f5d46c5c560909ff506666f369f2d447ebe5b42d4fddeec",
-        "forks/dsh/变更/packages/host/kvvi-mode-router/src/index.ts": "sha256:6bab1a69295cfa5d458212a683c57ce5237d8462d07734ad609f1545ef8f7dd3",
-        "forks/dsh/变更/packages/host/kvvi-mode-router/tests/mode-router.spec.ts": "sha256:171c7a8433d1a35d055dc7411318a9029a3cbed4004f7c121d671f4d8b9e529e",
+        "forks/dsh/变更/packages/bundle/kvvi-app/cordis.patch.yml": "sha256:492d5a8b45ed7ca4211c43c1ca09bfcf94a17217861cc1b9fceb53f8010c24e9",
+        "forks/dsh/变更/packages/host/kvvi-mode-router/src/index.ts": "sha256:4bc2d62ed1ad8162ba1f701834d90df336ab80a55cdf9e139f1af24bf19fca4d",
+        "forks/dsh/变更/packages/host/kvvi-mode-router/tests/mode-router.spec.ts": "sha256:f4bd4571325e8999977681ffdf325f3b0c7f5f6b49c858b97350051686b314e2",
         "工具/check_stage8.py": "sha256:ca4c5da41ca4ad19fc2e346c62ae76c20ff21ec47224b075d5bc2d25b4f6b52d"
       }
     }
   ],
-  "deliveryDigest": "sha256:575e21977d1099bd4c3283d0b17a78a35c211a79e2eeed5f97593dd28401dcb8",
+  "deliveryDigest": "sha256:e2e5e460623c01aa21e2ad6f72f9f841b89f093dc8fea9f05752bbc0fd1fca5c",
   "failed": [],
-  "bundleDigest": "sha256:b5eb76a079a894810111f075696a6aa6a3c69fae9e2084473f045c1feb839bea"
+  "bundleDigest": "sha256:7fb60da1e3c1aa09b008b7f7df96e6f164fb0000367301e85de74bdc609f9605"
 }

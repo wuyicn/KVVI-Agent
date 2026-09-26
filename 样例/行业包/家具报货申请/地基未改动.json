@@ -24,8 +24,8 @@
     },
     "platform-service": {
       "path": "services/platform",
-      "digest": "sha256:6f62e249f10b2c8d6d9eae3429163912510032bac0f83299ca73e1cd12e494ff",
-      "fileCount": 58
+      "digest": "sha256:f2fafb5fb3c0d1a499e51f9beb5c2e4ab9220d928112462d953d444053a11458",
+      "fileCount": 63
     },
     "runtime-service": {
       "path": "services/runtime",
@@ -131,6 +131,12 @@
     },
     {
       "reason": "迁移加版本账本：schema_migrations 表 + 编号迁移文件，新结构不再加进已跑过的文件",
+      "changedComponents": [
+        "platform-service"
+      ]
+    },
+    {
+      "reason": "并入 Codex 的阶段八（mode-policy / kvvi-mode-router / gateway 身份瀑布）并把新表挪进编号迁移 22",
       "changedComponents": [
         "platform-service"
       ]

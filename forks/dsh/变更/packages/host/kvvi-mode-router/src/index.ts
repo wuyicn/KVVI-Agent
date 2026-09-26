@@ -420,10 +420,11 @@ export class KvviModeRouter extends Service {
       const mode = verifyModeHeaders(request.headers as HeaderBag, config.secret)
       const socket = _socket as Duplex & { emit: (...args: unknown[]) => boolean }
       const originalEmit = socket.emit
-      const boundEmit = function (this: typeof socket, ...args: unknown[]): boolean {
-        return thisRouter.current.run(mode, () => originalEmit.apply(this, args))
-      }
-      const thisRouter = this
+      // 用箭头函数而不是 `const that = this`：箭头函数继承外层的 `this`，
+      // 正是这里要的语义（保留 Router 实例），也不需要别名。
+      // `emit` 由 socket 自己调用，所以接收方仍是 socket —— 传给 originalEmit.apply。
+      const boundEmit = (...args: unknown[]): boolean =>
+        this.current.run(mode, () => originalEmit.apply(socket, args))
       socket.emit = boundEmit
       const restore = (): void => {
         if (socket.emit === boundEmit) socket.emit = originalEmit

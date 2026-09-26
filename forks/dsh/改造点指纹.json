@@ -21,11 +21,11 @@
       "status": "A"
     },
     "packages/bundle/kvvi-app/cordis.patch.yml": {
-      "sha256": "ac267bb3550769c59f5d46c5c560909ff506666f369f2d447ebe5b42d4fddeec",
+      "sha256": "492d5a8b45ed7ca4211c43c1ca09bfcf94a17217861cc1b9fceb53f8010c24e9",
       "status": "A"
     },
     "packages/bundle/kvvi-app/package.json": {
-      "sha256": "3e304f31448472dfc6c7c2a63f0d6e6a218ae30eae10b8eb8b69f5b7780822cc",
+      "sha256": "76e61603cbe32e728ef441207022c574fc757a92eafda98e252283038a4f912c",
       "status": "A"
     },
     "packages/bundle/kvvi-app/src/index.ts": {
@@ -123,11 +123,11 @@
       "status": "A"
     },
     "packages/host/kvvi-mode-router/src/index.ts": {
-      "sha256": "6bab1a69295cfa5d458212a683c57ce5237d8462d07734ad609f1545ef8f7dd3",
+      "sha256": "4bc2d62ed1ad8162ba1f701834d90df336ab80a55cdf9e139f1af24bf19fca4d",
       "status": "A"
     },
     "packages/host/kvvi-mode-router/tests/mode-router.spec.ts": {
-      "sha256": "171c7a8433d1a35d055dc7411318a9029a3cbed4004f7c121d671f4d8b9e529e",
+      "sha256": "f4bd4571325e8999977681ffdf325f3b0c7f5f6b49c858b97350051686b314e2",
       "status": "A"
     },
     "packages/host/kvvi-mode-router/tsconfig.json": {
@@ -190,7 +190,7 @@
       "status": "A"
     },
     "pnpm-lock.yaml": {
-      "sha256": "a8407fcd3ad2fd59af64f696ca1e47cdebdd26821c34432fcc8db3a836eba4ce",
+      "sha256": "0ee793ae2d31c6d95311d161d092db3607924d8dea3c20dbbc60316cdad0f42f",
       "status": "M",
       "upstream_baseline_sha256": "72523ca50bd34e3e21d07c82e1cedfdb91b17e1bcd83006c645e8dc6e0786fe0"
     },
@@ -210,7 +210,7 @@
       "upstream_baseline_sha256": "3cb83b2131b5c4841ff07e312b2e1dddd7f2f493f40ab94012240822140f25bd"
     }
   },
-  "fork_head": "1b2c1de8caa281a02d7f8b423aed957b4dacb2ae",
+  "fork_head": "f3c651f4670857325ddcaf893313819ab1029393",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "ddefc45fbc7f8e46dd73185e68295696d1297887"

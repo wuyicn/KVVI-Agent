@@ -69,7 +69,7 @@ Promise<{ socket: WebSocket; frames: Record<string, unknown>[] }> {
   const socket = new WebSocket(`ws://127.0.0.1:${String(port)}/api/remote.mux`, { headers })
   await once(socket, 'open')
   const frames: Record<string, unknown>[] = []
-  socket.on('message', data => { frames.push(JSON.parse(rawText(data)) as Record<string, unknown>) })
+  socket.on('message', (data) => { frames.push(JSON.parse(rawText(data)) as Record<string, unknown>) })
   socket.send(JSON.stringify({ type: 'open', streamId, endpoint: '$events', payload: { args: {} } }))
   await vi.waitFor(() => {
     expect(frames.some(frame => frame.type === 'item' && frame.streamId === streamId
