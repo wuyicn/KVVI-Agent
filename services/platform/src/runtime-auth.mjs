@@ -34,8 +34,18 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 
-/** 运行时写凭据的位置（容器内路径）。 */
-const CREDENTIALS_PATH = '/run/kvvi-runtime-credentials/.credentials.yaml'
+/**
+ * 运行时写凭据的位置。
+ *
+ * 容器部署里由 compose 把运行时的数据卷**只读**挂到这里；本机（macOS 试点）
+ * 部署没有那个卷，运行时的凭据就在 `$DSH_HOME/.credentials.yaml`。
+ *
+ * ⚠️ 写成常量会让本机部署**永远注入不了那张 Cookie**，而表现是
+ * 「登录成功了，界面却回 401」—— 看起来像会话坏了，其实是找不到凭据文件。
+ * 所以位置由环境给出，缺省仍是容器路径（那一边的行为一字不变）。
+ */
+const CREDENTIALS_PATH = process.env.KVVI_RUNTIME_CREDENTIALS
+  ?? '/run/kvvi-runtime-credentials/.credentials.yaml'
 
 /**
  * Cookie 载荷版本。与 `browser-auth.ts` 的 `COOKIE_PAYLOAD_VERSION` 一致 ——
@@ -79,6 +89,7 @@ function readSessionSecret() {
  *
  * @param authority - 转发目标的 authority（例如 `runtime:7401`）。
  * @returns Cookie 头值；没有可用凭据时 undefined。
+ * @throws 无（缺凭据时返回 undefined —— 调用方据此如实报告「未注入」）
  */
 export function runtimeCookie(authority) {
   const secret = readSessionSecret()

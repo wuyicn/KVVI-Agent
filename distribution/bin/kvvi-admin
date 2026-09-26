@@ -36,11 +36,14 @@ argparse 的用法错误改到 1。
 
     kvvi-admin preflight [--json] [--config <path>]
     kvvi-admin install --plan|--apply [--yes]
-    kvvi-admin start|stop|status
+    kvvi-admin start --plan|--apply [--yes]
+    kvvi-admin stop  --plan|--apply [--yes]
+    kvvi-admin status [--json]
+    kvvi-admin launchd            # 打印 plist，不自安装
     kvvi-admin backup|restore|upgrade|rollback|uninstall
 
-本文件只实现 `preflight`；其余子命令在后续任务里逐个接上，未接上的会**明确报未实现**
-并给出退出码 1 —— 一个静默什么都不做的运维命令比没有更坏。
+备份/恢复/升级/回滚/卸载在后续任务接上，未接上的会**明确报未实现**并给出退出码 1
+—— 一个静默什么都不做的运维命令比没有更坏。
 """
 
 import argparse
@@ -49,10 +52,19 @@ import os
 import sys
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(HERE.parent))
+_DISTRIBUTION = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_DISTRIBUTION.parent))
 
 from distribution.lib.preflight import preflight  # noqa: E402
+from distribution.lib.install import (  # noqa: E402
+    DEFAULT_HOME, install_plan, release_root_path,
+)
+
+#: 发行版根目录。**从 `install.py` 取，不在这里另算一遍** —— 见那里的说明。
+HERE = release_root_path()
+from distribution.lib.supervisor import (  # noqa: E402
+    DEGRADATIONS, launchd_plist, readiness_report, start_plan, status_report, stop_plan,
+)
 
 EXIT_OK = 0
 EXIT_USAGE = 1
@@ -61,11 +73,13 @@ EXIT_APPLY_FAILED = 3
 
 DEFAULT_HOME = '~/Library/Application Support/KVVI-Agent'
 
+#: 已实现的子命令。
+IMPLEMENTED = ('preflight', 'install', 'start', 'stop', 'status')
+
 #: 后续任务接上的子命令。**列出来**是为了让「还没做」与「打错字」区分开：
 #: 前者说「尚未实现」，后者说「没有这个子命令」。混成一句话，
 #: 客户会以为是自己的命令写错了。
-PLANNED = ('install', 'start', 'stop', 'status', 'backup', 'restore',
-           'upgrade', 'rollback', 'uninstall')
+PLANNED = ('backup', 'restore', 'upgrade', 'rollback', 'uninstall')
 
 
 def load_config(path):
@@ -130,6 +144,118 @@ class _Parser(argparse.ArgumentParser):
         raise SystemExit(EXIT_USAGE)
 
 
+def _apply_or_plan(args, build_callable, label):
+    """
+    执行「计划 / 执行」两步里的一个。
+    @param args 已解析的参数
+    @param build_callable 造计划的函数
+    @param label 子命令名（输出用）
+    @returns 退出码
+    """
+    if not args.plan and not args.apply:
+        print(f'✗ `{label}` 需要指明 --plan 或 --apply。', file=sys.stderr)
+        print(f'  {label} --plan   只打印将要做什么，不改动任何东西', file=sys.stderr)
+        print(f'  {label} --apply  执行', file=sys.stderr)
+        return EXIT_USAGE
+    plan = build_callable()
+    if args.plan:
+        # `--plan` 只打印：**不创建目录、不写配置、不起进程**。
+        print(plan.describe())
+        return EXIT_OK
+    if not args.yes and not sys.stdin.isatty():
+        # 非交互环境要显式 `--yes`：一个在管道里被默默执行的安装，
+        # 出问题时没人知道它跑过。
+        print('✗ 非交互环境下需要 --yes 才执行。', file=sys.stderr)
+        return EXIT_USAGE
+    result = plan.apply()
+    if result['ok']:
+        for line in result.get('steps', []):
+            print(f'  ✓ {line}')
+        print(f'✓ {label} 完成')
+        if result.get('bootstrapTokenPath'):
+            # **把下一步说出来**：装完之后客户面对的是一个要他填令牌的界面，
+            # 而令牌在哪只有安装输出知道。不说，他只能去翻目录。
+            print()
+            print(f'  首次初始化令牌：{result["bootstrapTokenPath"]}')
+            print('  下一步：kvvi-admin start --apply --yes，然后打开界面用该令牌建企业与所有者。')
+        return EXIT_OK
+    for error in result['errors']:
+        print(f'  ✗ {error}', file=sys.stderr)
+    print(f'✗ {label} 失败。已完成的步骤列在上面；重跑是幂等的。', file=sys.stderr)
+    return EXIT_APPLY_FAILED
+
+
+def cmd_install(args):
+    """
+    `install`：首次安装。
+    @param args 已解析的参数
+    @returns 退出码
+    """
+    config = load_config(args.config)
+    return _apply_or_plan(args, lambda: install_plan(
+        home=config['home'], pg_port=config['pg_port'],
+        platform_port=config['platform_port']), 'install')
+
+
+def cmd_start(args):
+    """
+    `start`：起平台与运行时（平台在前）。
+    @param args 已解析的参数
+    @returns 退出码
+    """
+    config = load_config(args.config)
+    def build():
+        readiness = readiness_report(home=config['home'],
+                                     platform_port=config['platform_port'])
+        if not readiness['ok']:
+            for issue in readiness['issues']:
+                print(f"  ✗ {issue['code']}：{issue['guidance']}", file=sys.stderr)
+            raise SystemExit(EXIT_PREFLIGHT_FAILED)
+        return start_plan(home=config['home'], release_root=HERE,
+                          platform_port=config['platform_port'])
+    try:
+        return _apply_or_plan(args, build, 'start')
+    except SystemExit as stop:
+        return int(stop.code)
+
+
+def cmd_stop(args):
+    """
+    `stop`：逆序停进程。
+    @param args 已解析的参数
+    @returns 退出码
+    """
+    config = load_config(args.config)
+    return _apply_or_plan(args, lambda: stop_plan(home=config['home'], release_root=HERE),
+                          'stop')
+
+
+def cmd_status(args):
+    """
+    `status`：如实报告，**包括两个进程各自的运行用户**。
+    @param args 已解析的参数
+    @returns 退出码
+    """
+    config = load_config(args.config)
+    report = status_report(home=config['home'], release_root=HERE)
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return EXIT_OK
+    print('KVVI-Agent 状态')
+    print()
+    for name, info in report['processes'].items():
+        state = f"运行中 pid {info['pid']}" if info['running'] else '未运行'
+        print(f"  {name:9s} {state:16s} 用户 {info['userName']}({info['user']})")
+    print()
+    print('已知降级（本版不满足，取证文档引用本报告）：')
+    for degradation in DEGRADATIONS:
+        print(f"  ! {degradation['code']}")
+        print(f"    失去：{degradation['lost']}")
+        print(f"    保留：{degradation['kept']}")
+        print(f"    恢复于：{degradation['restoredBy']}")
+    return EXIT_OK
+
+
 def main(argv=None):
     """
     解析参数并分派。
@@ -142,6 +268,23 @@ def main(argv=None):
     check = sub.add_parser('preflight', help='只读的环境检查')
     check.add_argument('--json', action='store_true', help='以 JSON 输出（供脚本与 Agent 消费）')
     check.add_argument('--config', default=None, help='安装配置文件的路径')
+
+    for name in ('install', 'start', 'stop'):
+        done = sub.add_parser(name, help='首次安装' if name == 'install' else
+                              ('起进程' if name == 'start' else '停进程'))
+        done.add_argument('--plan', action='store_true', help='只打印计划，不改动任何东西')
+        done.add_argument('--apply', action='store_true', help='执行')
+        done.add_argument('--yes', action='store_true', help='非交互环境下的确认')
+        done.add_argument('--config', default=None)
+
+    status = sub.add_parser('status', help='报告两个进程的状态与已知降级')
+    status.add_argument('--json', action='store_true')
+    status.add_argument('--config', default=None)
+
+    launchd = sub.add_parser('launchd', help='打印 LaunchAgent plist（不自安装）')
+    launchd.add_argument('--config', default=None)
+    launchd.add_argument('--platform-port', type=int, default=7400)
+    launchd.add_argument('--runtime-port', type=int, default=7401)
 
     for name in PLANNED:
         planned = sub.add_parser(name, help='（尚未实现）')
@@ -156,9 +299,23 @@ def main(argv=None):
         return EXIT_USAGE
     if args.command == 'preflight':
         return cmd_preflight(args)
+    if args.command == 'install':
+        return cmd_install(args)
+    if args.command == 'start':
+        return cmd_start(args)
+    if args.command == 'stop':
+        return cmd_stop(args)
+    if args.command == 'status':
+        return cmd_status(args)
+    if args.command == 'launchd':
+        config = load_config(args.config)
+        print(launchd_plist(home=Path(config['home']), release_root=HERE,
+                            platform_port=args.platform_port,
+                            runtime_port=args.runtime_port), end='')
+        return EXIT_OK
     if args.command in PLANNED:
         print(f'✗ `{args.command}` 尚未实现（阶段十一后续任务接上）。')
-        print('  当前可用的子命令：preflight')
+        print(f"  当前可用的子命令：{', '.join(IMPLEMENTED)}")
         return EXIT_USAGE
     parser.print_help()
     return EXIT_USAGE

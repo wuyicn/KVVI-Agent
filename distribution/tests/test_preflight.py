@@ -233,7 +233,11 @@ class AdminCliTest(unittest.TestCase):
 
     def test_planned_but_unimplemented_says_so_and_exits_usage(self):
         # 「尚未实现」与「没有这个子命令」必须分开：混成一句话，客户会以为是自己打错字了。
-        result = self._run('install', '--plan')
+        #
+        # ⚠️ 用 `backup` 而不是 `install`：`install` 已经实现了，这条用例在
+        #    实现它的那一天就会红 —— 而红的原因是**用例选错了样本**，
+        #    不是「未实现」这条行为变了。PLANNED 里还有哪个，这里就用哪个。
+        result = self._run('backup', '--plan')
         self.assertEqual(result.returncode, 1)
         self.assertIn('尚未实现', result.stdout)
         self.assertIn('preflight', result.stdout)

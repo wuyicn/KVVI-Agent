@@ -60,6 +60,34 @@ DEGRADATIONS = (
 )
 
 
+#: `kvvi` profile 要挂的三个 bundle。**与容器入口 `services/runtime/entrypoint.sh`
+#: 里那份必须一致** —— 两处不一致时，容器里能跑、本机跑不起来（或反过来），
+#: 而报错是 dsh 的「profile 不存在」，看不出是两份清单漂移。
+#: `test_supervisor.py` 直接解析那个 shell 脚本，比对这两份清单。
+DSH_PROFILE_BUNDLES = (
+    '@deepseek-ai/dsh-base',
+    '@deepseek-ai/dsh-web-app',
+    '@deepseek-ai/dsh-kvvi-app',
+)
+
+#: profile 名。
+DSH_PROFILE = 'kvvi'
+
+
+def dsh_profile_document(profile: str = DSH_PROFILE) -> str:
+    """
+    `$DSH_HOME/profiles/<profile>/package.json` 的内容。
+    @param profile profile 名
+    @returns JSON 文本
+    """
+    import json as _json
+    return _json.dumps({
+        'name': 'dsh-profile-' + profile,
+        'private': True,
+        'dsh': {'profile': {'bundles': list(DSH_PROFILE_BUNDLES)}},
+    }, indent=2) + '\n'
+
+
 @dataclass
 class ProcessPlan:
     """起/停进程的计划。"""
@@ -101,6 +129,18 @@ class ProcessPlan:
             return {'ok': not errors, 'steps': done, 'errors': errors, 'pids': pids}
 
         for step in self.steps:
+            if step['kind'] == 'prepare-dsh-profile':
+                profile_dir = self.home / 'profiles' / DSH_PROFILE
+                profile_dir.mkdir(parents=True, exist_ok=True)
+                target = profile_dir / 'package.json'
+                # 只在缺失时写：已有实例的 profile 可能被客户改过（加了插件），
+                # 每次 start 覆盖它等于把客户的改动吃掉。
+                if not target.is_file():
+                    target.write_text(dsh_profile_document())
+                    done.append('prepare-dsh-profile: 已创建')
+                else:
+                    done.append('prepare-dsh-profile: 已存在，未覆盖')
+                continue
             if step['kind'].startswith('start-'):
                 pid = self._spawn(step, log_dir)
                 if pid is None:
@@ -206,8 +246,18 @@ def start_plan(home: Path, release_root: Path, platform_port: int = DEFAULT_PLAT
     """
     home = Path(home)
     root = Path(release_root)
+    # ⚠️ **整份配置都进子进程环境，不逐键挑。**
+    #
+    # 第一版只挑了 `KVVI_INTERNAL_TOKEN` 与 `KVVI_BOOTSTRAP_TOKEN` 两项，
+    # 五条 DSN 一条都没传 —— 于是平台进程用了 `db.mjs` 里的**开发默认值**
+    # （`127.0.0.1:55432`，测试用的 docker 库），而不是 KVVI 自己刚建出来的集群。
+    # 症状极具误导性：界面能开、能初始化，但数据写进了**另一台**数据库。
+    #
+    # 逐键挑的失效模式是「下一个加进配置文件的键，悄悄到不了进程」——
+    # 而那句话在配置文件的注释里永远是对的。整份传过去，就没有这个类别。
+    env_file = _env_file_vars(home)
     if internal_token == '':
-        internal_token = _env_file_vars(home).get('KVVI_INTERNAL_TOKEN', '')
+        internal_token = env_file.get('KVVI_INTERNAL_TOKEN', '')
 
     prepare = [
         {'kind': 'check-cluster', 'writes': False, 'program': 'platform', 'argv': []},
@@ -217,13 +267,19 @@ def start_plan(home: Path, release_root: Path, platform_port: int = DEFAULT_PLAT
     platform_step = {
         'kind': 'start-platform', 'writes': True, 'program': 'platform',
         'argv': ['node', str(root / 'services' / 'platform' / 'src' / 'server.mjs')],
-        'env': {
+        'env': dict(env_file, **{
             'KVVI_PLATFORM_PORT': str(platform_port),
             'KVVI_PLATFORM_HOST': '127.0.0.1',
             'KVVI_RUNTIME_URL': f'http://127.0.0.1:{runtime_port}',
             'KVVI_INTERNAL_TOKEN': internal_token,
-            'KVVI_DSH_ROOT': str(root / 'vendor' / 'dsh'),
-        },
+            # 本机安装的签名私钥位置。缺了它，平台会去找容器部署的默认挂载点
+            # `/run/kvvi-secrets/signing.key` —— 本机上不存在，而 healthz 只回
+            # `signingKeyMounted:false`，看不出该在哪里生成。
+            'KVVI_SIGNING_KEY_PATH': str(home / 'secrets' / 'signing.key'),
+            # 运行时的浏览器会话凭据在哪。容器部署靠挂载卷，本机靠 $DSH_HOME。
+            # 不传的话平台注入不了那张 Cookie，而表现是「登录成功、界面 401」。
+            'KVVI_RUNTIME_CREDENTIALS': str(home / '.credentials.yaml'),
+        }),
     }
     # 运行时只绑回环：对外只有平台进程。`--trusted-host` 让平台按服务名访问时
     # 能过运行时的 browser-trust 栅栏；本机部署下这个名字就是 127.0.0.1。
@@ -233,17 +289,19 @@ def start_plan(home: Path, release_root: Path, platform_port: int = DEFAULT_PLAT
                  '--profile', 'kvvi', '--host', '127.0.0.1',
                  '--port', str(runtime_port), '--no-open',
                  '--trusted-host', '127.0.0.1'],
-        'env': {
+        'env': dict(env_file, **{
             'KVVI_PROFILE': 'kvvi',
             'KVVI_RUNTIME_PORT': str(runtime_port),
             'KVVI_RUNTIME_CONTEXT_SECRET': internal_token,
             'KVVI_INTERNAL_TOKEN': internal_token,
             'DSH_HOME': str(home),
-        },
+        }),
     }
+    profile_step = {'kind': 'prepare-dsh-profile', 'writes': True, 'program': 'runtime',
+                    'argv': []}
     return ProcessPlan(home=home, release_root=root, platform_port=platform_port,
                        runtime_port=runtime_port, internal_token=internal_token,
-                       kind='start', steps=prepare + [platform_step, runtime_step])
+                       kind='start', steps=prepare + [profile_step, platform_step, runtime_step])
 
 
 def stop_plan(home: Path, release_root: Path) -> ProcessPlan:

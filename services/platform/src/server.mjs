@@ -22,7 +22,7 @@ import { isPanelPath, handlePanel } from './panel.mjs'
 import { handleGate, gated, isGatePath, tokenFromCookie } from './gate.mjs'
 import { runtimeCookie, runtimeCredentialAvailable, runtimeContextHeaders } from './runtime-auth.mjs'
 import { handleAuth } from './auth.mjs'
-import { verifyToken } from './identity.mjs'
+import { verifyToken, signingKeys } from './identity.mjs'
 import { isApiPath, handleApi } from './api-router.mjs'
 import { bootstrapRoutes } from './bootstrap.mjs'
 
@@ -41,6 +41,27 @@ const INTERNAL_TOKEN = process.env.KVVI_INTERNAL_TOKEN ?? ''
 
 /** 签名私钥的存在性。私钥**不进镜像**（PRD §9.4.1）。 */
 const SIGNING_KEY_PATH = process.env.KVVI_SIGNING_KEY_PATH ?? '/run/kvvi-secrets/signing.key'
+
+/**
+ * 签名密钥是否**可用**（而不只是存在）。
+ *
+ * ⚠️ 这条检查是被一次真实崩溃逼出来的：安装器写了一个格式不对的密钥文件，
+ * `existsSync` 回 `true`，healthz 一片绿 —— 然后第一次登录让整个平台进程
+ * 崩在 `JSON.parse` 上。**一个只回答「文件在不在」的健康检查，
+ * 会把配置错误伪装成健康。**
+ * @returns 能装载时为 true
+ */
+function signingKeyUsable() {
+  if (!existsSync(SIGNING_KEY_PATH)) return false
+  try {
+    signingKeys()
+    return true
+  } catch {
+    // 载入失败的原因（缺字段、不是 JSON、PEM 坏了）对探针是同一件事：
+    // 这个实例现在签不出令牌。
+    return false
+  }
+}
 
 /** 每个端点的归属阶段：未实现的端点返回 501 而不是假成功。 */
 const PENDING = {
@@ -165,7 +186,10 @@ const server = createServer(async (req, res) => {
       pluginsLoaded: snap.pluginsLoaded,
       // 健康检查刻意只报结论与最关键的一条证据，完整证据在 /topology。
       dshPackagesPresent: snap.evidence.dshPackagesPresent,
-      signingKeyMounted: existsSync(SIGNING_KEY_PATH),
+      // ⚠️ **不能只判文件在不在。** 第一版就是 `existsSync` —— 于是一个格式错误的
+      //    密钥文件让 healthz 一直回 `true`，而平台在**第一次登录时整个进程崩掉**。
+      //    健全性检查必须回答「它能不能用」，不是「它在不在」。
+      signingKeyMounted: signingKeyUsable(),
       // 运行时凭据是否可用。**必须暴露**：不可用时界面打不开，
       // 而那条报错来自运行时（「dsh web authentication required」），
       // 看不出缺的是本进程这里的挂载。

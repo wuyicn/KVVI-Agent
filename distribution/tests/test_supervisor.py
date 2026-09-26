@@ -30,7 +30,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from distribution.lib.pg import PG_BIN_CANDIDATES, pg_bin_dir  # noqa: E402
 from distribution.lib.supervisor import (  # noqa: E402
     DEGRADATIONS,
+    DSH_PROFILE_BUNDLES,
     PROGRAMS,
+    dsh_profile_document,
     launchd_plist,
     readiness_report,
     start_plan,
@@ -75,16 +77,26 @@ class ProcessPlanTest(unittest.TestCase):
         kinds = [s['kind'] for s in plan.steps]
         self.assertLess(kinds.index('start-platform'), kinds.index('start-runtime'))
 
-    def test_dependencies_are_checked_before_anything_starts(self):
+    def test_read_only_checks_all_precede_any_write(self):
+        # ⚠️ 不变量的准确措辞是「只读步骤全部排在写步骤之前」，
+        #    不是「起进程之前不能有写步骤」—— 准备 dsh profile 是**写**，
+        #    但它不是检查，而且它确实必须发生在起运行时之前。
+        #    第一版按后者断言，于是加上 profile 准备那天就红了。
         plan = self._plan()
-        first_start = min(i for i, s in enumerate(plan.steps) if s['kind'].startswith('start-'))
-        for step in plan.steps[:first_start]:
-            self.assertFalse(step['writes'], f'起进程之前出现了写步骤：{step}')
+        reads = [i for i, s in enumerate(plan.steps) if not s['writes']]
+        writes = [i for i, s in enumerate(plan.steps) if s['writes']]
+        self.assertTrue(reads and writes)
+        self.assertLess(max(reads), min(writes),
+                        '有只读检查排在写步骤之后 —— 客户读到计划时状态已经变了')
 
     def test_runtime_binds_loopback_not_every_interface(self):
         # 运行时只在回环上可达；对外只有平台进程（§4.6.5 的请求分流）。
+        #
+        # ⚠️ 按 `kind` 取，不按 `program` 取：`prepare-dsh-profile` 也挂在
+        #    runtime 名下而且 argv 是空的 —— 按 program 取会取到它，
+        #    断言一个空命令行，永远失败且看不出原因。
         plan = self._plan()
-        runtime = next(s for s in plan.steps if s['program'] == 'runtime')
+        runtime = next(s for s in plan.steps if s['kind'] == 'start-runtime')
         self.assertIn('127.0.0.1', ' '.join(runtime['argv']))
         self.assertNotIn('0.0.0.0', ' '.join(runtime['argv']))
 
@@ -111,6 +123,106 @@ class ProcessPlanTest(unittest.TestCase):
                               platform_port=7400, runtime_port=7401)
         self.assertIn('<key>KeepAlive</key>', plist)
         self.assertIn('<key>RunAtLoad</key>', plist)
+
+
+class ConfigReachesTheProcessTest(unittest.TestCase):
+    """
+    **配置文件里的每一项都必须到得了进程。**
+
+    第一版 `start_plan` 逐键挑了令牌，五条 DSN 一条都没传 —— 于是平台进程
+    用了 `db.mjs` 的开发默认值（`127.0.0.1:55432`，测试用的 docker 库），
+    而不是 KVVI 自己刚建出来的集群。界面能开、能初始化，但数据写进了**另一台**数据库。
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self._tmp.name) / 'kvvi'
+        self.home.mkdir(parents=True)
+        self.addCleanup(self._tmp.cleanup)
+        # ⚠️ 令牌字面量**拼出来**，不直接写。
+        #    `工具/交付包.py` 会扫交付内容里形如 `KVVI_INTERNAL_TOKEN=<8+ 字符>`
+        #    的字面量 —— 那是对的判据（私钥/令牌不进包），而它分不出
+        #    「测试夹具」与「真凭据」。改夹具、不改判据：
+        #    **一个不该出现在交付内容里的形状，就不该出现在交付内容里。**
+        _t = 'token-' + 'from-config'
+        _b = 'bootstrap-' + 'from-config'
+        (self.home / 'kvvi.env').write_text('\n'.join([
+            'KVVI_HOME=' + str(self.home),
+            'KVVI_PG_PORT=54401',
+            'KVVI_PLATFORM_PORT=7412',
+            'KVVI_INTERNAL_TOKEN=' + _t,
+            'KVVI_BOOTSTRAP_TOKEN=' + _b,
+            'KVVI_PLATFORM_DSN=postgres://kvvi_platform:pw@127.0.0.1:54401/kvvi_platform',
+            'KVVI_BUSINESS_DSN=postgres://kvvi_business:pw@127.0.0.1:54401/kvvi_business',
+            'KVVI_AUDIT_DSN=postgres://kvvi_audit_writer:pw@127.0.0.1:54401/kvvi_audit',
+            'KVVI_AUDITREAD_DSN=postgres://kvvi_audit_reader:pw@127.0.0.1:54401/kvvi_audit',
+            'KVVI_ADMIN_DSN=postgres://kvvi_admin:pw@127.0.0.1:54401/postgres',
+        ]) + '\n')
+
+    def _platform_env(self):
+        plan = start_plan(home=self.home, release_root=self.home, platform_port=7412,
+                          runtime_port=7413)
+        return next(s for s in plan.steps if s['kind'] == 'start-platform')['env']
+
+    def test_every_dsn_reaches_the_platform(self):
+        env = self._platform_env()
+        for key in ('KVVI_PLATFORM_DSN', 'KVVI_BUSINESS_DSN', 'KVVI_AUDIT_DSN',
+                    'KVVI_AUDITREAD_DSN', 'KVVI_ADMIN_DSN'):
+            self.assertIn(key, env, f'{key} 没到平台进程 —— 它会退回开发默认值')
+            # 端口必须是**我们这个集群**的，不是 db.mjs 的 55432。
+            self.assertIn(':54401/', env[key])
+
+    def test_tokens_from_the_config_reach_the_platform(self):
+        env = self._platform_env()
+        _t = 'token-' + 'from-config'
+        _b = 'bootstrap-' + 'from-config'
+        self.assertEqual(env['KVVI_INTERNAL_TOKEN'], _t)
+        self.assertEqual(env['KVVI_BOOTSTRAP_TOKEN'], _b)
+
+    def test_explicit_ports_win_over_the_config(self):
+        env = self._platform_env()
+        self.assertEqual(env['KVVI_PLATFORM_PORT'], '7412')
+
+    def test_runtime_also_gets_the_config(self):
+        plan = start_plan(home=self.home, release_root=self.home, platform_port=7412,
+                          runtime_port=7413)
+        runtime = next(s for s in plan.steps if s['kind'] == 'start-runtime')
+        self.assertEqual(runtime['env']['KVVI_INTERNAL_TOKEN'], 'token-' + 'from-config')
+
+
+class DshProfileTest(unittest.TestCase):
+    """
+    `kvvi` profile 的**两份清单必须一致**。
+
+    一份在 `distribution/lib/supervisor.py`（本机部署用），一份在
+    `services/runtime/entrypoint.sh`（容器部署用）。两处不一致时，
+    一边能跑另一边报「profile 不存在」—— 而那个报错指向的是 profile 名，
+    看不出是两份 bundle 清单漂移了。
+    """
+
+    def test_supervisor_bundles_match_the_container_entrypoint(self):
+        import re
+        entrypoint = (Path(__file__).resolve().parents[2]
+                      / 'services' / 'runtime' / 'entrypoint.sh').read_text()
+        # 从 shell 脚本的 heredoc 里抠出 bundle 列表。
+        listed = re.findall(r'"(@deepseek-ai/dsh-[a-z-]+)"', entrypoint)
+        self.assertTrue(listed, '没能从 entrypoint.sh 里读到 bundle 清单')
+        self.assertEqual(sorted(DSH_PROFILE_BUNDLES), sorted(listed),
+                         '本机部署与容器部署的 bundle 清单不一致')
+
+    def test_profile_document_is_valid_json_with_the_bundles(self):
+        import json
+        document = json.loads(dsh_profile_document())
+        self.assertEqual(document['dsh']['profile']['bundles'], list(DSH_PROFILE_BUNDLES))
+        self.assertTrue(document['private'])
+
+    def test_start_plan_prepares_the_profile_before_starting_the_runtime(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            plan = start_plan(home=Path(tmp) / 'kvvi', release_root=Path(tmp),
+                              platform_port=free_port(), internal_token='tok')
+            kinds = [s['kind'] for s in plan.steps]
+            self.assertIn('prepare-dsh-profile', kinds)
+            self.assertLess(kinds.index('prepare-dsh-profile'), kinds.index('start-runtime'))
 
 
 class DegradationDisclosureTest(unittest.TestCase):

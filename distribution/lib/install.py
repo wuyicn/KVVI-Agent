@@ -65,6 +65,19 @@ CONFIG_REL = 'kvvi.env'
 SECRETS_REL = 'secrets'
 
 
+def release_root_path() -> Path:
+    """
+    发行版根目录（`distribution/` 的上一级）。
+
+    ⚠️ **只有这一处算它。** 第一版在 `kvvi-admin` 里另算了一遍
+    （`Path(__file__).parent.parent`），那算出来是 `distribution/` 而不是根 ——
+    于是 supervisor 拿它去拼 `distribution/services/platform/src/server.mjs`，
+    两个进程都报 MODULE_NOT_FOUND。**路径算两遍，就会算错一遍。**
+    @returns 发行版根目录
+    """
+    return Path(__file__).resolve().parents[2]
+
+
 def new_secrets() -> Dict[str, str]:
     """
     生成一套全新的口令/密钥。**每次调用都是新的** —— 没有任何模板值。
@@ -77,7 +90,18 @@ def new_secrets() -> Dict[str, str]:
         'kvvi_audit_writer': secrets.token_urlsafe(24),
         'kvvi_audit_reader': secrets.token_urlsafe(24),
         'internalToken': secrets.token_urlsafe(32),
-        'signingKey': secrets.token_urlsafe(48),
+        # 签名密钥**必须由 Node 用 ed25519 生成**，格式是
+        # `{kid, privateKey(PEM), publicKey(PEM), previous: []}`。
+        # 第一版这里写的是 `token_urlsafe(48)` —— 一个随机字符串。
+        # 后果不是「签名不生效」，是**平台在第一次登录时整个进程崩掉**
+        # （`JSON.parse` 一个不是 JSON 的文件），而 healthz 在此之前一直说
+        # `signingKeyMounted: true`（它只看文件在不在）。
+        # 所以这一项不在 Python 侧生成，见 `_write_signing_key()`。
+        # 一次性首次初始化令牌。**必须生成** —— `bootstrapOwner` 在令牌为空时
+        # 一律拒绝（那是有意的：没配等于不校验在生产里就是没有门）。
+        # 第一版没生成它，于是装完之后第一次初始化永远 401，
+        # 而客户手里没有任何东西能填进那个框。
+        'bootstrapToken': secrets.token_urlsafe(32),
     }
 
 
@@ -131,6 +155,8 @@ class InstallPlan:
         lines += ['', f'  配置       {self.config_path}（0600）',
                   f'  密钥       {self.secrets_dir}（0600）',
                   f'  平台端口   {self.platform_port}',
+                  f'  初始化令牌 {self.secrets_dir / "bootstrap.token"}（0600）'
+                  f'　← 首次打开界面时要填它',
                   '', '不会碰到：',
                   '  客户已有的 PostgreSQL 集群（含 Homebrew 自己建的那个）',
                   '  客户已有的任何数据库、角色或数据',
@@ -169,7 +195,8 @@ class InstallPlan:
 
         self._write_config()
         done.append('write-config')
-        return {'ok': True, 'steps': done, 'errors': errors}
+        return {'ok': True, 'steps': done, 'errors': errors,
+                'bootstrapTokenPath': str(self.secrets_dir / 'bootstrap.token')}
 
     def migrate_env(self) -> Dict[str, str]:
         """
@@ -192,6 +219,36 @@ class InstallPlan:
             'KVVI_AUDIT_WRITER_PASSWORD': secrets_map['kvvi_audit_writer'],
             'KVVI_AUDIT_READER_PASSWORD': secrets_map['kvvi_audit_reader'],
         }
+
+    def _write_signing_key(self) -> None:
+        """
+        生成签名密钥对。
+
+        ⚠️ **用 Node 生成，不在 Python 里造。** 格式（`{kid, privateKey, publicKey,
+        previous}`，PEM）由 `services/platform/src/signing.mjs` 定义，
+        在这里照抄一遍就是第二份定义 —— 而它漂移的表现是整个平台崩在第一次登录上。
+        所以直接**调用那个模块自己的生成路径**（`KVVI_DEV_KEYS=1` 下它会写盘）。
+        @throws RuntimeError 生成失败时，错误信息里带 Node stderr
+        """
+        import subprocess
+        key_path = self.secrets_dir / 'signing.key'
+        if key_path.is_file():
+            return
+        module_url = (self.release_root / 'services' / 'platform' / 'src'
+                      / 'signing.mjs').as_uri()
+        # `KVVI_DEV_KEYS=1` 是它自己的「可以落盘生成一把」开关。
+        # 生产环境那个开关必须是关的（`loadKeys` 会因此拒绝启动）——
+        # 所以它**只在安装期**被设上，不进配置文件、不进进程环境。
+        result = subprocess.run(['node', '--input-type=module', '--eval',
+                                 "process.env.KVVI_SIGNING_KEY_PATH=process.argv[1];"
+                                 "process.env.KVVI_DEV_KEYS='1';"
+                                 "const m=await import(process.argv[2]);m.loadKeys();",
+                                 str(key_path), module_url],
+                                capture_output=True, text=True, timeout=120)
+        if result.returncode != 0 or not key_path.is_file():
+            raise RuntimeError('KVVI_SIGNING_KEY_GENERATION_FAILED: '
+                               + (result.stderr.strip()[:300] or '未生成'))
+        os.chmod(key_path, 0o600)
 
     def _migrate(self) -> dict:
         """跑 `services/platform/src/migrate.mjs`。**平台侧一行都不用改。**"""
@@ -219,6 +276,12 @@ class InstallPlan:
             f'KVVI_PG_PORT={self.pg_port}',
             f'KVVI_PLATFORM_PORT={self.platform_port}',
             f'KVVI_INTERNAL_TOKEN={self.secrets["internalToken"]}',
+            # 签名私钥**不进发行包**（§9.4.1），本机安装时生成一份。
+            # 不给这一行，平台会去找默认的 /run/kvvi-secrets/signing.key ——
+            # 那是容器部署的挂载点，本机上不存在，而 healthz 只会说
+            # signingKeyMounted:false，看不出该在哪里生成。
+            f'KVVI_SIGNING_KEY_PATH={self.secrets_dir / "signing.key"}',
+            f'KVVI_BOOTSTRAP_TOKEN={self.secrets["bootstrapToken"]}',
             '',
         ]
         lines += [f'{key}={value}' for key, value in sorted(self.migrate_env().items())]
@@ -229,6 +292,12 @@ class InstallPlan:
         superuser_file = self.secrets_dir / 'postgres-superuser.password'
         superuser_file.write_text(self.secrets['pgSuperuser'] + '\n')
         os.chmod(superuser_file, 0o600)
+        self._write_signing_key()
+        # 初始化令牌另存一份**单独的**文件：它要在第一次初始化时被读出来粘进界面，
+        # 而 kvvi.env 面向的是服务进程、客户不该去翻它（里面的口令比它更敏感）。
+        bootstrap_token = self.secrets_dir / 'bootstrap.token'
+        bootstrap_token.write_text(self.secrets['bootstrapToken'] + '\n')
+        os.chmod(bootstrap_token, 0o600)
 
 
 def install_plan(home: str, pg_port: int = DEFAULT_PG_PORT,
@@ -248,7 +317,7 @@ def install_plan(home: str, pg_port: int = DEFAULT_PG_PORT,
     """
     home_path = Path(home)
     resolved_bin = Path(pg_bin) if pg_bin is not None else pg_bin_dir()
-    root = Path(release_root) if release_root is not None else Path(__file__).resolve().parents[2]
+    root = Path(release_root) if release_root is not None else release_root_path()
     secrets_map = dict(secrets_map) if secrets_map is not None else new_secrets()
 
     cluster = cluster_plan(home=home_path, pg_port=pg_port, pg_bin=resolved_bin,
