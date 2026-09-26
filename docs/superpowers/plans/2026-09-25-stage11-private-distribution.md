@@ -218,26 +218,26 @@ git commit -m "feat: add release backup restore and version upgrade lifecycle"
 - Consumes: `kvvi-admin` subcommands and the preflight report.
 - Produces: an Agent-facing workflow that inspects and plans freely, states the precondition in plain language, and requires confirmation before apply.
 
-- [ ] **Step 1: Add failing allowlist and guidance tests**
+- [x] **Step 1: Add failing allowlist and guidance tests**
 
 Test that the Skill references only `preflight`, `install`, `backup`, `restore`, `upgrade`, `rollback`, `status`, `logs`, and `uninstall`; reject `sh -c`, remote curl pipes, arbitrary paths, and implicit `--yes`. Test that a preflight report containing `KVVI_PG_NOT_FOUND` or `KVVI_PG_MAJOR_UNSUPPORTED` produces the formula-name guidance and **no** apply command.
 
-- [ ] **Step 2: Run tests and confirm the Skill is absent**
+- [x] **Step 2: Run tests and confirm the Skill is absent**
 
 Run: `python3 -m unittest distribution.tests.test_install_skill -v`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement the Skill and fixed wrappers**
+- [x] **Step 3: Implement the Skill and fixed wrappers**
 
 The Skill presents the generated plan verbatim, asks for confirmation, then invokes the corresponding wrapper. Scripts validate their arguments and use explicit paths inside the release root. Every preflight error code maps to one sentence naming what to install or fix.
 
-- [ ] **Step 4: Run Skill tests and shell syntax checks**
+- [x] **Step 4: Run Skill tests and shell syntax checks**
 
 Run: `python3 -m unittest distribution.tests.test_install_skill -v`
 Run: `bash -n distribution/skills/kvvi-install/scripts/*.sh`
 Expected: PASS.
 
-- [ ] **Step 5: Commit installation Skill**
+- [x] **Step 5: Commit installation Skill**
 
 ```bash
 git add distribution/skills distribution/tests/test_install_skill.py
