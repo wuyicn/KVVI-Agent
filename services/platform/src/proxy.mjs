@@ -106,9 +106,24 @@ export function forwardHeaders(headers, target, extraCookie, trustedContext = {}
  */
 export function createProxyHandler(target, credential, contextProvider) {
   const send = target.protocol === 'https:' ? httpsRequest : httpRequest
-  // 运行时栅栏要的那张凭据只在启动时取一次：它是**通道**凭据，
-  // 不随人变化（每个请求重新签一次既无意义又增加出错面）。
-  const upstreamCookie = credential?.(target.host)
+
+  // ⚠️ **每个请求取一次，不在启动时取一次。**
+  //
+  // 第一版写的是 `const upstreamCookie = credential?.(target.host)`，注释说
+  // 「它是通道凭据，不随人变化」—— 那句是对的，但它答的不是这里的问题。
+  // 真正的问题是**凭据文件什么时候出现**：运行时在**它自己第一次启动**时才写下
+  // `.credentials.yaml`，而平台**先于运行时启动**。于是全新安装上：
+  //
+  //   启动平台（此刻没有凭据文件）→ 缓存 undefined → 启动运行时（写出凭据）
+  //   → 平台此后每一个请求都**不带那张 Cookie** → 界面回
+  //     `dsh web authentication required`
+  //
+  // 而 healthz 每次请求都重读文件，所以它一直说 `runtimeCredentialInjected: true`——
+  // **同一个问题，两个答案。** 那个不一致让这个缺陷在开发机上看不出来
+  // （运行时跑过一次，文件就在了），却在每一台新机器上必现。
+  //
+  // 重新签一次的开销是一次读文件加一次 HMAC，与「界面上不去」不成比例。
+  const credentialFor = () => credential?.(target.host)
 
   return async (req, res) => {
     const trustedContext = contextProvider === undefined
@@ -124,7 +139,7 @@ export function createProxyHandler(target, credential, contextProvider) {
       port: target.port || (target.protocol === 'https:' ? 443 : 80),
       path: req.url,
       method: req.method,
-      headers: forwardHeaders(req.headers, target, upstreamCookie, trustedContext),
+      headers: forwardHeaders(req.headers, target, credentialFor(), trustedContext),
     }, (up) => {
       res.writeHead(up.statusCode ?? 502, up.headers)
       // pipe 同时覆盖普通响应与 SSE 长连接：两者都是同一个流。
@@ -167,7 +182,9 @@ export function createUpgradeHandler(target, credential, contextProvider) {
   const port = target.port || (target.protocol === 'https:' ? 443 : 80)
   // WebSocket 也要带同一张凭据：升级握手同样过运行时的栅栏，
   // 少了它 REST 一切正常而实时通道静默失败 —— 那种「一半可用」最难定位。
-  const upstreamCookie = credential?.(target.host)
+  //
+  // 与 HTTP 那条路一样**按需取**，理由见 `createProxyHandler` ——
+  // 「启动时取一次」在全新安装上会拿到 undefined，而这个进程再也不会有第二次机会。
 
   return async (req, clientSocket, head) => {
     const trustedContext = contextProvider === undefined
@@ -181,7 +198,7 @@ export function createUpgradeHandler(target, credential, contextProvider) {
       port,
       path: req.url,
       method: req.method,
-      headers: forwardHeaders(req.headers, target, upstreamCookie, trustedContext),
+      headers: forwardHeaders(req.headers, target, credential?.(target.host), trustedContext),
     })
 
     upstream.on('upgrade', (upRes, upSocket, upHead) => {

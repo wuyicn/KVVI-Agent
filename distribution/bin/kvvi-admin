@@ -113,6 +113,11 @@ def cmd_preflight(args):
         hardware = report['hardware']
         print(f"  系统      macOS {hardware['macosVersion']}（{hardware['architecture']}）")
         print(f"  内存/磁盘 {hardware['memoryGiB']} GiB / 可用 {hardware['freeDiskGiB']} GiB")
+        node = report['node']
+        # 检查过的每一项都要出现 —— 只显示失败项的话，客户看不出
+        # 「Node 查过了」还是「Node 根本没查」，而这两件事的下一步完全不同。
+        print(f"  Node      {node['found'] or '未安装'}"
+              f"（需要 {node['required']}）　pnpm {node['pnpm'] or '未安装'}")
         postgres = report['postgres']
         print(f"  PostgreSQL 需要 {report['requiredPostgresMajor']}（{postgres['formula']}），"
               f"当前 {postgres['major'] if postgres['major'] else '未安装'}")

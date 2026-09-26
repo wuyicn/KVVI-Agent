@@ -45,6 +45,56 @@ MIN_MACOS_VERSION = (13, 0)
 #: 时钟可接受的年份下界。令牌到期与审计顺序都依赖时钟。
 MIN_CLOCK_YEAR = 2020
 
+#: Node 版本要求。**与 `vendor/dsh/package.json` 的 `engines.node` 一字不差。**
+#: 写成另一套判据的表现是「装上了但运行时起不来」，而报错来自 dsh ——
+#: 看不出是版本门槛写错了。
+NODE_REQUIRED = '^22.19.0 || >=24.0.0'
+
+#: DSH 的 engines 是 `^22.19.0 || >=24.0.0`：22 的次版本要 >= 19，
+#: 24 及以上整段放行。**23 不在里面** —— 那是当时的奇数版，不是 LTS。
+NODE_MIN_IN_22 = 19
+
+#: pnpm 只用在**一次**安装步骤上：发行包装的是源码 + 安装器，
+#: 运行时的 1.9 GB 依赖不在包里（里面有 darwin-arm64 的原生模块，
+#: 装到别的机器上不能跑）。所以 pnpm 是前置条件，但它只用一次。
+PNPM_REQUIRED = True
+
+
+def node_supported(version: Tuple[int, int, int]) -> bool:
+    """
+    该 Node 版本是否在 `engines.node` 允许的范围内。
+    @param version `(major, minor, patch)`
+    @returns 允许时为真
+    """
+    major, minor = version[0], version[1]
+    if major == 22:
+        return minor >= NODE_MIN_IN_22
+    return major >= 24
+
+
+def _parse_node_version(text: str) -> Optional[Tuple[int, int, int]]:
+    """
+    解析 `node --version` 的输出（形如 `v24.19.0`）。
+    @param text 原始输出
+    @returns `(major, minor, patch)`；解析不出来时为 `None`
+    """
+    import re
+    match = re.search(r'v?(\d+)\.(\d+)\.(\d+)', text or '')
+    if match is None:
+        return None
+    return (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+
+
+def version_text(version: Optional[Tuple[int, int, int]]) -> Optional[str]:
+    """
+    把版本元组写成 `24.19.0`。
+    @param version 版本元组
+    @returns 文本；`None` 原样返回
+    """
+    if version is None:
+        return None
+    return '.'.join(str(part) for part in version)
+
 #: Homebrew formula 名。**带版本号**，见模块头。
 PG_FORMULA = f'postgresql@{KVVI_PG_MAJOR}'
 
@@ -69,6 +119,9 @@ class HostEnv:
     memory_gib: float = 0.0
     year: int = 0
     pg_config_candidates: Sequence[Path] = field(default_factory=tuple)
+    node_path: Optional[Path] = None
+    node_version: Optional[Tuple[int, int, int]] = None
+    pnpm_path: Optional[Path] = None
 
 
 def brew_prefix(machine: str) -> str:
@@ -131,6 +184,21 @@ def pg_major_of(pg_config: Path) -> Optional[int]:
     return None
 
 
+def _node_version_of(node: Path) -> Optional[Tuple[int, int, int]]:
+    """
+    读 `node --version`。
+    @param node 可执行的 node
+    @returns 版本元组；读不出来时为 `None`
+    """
+    import subprocess
+    try:
+        out = subprocess.run([str(node), '--version'], capture_output=True,
+                             text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return _parse_node_version(out)
+
+
 def _busy(port: int) -> bool:
     """该端口是否已被占用（本机回环）。"""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
@@ -161,6 +229,10 @@ def observe_host() -> HostEnv:
     #    判定只该消费 `HostEnv`；谁去探测，谁负责填。
     candidates = (int(os.environ.get('KVVI_PG_PORT', 54329)),
                   int(os.environ.get('KVVI_PLATFORM_PORT', 7400)))
+    node_from_path = shutil.which('node')
+    node_path = Path(node_from_path) if node_from_path is not None else None
+    pnpm_from_path = shutil.which('pnpm')
+    pnpm_path = Path(pnpm_from_path) if pnpm_from_path is not None else None
     return HostEnv(
         platform=sys.platform,
         macos_version=macos,
@@ -171,6 +243,9 @@ def observe_host() -> HostEnv:
         free_disk_gib=shutil.disk_usage(Path.home()).free / (1024 ** 3),
         memory_gib=os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES') / (1024 ** 3),
         year=__import__('datetime').date.today().year,
+        node_path=node_path,
+        node_version=_node_version_of(node_path) if node_path is not None else None,
+        pnpm_path=pnpm_path,
     )
 
 
@@ -187,6 +262,30 @@ def _collect(config: dict, root: Path, env: HostEnv) -> list:
             'KVVI_NOT_MACOS',
             '第一版试点发行版只支持 macOS；Linux 企业服务器版见补充需求 §15。',
             found=env.platform))
+
+    # ⚠️ Node 排在**最前面**：没有它，后面每一项检查都无从谈起
+    #    （安装器本身就要用 node 跑迁移）。顺序在这里是有意义的 ——
+    #    客户从上往下读，第一条就该是最上游的那道坎。
+    if env.node_path is None or env.node_version is None:
+        errors.append(_error(
+            'KVVI_NODE_NOT_FOUND',
+            '未找到可用的 node。KVVI 的安装器与两个进程都需要它。'
+            '请到 https://nodejs.org 安装 Node 24（或 22.19 以上的 22.x），'
+            '装完在新终端里重跑 kvvi-admin preflight。'))
+    elif not node_supported(env.node_version):
+        errors.append(_error(
+            'KVVI_NODE_TOO_OLD',
+            f'Node 版本不在支持范围内：需要 {NODE_REQUIRED}，'
+            f'当前 {version_text(env.node_version)}。'
+            '请安装 Node 24 后重试。',
+            found=version_text(env.node_version), required=NODE_REQUIRED))
+
+    if PNPM_REQUIRED and env.pnpm_path is None:
+        errors.append(_error(
+            'KVVI_PNPM_NOT_FOUND',
+            '未找到 pnpm。发行包装的是**源码 + 安装器**，装完之后有一次 pnpm install；'
+            '运行时的依赖不在包里（含原生模块，不能跨机器复制）。'
+            '安装：corepack enable pnpm，或 npm i -g pnpm。'))
 
     if env.platform == 'darwin' and env.macos_version < MIN_MACOS_VERSION:
         errors.append(_error(
@@ -267,6 +366,13 @@ def preflight(config: dict, root: Path, env: Optional[HostEnv] = None) -> dict:
                      'macosVersion': f'{env.macos_version[0]}.{env.macos_version[1]}',
                      'memoryGiB': round(env.memory_gib, 1),
                      'freeDiskGiB': round(env.free_disk_gib, 1)},
+        # `found` 与错误的 `found` 是同一个值 —— 报告里也要有，
+        # 否则成功时报告读不到「装的是哪个版本」，而升级排查正需要它。
+        'node': {'path': str(env.node_path) if env.node_path else None,
+                 'version': version_text(env.node_version),
+                 'found': version_text(env.node_version),
+                 'required': NODE_REQUIRED,
+                 'pnpm': str(env.pnpm_path) if env.pnpm_path else None},
         'postgres': {'pgConfig': str(env.pg_config) if env.pg_config else None,
                      'major': env.pg_major, 'formula': PG_FORMULA,
                      'expectedPgConfig': str(pg_config_for(brew_prefix(env.machine)))},

@@ -46,6 +46,9 @@ def healthy_env(**overrides) -> HostEnv:
         free_disk_gib=50.0,
         memory_gib=16.0,
         year=2026,
+        node_path=Path('/usr/local/bin/node'),
+        node_version=(24, 19, 0),
+        pnpm_path=Path('/usr/local/bin/pnpm'),
     )
     base.update(overrides)
     return HostEnv(**base)
@@ -60,6 +63,10 @@ def config(**overrides) -> dict:
 
 def codes(result) -> list:
     return [e['code'] for e in result['errors']]
+
+
+def code_set(result) -> set:
+    return set(codes(result))
 
 
 class PreflightTest(unittest.TestCase):
@@ -152,13 +159,70 @@ class PreflightTest(unittest.TestCase):
         result = preflight(config(), self.root, env=healthy_env(year=1970))
         self.assertEqual(codes(result), ['KVVI_CLOCK_SKEW'])
 
+    # ── Node 与 pnpm ──────────────────────────────────────────────────────
+    def test_missing_node_is_refused_with_install_guidance(self):
+        # macOS **不自带 node**。而安装器与两个进程都要它 ——
+        # 一个未声明的前置条件，在客户机器上是必然踩到的坑。
+        result = preflight(config(), self.root,
+                           env=healthy_env(node_path=None, node_version=None))
+        self.assertEqual(codes(result), ['KVVI_NODE_NOT_FOUND'])
+        self.assertIn('nodejs.org', result['errors'][0]['guidance'])
+
+    def test_old_node_names_both_versions(self):
+        result = preflight(config(), self.root, env=healthy_env(node_version=(20, 11, 0)))
+        self.assertEqual(codes(result), ['KVVI_NODE_TOO_OLD'])
+        self.assertEqual(result['errors'][0]['found'], '20.11.0')
+        self.assertEqual(result['errors'][0]['required'], '^22.19.0 || >=24.0.0')
+
+    def test_the_accepted_ranges_are_the_harness_engines_range(self):
+        # 判据必须与 DSH 自己的 engines 一致：不一致的表现是
+        # 「装上了但运行时起不来」，而报错来自 dsh，看不出是版本门槛写错了。
+        from distribution.lib.preflight import node_supported
+        self.assertTrue(node_supported((22, 19, 0)))
+        self.assertTrue(node_supported((22, 20, 1)))
+        self.assertTrue(node_supported((24, 0, 0)))
+        self.assertTrue(node_supported((25, 1, 0)))
+        self.assertFalse(node_supported((22, 18, 9)))
+        self.assertFalse(node_supported((20, 11, 0)))
+        self.assertFalse(node_supported((23, 9, 0)))   # 23 不在 ^22.19 || >=24 里
+
+    def test_missing_pnpm_is_reported_because_the_package_needs_it_once(self):
+        # 发行包装的是**源码 + 安装器**：运行时的 1.9 GB 依赖不在包里
+        # （里面有 darwin-arm64 的原生模块，装不到别人的机器上）。
+        # 所以装完包之后有一次 `pnpm install`，pnpm 因此是前置条件。
+        result = preflight(config(), self.root, env=healthy_env(pnpm_path=None))
+        self.assertEqual(codes(result), ['KVVI_PNPM_NOT_FOUND'])
+        self.assertIn('pnpm', result['errors'][0]['guidance'])
+
+    def test_node_is_reported_before_postgres(self):
+        # 顺序有意义：先说最上游的那道坎。node 没有，后面什么都做不了。
+        result = preflight(config(), self.root,
+                           env=healthy_env(node_path=None, node_version=None,
+                                           pg_config=None, pg_major=None))
+        self.assertEqual(codes(result)[0], 'KVVI_NODE_NOT_FOUND')
+
+    def test_report_carries_the_node_requirement_and_what_was_found(self):
+        result = preflight(config(), self.root, env=healthy_env())
+        self.assertEqual(result['node']['required'], '^22.19.0 || >=24.0.0')
+        self.assertEqual(result['node']['found'], '24.19.0')
+
+    def test_observe_host_reports_this_machines_node_and_pnpm(self):
+        from distribution.lib.preflight import observe_host
+        env = observe_host()
+        self.assertIsNotNone(env.node_path, '本机有 node，observe_host 却没读到')
+        self.assertIsNotNone(env.node_version)
+        self.assertIsNotNone(env.pnpm_path, '本机有 pnpm，observe_host 却没读到')
+
     # ── 多错并报 ──────────────────────────────────────────────────────────
     def test_every_problem_is_reported_at_once(self):
         result = preflight(config(min_disk_gib=20.0, min_memory_gib=32.0), self.root,
                            env=healthy_env(pg_config=None, pg_major=None,
-                                           free_disk_gib=1.0, memory_gib=2.0))
+                                           free_disk_gib=1.0, memory_gib=2.0,
+                                           node_path=None, node_version=None,
+                                           pnpm_path=None))
         self.assertEqual(sorted(codes(result)),
-                         ['KVVI_DISK_LOW', 'KVVI_MEMORY_LOW', 'KVVI_PG_NOT_FOUND'],
+                         ['KVVI_DISK_LOW', 'KVVI_MEMORY_LOW', 'KVVI_NODE_NOT_FOUND',
+                          'KVVI_PG_NOT_FOUND', 'KVVI_PNPM_NOT_FOUND'],
                          '前置检查一次只报一个问题，客户要来回试几次')
 
     def test_failures_still_write_nothing(self):
