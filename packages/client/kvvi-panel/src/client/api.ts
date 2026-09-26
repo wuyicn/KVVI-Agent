@@ -78,9 +78,17 @@ export interface ModelSpec {
   readonly fields?: readonly ModelField[]
 }
 
-/** A published `workflow-spec` document, as the projection adds states. */
+/**
+ * A published `workflow-spec` document, as the projection returns it.
+ *
+ * `states` keeps the contract's **array** shape (the workflow runtime reads it
+ * that way); the projection's derived code-to-state lookup is `stateLabels`.
+ * Two shapes for one fact is how the two readers drift apart — the client reads
+ * the derived one and never re-shapes the contract's own.
+ */
 export interface WorkflowSpec {
-  readonly states?: Readonly<Record<string, { readonly label?: string }>>
+  readonly states?: readonly { readonly state_code?: string; readonly label?: string }[]
+  readonly stateLabels?: Readonly<Record<string, { readonly label?: string }>>
   readonly transitions?: readonly {
     readonly from_state?: string
     readonly to_state?: string

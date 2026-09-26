@@ -89,7 +89,12 @@ describe('the shipped preset root', () => {
     const ctx = await roster({ includeUserRoot: false })
 
     const listed = await ctx.agentPresets.list()
-    expect(listed.map(preset => preset.id).sort()).toEqual(['cordis', 'minimal', 'ptc', 'standard'])
+    // KVVI ships two more presets beside the upstream four (`kvvi-builder` for
+    // 搭建引擎模式, `kvvi-worker` for 工作模式). They are part of this build's
+    // shipped roster, so the fixture lists them: a literal list that omitted
+    // them would pass only on a build without KVVI's mode split.
+    expect(listed.map(preset => preset.id).sort())
+      .toEqual(['cordis', 'kvvi-builder', 'kvvi-worker', 'minimal', 'ptc', 'standard'])
     expect(listed.every(preset => preset.trust === 'system')).toBe(true)
     // Not `broken === undefined`: health asks whether each row's package is
     // installed above the base, and the shipped rows name packages the

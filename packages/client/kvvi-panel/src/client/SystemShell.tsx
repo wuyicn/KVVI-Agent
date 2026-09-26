@@ -140,7 +140,7 @@ export function KvviSystemShell({ copy }: KvviSystemShellProps): ReactNode {
   // Named so the optional prop can be *omitted* rather than passed as
   // `undefined` (`exactOptionalPropertyTypes`). Both are equivalent here, and
   // the spread is the form the rest of this file already uses.
-  const stateLabel = detail === null ? undefined : workflow?.states?.[detail.state ?? '']?.label
+  const stateLabel = detail === null ? undefined : workflow?.stateLabels?.[detail.state ?? '']?.label
 
   // ── The systems list ──────────────────────────────────────────────────────
   if (open === null) {
