@@ -129,12 +129,55 @@ def parse_anchor_checks():
     return out
 
 
+def parse_supplementary_stages():
+    """从 `进度.md` 的「补充需求阶段状态」一节读阶段八至十二。
+
+    ⚠️ 这些阶段**不在冻结 PRD 里** —— 它们来自
+    `KVVI-Agent 私有化发行版与产品闭环补充需求-v1.0.md`。
+    那个文件自称「未冻结」，所以本函数只读 `进度.md` 里**人工确认过的事实**，
+    不去解析那份需求文件：**需求未冻结，就不该由工具把它当成阶段清单。**
+    @returns {list} `[{name, status, gate, note}]`
+    """
+    if not PROGRESS.is_file():
+        return []
+    out = []
+    for line in PROGRESS.read_text(encoding='utf-8').splitlines():
+        m = re.match(r'^\| (阶段[八九十]+[一二三]?[：:][^|]+)\| ([^|]+)\| \*\*(G\d+)[^|]*\| ([^|]*)\|',
+                     line)
+        if not m:
+            continue
+        out.append({
+            'name': clean(m.group(1)),
+            'status': clean(m.group(2)),
+            'gate': clean(m.group(3)),
+            'note': clean(m.group(4)),
+        })
+    return out
+
+
+def parse_supplementary_gates():
+    """从「补充需求门禁」一节读 G6 及以后的判据。
+
+    与 `parse_gates()` 分开：那个从**冻结 PRD** 抽，这个从 `进度.md` 抽。
+    混在一起会让「PRD 里有几条门禁」这个校验失去意义。
+    @returns {list} `[(门禁名, 判据)]`
+    """
+    if not PROGRESS.is_file():
+        return []
+    out = []
+    for line in PROGRESS.read_text(encoding='utf-8').splitlines():
+        m = re.match(r'^\| \*\*(G\d+)\*\* \| ([^|]+) \|', line)
+        if m and m.group(1) not in {g[0] for g in parse_gates()}:
+            out.append((m.group(1), clean(m.group(2))))
+    return out
+
+
 def parse_gate_status():
     if not PROGRESS.is_file():
         return {}
     out = {}
     for line in PROGRESS.read_text(encoding='utf-8').splitlines():
-        m = re.match(r'^\| \*\*(G[1-5])\*\* \| ([^|]+) \| ([^|]+) \|', line)
+        m = re.match(r'^\| \*\*(G\d+)\*\* \| ([^|]+) \| ([^|]+) \|', line)
         if m:
             v = clean(m.group(3))
             for icon in STATUS_ICON.values():
@@ -209,8 +252,15 @@ def run_board():
     print('═' * 74)
     print(f'  PRD      v2.16  ' + (f'{fp[:16]}…' + ('  ✅ 与冻结一致' if fp == frozen else '  ⚠️ 与冻结不一致'))
           )
-    print(f'  总进度   {done_stages}/{len(stages)} 阶段完成  ·  '
+    # ⚠️ 这一行**只报 v2.16 的七阶段**，括号里把范围写出来。
+    # 补充需求的阶段八至十二另起一段 —— 两者来源不同、冻结状态不同，
+    # 把它们的完成度并进一个分子分母会让「7/7」这句话不可核对。
+    print(f'  总进度   {done_stages}/{len(stages)} 阶段完成（v2.16 冻结范围）  ·  '
           f'锚点 {done_anchors}/{total_anchors}')
+    supp_done = sum(1 for x in parse_supplementary_stages() if x['status'] == '已完成')
+    supp_all = parse_supplementary_stages()
+    if supp_all:
+        print(f'  补充需求 {supp_done}/{len(supp_all)} 阶段完成（**未冻结**，见下表）')
     print('─' * 74)
 
     checks = parse_anchor_checks()
@@ -227,9 +277,24 @@ def run_board():
             print(f'       [{mark}] {a[:96]}')
         print()
 
+    # 补充需求的阶段**单独一段**。
+    # 不与 v2.16 的七阶段混排：两者的来源、冻结状态、门禁编号都不同，
+    # 混在一起会让「7/7 阶段完成」这句话变得不可核对。
+    supp = parse_supplementary_stages()
+    if supp:
+        print('─' * 74)
+        print('  补充需求阶段（来自私有化发行版与产品闭环补充需求，**未冻结**）')
+        for st in supp:
+            icon = STATUS_ICON.get(st['status'], '⬜')
+            print(f'  {icon} {st["name"]}  [{st["gate"]}]  {st["status"]}')
+        print()
+
     print('─' * 74)
     print('  阶段门禁' + '（未通过则下一阶段不得启动）')
     for name, cond in gates:
+        st = gstat.get(name, '⬜')
+        print(f'    {st} {name}  {cond[:70]}')
+    for name, cond in parse_supplementary_gates():
         st = gstat.get(name, '⬜')
         print(f'    {st} {name}  {cond[:70]}')
 
@@ -300,6 +365,52 @@ def open_items() -> list:
     return block
 
 
+def _section(title: str) -> list:
+    """原样取回 `进度.md` 里以 `### <title>` 开头的一整节（到下一个同级或更高级标题）。
+
+    与 `open_items()` 同一个理由：`--write` 的职责是重生成锚点，
+    **不是丢弃它没能力生成的段落**。补充需求那两节来自另一份文件，
+    本工具无法生成它们 —— 所以必须搬回来。
+
+    ⚠️ 第一次写这两个解析器时漏了这一步，实测 `--write` 把它们整段删掉。
+    这个形态在本仓库出现过多次：**生成器只搬它认识的东西，不认识的就静默消失。**
+    @param title 二级标题文本（不含 `### `）
+    @returns 该节的行（含标题行）
+    """
+    if not PROGRESS.is_file():
+        return []
+    lines = PROGRESS.read_text(encoding='utf-8').splitlines()
+    head = '### ' + title
+    try:
+        start = lines.index(head)
+    except ValueError:
+        return []
+    end = len(lines)
+    for i in range(start + 1, len(lines)):
+        if lines[i].startswith('### ') or lines[i].startswith('## '):
+            end = i
+            break
+    block = lines[start:end]
+    # 去掉两端**由 run_write 固定重写**的那几行 —— 与 `open_items()` 同一个做法。
+    # 不去掉的话它们既被生成器写一遍、又被本函数搬一遍，每跑一次 `--write`
+    # 就多出一份（实测 diff 里重复出现）。
+    GENERATED = ('> **状态取值**', '> **🟢 的判据**', '> **门禁的含义**')
+    keep = []
+    for line in block:
+        if any(line.startswith(g) for g in GENERATED):
+            continue
+        keep.append(line)
+    block = keep
+    while block and (not block[-1].strip() or block[-1].strip() == '---'):
+        block.pop()
+    while block and not block[-1].strip():
+        block.pop()
+    return block
+
+
+SUPPLEMENTARY_SECTIONS = ('补充需求阶段状态', '补充需求门禁')
+
+
 def run_write():
     """由 PRD 重新生成 进度.md 的锚点骨架；已存在的状态列与勾选保留。"""
     stages = parse_stages()
@@ -336,6 +447,15 @@ def run_write():
         note = (old.get(s['name']) or {}).get('note', '')
         out.append(f"| {s['name']} | {s['weeks']} | {st} | {done}/{len(s['anchors'])} | {note} |")
 
+    # 补充需求的阶段表**紧跟在 v2.16 七阶段的表之后**。
+    #
+    # ⚠️ 位置要与人工维护时一致，否则每次 `--write` 都会把它搬到别处 ——
+    # 内容没丢，但 diff 里看起来像被删了一遍（实测 48 行位移）。
+    # 一个「每次都产生无意义 diff」的生成器，会让人不敢跑它。
+    out += [""]
+    for block in _section(SUPPLEMENTARY_SECTIONS[0]):
+        out.append(block)
+
     out += ["", "> **状态取值**：`未开始` / `进行中` / `已完成`（可写 `进行中`，图标由看板渲染）。",
             "> **🟢 的判据**：该阶段**全部锚点通过**才算完成——不接受「基本做完」「功能可用」（PRD §7.1 表后规则）。",
             "", "### 各阶段锚点（由 PRD 生成，勿手改）", ""]
@@ -350,6 +470,8 @@ def run_write():
     out += ["---", "", "## 阶段门禁", "", "| 门禁 | 条件 | 状态 |", "|---|---|---|"]
     for name, cond in gates:
         out.append(f"| **{name}** | {cond} | {old_g.get(name, '未开始')} |")
+    for block in _section(SUPPLEMENTARY_SECTIONS[1]):
+        out.append(block)
     out += ["", "> **门禁的含义**（PRD §7.5.2）：**未通过，下一阶段不得启动**——不接受「先做后面、回头补」。",
             "", "---", "", "## 未关闭事项", "", "| # | 事项 | 阻断范围 | 状态 |", "|---|---|---|---|",
             "| — | *（PRD v2.16 终审通过，当前无阻断项）* | — | — |"]
@@ -384,8 +506,27 @@ def run_next():
     status = parse_progress_status()
     gates = parse_gates()
     gstat = parse_gate_status()
-    pending_gates = [n for n, _ in gates if gstat.get(n) not in ('已完成', '🟢')]
-    print('待通过门禁：', ', '.join(pending_gates) if pending_gates else '（无）')
+    # ⚠️ 补充需求的门禁**也要算进来**。
+    # 只算 G1–G5 的话，七阶段全过之后这里会打印「待通过门禁：（无）」——
+    # 而实际上 G7–G10 一个都没过。**一个说「没有待办」的状态行，
+    # 比没有这一行更坏**：它会让人以为做完了。
+    supp_gates = parse_supplementary_gates()
+    all_gates = list(gates) + supp_gates
+    pending = [n for n, _ in all_gates if gstat.get(n) not in ('已完成', '🟢')]
+    pending_v216 = [n for n, _ in gates if gstat.get(n) not in ('已完成', '🟢')]
+    pending_supp = [n for n, _ in supp_gates if gstat.get(n) not in ('已完成', '🟢')]
+    if pending_v216:
+        print('待通过门禁（v2.16）：', ', '.join(pending_v216))
+    else:
+        print('待通过门禁（v2.16）：无 —— 七阶段与 G1–G5 全部达成')
+    if supp_gates:
+        if pending_supp:
+            print('待通过门禁（补充需求）：', ', '.join(pending_supp))
+        else:
+            print('待通过门禁（补充需求）：无')
+    else:
+        print('待通过门禁（补充需求）：未登记 —— 进度.md 里没有「补充需求门禁」一节')
+
     ck = parse_anchor_checks()
     nxt = next((s for s in stages if status.get(s['name'], {}).get('status') != '已完成'), None)
     if nxt:
@@ -396,6 +537,16 @@ def run_next():
             print('该阶段全部锚点已达成 —— 应在 进度.md 中标记为已完成')
         else:
             print(f'下一个锚点：{nxt["anchors"][i]}')
+    else:
+        # 七阶段走完之后，**下一步在补充需求里** —— 不指出来，
+        # 这个命令会以「没有当前阶段」结束，像是没事可做了。
+        supp = parse_supplementary_stages()
+        sd = next((x for x in supp if x['status'] != '已完成'), None)
+        if sd is not None:
+            print(f'当前阶段  ：{sd["name"]}  [{sd["gate"]}]  —— 来自补充需求（未冻结）')
+            print(f'门禁判据  ：{next((c for n, c in supp_gates if n == sd["gate"]), "未登记")}')
+        elif supp:
+            print('补充需求的阶段全部完成')
     return 0
 
 
