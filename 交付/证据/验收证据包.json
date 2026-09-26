@@ -213,8 +213,8 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段九-G7-系统运行闭环.txt",
-      "digest": "sha256:9f326cd73ed407715326df2a19c07b77a777900cc6e0d0d7aae665481804c641",
-      "commit": "3766bba0989ce8e93e6bab71f29772fe1b94e982",
+      "digest": "sha256:b79d4dbd593ff24c04f12572f0ae8260322db1caeb19975317bdbd8abb1f4983",
+      "commit": "bf22d3793e0dd160f80d859c3d42f68d7c336e24",
       "evidenceClasses": [
         "contracts",
         "runtime_api",
@@ -236,7 +236,7 @@
         "forks/dsh/变更/packages/client/kvvi-panel/src/client/registry.tsx": "sha256:f4a05b0fd8a487c4eca19cf8197db941bae495c79efc40147929ac03a4bbc7c6",
         "forks/dsh/变更/packages/client/kvvi-panel/src/client/FormView.tsx": "sha256:5f5125e08756126052801c54618783cf891386776f06fc6b9d2b560dce00f62b",
         "forks/dsh/变更/packages/client/kvvi-panel/src/client/SystemShell.tsx": "sha256:d8d4bca0260d7d92c07dd66094280477101a04e3086b52b85ae7e72c1759fdf5",
-        "forks/dsh/变更/packages/client/kvvi-panel/src/client/api.ts": "sha256:573ed2c38000b1544a5faa5c9a0d60cb50b2fa36dba48e2727de9d140ef4b163",
+        "forks/dsh/变更/packages/client/kvvi-panel/src/client/api.ts": "sha256:d35b2d59423ec250c30f29a91a8d86571192f3a434918469a290c0d662de9dab",
         "forks/dsh/变更/packages/client/kvvi-panel/tests/runtime-ui.spec.tsx": "sha256:ebd6b22a61a3a5aeaef74393bf47cc9c86459714e318f2ac281ab819c855f249",
         "工具/check_stage9.py": "sha256:8599a0c10f11c3c1bfe2dedda736e469361bd8f0e21440374113f5c4224c4c08"
       }
@@ -244,5 +244,5 @@
   ],
   "deliveryDigest": "sha256:e2e5e460623c01aa21e2ad6f72f9f841b89f093dc8fea9f05752bbc0fd1fca5c",
   "failed": [],
-  "bundleDigest": "sha256:ddcb3c75d7afdd73092ad0170f91e6c6a5e713b5511fc437a4aba637ba02690e"
+  "bundleDigest": "sha256:c8dd5c6846bd237856e339af7f0a2f84152245aeda91e1402b7de0fdafc8bec7"
 }
