@@ -2,71 +2,71 @@ $ python3 工具/check_stage10.py --run-only
 
 [admin_api] $ node --test --test-concurrency=1 tests/admin-api.test.mjs tests/admin.test.mjs tests/permissions.test.mjs tests/lifecycle.test.mjs
 ▶ 阶段十 · 所有者管理 API
-  ✔ ★ 非管理员的员工调管理接口 → 403，且留痕 (21.398125ms)
-  ✔ ★ 未登录 → 401，且不返回任何成员数据 (0.329ms)
-  ✔ 所有者可以看到能力表，员工看到的是空能力 (4.993917ms)
-  ✔ ★ 建账号撞重名 → 409，且**不留孤儿成员关系** (63.850333ms)
-  ✔ 口令过短 → 400，且不建账号 (3.728541ms)
-  ✔ 新账号出现在成员列表里，状态与归属都读得到 (4.066292ms)
-  ✔ ★ 委托角色不能被建业务角色时的保留 code 占用 (2.536166ms)
-  ✔ 建角色：同名冲突是 409，不是 500 (6.613334ms)
-  ✔ ★ 把自己纳入配置范围 → 403，且**与他有无权限无关** (3.360459ms)
-  ✔ ★ 把自己加进业务角色 → 403 且留痕 (3.721375ms)
-  ✔ 正向对照：把**他人**加进业务角色 → 放行 (4.225458ms)
-  ✔ ★ 策略整体替换：旧策略消失，新策略就位 (9.347875ms)
-  ✔ ★ 非法维度 / 非法数据范围 → 400，且**不改动既有策略** (5.219042ms)
-  ✔ ★ 被委托者（admin）不能授予搭建模式 (5.285917ms)
-  ✔ 所有者授予搭建模式 → 放行并可收回，收回时结束 Builder 会话 (13.348166ms)
-  ✔ ★ 最后一个所有者不可移除 (3.685333ms)
-  ✔ ★ 停用账号：状态落库且**全部会话立刻结束** (10.007958ms)
-  ✔ 重复停用 → 409（不是静默成功） (2.407875ms)
-  ✔ 恢复账号后要重新登录才可用 (3.6395ms)
-  ✔ 对**非本公司成员**操作 → 404（不泄露存在性） (2.362583ms)
-  ✔ 未知管理路径 → 404，且带着路由名（便于排错） (1.241458ms)
-  ✔ 审计链在以上全部操作后仍然自洽 (9.011667ms)
-✔ 阶段十 · 所有者管理 API (250.677083ms)
+  ✔ ★ 非管理员的员工调管理接口 → 403，且留痕 (21.993292ms)
+  ✔ ★ 未登录 → 401，且不返回任何成员数据 (0.288583ms)
+  ✔ 所有者可以看到能力表，员工看到的是空能力 (5.209333ms)
+  ✔ ★ 建账号撞重名 → 409，且**不留孤儿成员关系** (66.434833ms)
+  ✔ 口令过短 → 400，且不建账号 (2.94875ms)
+  ✔ 新账号出现在成员列表里，状态与归属都读得到 (4.4835ms)
+  ✔ ★ 委托角色不能被建业务角色时的保留 code 占用 (2.697334ms)
+  ✔ 建角色：同名冲突是 409，不是 500 (6.15875ms)
+  ✔ ★ 把自己纳入配置范围 → 403，且**与他有无权限无关** (3.305875ms)
+  ✔ ★ 把自己加进业务角色 → 403 且留痕 (3.729084ms)
+  ✔ 正向对照：把**他人**加进业务角色 → 放行 (4.278083ms)
+  ✔ ★ 策略整体替换：旧策略消失，新策略就位 (11.338708ms)
+  ✔ ★ 非法维度 / 非法数据范围 → 400，且**不改动既有策略** (5.144792ms)
+  ✔ ★ 被委托者（admin）不能授予搭建模式 (5.328917ms)
+  ✔ 所有者授予搭建模式 → 放行并可收回，收回时结束 Builder 会话 (12.79025ms)
+  ✔ ★ 最后一个所有者不可移除 (3.764458ms)
+  ✔ ★ 停用账号：状态落库且**全部会话立刻结束** (10.024416ms)
+  ✔ 重复停用 → 409（不是静默成功） (2.472208ms)
+  ✔ 恢复账号后要重新登录才可用 (3.855291ms)
+  ✔ 对**非本公司成员**操作 → 404（不泄露存在性） (2.397708ms)
+  ✔ 未知管理路径 → 404，且带着路由名（便于排错） (1.269417ms)
+  ✔ 审计链在以上全部操作后仍然自洽 (9.049375ms)
+✔ 阶段十 · 所有者管理 API (262.510292ms)
 ▶ N17 管理类端点：进程凭据 ∧ 人的角色
-  ✔ ★ 只有进程令牌、没有人的令牌 → 拒（这正是原形态的漏洞） (33.436334ms)
-  ✔ ★ 有人的令牌但**不是管理员** → 拒，且留痕 (24.929084ms)
-  ✔ 所有者 → 放行，且留痕 (12.668209ms)
-  ✔ 判定函数本身：owner / admin / 都不是 (2.053167ms)
-  ✔ 吊销**自己**的会话不需要管理员角色（那等于登出） (17.31175ms)
-✔ N17 管理类端点：进程凭据 ∧ 人的角色 (289.886916ms)
+  ✔ ★ 只有进程令牌、没有人的令牌 → 拒（这正是原形态的漏洞） (26.385583ms)
+  ✔ ★ 有人的令牌但**不是管理员** → 拒，且留痕 (31.324958ms)
+  ✔ 所有者 → 放行，且留痕 (13.650125ms)
+  ✔ 判定函数本身：owner / admin / 都不是 (2.132375ms)
+  ✔ 吊销**自己**的会话不需要管理员角色（那等于登出） (16.50275ms)
+✔ N17 管理类端点：进程凭据 ∧ 人的角色 (284.196375ms)
 ▶ N16 §9.6.7 自授权：规则终于接到了端点上
-  ✔ ★ 所有者把自己纳入配置范围 → 拒（判定与「有没有权限」无关） (10.277916ms)
-  ✔ ★ 把自己纳入 targetUserIds → 403 且留痕 (11.384209ms)
-  ✔ 正向对照：只授予他人 → 放行 (11.211541ms)
-  ✔ ★ 业务角色不得占用平台保留 code（否则「谁是所有者」可被业务配置改写） (9.032208ms)
-  ✔ 规则函数与端点用的是同一条判据 (0.125208ms)
-  ✔ 审计链在以上全部操作后仍然自洽 (4.518084ms)
-✔ N16 §9.6.7 自授权：规则终于接到了端点上 (46.844708ms)
+  ✔ ★ 所有者把自己纳入配置范围 → 拒（判定与「有没有权限」无关） (9.26825ms)
+  ✔ ★ 把自己纳入 targetUserIds → 403 且留痕 (11.438833ms)
+  ✔ 正向对照：只授予他人 → 放行 (13.289333ms)
+  ✔ ★ 业务角色不得占用平台保留 code（否则「谁是所有者」可被业务配置改写） (9.031709ms)
+  ✔ 规则函数与端点用的是同一条判据 (0.128ms)
+  ✔ 审计链在以上全部操作后仍然自洽 (6.595166ms)
+✔ N16 §9.6.7 自授权：规则终于接到了端点上 (50.005167ms)
 ▶ N16 §3.3.2 按单据状态分流
-  ✔ 分流表是**封闭**的：未知状态即拒，不猜 (1.709375ms)
-  ✔ ★ 草稿：**归属转移**但不进流程（不指定继任者、不告警） (31.833959ms)
-  ✔ ★ 在途：**显式交接 + 告警**（不得静默） (16.467292ms)
-  ✔ ★ 已完成：**只追加标记，不替换提交人**（历史不可改写） (28.063041ms)
-✔ N16 §3.3.2 按单据状态分流 (139.62975ms)
+  ✔ 分流表是**封闭**的：未知状态即拒，不猜 (0.826542ms)
+  ✔ ★ 草稿：**归属转移**但不进流程（不指定继任者、不告警） (26.8615ms)
+  ✔ ★ 在途：**显式交接 + 告警**（不得静默） (15.296ms)
+  ✔ ★ 已完成：**只追加标记，不替换提交人**（历史不可改写） (26.459083ms)
+✔ N16 §3.3.2 按单据状态分流 (117.429875ms)
 ▶ N16 §3.3.3 三条原则
-  ✔ ★ ① 顺序：先停用，再交接（反过来会出现「交接完还能登录」的窗口） (16.003375ms)
-  ✔ ★ ③ 账号只能停用，不能删除 (0.342792ms)
-  ✔ 继任者不能是自己 (0.356667ms)
-  ✔ 交接后不产生孤儿单据（在途必须有主） (15.107125ms)
-  ✔ 离职动作留痕，且审计链自洽 (12.554417ms)
-✔ N16 §3.3.3 三条原则 (44.984ms)
+  ✔ ★ ① 顺序：先停用，再交接（反过来会出现「交接完还能登录」的窗口） (13.912708ms)
+  ✔ ★ ③ 账号只能停用，不能删除 (0.403ms)
+  ✔ 继任者不能是自己 (0.305667ms)
+  ✔ 交接后不产生孤儿单据（在途必须有主） (14.114958ms)
+  ✔ 离职动作留痕，且审计链自洽 (11.43625ms)
+✔ N16 §3.3.3 三条原则 (40.757583ms)
 ▶ 0B-4 表单权限
-  ✔ 允许的动作放行，未授予的动作拒绝 (4.038667ms)
-✔ 0B-4 表单权限 (54.528667ms)
+  ✔ 允许的动作放行，未授予的动作拒绝 (4.035333ms)
+✔ 0B-4 表单权限 (53.855666ms)
 ▶ 0B-5 字段权限
-  ✔ 未配置的字段默认**不可见**（fail-closed） (0.7905ms)
-  ✔ 投影后**看不到**隐藏字段，脱敏字段只出掩码 (1.319584ms)
-  ✔ 同一字段被多条策略命中时取**最严** (3.048584ms)
-✔ 0B-5 字段权限 (5.380958ms)
+  ✔ 未配置的字段默认**不可见**（fail-closed） (0.982333ms)
+  ✔ 投影后**看不到**隐藏字段，脱敏字段只出掩码 (1.180958ms)
+  ✔ 同一字段被多条策略命中时取**最严** (2.72025ms)
+✔ 0B-5 字段权限 (5.169959ms)
 ▶ 0B-7 流程权限（当前状态下能做什么）
-  ✔ 合法动作给出目标状态 (0.5505ms)
-  ✔ 当前状态下未定义的动作被拒 (0.071375ms)
-  ✔ **终态不可写**：已通过之后没有任何迁移 (0.069291ms)
-  ✔ 契约歧义（同状态同动作两条去向）拒执行，而不是挑一条 (0.05125ms)
-✔ 0B-7 流程权限（当前状态下能做什么） (0.901208ms)
+  ✔ 合法动作给出目标状态 (0.708292ms)
+  ✔ 当前状态下未定义的动作被拒 (0.07225ms)
+  ✔ **终态不可写**：已通过之后没有任何迁移 (0.065458ms)
+  ✔ 契约歧义（同状态同动作两条去向）拒执行，而不是挑一条 (0.049625ms)
+✔ 0B-7 流程权限（当前状态下能做什么） (1.05875ms)
 ℹ tests 50
 ℹ suites 8
 ℹ pass 50
@@ -74,34 +74,34 @@ $ python3 工具/check_stage10.py --run-only
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 2790.054833
+ℹ duration_ms 2763.832208
 [admin_api] exit=0
 [differential] $ node --test --test-concurrency=1 tests/ui-agent-e2e.test.mjs tests/api-router.test.mjs
 ▶ 阶段九 · 受鉴权的产品 API 路由
-  ✔ ★ `/api/v1` 由**平台**应答，不被转发给运行时 (28.2385ms)
-  ✔ ★ 无会话 → 401，且不泄露任何系统清单 (8.637167ms)
-  ✔ ★ 无效令牌 → 401（不降级成匿名） (7.979584ms)
-  ✔ ★ 调用方传的 companyId **无效** —— 公司只从会话来 (13.729208ms)
-  ✔ ★ 身份类字段在**入口处**被剥掉，包括嵌套的 (11.914708ms)
-  ✔ ★ 运行时会话上下文可作凭据 —— Worker 工具没有浏览器凭据 (10.395958ms)
-  ✔ ★ 头里换一个人 → 拒（身份以会话行为准，不以头为准） (8.926917ms)
-  ✔ ★ 网关不一致 → 拒（USER 会话不能被当成 BUILDER 用） (9.507417ms)
-  ✔ ★ 会话被结束后，运行时会话上下文立刻失效 (33.591292ms)
-  ✔ ★ 签名不对 → 拒（浏览器伪造同名头无效） (7.137208ms)
-✔ 阶段九 · 受鉴权的产品 API 路由 (326.258125ms)
+  ✔ ★ `/api/v1` 由**平台**应答，不被转发给运行时 (26.506458ms)
+  ✔ ★ 无会话 → 401，且不泄露任何系统清单 (9.579708ms)
+  ✔ ★ 无效令牌 → 401（不降级成匿名） (8.886167ms)
+  ✔ ★ 调用方传的 companyId **无效** —— 公司只从会话来 (11.946375ms)
+  ✔ ★ 身份类字段在**入口处**被剥掉，包括嵌套的 (11.046ms)
+  ✔ ★ 运行时会话上下文可作凭据 —— Worker 工具没有浏览器凭据 (9.757708ms)
+  ✔ ★ 头里换一个人 → 拒（身份以会话行为准，不以头为准） (9.052625ms)
+  ✔ ★ 网关不一致 → 拒（USER 会话不能被当成 BUILDER 用） (9.931083ms)
+  ✔ ★ 会话被结束后，运行时会话上下文立刻失效 (27.794375ms)
+  ✔ ★ 签名不对 → 拒（浏览器伪造同名头无效） (7.390667ms)
+✔ 阶段九 · 受鉴权的产品 API 路由 (322.651834ms)
 ▶ 阶段十 · G8 UI 与 Agent 差异等价
-  ✔ ★ 向量 1：允许的创建 —— 两条通道判定相同、效果同类 (18.690083ms)
-  ✔ ★ 向量 2：HIDDEN 字段在两条通道上都不出现 (21.749709ms)
-  ✔ ★ 向量 3：READONLY 字段在两条通道上给出同样的可写性 (43.975625ms)
-  ✔ ★ 向量 4：没有 create 权限时两条通道一起 403 (23.501208ms)
-  ✔ ★ 向量 5：可执行动作清单与非法迁移，两条通道一致 (68.138875ms)
-  ✔ ★ 向量 6：陈旧 rowVersion 两条通道一起 409，且都不覆盖 (78.20075ms)
-  ✔ ★ 向量 7：账号被停用后两条通道**同时**失效 (14.22675ms)
-  ✔ ★ 会话被结束后，Agent 通道立刻失效（工具不该拿着死会话继续跑） (12.046042ms)
-  ✔ ★ 头里换一个人 → 两条通道都不认（身份以会话行为准） (5.932375ms)
-  ✔ ★ 网关不一致 → 两条通道都不认（USER 会话不能被当成 BUILDER） (6.970041ms)
-  ✔ ★ 签名不对的浏览器请求 → 401（伪造同名头无效） (6.740375ms)
-✔ 阶段十 · G8 UI 与 Agent 差异等价 (393.772333ms)
+  ✔ ★ 向量 1：允许的创建 —— 两条通道判定相同、效果同类 (21.910334ms)
+  ✔ ★ 向量 2：HIDDEN 字段在两条通道上都不出现 (29.240791ms)
+  ✔ ★ 向量 3：READONLY 字段在两条通道上给出同样的可写性 (54.186333ms)
+  ✔ ★ 向量 4：没有 create 权限时两条通道一起 403 (21.586709ms)
+  ✔ ★ 向量 5：可执行动作清单与非法迁移，两条通道一致 (73.696125ms)
+  ✔ ★ 向量 6：陈旧 rowVersion 两条通道一起 409，且都不覆盖 (75.431125ms)
+  ✔ ★ 向量 7：账号被停用后两条通道**同时**失效 (13.903208ms)
+  ✔ ★ 会话被结束后，Agent 通道立刻失效（工具不该拿着死会话继续跑） (11.491292ms)
+  ✔ ★ 头里换一个人 → 两条通道都不认（身份以会话行为准） (6.901041ms)
+  ✔ ★ 网关不一致 → 两条通道都不认（USER 会话不能被当成 BUILDER） (7.689875ms)
+  ✔ ★ 签名不对的浏览器请求 → 401（伪造同名头无效） (6.37975ms)
+✔ 阶段十 · G8 UI 与 Agent 差异等价 (420.144958ms)
 ℹ tests 21
 ℹ suites 2
 ℹ pass 21
@@ -109,18 +109,18 @@ $ python3 工具/check_stage10.py --run-only
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 1697.83875
+ℹ duration_ms 1815.310584
 [differential] exit=0
 [admin_ui] $ pnpm exec npx vitest run packages/client/kvvi-panel/tests/admin-ui.spec.tsx
 
  RUN  v4.1.8 /Users/wuyi-macs/Documents/KVVI-Agent/vendor/dsh
 
- ✓ |thread-safe| packages/client/kvvi-panel/tests/admin-ui.spec.tsx (21 tests) 226ms
+ ✓ |thread-safe| packages/client/kvvi-panel/tests/admin-ui.spec.tsx (21 tests) 219ms
 
  Test Files  1 passed (1)
       Tests  21 passed (21)
-   Start at  11:26:36
-   Duration  717ms (transform 117ms, setup 110ms, import 66ms, tests 226ms, environment 250ms)
+   Start at  11:27:09
+   Duration  703ms (transform 117ms, setup 103ms, import 79ms, tests 219ms, environment 239ms)
 
 The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
 The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
@@ -134,8 +134,8 @@ The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths r
 
  Test Files  1 passed (1)
       Tests  15 passed (15)
-   Start at  11:26:37
-   Duration  347ms (transform 242ms, setup 97ms, import 182ms, tests 5ms, environment 0ms)
+   Start at  11:27:11
+   Duration  348ms (transform 243ms, setup 100ms, import 180ms, tests 5ms, environment 0ms)
 
 The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
 The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
@@ -145,12 +145,119 @@ The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths r
 ▸ 第 1 步：取上游干净副本（基线 ddefc45fbc7f，来源 local）
   ✓ 12071 个文件
 ▸ 第 2 步：覆盖我们的改动
-  ✓ 75 个文件
+  ✓ 78 个文件
 ▸ 第 3 步：逐字节比对指纹
-  [32m✓ 75/78 个文件与指纹一致[0m
-    [31m✗ docs/module-graph.i18n.yaml：变更未应用（结果=上游基线）[0m
-    [31m✗ docs/module-graph.md：变更未应用（结果=上游基线）[0m
-    [31m✗ docs/module-graph.zh.md：变更未应用（结果=上游基线）[0m
-[31m✗ 重建结果与指纹不一致[0m
-[fork/rebuild] exit=1
-✗ G8 未通过：DSH fork rebuild failed
+  [32m✓ 78/78 个文件与指纹一致[0m
+[32m✓ 重建结果与指纹逐字节一致[0m
+[fork/rebuild] exit=0
+[fork/install] $ pnpm install --frozen-lockfile --offline
+native/system/packages/darwin-x64        | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["darwin"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/system/packages/linux-arm64       | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/system/packages/linux-x64         | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 319 workspace projects
+[WARN] There are cyclic workspace dependencies: /private/tmp/kvvi-stage10-fork/apps/web, /private/tmp/kvvi-stage10-fork/packages/test-support/client-runtime, /private/tmp/kvvi-stage10-fork/packages/bundle/web-app; /private/tmp/kvvi-stage10-fork/packages/api/remotes, /private/tmp/kvvi-stage10-fork/packages/client/file-upload; /private/tmp/kvvi-stage10-fork/packages/client/ui-conversation, /private/tmp/kvvi-stage10-fork/packages/client/ui-workspace, /private/tmp/kvvi-stage10-fork/packages/client/ui-sidebar; /private/tmp/kvvi-stage10-fork/packages/compaction/compaction-basic, /private/tmp/kvvi-stage10-fork/packages/compaction/compaction-image-offload; /private/tmp/kvvi-stage10-fork/packages/core/agent-loop, /private/tmp/kvvi-stage10-fork/packages/llm/llm-pi-ai, /private/tmp/kvvi-stage10-fork/packages/llm/llm-deepseek, /private/tmp/kvvi-stage10-fork/packages/session/session-log-deepseek, /private/tmp/kvvi-stage10-fork/packages/feedback/command-feedback, /private/tmp/kvvi-stage10-fork/packages/test-support/agent-loop-testkit; /private/tmp/kvvi-stage10-fork/packages/sandbox/sandbox-local, /private/tmp/kvvi-stage10-fork/packages/sandbox/sandbox-windows-acl; /private/tmp/kvvi-stage10-fork/packages/ssh/fs-ssh, /private/tmp/kvvi-stage10-fork/packages/ssh/ssh; /private/tmp/kvvi-stage10-fork/packages/subagent/subagent-spawn-in-process, /private/tmp/kvvi-stage10-fork/packages/subagent/tool-subagent; /private/tmp/kvvi-stage10-fork/vendor/cordis, /private/tmp/kvvi-stage10-fork/vendor/include
+✓ Lockfile passes supply-chain policies (verified 8m ago)
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +1319
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 1319, reused 1314, downloaded 0, added 455
+Progress: resolved 1319, reused 1314, downloaded 0, added 937
+Progress: resolved 1319, reused 1314, downloaded 0, added 1209
+Progress: resolved 1319, reused 1314, downloaded 0, added 1319, done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install$ node ./cnoke.cjs -P . -D src/koffi --prebuild --release
+.../node_modules/protobufjs postinstall$ node scripts/postinstall
+.../lefthook@2.1.9/node_modules/lefthook postinstall$ node postinstall.js
+.../node_modules/protobufjs postinstall: Done
+.../lefthook@2.1.9/node_modules/lefthook postinstall: │  > git rev-parse --path-format=absolute --show-toplevel --git-path hooks --git-path info --git-dir
+.../lefthook@2.1.9/node_modules/lefthook postinstall: │    fatal: not a git repository (or any of the parent directories): .git
+.../lefthook@2.1.9/node_modules/lefthook postinstall: │
+.../lefthook@2.1.9/node_modules/lefthook postinstall: exit status 128
+.../lefthook@2.1.9/node_modules/lefthook postinstall: Done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: Done
+.../node_modules/@google/genai preinstall$ echo 'preinstall: no-op'
+.../node_modules/@google/genai preinstall: preinstall: no-op
+.../node_modules/@google/genai preinstall: Done
+[WARN] Failed to create bin at /private/tmp/kvvi-stage10-fork/apps/desktop-host/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage10-fork/apps/cli/lib/bin.js'
+[WARN] Failed to create bin at /private/tmp/kvvi-stage10-fork/packages/sdk/client/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage10-fork/apps/cli/lib/bin.js'
+[WARN] Failed to create bin at /private/tmp/kvvi-stage10-fork/python/sdk-runtime/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage10-fork/apps/cli/lib/bin.js'
+
+devDependencies:
++ @deepseek-ai/dsh-agent 0.1.6-alpha.2 <- packages/core/agent
++ @deepseek-ai/dsh-browser-use 0.1.6-alpha.2 <- packages/browser-use/browser-use
++ @deepseek-ai/dsh-computer-use 0.1.6-alpha.2 <- packages/computer-use/computer-use
++ @deepseek-ai/dsh-experimental-browser-use-chrome-devtools-mcp 0.1.6-alpha.2 <- packages/experimental/browser-use-chrome-devtools-mcp
++ @deepseek-ai/dsh-experimental-browser-use-playwright-mcp 0.1.6-alpha.2 <- packages/experimental/browser-use-playwright-mcp
++ @deepseek-ai/dsh-experimental-browser-use-runtime 0.1.6-alpha.2 <- packages/experimental/browser-use-runtime
++ @deepseek-ai/dsh-experimental-browser-use-stagehand-native 0.1.6-alpha.2 <- packages/experimental/browser-use-stagehand-native
++ @deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp 0.1.6-alpha.2 <- packages/experimental/computer-use-cua-driver-mcp
++ @deepseek-ai/dsh-experimental-computer-use-cua-driver-native 0.1.6-alpha.2 <- packages/experimental/computer-use-cua-driver-native
++ @deepseek-ai/dsh-llm-replay 0.1.6-alpha.2 <- packages/test-support/llm-replay
++ @deepseek-ai/dsh-skill-office 0.1.6-alpha.2 <- packages/skill/skill-office
++ @deepseek-ai/dsh-tool-session-query 0.1.6-alpha.2 <- packages/session-query/tool-session-query
++ @deepseek-ai/dsh-web-fetch-http 0.1.6-alpha.2 <- packages/web/web-fetch-http
++ @stylistic/eslint-plugin 5.10.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/js-yaml 4.0.9
++ @types/jsdom 28.0.3
++ @types/mdast 4.0.4
++ @types/node 22.20.0
++ @types/spdx-expression-parse 4.0.0
++ @vitest/coverage-v8 4.1.8
++ @yao-pkg/pkg 6.21.0
++ @yarnpkg/cli-dist 4.17.1
++ eslint-plugin-sonarjs 4.1.0
++ execa 10.0.0
++ fast-check 4.8.0
++ istanbul-lib-report 3.0.1
++ js-yaml 4.2.0
++ jscpd 5.0.12
++ jsdom 29.1.1
++ lefthook 2.1.9
++ lightningcss 1.32.0
++ mdast-util-from-markdown 2.0.3
++ mdast-util-gfm 3.1.0
++ mermaid 11.16.0
++ micromark-extension-gfm 3.0.0
++ oxlint 1.76.0
++ oxlint-tsgolint 7.0.2001
++ publint 0.3.21
++ smol-toml 1.7.1
++ spdx-expression-parse 5.0.0
++ tsdown 0.22.2
++ tsx 4.22.4
++ typescript 6.0.3
++ vite-tsconfig-paths 6.1.1
++ vitest 4.1.8
+
+packages/subprocess/subprocess-local postinstall$ node scripts/ensure-spawn-helper.mjs
+packages/subprocess/subprocess-local postinstall: Done
+. postinstall$ node scripts/install-lefthook.mjs
+. postinstall: Done
+[WARN] Failed to create bin at /private/tmp/kvvi-stage10-fork/packages/sdk/client/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage10-fork/packages/sdk/client/node_modules/@deepseek-ai/dsh/lib/bin.js'
+[WARN] Failed to create bin at /private/tmp/kvvi-stage10-fork/apps/desktop-host/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage10-fork/apps/desktop-host/node_modules/@deepseek-ai/dsh/lib/bin.js'
+[WARN] Failed to create bin at /private/tmp/kvvi-stage10-fork/python/sdk-runtime/node_modules/.bin/dsh. ENOENT: no such file or directory, open '/private/tmp/kvvi-stage10-fork/python/sdk-runtime/node_modules/@deepseek-ai/dsh/lib/bin.js'
+Done in 6s using pnpm v11.7.0
+[fork/install] exit=0
+worker_composition: 2 项在场、6 项不在场
+[signed_context] $ node --eval <verify tool-signed headers>
+tool-signed headers verified by the platform
+[signed_context] exit=0
+signed_context: tampered header refused as expected
+
+✓ G8 通过：同一账号、同一动作、同一数据范围下，UI 与 Agent 的判定与结果一致
+  · admin_api          — 所有者/被委托者/员工三层各自的能力边界；建账号原子性；停用立刻结束全部会话
+  · differential       — 七个向量的 UI/Agent 判定等价；签名上下文可作凭据而身份以会话行为准
+  · admin_ui           — 员工看不到管理内容但接口各自判定；被拒显示服务端的码；停用是两步；数据范围是多选
+  · worker_tools       — 身份只来自模式路由；身份字段在执行前递归拦下；平台拒绝码原样上报
+  · signed_context      — 工具签的上下文能被平台自己的验签函数接受（改一个字节即拒）
+  · worker_composition — kvvi-worker 有业务工具、没有任何搭建设施
+
+已知缺口（未实现 / 已移出首版 / 已知残留）：
+  ! **委托范围只有一种粒度**：本仓库里的委托机制就是平台保留角色 `admin`，没有「只管某个部门」这种更细的委托 —— 策略模型里没有承载它的字段，凭空加一层会让「谁管谁」出现第二份判据
+  ! **`aggregate_read` 未注册**：平台没有聚合端点，§9.8.1 还要求「看得见汇总的人必须看得见每一条构成」，注册一个永远失败的工具有害无益
+  ! **READONLY 字段的写入路径尚未逐字段拒绝**：当前执法点是字段可见性（读时给只读标记）。G8 证的是两条通道给**同样的可写性判定**，不是「写入被拒」
+  ! **员工端没有独立的待办视图**：待办口径仍需要平台侧一个聚合端点
+  ! **所有者管理界面没有分页**：成员与角色列表一次全取，上百人的公司会慢；当前规模下可用
+  ! **流程动作按钮在详情页还没渲染**：端点已就位（阶段十补），Worker Agent 也已经能用（`workflow_available_actions` / `workflow_act`），但界面上还不能点
