@@ -3,21 +3,23 @@
  *
  * These are pure props consumers: they read nothing from context, subscribe to
  * nothing, and hold only the transient state of their own request. Registration
- * lives in `index.ts`.
+ * lives in `index.ts`, and the dictionary lives in `locales.ts` — no component
+ * in this package carries product copy.
  */
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { SidebarFooterActionOwnerProps } from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
+import { KvviSystemShell } from './SystemShell.tsx'
 
 /**
- * Platform base for the panel's data reads.
+ * The translate seat this panel's entries receive.
  *
- * Empty means **same origin**: the browser asks whichever origin served this
- * bundle, and that origin is the KVVI platform service. Hardcoding a different
- * port here was the bug — the client's origin and the platform's origin are the
- * same one in the product deployment, because the platform is the only entry.
+ * `TranslateNS<'kvviPanel'>` is the exact type the slot registration puts on
+ * `t` when it declares `locale: NS`; naming it here keeps the components free
+ * of the framework's prop composition while staying key-checked.
  */
-const PLATFORM_BASE = ''
+export type KvviTranslate = TranslateNS<'kvviPanel'>
 
 /**
  * Event the sidebar entry raises to ask the overlay to open.
@@ -26,120 +28,21 @@ const PLATFORM_BASE = ''
  * is the narrowest thing that crosses between them without a module-level
  * mutable shared by every consumer. The name is namespaced to this package.
  */
-const KVVI_OPEN_EVENT = 'kvvi-panel:open'
-
-interface PublishedSystem {
-  readonly systemId: string
-  readonly assetId: string
-  readonly name: string
-  readonly schemaCode: string
-  readonly publishedAt: string
-}
-
-interface PanelData {
-  readonly error?: string
-  readonly companyName?: string | null
-  readonly login?: string | null
-  readonly capabilities?: readonly string[]
-  readonly systems?: readonly PublishedSystem[]
-  readonly sources?: Readonly<Record<string, { wired: boolean; reason?: string }>>
-}
-
-/**
- * Read this session's business context from the platform service.
- *
- * Failures resolve to `{ error }` rather than throwing: the panel is
- * supplementary, and "could not read" must stay distinguishable from "nothing
- * to do". Collapsing the two into one empty state would tell an employee their
- * queue is clear when the truth is that nobody asked.
- * @param signal - aborts the request on unmount.
- * @returns the panel data, or an error description.
- */
-async function loadPanel(signal: AbortSignal): Promise<PanelData> {
-  try {
-    const res = await fetch(`${PLATFORM_BASE}/kvvi/panel`, { signal })
-    if (!res.ok) return { error: `平台服务返回 ${res.status}` }
-    return await res.json() as PanelData
-  } catch (error) {
-    if (signal.aborted) return { error: '已取消' }
-    return { error: `连不上平台服务：${String(error)}` }
-  }
-}
-
-interface Block {
-  readonly title: string
-  readonly hint: string
-  readonly lines: readonly string[]
-}
-
-/**
- * Fold the platform payload into the four business views.
- *
- * They stay separate blocks because they fail differently: an empty queue
- * means nothing to do, while an empty capability list means permissions are
- * unconfigured. One shared "暂无" would read them as the same fact.
- * @param data - the platform payload, or its absence.
- * @returns blocks to render, in employee-priority order.
- */
-function blocksOf(data: PanelData): readonly Block[] {
-  const once = data.sources ?? {}
-  const wired = (name: string): boolean => once[name]?.wired === true
-  const reason = (name: string): string =>
-    `尚未接通：${once[name]?.reason ?? '原因未标注'}`
-
-  return [
-    {
-      title: '待办',
-      hint: '等你审批、以及你提交后还在流转的事',
-      lines: data.error
-        ? [`读取失败：${data.error}`]
-        : ['待办口径尚未接通 —— 平台侧还没有这个端点'],
-    },
-    {
-      title: '我的系统',
-      hint: '本公司已发布的业务系统',
-      lines: !wired('systems')
-        ? [reason('systems')]
-        : (data.systems ?? []).length === 0
-          // 空列表与「读不到」是两件事：前者是事实，后者要去看原因。
-          ? ['本公司还没有已发布的业务系统']
-          : (data.systems ?? []).map(s => `${s.name}（${s.assetId}）`),
-    },
-    {
-      title: '我的权限',
-      hint: '本会话能做什么，由身份层给出',
-      lines: data.capabilities?.length
-        ? [...data.capabilities]
-        : ['身份层没有给出任何能力 —— 请联系管理员确认你的角色'],
-    },
-    {
-      title: '聚合口径',
-      hint: '已定义的汇总，只读',
-      lines: ['已定义的聚合口径还没有对外列表接口'],
-    },
-  ]
-}
+export const KVVI_OPEN_EVENT = 'kvvi-panel:open'
 
 /**
  * Render the panel over the conversation area.
- * @param props - `onClose` from the registration site.
+ * @param props - the framework's `t` seat and `onClose` from the registration site.
  * @returns the overlay.
  */
-export function KvviPanel({ onClose }: { readonly onClose: () => void }): ReactNode {
-  const [data, setData] = useState<PanelData | null>(null)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    void loadPanel(controller.signal).then(setData)
-    return () => { controller.abort() }
-  }, [])
-
-  const who = data?.companyName ?? data?.login
-
+export function KvviPanel({ t, onClose }: {
+  readonly t: KvviTranslate
+  readonly onClose: () => void
+}): ReactNode {
   return (
     <div
       role="dialog"
-      aria-label="KVVI business panel"
+      aria-label={t('panel.aria')}
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 60, padding: 24,
@@ -152,13 +55,12 @@ export function KvviPanel({ onClose }: { readonly onClose: () => void }): ReactN
         style={{
           background: 'var(--dsw-surface, #fff)', color: 'var(--dsw-fg, #111827)',
           borderRadius: 14, padding: '22px 24px', width: '100%',
-          maxWidth: 560, maxHeight: '80vh', overflow: 'auto',
+          maxWidth: 760, maxHeight: '82vh', overflow: 'auto',
           boxShadow: '0 12px 32px rgba(16,24,40,.18)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
-          <strong style={{ fontSize: 15 }}>业务</strong>
-          {who ? <span style={{ fontSize: 12, opacity: .6 }}>{who}</span> : null}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14 }}>
+          <strong style={{ fontSize: 15 }}>{t('panel.title')}</strong>
           <span style={{ flex: 1 }} />
           <button
             type="button"
@@ -169,35 +71,11 @@ export function KvviPanel({ onClose }: { readonly onClose: () => void }): ReactN
               color: 'inherit',
             }}
           >
-            关闭
+            {t('panel.close')}
           </button>
         </div>
 
-        {blocksOf(data ?? {}).map(block => (
-          <section key={block.title} style={{ marginTop: 18 }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>{block.title}</div>
-            <div style={{ fontSize: 12, opacity: .6, marginBottom: 8 }}>{block.hint}</div>
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-              {block.lines.map((line, index) => (
-                <li
-                  key={`${block.title}-${String(index)}`}
-                  style={{
-                    fontSize: 12.5, padding: '7px 0', opacity: .85,
-                    borderTop: index === 0 ? 'none' : '1px solid var(--dsw-border, #f1f2f4)',
-                  }}
-                >
-                  {line}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-
-        {data?.error ? (
-          <p style={{ fontSize: 12, opacity: .6, marginTop: 18, lineHeight: 1.7 }}>
-            面板是附加信息。取不到时只会少显示内容，不影响对话与其他操作。
-          </p>
-        ) : null}
+        <KvviSystemShell copy={t} />
       </div>
     </div>
   )
@@ -209,13 +87,16 @@ export function KvviPanel({ onClose }: { readonly onClose: () => void }): ReactN
  * @returns the entry button.
  */
 export function KvviEntry(
-  { wide, onOpen }: SidebarFooterActionOwnerProps & { readonly onOpen: () => void },
+  { wide, onOpen, t }: SidebarFooterActionOwnerProps & {
+    readonly onOpen: () => void
+    readonly t: KvviTranslate
+  },
 ): ReactNode {
   return (
     <button
       type="button"
       onClick={onOpen}
-      title="业务"
+      title={t('panel.title')}
       style={{
         display: 'flex', alignItems: 'center', gap: 8, width: '100%',
         border: 'none', background: 'none', cursor: 'pointer',
@@ -223,7 +104,7 @@ export function KvviEntry(
       }}
     >
       <span aria-hidden="true" style={{ fontSize: 14 }}>▣</span>
-      {wide ? <span>业务</span> : null}
+      {wide ? <span>{t('panel.title')}</span> : null}
     </button>
   )
 }
@@ -235,8 +116,8 @@ export function KvviEntry(
  * stays `apply`/`inject`, and the registration site names what it registers.
  * @returns the entry component.
  */
-export function createKvviEntry(): (props: SidebarFooterActionOwnerProps) => ReactNode {
-  return (props: SidebarFooterActionOwnerProps) => (
+export function createKvviEntry(): (props: SidebarFooterActionOwnerProps & { t: KvviTranslate }) => ReactNode {
+  return props => (
     <KvviEntry
       {...props}
       onOpen={() => { globalThis.dispatchEvent(new Event(KVVI_OPEN_EVENT)) }}
@@ -251,14 +132,14 @@ export function createKvviEntry(): (props: SidebarFooterActionOwnerProps) => Rea
  * need to survive a remount: the panel is a transient view, not a layout fact.
  * @returns the overlay component.
  */
-export function createKvviOverlay(): () => ReactNode {
-  return () => {
+export function createKvviOverlay(): (props: { t: KvviTranslate }) => ReactNode {
+  return ({ t }) => {
     const [open, setOpen] = useState(false)
     useEffect(() => {
       const openPanel = (): void => { setOpen(true) }
       globalThis.addEventListener(KVVI_OPEN_EVENT, openPanel)
       return () => { globalThis.removeEventListener(KVVI_OPEN_EVENT, openPanel) }
     }, [])
-    return open ? <KvviPanel onClose={() => { setOpen(false) }} /> : null
+    return open ? <KvviPanel t={t} onClose={() => { setOpen(false) }} /> : null
   }
 }
