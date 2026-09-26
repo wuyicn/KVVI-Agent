@@ -20,6 +20,7 @@
  */
 import { pool, withTransaction } from './db.mjs'
 import { applyScopeGucs } from './authorization.mjs'
+import { nextRecordNo } from './record-no.mjs'
 
 export class KvviRefError extends Error {
   constructor(code, detail = '') {
@@ -133,13 +134,22 @@ export async function listRecords(scope, schemaCode, options = {}) {
 export async function createRecord(ctx, scope, input) {
   return withTransaction('business', async (client) => {
     await applyScopeGucs(client, scope)
+    // ★ 单号缺省时**由本函数生成**，不留给调用方。
+    //
+    // `record_no` 是 NOT NULL 且有唯一约束；此前没有任何地方生成它，
+    // 于是通过产品 API 建记录会在 NOT NULL 上失败 —— 而报错指向表约束，
+    // 看不出「缺一个生成器」。生成与取号必须在**同一个事务**里，
+    // 否则回滚会漏掉一次取号（号被消耗但不落库）。
+    const recordNo = input.recordNo ?? await nextRecordNo(client, {
+      companyId: ctx.companyId, schemaCode: input.schemaCode,
+    })
     const { rows } = await client.query(
       `INSERT INTO business_records (record_id, company_id, schema_code, dept_id,
          shop_id, owner_id, state, record_no, data)
        VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING record_id, record_no`,
       [ctx.companyId, input.schemaCode, scope.deptId, scope.shopId,
-       ctx.userId, input.state ?? 'draft', input.recordNo, input.data ?? {}])
+       ctx.userId, input.state ?? 'draft', recordNo, input.data ?? {}])
     return { recordId: rows[0].record_id, recordNo: rows[0].record_no }
   })
 }

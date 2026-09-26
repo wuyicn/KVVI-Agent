@@ -25,6 +25,7 @@
  */
 
 import { tokenFromCookie } from './gate.mjs'
+import { systemRoutes } from './system-api.mjs'
 
 /** 产品 API 的前缀。与运行时 RPC 的 `/api` 区分靠**更具体**的路径。 */
 const PREFIX = '/api/v1'
@@ -154,17 +155,12 @@ export async function handleApi({ method, path, query, body, headers, loadSessio
   //
   // ⚠️ **会话里的公司/用户是唯一来源**。调用方传的 `companyId` 已在 ② 被剥掉，
   // 这里再不从 query 里读它 —— 读一次就是把 ② 绕过去了。
-  const route = path.slice(PREFIX.length) || '/'
-  return {
-    status: 404,
-    body: {
-      error: 'KVVI_UNKNOWN_ROUTE',
-      route,
-      method,
-      // 回显会话事实（不是回显调用方输入）：便于调用方确认「你是谁由服务端决定」
-      session: { userId: session.userId, companyId: session.companyId, gateway: session.gateway },
-      payloadKeys: payload === null ? [] : Object.keys(payload),
-      query: query ?? '',
-    },
-  }
+  // ★ 交给产品路由。**注意传的是 `session`，不是 `payload` 里的任何身份字段** ——
+  //   调用方传的 `companyId` 已在 ② 被剥掉，路由只认会话。
+  return systemRoutes({
+    method,
+    path: path.slice(PREFIX.length) || '/',
+    payload,
+    session,
+  })
 }

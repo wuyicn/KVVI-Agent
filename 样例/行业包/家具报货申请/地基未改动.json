@@ -24,8 +24,8 @@
     },
     "platform-service": {
       "path": "services/platform",
-      "digest": "sha256:37cf67286459c6ff8c594129a3c11b8607ce01014e80e9a3d51e846c3a4ca52a",
-      "fileCount": 67
+      "digest": "sha256:2e20e7f4a52caf1b92065f7e46d98f621ec929bc9806f7df5f5a4661bf73e907",
+      "fileCount": 70
     },
     "runtime-service": {
       "path": "services/runtime",
@@ -149,6 +149,12 @@
     },
     {
       "reason": "阶段九任务 2：新增运行时投影 runtime-projection.mjs（契约闭合校验与跨契约绑定）",
+      "changedComponents": [
+        "platform-service"
+      ]
+    },
+    {
+      "reason": "阶段九任务 3：系统与记录 API（/api/v1）适配器 + 单号生成器",
       "changedComponents": [
         "platform-service"
       ]

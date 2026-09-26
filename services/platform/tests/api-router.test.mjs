@@ -107,11 +107,18 @@ describe('阶段九 · 受鉴权的产品 API 路由', () => {
     // 一直红着，而红的原因是**测试写错了**，不是代码错了。
     //
     // 改成直接验剥离本身：回显里的 companyId 必须**只**来自会话。
+    // ⚠️ 这条断言在任务 3 之后**改了判据**：`/systems` 从「未知路由」
+    //    变成了真实路由，回显里的 `session` 字段没有了。
+    //    改成验**服务端实际用了哪个公司** —— 那才是这条要证的事。
     const r = await api('GET', '/api/v1/systems?companyId=' + B.company, alice.raw)
     assert.notEqual(r.status, 401, '带有效会话却判成未鉴权')
-    assert.equal(r.body?.session?.companyId, A.company,
+    assert.equal(r.body?.companyId, A.company,
       '生效的 companyId 不是会话里那个 —— 调用方的输入被采信了')
-    assert.notEqual(r.body?.session?.companyId, B.company)
+    assert.notEqual(r.body?.companyId, B.company)
+    // 返回的每一项都必须是本公司的。
+    for (const item of (r.body?.items ?? [])) {
+      assert.notEqual(item.companyId, B.company, '返回了别家公司的系统')
+    }
   })
 
   test('★ 身份类字段在**入口处**被剥掉，包括嵌套的', async () => {
