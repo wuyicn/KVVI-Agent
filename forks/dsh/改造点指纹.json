@@ -1,5 +1,5 @@
 {
-  "count": 75,
+  "count": 78,
   "files": {
     "apps/cli/package.json": {
       "sha256": "feb03472086c533043c56d6da85830c0239adac678cbe3987e0bd38793b397a4",
@@ -10,6 +10,21 @@
       "sha256": "f182aa197581d017a14e828a9f34002bd24d82c9f357bb9e4a5481f5004e7f06",
       "status": "M",
       "upstream_baseline_sha256": "9b54d57eea00f2fdd1affe6e7999a4209a515755f12ac1a3299da2d55e178d4c"
+    },
+    "docs/module-graph.i18n.yaml": {
+      "sha256": "7c77b6b074dd4a82f153ae7c96fb449e96f09fb53fc0d57c58e770b044edeadb",
+      "status": "M",
+      "upstream_baseline_sha256": "265d68df7d634c7544904112a3dee5c15fccfadd73fb2486e28f91527695fe00"
+    },
+    "docs/module-graph.md": {
+      "sha256": "109b1b4d7a7a57110c1de1853c263994007b679e476532de6a0efe75513719e6",
+      "status": "M",
+      "upstream_baseline_sha256": "43d088e157f4a3e01a8ceba9a72e66891d6bae3c146af88a41190b871643ec82"
+    },
+    "docs/module-graph.zh.md": {
+      "sha256": "c02ec76ab1e0c86fd5bd6c91cb7a3111eafaed461b1a1267a3a65f74d607dfd1",
+      "status": "M",
+      "upstream_baseline_sha256": "2f96576d218d30401f1d8ef18744a03ee100d059493ac6bf431cbba3a1ec99f3"
     },
     "docs/subsystems/kvvi-business-tools.md": {
       "sha256": "2608b2ffe7127d78d8f42f4b767822a794f8d05dfd9e93f170170883a24615d0",
@@ -320,7 +335,7 @@
       "upstream_baseline_sha256": "3cb83b2131b5c4841ff07e312b2e1dddd7f2f493f40ab94012240822140f25bd"
     }
   },
-  "fork_head": "f2819c222fb394fafe135e086a0fc0fa8d1d46c7",
+  "fork_head": "9f5aae4323d4536849b82bcd4c954d6917cb35c2",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "ddefc45fbc7f8e46dd73185e68295696d1297887"

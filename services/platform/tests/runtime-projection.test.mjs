@@ -183,7 +183,9 @@ describe('阶段九 · 运行时投影', () => {
     const id = nextAsset()
     await publish(id, contracts(id, { workflowStates: ['draft', 'submitted'] }))
     const p = await runtimeProjection(A.company, id)
-    assert.deepEqual(Object.keys(p.workflows[id].states), ['draft', 'submitted'])
+    // 契约的数组形状原样保留（流程运行时按数组读），派生查表在 stateLabels。
+    assert.deepEqual(p.workflows[id].states.map((s) => s.state_code), ['draft', 'submitted'])
+    assert.deepEqual(Object.keys(p.workflows[id].stateLabels), ['draft', 'submitted'])
   })
 
   test('★ 别家公司读不到（公司来自会话，不是参数）', async () => {
