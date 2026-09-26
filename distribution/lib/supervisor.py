@@ -146,11 +146,61 @@ class ProcessPlan:
                 if pid is None:
                     errors.append({'kind': step['kind'], 'stderr': '进程未能启动'})
                     return {'ok': False, 'steps': done, 'errors': errors, 'pids': pids}
+                # ★ **「起来了」要指进程还活着，不是 fork 成功。**
+                #
+                # 第一版写一个 pid 文件就报 `✓ start-platform`。而一个启动后
+                # 三秒内就崩掉的进程同样会走到那一行 —— 于是安装看起来成功，
+                # 界面回 502，而 502 指向的是转发，不是「运行时根本没起来」。
+                # 是 G9 harness 抓到的：10/11 步通过，只有界面那一步 502。
+                death = self._await_alive(pid, seconds=6)
+                if death is not None:
+                    errors.append({'kind': step['kind'], 'program': step['program'],
+                                   'stderr': death})
+                    return {'ok': False, 'steps': done, 'errors': errors, 'pids': pids}
                 pids[step['program']] = pid
                 done.append(step['kind'])
             else:
                 done.append(step['kind'] + ': 只读')
         return {'ok': not errors, 'steps': done, 'errors': errors, 'pids': pids}
+
+    def _await_alive(self, pid: int, seconds: int) -> Optional[str]:
+        """
+        等一小会儿，看进程是不是还活着。
+        @param pid 进程号
+        @param seconds 观察窗口
+        @returns 死了时给出一句带日志尾的原因；活着时为 `None`
+        """
+        import time
+        for _ in range(seconds * 10):
+            time.sleep(0.1)
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                tail = self._log_tail(pid)
+                return f'进程启动后立刻退出（pid {pid}）。日志尾：{tail}'
+            except PermissionError:
+                # 进程存在但不是我们的 —— 那也算活着（不该发生，但不误报）。
+                return None
+        return None
+
+    def _log_tail(self, _pid: int, lines: int = 6) -> str:
+        """
+        最近一个进程日志的尾部。
+        @param _pid 未使用（保留签名，便于将来按 pid 定位日志）
+        @param lines 取几行
+        @returns 日志尾；读不到时为空串
+        """
+        newest = None
+        for candidate in sorted((self.home / 'log').glob('*.log')):
+            if newest is None or candidate.stat().st_mtime > newest.stat().st_mtime:
+                newest = candidate
+        if newest is None:
+            return ''
+        try:
+            body = newest.read_text(errors='replace').strip().splitlines()
+        except OSError:
+            return ''
+        return ' / '.join(body[-lines:])[:600]
 
     def _spawn(self, step: dict, log_dir: Path) -> Optional[int]:
         """起一个进程，把 pid 写进 `$KVVI_HOME/run/<program>.pid`。"""

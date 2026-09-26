@@ -258,26 +258,26 @@ git commit -m "feat: add constrained installation Agent skill"
 - Consumes: release archive only.
 - Produces: G9 evidence, and an explicit statement of what it does not prove.
 
-- [ ] **Step 1: Build a clean-user harness that starts from the archive**
+- [x] **Step 1: Build a clean-user harness that starts from the archive**
 
 The harness creates a fresh macOS user (or uses one with no KVVI artifacts), extracts the archive into a directory outside the repository, and runs preflight → install → bootstrap → the Stage 9 and Stage 10 journeys → backup → restore → uninstall → reinstall. It fails if any command resolves inside the repository working tree.
 
-- [ ] **Step 2: Run the checker and confirm it refuses an untested claim**
+- [x] **Step 2: Run the checker and confirm it refuses an untested claim**
 
 Run: `python3 工具/check_stage11.py --harness-only`
 Expected: PASS only if every step runs from the extracted archive and the report records the host's OS version, CPU architecture, and PostgreSQL version.
 
-- [ ] **Step 3: Run the harness on the clean user and capture evidence**
+- [x] **Step 3: Run the harness on the clean user and capture evidence**
 
 Run: `python3 工具/check_stage11.py`
 Expected: PASS; the report states plainly that this is a **fresh user account on the development host**, not a second machine. That choice is the owner's (2026-09-26, spec §15.4): it proves the install, initialize, backup/restore and uninstall-keeps-data loop in an environment that never ran KVVI, and it does **not** prove a different macOS version, different hardware, or a genuinely offline host. A VM or real second machine is required before external delivery.
 
-- [ ] **Step 4: Verify G9 and documentation consistency**
+- [x] **Step 4: Verify G9 and documentation consistency**
 
 Run: `python3 工具/check_stage11.py && python3 工具/进度.py --check`
 Expected: PASS. N21 is closed with the new clean-user evidence; the "not a separate machine" limitation is recorded, not edited away.
 
-- [ ] **Step 5: Commit Stage 11 evidence**
+- [x] **Step 5: Commit Stage 11 evidence**
 
 ```bash
 git add 工具/check_stage11.py 工具/验收证据包.py 进度.md docs/操作手册.md docs/交付文档.md docs/阶段十一-macOS试点发行版-取证.md 交付/证据

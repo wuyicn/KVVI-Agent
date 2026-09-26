@@ -40,6 +40,10 @@
     {
       "stage": "阶段十",
       "title": "员工与管理闭环"
+    },
+    {
+      "stage": "阶段十一",
+      "title": "私有化发行版闭环"
     }
   ],
   "entries": [
@@ -282,9 +286,50 @@
         "forks/dsh/变更/packages/preset/agent-presets/presets/kvvi-worker/agent.cordis.yml": "sha256:6a240256bf9724c080df5591a1401dac06e466c9e72dca0a41ce49dd887f16ae",
         "工具/check_stage10.py": "sha256:919bab32d4e189c132cdb0240cb00803ac609c82e3eb1673a5e5787738abdb43"
       }
+    },
+    {
+      "stage": "阶段十一",
+      "name": "G9 macOS 试点发行版",
+      "command": "python3 工具/check_stage11.py --run-only",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段十一-G9-macOS-试点发行版.txt",
+      "digest": "sha256:62d6f2c2972d4cfd8b093ab5379ae50d6576fbb313f64f099289af27621d5b19",
+      "commit": "fb21d390fee4bb0e4f2e02e74725deae466eb8d9",
+      "evidenceClasses": [
+        "preflight",
+        "install",
+        "runtime",
+        "bootstrap",
+        "user_journey",
+        "backup_restore",
+        "uninstall",
+        "no_repo_leak"
+      ],
+      "sourceDigests": {
+        "distribution/bin/kvvi-admin": "sha256:0e3e8d35c66805993af8468e8f95e406498523d1196d0bd0f6d4e2b9eee00da6",
+        "distribution/lib/preflight.py": "sha256:dc0e288e204a207e2d58f8968da6c48d70c9a85a582bc41f95f907934c744cd9",
+        "distribution/lib/install.py": "sha256:9ea8d740665b7701699b1c1d4d0aa1de2bf55f7eb71f9bedc2721950418ee208",
+        "distribution/lib/pg.py": "sha256:c811be9138f784136dfbaf364ce37fd21d42a4f81b30c671820550a41fbe6388",
+        "distribution/lib/supervisor.py": "sha256:67366ec398aa9381a4b8184b2761f7012006cb2141f97f07f116dd9f97d32ef4",
+        "distribution/lib/backup.py": "sha256:a7607f1e5d349be0140678865ea7fab647e08f9afd9445a0796b4fb89288d63b",
+        "distribution/lib/upgrade.py": "sha256:5f15494851bb56b9a14169d8e7137e6acd98982661df01cd1e5d53bc03716d1b",
+        "distribution/skills/kvvi-install/SKILL.md": "sha256:8e41ea9b7c87514738c7d978a7c2d0dc3271a378a08c0a0501d797f00b716236",
+        "distribution/skills/kvvi-install/scripts/_common.sh": "sha256:236e046a32af85d71b1ca70b9e90932d2581f5c6476728d82b9e6b6e3236d808",
+        "distribution/tests/test_preflight.py": "sha256:39650df2e11f371bf910bc0f0b41d07ba31632f768079db804bc8fdaacd5b2c4",
+        "distribution/tests/test_pg.py": "sha256:e8bb410c3d88e54753c9c72176631326cd49087cbf3e3bd1c465bfb56032d8bd",
+        "distribution/tests/test_supervisor.py": "sha256:954f7e6a46fbd1e00db83a9b18b7a1d9918d35b704fe61e5bbc632b537718ccb",
+        "distribution/tests/test_backup_restore.py": "sha256:682a8a0d682a537d8dc5b8ae4467577477cc9af2dba35c83e03e0e74b7bfdbe2",
+        "distribution/tests/test_install_skill.py": "sha256:6bc4be21b0b0dd79b5e4001af0273c1d7f5bec72f05bcb05eaae8922e050e687",
+        "services/platform/src/bootstrap.mjs": "sha256:fa8b81bedf07724eb9f3a80ecc357480ff2557a5ff59f4180439180a928554ad",
+        "services/platform/sql/19-instance-bootstrap.sql": "sha256:3ff73bf99519d7b2edc48e35afdd55ed6dfd5fb5af8252e10f3986047640e8af",
+        "工具/发行包.py": "sha256:bf488823cdedd4599c00af7dea059b63ee1dad28d48f8bc93535db79d184ab3b",
+        "工具/check_stage11.py": "sha256:a316df981b47651d76dd21e5e82abd46ee6add3d6d5c83d88fe2345aebdd0e2c",
+        "安装手册.md": "sha256:d2940965dbeade5e37b7cddbe875780f4665e59079d17175ef3df7cd5e1a7ce6"
+      }
     }
   ],
   "deliveryDigest": "sha256:e2e5e460623c01aa21e2ad6f72f9f841b89f093dc8fea9f05752bbc0fd1fca5c",
   "failed": [],
-  "bundleDigest": "sha256:48e1cfdc72f3f1f05f1a010bb0da33009f6b810bb59c11e5da54de39f612d176"
+  "bundleDigest": "sha256:184443ac5e0cb35e8956b2256aa4c9b2e5ca229ac1f52f584b8c22e0c30c16fe"
 }

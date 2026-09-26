@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-验收证据包（历史阶段一至七 + 补充需求阶段八、九、十）。
+验收证据包（历史阶段一至七 + 补充需求阶段八至十一）。
 
 ## 判据
 
@@ -36,6 +36,8 @@
     python3 工具/验收证据包.py --refresh-stage9  # 仅复验并替换尚未交付的 G7
     python3 工具/验收证据包.py --append-stage10  # 保留旧条目，只追加 G8
     python3 工具/验收证据包.py --refresh-stage10 # 仅复验并替换尚未交付的 G8
+    python3 工具/验收证据包.py --append-stage11  # 保留旧条目，只追加 G9
+    python3 工具/验收证据包.py --refresh-stage11 # 仅复验并替换尚未交付的 G9
 """
 
 import hashlib
@@ -116,6 +118,32 @@ STAGE10 = ('阶段十', '员工与管理闭环', [
     ('G8 UI 与 Agent 差异等价', ['python3', '工具/check_stage10.py', '--run-only']),
 ])
 
+STAGE11 = ('阶段十一', '私有化发行版闭环', [
+    ('G9 macOS 试点发行版', ['python3', '工具/check_stage11.py', '--run-only']),
+])
+
+STAGE11_SOURCES = [
+    'distribution/bin/kvvi-admin',
+    'distribution/lib/preflight.py',
+    'distribution/lib/install.py',
+    'distribution/lib/pg.py',
+    'distribution/lib/supervisor.py',
+    'distribution/lib/backup.py',
+    'distribution/lib/upgrade.py',
+    'distribution/skills/kvvi-install/SKILL.md',
+    'distribution/skills/kvvi-install/scripts/_common.sh',
+    'distribution/tests/test_preflight.py',
+    'distribution/tests/test_pg.py',
+    'distribution/tests/test_supervisor.py',
+    'distribution/tests/test_backup_restore.py',
+    'distribution/tests/test_install_skill.py',
+    'services/platform/src/bootstrap.mjs',
+    'services/platform/sql/19-instance-bootstrap.sql',
+    '工具/发行包.py',
+    '工具/check_stage11.py',
+    '安装手册.md',
+]
+
 STAGE10_SOURCES = [
     'services/platform/src/admin-api.mjs',
     'services/platform/src/api-router.mjs',
@@ -188,7 +216,7 @@ def collect() -> int:
     print('判据：阶段一至六的**全部**测试记录与指纹（PRD §7.1 阶段七）')
     print()
 
-    all_stages = STAGES + [STAGE8, STAGE9, STAGE10]
+    all_stages = STAGES + [STAGE8, STAGE9, STAGE10, STAGE11]
     for stage, title, checks in all_stages:
         print('%s%s · %s%s' % (C_OK, stage, title, C_OFF))
         for name, cmd in checks:
@@ -218,6 +246,9 @@ def collect() -> int:
                          STAGE9_SOURCES),
                 '阶段十': (['admin_api', 'admin_ui', 'worker_tools', 'differential',
                            'signed_context', 'worker_composition'], STAGE10_SOURCES),
+                '阶段十一': (['preflight', 'install', 'runtime', 'bootstrap', 'user_journey',
+                            'backup_restore', 'uninstall', 'no_repo_leak'],
+                           STAGE11_SOURCES),
             }
             if stage in supplementary:
                 classes, sources = supplementary[stage]
@@ -363,6 +394,20 @@ def append_stage10() -> int:
     return _write_stage(*STAGE10, STAGE10_SOURCES, classes, replace=False)
 
 
+def append_stage11() -> int:
+    """只追加阶段十一；既有阶段、条目与证据文件不重跑、不改写。"""
+    classes = ['preflight', 'install', 'runtime', 'bootstrap', 'user_journey',
+               'backup_restore', 'uninstall', 'no_repo_leak']
+    return _write_stage(*STAGE11, STAGE11_SOURCES, classes, replace=False)
+
+
+def refresh_stage11() -> int:
+    """只复验阶段十一；历史阶段的记录与证据文件保持逐字节不变。"""
+    classes = ['preflight', 'install', 'runtime', 'bootstrap', 'user_journey',
+               'backup_restore', 'uninstall', 'no_repo_leak']
+    return _write_stage(*STAGE11, STAGE11_SOURCES, classes, replace=True)
+
+
 def refresh_stage10() -> int:
     """只复验阶段十；历史阶段的记录与证据文件保持逐字节不变。"""
     classes = ['admin_api', 'admin_ui', 'worker_tools', 'differential',
@@ -416,6 +461,10 @@ def verify() -> int:
 
 
 def main() -> int:
+    if '--refresh-stage11' in sys.argv:
+        return refresh_stage11()
+    if '--append-stage11' in sys.argv:
+        return append_stage11()
     if '--refresh-stage10' in sys.argv:
         return refresh_stage10()
     if '--append-stage10' in sys.argv:

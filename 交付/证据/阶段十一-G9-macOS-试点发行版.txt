@@ -1,0 +1,227 @@
+$ python3 工具/check_stage11.py --run-only
+
+[32m=== 阶段十一 G9 · macOS 试点发行版 ===[0m
+判据：一台从未安装过 KVVI 的 macOS 机器，按操作手册完成本机私有化部署，并跑通完整用户旅程
+
+[90m验收主机[0m
+  macos          26.5.1
+  architecture   arm64
+  node           v24.20.0
+  pnpm           12.3.4
+  postgresql     PostgreSQL 17.11 (Homebrew)
+  mode           clean-dir（同一用户下的干净目录）
+
+[90m[archive-check] $ python3 工具/发行包.py --check[0m
+[32m=== 发行包复核 ===[0m
+  交付/发行/kvvi-macos-pilot.tar.gz：13178 个文件，39.5 MB
+  内容指纹 sha256:92e109f1dd717f03fc1c5a961
+  [32m✓ 内容、摘要与必需文件齐备[0m
+[archive-check] exit=0
+[32m✓ 发行包已解到 /tmp/kvvi-g9/kvvi-macos-pilot[0m
+
+  （停止上一轮实例：exit=0）
+[90m[preflight] $ python3 /tmp/kvvi-g9/kvvi-macos-pilot/distribution/bin/kvvi-admin preflight --json --config /tmp/kvvi-g9/kvvi-install.json[0m
+{
+  "ok": true,
+  "errors": [],
+  "requiredPostgresMajor": 17,
+  "hardware": {
+    "architecture": "arm64",
+    "macosVersion": "26.5",
+    "memoryGiB": 96.0,
+    "freeDiskGiB": 492.8
+  },
+  "node": {
+    "path": "/Users/wuyi-macs/.local/opt/node-v24.20.0/bin/node",
+    "version": "24.20.0",
+    "found": "24.20.0",
+    "required": "^22.19.0 || >=24.0.0",
+    "pnpm": "/Users/wuyi-macs/.local/opt/node-v24.20.0/bin/pnpm"
+  },
+  "postgres": {
+    "pgConfig": "/opt/homebrew/opt/postgresql@17/bin/pg_config",
+    "major": 17,
+    "formula": "postgresql@17",
+    "expectedPgConfig": "/opt/homebrew/opt/postgresql@17/bin/pg_config"
+  },
+  "paths": {
+    "home": "/tmp/kvvi-g9-home",
+    "releaseRoot": "/private/tmp/kvvi-g9/kvvi-macos-pilot",
+    "pgDataDir": "/tmp/kvvi-g9-home/pgdata",
+    "pgSocketDir": "/tmp/kvvi-g9-home/run"
+  },
+  "ports": {
+    "postgres": 54561,
+    "platform": 7561
+  }
+}
+[preflight] exit=0
+  Node 24.20.0  PostgreSQL 17  26.5（arm64）
+[90m[deps] $ pnpm install --frozen-lockfile[0m
+native/system/packages/darwin-x64        | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["darwin"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/system/packages/linux-arm64       | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/system/packages/linux-x64         | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 319 workspace projects
+[WARN] There are cyclic workspace dependencies: /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/apps/web, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/test-support/client-runtime, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/bundle/web-app; /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/api/remotes, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/client/file-upload; /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/client/ui-conversation, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/client/ui-workspace, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/client/ui-sidebar; /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/compaction/compaction-basic, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/compaction/compaction-image-offload; /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/core/agent-loop, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/llm/llm-pi-ai, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/llm/llm-deepseek, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/session/session-log-deepseek, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/feedback/command-feedback, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/test-support/agent-loop-testkit; /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/sandbox/sandbox-local, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/sandbox/sandbox-windows-acl; /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/ssh/fs-ssh, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/ssh/ssh; /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/subagent/subagent-spawn-in-process, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/packages/subagent/tool-subagent; /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/vendor/cordis, /private/tmp/kvvi-g9/kvvi-macos-pilot/vendor/dsh/vendor/include
+✓ Lockfile passes supply-chain policies (verified 4h ago)
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +1319
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 1319, reused 1314, downloaded 0, added 372
+Progress: resolved 1319, reused 1314, downloaded 0, added 748
+Progress: resolved 1319, reused 1314, downloaded 0, added 1054
+Progress: resolved 1319, reused 1314, downloaded 0, added 1311
+Progress: resolved 1319, reused 1314, downloaded 0, added 1319, done
+.../node_modules/protobufjs postinstall$ node scripts/postinstall
+.../.pnpm/koffi@3.1.1/node_modules/koffi install$ node ./cnoke.cjs -P . -D src/koffi --prebuild --release
+.../lefthook@2.1.9/node_modules/lefthook postinstall$ node postinstall.js
+.../node_modules/protobufjs postinstall: Done
+.../lefthook@2.1.9/node_modules/lefthook postinstall: │  > git rev-parse --path-format=absolute --show-toplevel --git-path hooks --git-path info --git-dir
+.../lefthook@2.1.9/node_modules/lefthook postinstall: │    fatal: not a git repository (or any of the parent directories): .git
+.../lefthook@2.1.9/node_modules/lefthook postinstall: │
+.../lefthook@2.1.9/node_modules/lefthook postinstall: exit status 128
+.../lefthook@2.1.9/node_modules/lefthook postinstall: Done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: Done
+.../node_modules/@google/genai preinstall$ echo 'preinstall: no-op'
+.../node_modules/@google/genai preinstall: preinstall: no-op
+.../node_modules/@google/genai preinstall: Done
+
+devDependencies:
++ @deepseek-ai/dsh-agent 0.1.6-alpha.2 <- packages/core/agent
++ @deepseek-ai/dsh-browser-use 0.1.6-alpha.2 <- packages/browser-use/browser-use
++ @deepseek-ai/dsh-computer-use 0.1.6-alpha.2 <- packages/computer-use/computer-use
++ @deepseek-ai/dsh-experimental-browser-use-chrome-devtools-mcp 0.1.6-alpha.2 <- packages/experimental/browser-use-chrome-devtools-mcp
++ @deepseek-ai/dsh-experimental-browser-use-playwright-mcp 0.1.6-alpha.2 <- packages/experimental/browser-use-playwright-mcp
++ @deepseek-ai/dsh-experimental-browser-use-runtime 0.1.6-alpha.2 <- packages/experimental/browser-use-runtime
++ @deepseek-ai/dsh-experimental-browser-use-stagehand-native 0.1.6-alpha.2 <- packages/experimental/browser-use-stagehand-native
++ @deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp 0.1.6-alpha.2 <- packages/experimental/computer-use-cua-driver-mcp
++ @deepseek-ai/dsh-experimental-computer-use-cua-driver-native 0.1.6-alpha.2 <- packages/experimental/computer-use-cua-driver-native
++ @deepseek-ai/dsh-llm-replay 0.1.6-alpha.2 <- packages/test-support/llm-replay
++ @deepseek-ai/dsh-skill-office 0.1.6-alpha.2 <- packages/skill/skill-office
++ @deepseek-ai/dsh-tool-session-query 0.1.6-alpha.2 <- packages/session-query/tool-session-query
++ @deepseek-ai/dsh-web-fetch-http 0.1.6-alpha.2 <- packages/web/web-fetch-http
++ @stylistic/eslint-plugin 5.10.0
++ @testing-library/dom 10.4.1
++ @testing-library/react 16.3.2
++ @types/js-yaml 4.0.9
++ @types/jsdom 28.0.3
++ @types/mdast 4.0.4
++ @types/node 22.20.0
++ @types/spdx-expression-parse 4.0.0
++ @vitest/coverage-v8 4.1.8
++ @yao-pkg/pkg 6.21.0
++ @yarnpkg/cli-dist 4.17.1
++ eslint-plugin-sonarjs 4.1.0
++ execa 10.0.0
++ fast-check 4.8.0
++ istanbul-lib-report 3.0.1
++ js-yaml 4.2.0
++ jscpd 5.0.12
++ jsdom 29.1.1
++ lefthook 2.1.9
++ lightningcss 1.32.0
++ mdast-util-from-markdown 2.0.3
++ mdast-util-gfm 3.1.0
++ mermaid 11.16.0
++ micromark-extension-gfm 3.0.0
++ oxlint 1.76.0
++ oxlint-tsgolint 7.0.2001
++ publint 0.3.21
++ smol-toml 1.7.1
++ spdx-expression-parse 5.0.0
++ tsdown 0.22.2
++ tsx 4.22.4
++ typescript 6.0.3
++ vite-tsconfig-paths 6.1.1
++ vitest 4.1.8
+
+packages/subprocess/subprocess-local postinstall$ node scripts/ensure-spawn-helper.mjs
+packages/subprocess/subprocess-local postinstall: Done
+. postinstall$ node scripts/install-lefthook.mjs
+. postinstall: Done
+Done in 8.1s using pnpm v11.7.0
+[deps] exit=0
+[90m[install] $ python3 /tmp/kvvi-g9/kvvi-macos-pilot/distribution/bin/kvvi-admin install --apply --yes --config /tmp/kvvi-g9/kvvi-install.json[0m
+  ✓ verify-release: 只读，跳过
+  ✓ verify-binaries: 只读，跳过
+  ✓ verify-ports: 只读，跳过
+  ✓ create-home
+  ✓ verify-binaries
+  ✓ mkdir-socket-dir
+  ✓ initdb
+  ✓ start-server
+  ✓ DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE roln
+  ✓ DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE roln
+  ✓ DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE roln
+  ✓ DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE roln
+  ✓ database kvvi_platform
+  ✓ REVOKE ALL ON DATABASE kvvi_platform FROM PUBLIC
+  ✓ database kvvi_business
+  ✓ REVOKE ALL ON DATABASE kvvi_business FROM PUBLIC
+  ✓ database kvvi_audit
+  ✓ REVOKE ALL ON DATABASE kvvi_audit FROM PUBLIC
+  ✓ migrate
+  ✓ write-config
+✓ install 完成
+
+  首次初始化令牌：/tmp/kvvi-g9-home/secrets/bootstrap.token
+  下一步：kvvi-admin start --apply --yes，然后打开界面用该令牌建企业与所有者。
+[install] exit=0
+[90m[start] $ python3 /tmp/kvvi-g9/kvvi-macos-pilot/distribution/bin/kvvi-admin start --apply --yes --config /tmp/kvvi-g9/kvvi-install.json[0m
+  ✓ check-cluster: 只读
+  ✓ check-config: 只读
+  ✓ check-ports: 只读
+  ✓ prepare-dsh-profile: 已创建
+  ✓ start-platform
+  ✓ start-runtime
+✓ start 完成
+[start] exit=0
+  bootstrap → HTTP 201
+  bootstrap（第二次）→ HTTP 410
+  GET / → HTTP 200，31490 字节
+  GET /api/v1/systems → HTTP 200
+[90m[backup] $ python3 /tmp/kvvi-g9/kvvi-macos-pilot/distribution/bin/kvvi-admin backup --yes --config /tmp/kvvi-g9/kvvi-install.json[0m
+  ✓ dump kvvi_platform
+  ✓ dump kvvi_business
+  ✓ dump kvvi_audit
+  ✓ archive-home
+  ✓ pack
+✓ 备份完成：/tmp/kvvi-g9-home/backups/kvvi-backup.tar.gz
+[backup] exit=0
+[90m[restore] $ python3 /tmp/kvvi-g9/kvvi-macos-pilot/distribution/bin/kvvi-admin restore /tmp/kvvi-g9-home/backups/kvvi-backup.tar.gz --yes --config /tmp/kvvi-g9/kvvi-install.json[0m
+  ✓ verify
+  ✓ extract
+  ✓ restore kvvi_platform
+  ✓ restore kvvi_business
+  ✓ restore kvvi_audit
+  ✓ restore-home
+✓ 恢复完成
+[restore] exit=0
+[90m[uninstall] $ python3 /tmp/kvvi-g9/kvvi-macos-pilot/distribution/bin/kvvi-admin uninstall --yes --config /tmp/kvvi-g9/kvvi-install.json[0m
+  ✓ 已删除 run
+  ✓ 已删除 log
+  ✓ 已删除 profiles
+  · 已保留 pgdata
+  · 已保留 secrets
+  · 已保留 kvvi.env
+✓ 卸载完成。数据仍在，重新安装后可用。
+[uninstall] exit=0
+
+[90m旅程：12/12 步完成[0m
+  preflight、deps、install、start、bootstrap、bootstrap-again、login、ui、api、backup、restore、uninstall
+
+[32m✓ G9 通过：从发行包跑完安装、初始化、登录、界面、业务 API、备份、恢复与卸载（数据保留）[0m
+
+[33m这份证据的适用边界（必须连同结论一起引用）[0m
+  ! 验收主机是**这台机器**，不是第二台机器 —— G9 字面要求的是
+    「一台从未安装过 KVVI 的机器」，本机按字面做不到。
+  ! 本次模式是 `clean-dir`：跑在一个从未跑过 KVVI 的**目录**下，**用户与主机都与开发相同**。
+  ! 验收期间**没有离网** —— 「真无外网」这条没验。
+  ! **数据库大版本升级**没走通：`upgrade` 尚未实现。
+  ! 发行包不是一键包：要求预装 Node 24 与 Homebrew postgresql@17，并跑一次 `pnpm install`。
+
+[90m要按业主选定的验收主机复跑（需要管理员先建用户）：[0m
+  sudo sysadminctl -addUser kvvi-g9 -password - -fullName "KVVI G9"
+  sudo -u kvvi-g9 KVVI_G9_USER=kvvi-g9 python3 工具/check_stage11.py --run-only
+  # 之后记得删掉它：sudo sysadminctl -deleteUser kvvi-g9
