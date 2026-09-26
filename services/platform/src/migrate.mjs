@@ -185,9 +185,20 @@ async function grantPlatform() {
   try {
     await client.query(`GRANT USAGE ON SCHEMA public TO kvvi_platform`)
     await client.query(`GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO kvvi_platform`)
-    // 限流记账需要 DELETE（清理过期窗口）。它是**唯一**需要 DELETE 的表 ——
-    // 权限按表给，不按库给。
-    await client.query(`GRANT DELETE ON rate_events, platform_mode_grants TO kvvi_platform`)
+    // DELETE **按表给，不按库给**。三张表各有明确理由：
+    //   `rate_events`          限流记账清理过期窗口
+    //   `platform_mode_grants` 收回搭建模式
+    //   `policies` / `role_members`  一次授权动作是**整体替换**：
+    //      「删掉这个角色上的旧策略，写入新策略」必须能同时做，
+    //      否则「换一个人能看什么」这件事永远只能是追加 —— 只能加不能减的
+    //      权限界面，等于没有权限界面。
+    //
+    // ⚠️ 曾漏掉 `policies` 与 `role_members`：阶段十的管理 API 在替换策略时
+    //    撞上 `permission denied for table policies`。那不是「配置写错」，
+    //    是这个 GRANT 少了表 —— 报错发生时已经写进事务，看起来像业务错误。
+    await client.query(
+      `GRANT DELETE ON rate_events, platform_mode_grants, policies, role_members
+         TO kvvi_platform`)
     await client.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO kvvi_platform`)
   } finally {
     await client.end()

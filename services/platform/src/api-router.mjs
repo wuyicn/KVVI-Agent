@@ -26,6 +26,7 @@
 
 import { tokenFromCookie } from './gate.mjs'
 import { systemRoutes } from './system-api.mjs'
+import { adminRoutes } from './admin-api.mjs'
 
 /** 产品 API 的前缀。与运行时 RPC 的 `/api` 区分靠**更具体**的路径。 */
 const PREFIX = '/api/v1'
@@ -157,10 +158,16 @@ export async function handleApi({ method, path, query, body, headers, loadSessio
   // 这里再不从 query 里读它 —— 读一次就是把 ② 绕过去了。
   // ★ 交给产品路由。**注意传的是 `session`，不是 `payload` 里的任何身份字段** ——
   //   调用方传的 `companyId` 已在 ② 被剥掉，路由只认会话。
-  return systemRoutes({
-    method,
-    path: path.slice(PREFIX.length) || '/',
-    payload,
-    session,
-  })
+  //
+  //   管理路由单列，不是「多一个前缀」：`/admin/*` 的闸门与 `/systems/*` 不同
+  //   （前者要求所有者/管理员角色，后者只要求一个有效会话），
+  //   而且它的**每一个分支各自过闸** —— 一处粗判会让新增的子路径默认放行。
+  const rest = path.slice(PREFIX.length) || '/'
+  const routes = { method, path: rest, payload, session }
+  // ⚠️ 交给 `adminRoutes` 的是**去掉 `/admin` 之后**的路径。传整条路径的话，
+  //    它的 `parts[0]` 是 `'admin'`，于是每一个分支都落到兜底 404 ——
+  //    而 404 看起来像「端点没写」，不像「前缀剥错了」。
+  return rest === '/admin' || rest.startsWith('/admin/')
+    ? adminRoutes({ ...routes, path: rest.slice('/admin'.length) || '/' })
+    : systemRoutes(routes)
 }
