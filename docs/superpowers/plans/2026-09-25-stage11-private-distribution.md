@@ -269,7 +269,7 @@ Expected: PASS only if every step runs from the extracted archive and the report
 - [ ] **Step 3: Run the harness on the clean user and capture evidence**
 
 Run: `python3 工具/check_stage11.py`
-Expected: PASS; the report states plainly that this is a **fresh user account on the development host**, not a second machine.
+Expected: PASS; the report states plainly that this is a **fresh user account on the development host**, not a second machine. That choice is the owner's (2026-09-26, spec §15.4): it proves the install, initialize, backup/restore and uninstall-keeps-data loop in an environment that never ran KVVI, and it does **not** prove a different macOS version, different hardware, or a genuinely offline host. A VM or real second machine is required before external delivery.
 
 - [ ] **Step 4: Verify G9 and documentation consistency**
 
