@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-验收证据包（历史阶段一至七 + 补充需求阶段八）。
+验收证据包（历史阶段一至七 + 补充需求阶段八、九）。
 
 ## 判据
 
@@ -32,6 +32,8 @@
     python3 工具/验收证据包.py --verify          # 只复核证据包与指纹
     python3 工具/验收证据包.py --append-stage8   # 保留旧条目，只追加 G6
     python3 工具/验收证据包.py --refresh-stage8  # 仅复验并替换尚未交付的 G6
+    python3 工具/验收证据包.py --append-stage9   # 保留旧条目，只追加 G7
+    python3 工具/验收证据包.py --refresh-stage9  # 仅复验并替换尚未交付的 G7
 """
 
 import hashlib
@@ -104,6 +106,31 @@ STAGE8_SOURCES = [
 ]
 
 
+STAGE9 = ('阶段九', '系统运行闭环', [
+    ('G7 系统运行闭环', ['python3', '工具/check_stage9.py', '--run-only']),
+])
+
+STAGE9_SOURCES = [
+    'services/platform/src/api-router.mjs',
+    'services/platform/src/system-api.mjs',
+    'services/platform/src/runtime-projection.mjs',
+    'services/platform/src/publish.mjs',
+    'services/platform/src/refs.mjs',
+    'services/platform/src/record-no.mjs',
+    'services/platform/tests/publish-runtime-e2e.test.mjs',
+    'services/platform/tests/system-api.test.mjs',
+    'services/platform/tests/api-router.test.mjs',
+    'services/platform/tests/runtime-projection.test.mjs',
+    'forks/dsh/变更/packages/client/kvvi-panel/src/client/index.ts',
+    'forks/dsh/变更/packages/client/kvvi-panel/src/client/registry.tsx',
+    'forks/dsh/变更/packages/client/kvvi-panel/src/client/FormView.tsx',
+    'forks/dsh/变更/packages/client/kvvi-panel/src/client/SystemShell.tsx',
+    'forks/dsh/变更/packages/client/kvvi-panel/src/client/api.ts',
+    'forks/dsh/变更/packages/client/kvvi-panel/tests/runtime-ui.spec.tsx',
+    '工具/check_stage9.py',
+]
+
+
 def digest_of(text: str) -> str:
     return 'sha256:' + hashlib.sha256(text.encode('utf-8')).hexdigest()
 
@@ -134,7 +161,7 @@ def collect() -> int:
     print('判据：阶段一至六的**全部**测试记录与指纹（PRD §7.1 阶段七）')
     print()
 
-    all_stages = STAGES + [STAGE8]
+    all_stages = STAGES + [STAGE8, STAGE9]
     for stage, title, checks in all_stages:
         print('%s%s · %s%s' % (C_OK, stage, title, C_OFF))
         for name, cmd in checks:
@@ -154,12 +181,21 @@ def collect() -> int:
                 'ok': ok, 'evidence': os.path.relpath(path, ROOT),
                 'digest': digest_of(out),
             }
-            if stage == '阶段八':
+            # 补充阶段（八、九）多记三层：提交、证据类、来源指纹。
+            # 判定「这一条证据产生于哪一版代码」需要提交；判定「它覆盖了判据的哪一半」
+            # 需要证据类；判定「来源有没有在取证之后被改过」需要来源指纹。
+            supplementary = {
+                '阶段八': (['role_policy', 'login_api', 'runtime_preset', 'topology'],
+                         STAGE8_SOURCES),
+                '阶段九': (['contracts', 'runtime_api', 'client_ui', 'end_to_end'],
+                         STAGE9_SOURCES),
+            }
+            if stage in supplementary:
+                classes, sources = supplementary[stage]
                 entry.update({
                     'commit': run(['git', 'rev-parse', 'HEAD']).stdout.strip(),
-                    'evidenceClasses': ['role_policy', 'login_api',
-                                        'runtime_preset', 'topology'],
-                    'sourceDigests': {rel: file_digest(rel) for rel in STAGE8_SOURCES},
+                    'evidenceClasses': list(classes),
+                    'sourceDigests': {rel: file_digest(rel) for rel in sources},
                 })
             entries.append(entry)
             mark = '%s✓%s' % (C_OK, C_OFF) if ok else '%s✗%s' % (C_BAD, C_OFF)
@@ -202,100 +238,105 @@ def collect() -> int:
     return 0
 
 
-def append_stage8() -> int:
-    """只追加阶段八；既有阶段、条目与证据文件不重跑、不改写。"""
+def _write_stage(stage, title, checks, sources, classes, replace: bool) -> int:
+    """
+    跑一个补充阶段的判据并把记录写进证据包。
+
+    ⚠️ 这是**唯一**一份写补充阶段证据的实现。此前 `--append-stage8` 与
+    `--refresh-stage8` 是两段手抄的近似代码；再加一个阶段就是第三份 ——
+    而三份手抄的东西迟早只有两份被改到，那正是本项目反复记录的失效模式。
+    ``replace`` 区分两种语义：False 只追加（已存在则不动），
+    True 复验并替换唯一那条（要求恰好一条，避免模糊替换）。
+
+    @param stage 阶段名，如 `阶段九`
+    @param title 阶段标题
+    @param checks 判据列表 `[(名称, 命令)]`
+    @param sources 该阶段的来源文件（逐个记内容指纹）
+    @param classes 证据类集合；检查器会要求它与自己的集合相等
+    @param replace 为真时替换既有条目，否则只追加
+    @returns 进程退出码
+    """
     if verify() != 0:
-        print('%s✗ 旧证据包未通过指纹复核，拒绝追加%s' % (C_BAD, C_OFF))
-        return 1
-    with open(MANIFEST, encoding='utf-8') as fh:
-        payload = json.load(fh)
-    if any(e.get('stage') == '阶段八' for e in payload.get('entries', [])):
-        print('%s✓ 阶段八证据已存在；未重写旧记录%s' % (C_OK, C_OFF))
-        return 0
-
-    stage, title, checks = STAGE8
-    name, cmd = checks[0]
-    result = run(cmd)
-    out = canonical_output(result.stdout + (('\n[stderr]\n' + result.stderr) if result.stderr else ''))
-    path = os.path.join(EVID, '%s-%s.txt' %
-                        (stage, name.replace(' ', '-').replace('/', '_')))
-    with open(path, 'w', encoding='utf-8') as fh:
-        fh.write('$ %s\n\n%s' % (' '.join(cmd), out))
-    entry = {
-        'stage': stage,
-        'name': name,
-        'command': ' '.join(cmd),
-        'exitCode': result.returncode,
-        'ok': result.returncode == 0,
-        'evidence': os.path.relpath(path, ROOT),
-        'digest': digest_of(out),
-        'commit': run(['git', 'rev-parse', 'HEAD']).stdout.strip(),
-        'evidenceClasses': ['role_policy', 'login_api', 'runtime_preset', 'topology'],
-        'sourceDigests': {rel: file_digest(rel) for rel in STAGE8_SOURCES},
-    }
-    payload.setdefault('stages', []).append({'stage': stage, 'title': title})
-    payload.setdefault('entries', []).append(entry)
-    if result.returncode != 0:
-        payload.setdefault('failed', []).append('%s/%s' % (stage, name))
-    payload.pop('bundleDigest', None)
-    payload['bundleDigest'] = digest_of(json.dumps(payload, ensure_ascii=False,
-                                                   sort_keys=True))
-    with open(MANIFEST, 'w', encoding='utf-8') as fh:
-        fh.write(json.dumps(payload, ensure_ascii=False, indent=2) + '\n')
-    if result.returncode != 0:
-        print('%s✗ G6 失败，失败证据已追加%s' % (C_BAD, C_OFF))
-        return 1
-    print('%s✓ G6 已追加；历史证据条目未重跑、未改写%s' % (C_OK, C_OFF))
-    return 0
-
-
-def refresh_stage8() -> int:
-    """只复验阶段八；历史阶段一至七的记录与证据文件保持逐字节不变。"""
-    if verify() != 0:
-        print('%s✗ 旧证据包未通过指纹复核，拒绝复验%s' % (C_BAD, C_OFF))
+        print('%s✗ 旧证据包未通过指纹复核，拒绝写入%s' % (C_BAD, C_OFF))
         return 1
     with open(MANIFEST, encoding='utf-8') as fh:
         payload = json.load(fh)
     indexes = [i for i, entry in enumerate(payload.get('entries', []))
-               if entry.get('stage') == '阶段八']
-    if len(indexes) != 1:
-        print('%s✗ 阶段八记录不是唯一一条，拒绝模糊替换%s' % (C_BAD, C_OFF))
-        return 1
+               if entry.get('stage') == stage]
+    if replace:
+        if len(indexes) != 1:
+            print('%s✗ %s 记录不是唯一一条，拒绝模糊替换%s' % (C_BAD, stage, C_OFF))
+            return 1
+    elif indexes:
+        print('%s✓ %s 证据已存在；未重写旧记录%s' % (C_OK, stage, C_OFF))
+        return 0
 
-    stage, _title, checks = STAGE8
-    name, cmd = checks[0]
-    result = run(cmd)
-    out = canonical_output(result.stdout + (('\n[stderr]\n' + result.stderr) if result.stderr else ''))
-    path = os.path.join(EVID, '%s-%s.txt' %
-                        (stage, name.replace(' ', '-').replace('/', '_')))
-    with open(path, 'w', encoding='utf-8') as fh:
-        fh.write('$ %s\n\n%s' % (' '.join(cmd), out))
-    payload['entries'][indexes[0]] = {
-        'stage': stage,
-        'name': name,
-        'command': ' '.join(cmd),
-        'exitCode': result.returncode,
-        'ok': result.returncode == 0,
-        'evidence': os.path.relpath(path, ROOT),
-        'digest': digest_of(out),
-        'commit': run(['git', 'rev-parse', 'HEAD']).stdout.strip(),
-        'evidenceClasses': ['role_policy', 'login_api', 'runtime_preset', 'topology'],
-        'sourceDigests': {rel: file_digest(rel) for rel in STAGE8_SOURCES},
-    }
+    code = 0
+    for name, cmd in checks:
+        result = run(cmd)
+        out = canonical_output(result.stdout + (('\n[stderr]\n' + result.stderr) if result.stderr else ''))
+        path = os.path.join(EVID, '%s-%s.txt' % (stage, name.replace(' ', '-').replace('/', '_')))
+        with open(path, 'w', encoding='utf-8') as fh:
+            fh.write('$ %s\n\n%s' % (' '.join(cmd), out))
+        entry = {
+            'stage': stage,
+            'name': name,
+            'command': ' '.join(cmd),
+            'exitCode': result.returncode,
+            'ok': result.returncode == 0,
+            'evidence': os.path.relpath(path, ROOT),
+            'digest': digest_of(out),
+            'commit': run(['git', 'rev-parse', 'HEAD']).stdout.strip(),
+            'evidenceClasses': list(classes),
+            'sourceDigests': {rel: file_digest(rel) for rel in sources},
+        }
+        if replace:
+            payload['entries'][indexes[0]] = entry
+        else:
+            payload.setdefault('entries', []).append(entry)
+        if result.returncode != 0:
+            code = 1
+
     payload['failed'] = [item for item in payload.get('failed', [])
-                         if not item.startswith('阶段八/')]
-    if result.returncode != 0:
-        payload['failed'].append('%s/%s' % (stage, name))
+                         if not item.startswith(stage + '/')]
+    if code != 0:
+        payload['failed'].append('%s/%s' % (stage, checks[0][0]))
+    if not replace and not any(s.get('stage') == stage for s in payload.get('stages', [])):
+        payload.setdefault('stages', []).append({'stage': stage, 'title': title})
     payload.pop('bundleDigest', None)
-    payload['bundleDigest'] = digest_of(json.dumps(payload, ensure_ascii=False,
-                                                   sort_keys=True))
+    payload['bundleDigest'] = digest_of(json.dumps(payload, ensure_ascii=False, sort_keys=True))
     with open(MANIFEST, 'w', encoding='utf-8') as fh:
         fh.write(json.dumps(payload, ensure_ascii=False, indent=2) + '\n')
-    if result.returncode != 0:
-        print('%s✗ G6 复验失败；历史证据未改写%s' % (C_BAD, C_OFF))
+    if code != 0:
+        print('%s✗ %s 判据失败，失败证据已写入%s' % (C_BAD, stage, C_OFF))
         return 1
-    print('%s✓ G6 已复验并替换；历史阶段一至七证据未改写%s' % (C_OK, C_OFF))
+    print('%s✓ %s 已%s；其余证据条目未重跑、未改写%s'
+          % (C_OK, stage, '复验并替换' if replace else '追加', C_OFF))
     return 0
+
+
+def append_stage8() -> int:
+    """只追加阶段八；既有阶段、条目与证据文件不重跑、不改写。"""
+    classes = ['role_policy', 'login_api', 'runtime_preset', 'topology']
+    return _write_stage(*STAGE8, STAGE8_SOURCES, classes, replace=False)
+
+
+def refresh_stage8() -> int:
+    """只复验阶段八；历史阶段一至七的记录与证据文件保持逐字节不变。"""
+    classes = ['role_policy', 'login_api', 'runtime_preset', 'topology']
+    return _write_stage(*STAGE8, STAGE8_SOURCES, classes, replace=True)
+
+
+def append_stage9() -> int:
+    """只追加阶段九；既有阶段、条目与证据文件不重跑、不改写。"""
+    classes = ['contracts', 'runtime_api', 'client_ui', 'end_to_end']
+    return _write_stage(*STAGE9, STAGE9_SOURCES, classes, replace=False)
+
+
+def refresh_stage9() -> int:
+    """只复验阶段九；历史阶段的记录与证据文件保持逐字节不变。"""
+    classes = ['contracts', 'runtime_api', 'client_ui', 'end_to_end']
+    return _write_stage(*STAGE9, STAGE9_SOURCES, classes, replace=True)
 
 
 def verify() -> int:
@@ -332,6 +373,10 @@ def verify() -> int:
 
 
 def main() -> int:
+    if '--refresh-stage9' in sys.argv:
+        return refresh_stage9()
+    if '--append-stage9' in sys.argv:
+        return append_stage9()
     if '--refresh-stage8' in sys.argv:
         return refresh_stage8()
     if '--append-stage8' in sys.argv:

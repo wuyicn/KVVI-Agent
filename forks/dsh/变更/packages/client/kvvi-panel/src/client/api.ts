@@ -174,7 +174,10 @@ async function errorOf(
     currentRowVersion?: unknown
   }
   const code = typeof record.error === 'string' ? record.error : `KVVI_HTTP_${String(res.status)}`
-  const extra = record.missing ?? record.fields
+  // A projection refusal names what is missing — the absent contracts, the
+  // unbound fields, or the dangling states. It reaches the employee verbatim:
+  // "the system cannot run" without "and this is what would fix it" is a dead end.
+  const extra = record.missing ?? record.fields ?? record.states
   const detail = typeof record.detail === 'string'
     ? record.detail
     : Array.isArray(extra) ? extra.join(', ') : undefined

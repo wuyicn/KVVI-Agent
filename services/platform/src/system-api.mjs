@@ -72,8 +72,15 @@ async function systemRuntime(ctx, assetId) {
     if (error?.message === 'KVVI_CONTRACT_CONTENT_TAMPERED') {
       return fail('KVVI_CONTRACT_CONTENT_TAMPERED', { assetId })
     }
-    return fail(error?.code ?? 'KVVI_BAD_REQUEST',
-      { assetId, detail: error?.detail ?? undefined })
+    // ⚠️ 投影的 `detail` 是**结构化**的：`{assetId, missing}` / `{assetId, fields}`
+    //    / `{assetId, states}`。原样塞进一个 `detail` 字段，它就变成谁也取不到的
+    //    嵌套对象 —— 而「逐份报出缺了哪些」正是这条判据**可用的前提**：
+    //    补的人得知道补哪一份。所以在这里摊平到顶层。
+    //    是 e2e 测试抓到的：状态码与错误码都对，缺的那份契约却消失在响应里。
+    return {
+      status: STATUS_OF[error?.code] ?? 400,
+      body: { error: error?.code ?? 'KVVI_BAD_REQUEST', assetId, ...(error?.detail ?? {}) },
+    }
   }
 }
 

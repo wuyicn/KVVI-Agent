@@ -147,10 +147,16 @@ export async function createRecord(ctx, scope, input) {
       `INSERT INTO business_records (record_id, company_id, schema_code, dept_id,
          shop_id, owner_id, state, record_no, data)
        VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING record_id, record_no`,
+       RETURNING record_id, record_no, row_version`,
       [ctx.companyId, input.schemaCode, scope.deptId, scope.shopId,
        ctx.userId, input.state ?? 'draft', recordNo, input.data ?? {}])
-    return { recordId: rows[0].record_id, recordNo: rows[0].record_no }
+    // `rowVersion` 一并返回：创建者立刻就能改自己刚建的记录，
+    // 不必「再读一次拿版本」—— 读与写之间正是丢更新的窗口。
+    return {
+      recordId: rows[0].record_id,
+      recordNo: rows[0].record_no,
+      rowVersion: Number(rows[0].row_version),
+    }
   })
 }
 
