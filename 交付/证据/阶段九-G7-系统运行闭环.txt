@@ -1,0 +1,107 @@
+$ python3 工具/check_stage9.py --run-only
+
+[contracts] $ node --test --test-concurrency=1 tests/contracts.test.mjs tests/runtime-projection.test.mjs
+▶ 00 契约存储：已发布契约的内容有落点
+  ✔ 发布时带上契约 → 内容可读，且带上分配到的版本与指纹 (19.254208ms)
+  ✔ ★ 版本单调递增，且**旧版本保留**（覆盖写入会让回滚失去依据） (17.200166ms)
+  ✔ ★ 内容指纹对不上就**拒绝**，不静默返回 (1.990291ms)
+  ✔ ★ 跨公司读不到（公司来自会话，不是请求参数） (0.459333ms)
+  ✔ 一个系统当前生效的全部契约，按类型取最新版 (0.679584ms)
+  ✔ 发布时**不带**契约 → 读不到，且不报错（正常路径必须给，但缺省不该炸） (9.489666ms)
+✔ 00 契约存储：已发布契约的内容有落点 (120.953875ms)
+▶ 阶段九 · 运行时投影
+  ✔ 完整契约 → 产出投影，且模型/视图/流程都在里面 (22.5725ms)
+  ✔ ★ 缺任一必需契约 → **失败关闭**，不是跳过 (67.927166ms)
+  ✔ ★ 缺 permission-spec **不得回退成开放访问** (11.491ms)
+  ✔ ★ 内容被改过 → 在产出任何东西之前就检出 (12.94125ms)
+  ✔ ★ 视图引用模型里没有的字段 → 渲染前拒绝 (10.655583ms)
+  ✔ ★ 流程状态必须属于该模型能识别的状态集 (12.347083ms)
+  ✔ ★ 别家公司读不到（公司来自会话，不是参数） (12.021916ms)
+  ✔ 系统不存在 → 明确的错误码，不是空投影 (0.791ms)
+✔ 阶段九 · 运行时投影 (212.438625ms)
+ℹ tests 14
+ℹ suites 2
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1418.122333
+[contracts] exit=0
+[runtime_api] $ node --test --test-concurrency=1 tests/api-router.test.mjs tests/system-api.test.mjs
+▶ 阶段九 · 受鉴权的产品 API 路由
+  ✔ ★ `/api/v1` 由**平台**应答，不被转发给运行时 (26.318167ms)
+  ✔ ★ 无会话 → 401，且不泄露任何系统清单 (7.654291ms)
+  ✔ ★ 无效令牌 → 401（不降级成匿名） (7.018125ms)
+  ✔ ★ 调用方传的 companyId **无效** —— 公司只从会话来 (15.011834ms)
+  ✔ ★ 身份类字段在**入口处**被剥掉，包括嵌套的 (13.71ms)
+✔ 阶段九 · 受鉴权的产品 API 路由 (257.322333ms)
+▶ 阶段九 · 系统与记录 API
+  ✔ GET /api/v1/systems 列出本公司已发布系统 (1.510334ms)
+  ✔ GET /api/v1/systems/:assetId/runtime 返回投影 (1.83425ms)
+  ✔ ★ 别家公司的系统 → 404（不是 403，避免泄露存在性） (5.440917ms)
+  ✔ ★ 只读员工的修改被拒（403），且记录**逐字段不变** (19.992167ms)
+  ✔ ★ 陈旧 rowVersion → 409，且不覆盖更新的记录 (38.697417ms)
+  ✔ ★ 记录不存在 → 404，与「无权看」区分开 (7.6815ms)
+  ✔ 未鉴权 → 401（不返回任何记录） (0.302667ms)
+  ✔ 未知路由 → 404 且带回显（便于调用方排错） (0.216375ms)
+✔ 阶段九 · 系统与记录 API (175.188917ms)
+ℹ tests 13
+ℹ suites 2
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1597.918917
+[runtime_api] exit=0
+[end_to_end] $ node --test --test-concurrency=1 tests/publish-runtime-e2e.test.mjs
+▶ 阶段九 · G7 端到端
+  ✔ ① 契约不全的系统跑不起来，而且说得出缺哪一份 (4.646833ms)
+  ✔ ② 发布的系统出现在本公司的系统列表里 (2.060834ms)
+  ✔ ③ 员工拿到的投影能对上源契约 (3.234875ms)
+  ✔ ④ 员工按投影里的视图提交第一条记录 → 201 且有记录号 (20.770416ms)
+  ✔ ⑤ 员工从列表端点读得回同一条记录，字段与可见性一致 (18.843625ms)
+  ✔ ⑥ 写回一条记录后版本递增，列表里读到的是新值 (32.335917ms)
+  ✔ ⑦ 没有会话就没有任何业务数据 (0.447958ms)
+✔ 阶段九 · G7 端到端 (185.856416ms)
+ℹ tests 7
+ℹ suites 1
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 757.925917
+[end_to_end] exit=0
+[client_ui] $ pnpm exec npx vitest run packages/client/kvvi-panel/tests/runtime-ui.spec.tsx packages/client/kvvi-panel/tests/record-views.spec.tsx packages/client/kvvi-panel/tests/system-shell.spec.tsx
+
+ RUN  v4.1.8 /Users/wuyi-macs/Documents/KVVI-Agent/vendor/dsh
+
+ ✓ |thread-safe| packages/client/kvvi-panel/tests/runtime-ui.spec.tsx (12 tests) 92ms
+ ✓ |thread-safe| packages/client/kvvi-panel/tests/record-views.spec.tsx (19 tests) 113ms
+ ✓ |thread-safe| packages/client/kvvi-panel/tests/system-shell.spec.tsx (8 tests) 205ms
+
+ Test Files  3 passed (3)
+      Tests  39 passed (39)
+   Start at  10:12:50
+   Duration  809ms (transform 390ms, setup 377ms, import 269ms, tests 411ms, environment 931ms)
+
+npm warn Unknown env config "manage-package-manager-versions". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+[client_ui] exit=0
+
+✓ G7 通过：一个新系统可从契约走到发布，并由员工打开、提交并读回第一条真实记录
+  · contracts    — 六份契约齐备才可运行；缺哪一份报得出来；跨契约绑定逐条校验
+  · runtime_api  — 鉴权只认会话里的身份；只读员工改不动记录；陈旧版本不覆盖新记录
+  · client_ui    — 闭合组件表：表外的组件名一律阻断；HIDDEN 不渲染也不提交
+  · end_to_end   — 新建系统 → 发布 → 员工拿投影 → 提交第一条记录 → 从列表读回
+
+已知缺口（未实现 / 已移出首版 / 已知残留）：
+  ! 发布视图里的 `Table`（`DataBindingRef` → `queryCode`）**跑不起来**：平台没有查询端点，客户端明确阻断为 `KVVI_TABLE_QUERY_UNSUPPORTED` 而不是画一张空表。面板的「记录」半页是当前可用的替代（数据来自 `/records`）
+  ! **生产组件注册表仍是黄金样例夹具**（N11）：仓库里只有 `样例/黄金样例/*/context.json`，客户端那张闭合表是与它手工对齐的，不是从注册表资产加载的
+  ! **流程动作按钮未做**：投影带得到 workflow 状态与迁移，详情页也显示了当前状态的中文名，但没有「提交/通过/驳回」按钮 —— 平台没有迁移端点，放一个按不动的按钮比不放更坏
+  ! 员工端**只有 DSH 会话界面里的面板**，没有独立的移动端或大屏入口
+  ! 「自然语言需求 → 契约」这一段由搭建引擎模式（阶段八 preset）承担，G7 验的是**从契约到第一条记录**的后半段；前半段的自动化程度见阶段八取证

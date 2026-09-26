@@ -32,6 +32,10 @@
     {
       "stage": "阶段八",
       "title": "身份入口闭环"
+    },
+    {
+      "stage": "阶段九",
+      "title": "系统运行闭环"
     }
   ],
   "entries": [
@@ -201,9 +205,44 @@
         "forks/dsh/变更/packages/host/kvvi-mode-router/tests/mode-router.spec.ts": "sha256:f4bd4571325e8999977681ffdf325f3b0c7f5f6b49c858b97350051686b314e2",
         "工具/check_stage8.py": "sha256:ca4c5da41ca4ad19fc2e346c62ae76c20ff21ec47224b075d5bc2d25b4f6b52d"
       }
+    },
+    {
+      "stage": "阶段九",
+      "name": "G7 系统运行闭环",
+      "command": "python3 工具/check_stage9.py --run-only",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段九-G7-系统运行闭环.txt",
+      "digest": "sha256:9f326cd73ed407715326df2a19c07b77a777900cc6e0d0d7aae665481804c641",
+      "commit": "3766bba0989ce8e93e6bab71f29772fe1b94e982",
+      "evidenceClasses": [
+        "contracts",
+        "runtime_api",
+        "client_ui",
+        "end_to_end"
+      ],
+      "sourceDigests": {
+        "services/platform/src/api-router.mjs": "sha256:d93c19061aa3bf67488f11583619c086de9a432d261832f98d40cddf3376c84e",
+        "services/platform/src/system-api.mjs": "sha256:17b5c70070e641173b1537aac2bfc1c6ff2b8f966808440a8008bbe8eeb49b5b",
+        "services/platform/src/runtime-projection.mjs": "sha256:1b4bcf62dae7984fd0cf62872cb2a056e94db920f986b8581daf110bb67c01ce",
+        "services/platform/src/publish.mjs": "sha256:5078480b40cf17850d113657826efd8541fb9e47fd8fddc95126a939db4803ba",
+        "services/platform/src/refs.mjs": "sha256:4316691cd23d3c8d26a0776132e39bdead87932730868b20b0b4bd4ede8343ee",
+        "services/platform/src/record-no.mjs": "sha256:4942a4c6bbaac8ece3938e5a7dde6b64a89c4864e2d7dfc09dd700965995025e",
+        "services/platform/tests/publish-runtime-e2e.test.mjs": "sha256:0cffc735f28ad45e2d7406438bd877a051709f7d59ad2facf055a58bdaf93242",
+        "services/platform/tests/system-api.test.mjs": "sha256:04d2f1f19c185991f23329e7c8723eaa365fc4170d342a7340e66ec57c750f74",
+        "services/platform/tests/api-router.test.mjs": "sha256:8a66c8bc79e5c9a4d92605eede2feaba32a505c51ea088245eafd52f50fe3393",
+        "services/platform/tests/runtime-projection.test.mjs": "sha256:98676a241bcd10ef1501a309d48c6e21bd66f501a40f3ccfb1eb4bab030c49f3",
+        "forks/dsh/变更/packages/client/kvvi-panel/src/client/index.ts": "sha256:22029bb5112822437bf260b320ac211535b9225e78a8f3c8845eb358d9dad66b",
+        "forks/dsh/变更/packages/client/kvvi-panel/src/client/registry.tsx": "sha256:f4a05b0fd8a487c4eca19cf8197db941bae495c79efc40147929ac03a4bbc7c6",
+        "forks/dsh/变更/packages/client/kvvi-panel/src/client/FormView.tsx": "sha256:5f5125e08756126052801c54618783cf891386776f06fc6b9d2b560dce00f62b",
+        "forks/dsh/变更/packages/client/kvvi-panel/src/client/SystemShell.tsx": "sha256:d8d4bca0260d7d92c07dd66094280477101a04e3086b52b85ae7e72c1759fdf5",
+        "forks/dsh/变更/packages/client/kvvi-panel/src/client/api.ts": "sha256:573ed2c38000b1544a5faa5c9a0d60cb50b2fa36dba48e2727de9d140ef4b163",
+        "forks/dsh/变更/packages/client/kvvi-panel/tests/runtime-ui.spec.tsx": "sha256:ebd6b22a61a3a5aeaef74393bf47cc9c86459714e318f2ac281ab819c855f249",
+        "工具/check_stage9.py": "sha256:8599a0c10f11c3c1bfe2dedda736e469361bd8f0e21440374113f5c4224c4c08"
+      }
     }
   ],
   "deliveryDigest": "sha256:e2e5e460623c01aa21e2ad6f72f9f841b89f093dc8fea9f05752bbc0fd1fca5c",
   "failed": [],
-  "bundleDigest": "sha256:7fb60da1e3c1aa09b008b7f7df96e6f164fb0000367301e85de74bdc609f9605"
+  "bundleDigest": "sha256:ddcb3c75d7afdd73092ad0170f91e6c6a5e713b5511fc437a4aba637ba02690e"
 }
