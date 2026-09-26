@@ -1,19 +1,10 @@
 # tool/ — business tools for a deployed KVVI system
 
-English | [中文](README.zh.md)
-
 ## Summary
 
-The `tool/` group exposes **one deployed company's business data** to a model as
-model-facing tools. It is not a generic capability family like [`fs/`](../fs/README.md)
-or [`web/`](../web/README.md): its tools have no meaning outside a KVVI
-deployment, because every one of them is a call into that company's platform
-service under that employee's identity.
+The `tool/` group exposes **one deployed company's business data** to a model as model-facing tools. It is not a generic capability family like [`fs/`](../fs/README.md) or [`web/`](../web/README.md): its tools have no meaning outside a KVVI deployment, because every one of them is a call into that company's platform service under that employee's identity.
 
-The single package here is [`kvvi-business/`](kvvi-business/README.md). It holds
-a narrow contract client and seven tools; the platform endpoints it calls, the
-identity rules it obeys, and the tools it deliberately does **not** register are
-documented in its own README rather than repeated here.
+The single package here is [`kvvi-business/`](kvvi-business/README.md). It holds a narrow contract client and seven tools; the platform endpoints it calls, the identity rules it obeys, and the tools it deliberately does **not** register are documented in its own README rather than repeated here.
 
 ## Table of Contents
 
@@ -43,9 +34,4 @@ documented in its own README rather than repeated here.
 <a id="dev-note"></a>
 ## Dev Note
 
-**Why this is its own group.** Every other group answers "what capability
-family does this package implement?"; these packages answer "what does this
-deployment's business data look like to a model?" That question only has an
-answer inside a KVVI deployment, and the answer changes with the customer's
-contracts rather than with the harness. Keeping them in `core/` or `web/` would
-put a product's vocabulary into the harness's own capability map.
+**Why this is its own group.** Every other group answers "what capability family does this package implement?"; these packages answer "what does this deployment's business data look like to a model?" That question only has an answer inside a KVVI deployment, and the answer changes with the customer's contracts rather than with the harness. Keeping them in `core/` or `web/` would put a product's vocabulary into the harness's own capability map.
