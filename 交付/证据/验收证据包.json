@@ -36,6 +36,10 @@
     {
       "stage": "阶段九",
       "title": "系统运行闭环"
+    },
+    {
+      "stage": "阶段十",
+      "title": "员工与管理闭环"
     }
   ],
   "entries": [
@@ -240,9 +244,47 @@
         "forks/dsh/变更/packages/client/kvvi-panel/tests/runtime-ui.spec.tsx": "sha256:ebd6b22a61a3a5aeaef74393bf47cc9c86459714e318f2ac281ab819c855f249",
         "工具/check_stage9.py": "sha256:8599a0c10f11c3c1bfe2dedda736e469361bd8f0e21440374113f5c4224c4c08"
       }
+    },
+    {
+      "stage": "阶段十",
+      "name": "G8 UI 与 Agent 差异等价",
+      "command": "python3 工具/check_stage10.py --run-only",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段十-G8-UI-与-Agent-差异等价.txt",
+      "digest": "sha256:95dfea60d44fbe355cbda2c58ff762bb4e1826535240d9f5b581a75fa84e16d6",
+      "commit": "c14fffe11dd6cf24220b8206111e87a83d69519e",
+      "evidenceClasses": [
+        "admin_api",
+        "admin_ui",
+        "worker_tools",
+        "differential",
+        "signed_context",
+        "worker_composition"
+      ],
+      "sourceDigests": {
+        "services/platform/src/admin-api.mjs": "sha256:64751cb850248cf35723b154575567e1fde09a8cfc1a3e4563771dfa87c2e579",
+        "services/platform/src/api-router.mjs": "sha256:73183fbc80407a7447396d4d21c7b545b6c2d4d55279c00ce25979e4e72f3bea",
+        "services/platform/src/system-api.mjs": "sha256:ea4a0675d8c06bd67e92b1c93f2650cccfbad9b7220c3ababfa425b3cea5212c",
+        "services/platform/src/runtime-projection.mjs": "sha256:026f628089fbb95027b8cb8ae24c01ae8f9b9400313e3e4d37ce94c45b412b06",
+        "services/platform/src/workflow.mjs": "sha256:c7256fb28bc5d68ea898e522ce12453d78a3f19921808495e87d1afc23ecb042",
+        "services/platform/tests/admin-api.test.mjs": "sha256:a4882700e7a16cb642523a731585d0b2e40e9a01437208de27b83edf4180908d",
+        "services/platform/tests/ui-agent-e2e.test.mjs": "sha256:301801e275a74c2d15ad7c1aa4249284bd29a6ae64047140c29ba1a7715ffc46",
+        "services/platform/tests/api-router.test.mjs": "sha256:a4a4716ba49a22db2a4144be61adddca4c132eb41186de718943c7073b21e309",
+        "forks/dsh/变更/packages/tool/kvvi-business/src/client.ts": "sha256:5b396d7a6b773a8e38b9115788eeffaa91afdaf52b0e99068c516394bf76d974",
+        "forks/dsh/变更/packages/tool/kvvi-business/src/index.ts": "sha256:b7018813df88a1863ec11533576da5d97390b988219a5360b8ed7e1bfbbef2ff",
+        "forks/dsh/变更/packages/tool/kvvi-business/tests/tools.spec.ts": "sha256:7a2dbcb4cbceb6d9df7e3c8d6ffd83a39d7d0dc1bc48bec9a4c915dcf53b7862",
+        "forks/dsh/变更/packages/client/kvvi-panel/src/client/AdminShell.tsx": "sha256:d096e60651d05520106eb4cb79de8b6f88611554958ce1fdf6215a79b9455dd1",
+        "forks/dsh/变更/packages/client/kvvi-panel/src/client/MemberAdmin.tsx": "sha256:5603a04f0be7b8ca04bf300e6a9580253e52e529bcbeed8ad81441ad56c893dc",
+        "forks/dsh/变更/packages/client/kvvi-panel/src/client/RoleAdmin.tsx": "sha256:1a81f12d97ae55d8903874f8203de272a55a2b38365184ce11b1b2072c4e457a",
+        "forks/dsh/变更/packages/client/kvvi-panel/src/client/PolicyEditor.tsx": "sha256:54bf660b21b3445703a9815cfd56db000189f83ae610c8b0871872ab9f4e0b0e",
+        "forks/dsh/变更/packages/client/kvvi-panel/tests/admin-ui.spec.tsx": "sha256:64613f0a3ca02e1bc644005b357d043a882c441f680c933caba05682e5eaf01d",
+        "forks/dsh/变更/packages/preset/agent-presets/presets/kvvi-worker/agent.cordis.yml": "sha256:6a240256bf9724c080df5591a1401dac06e466c9e72dca0a41ce49dd887f16ae",
+        "工具/check_stage10.py": "sha256:919bab32d4e189c132cdb0240cb00803ac609c82e3eb1673a5e5787738abdb43"
+      }
     }
   ],
   "deliveryDigest": "sha256:e2e5e460623c01aa21e2ad6f72f9f841b89f093dc8fea9f05752bbc0fd1fca5c",
   "failed": [],
-  "bundleDigest": "sha256:c8dd5c6846bd237856e339af7f0a2f84152245aeda91e1402b7de0fdafc8bec7"
+  "bundleDigest": "sha256:075aa2188c4e3053b71202f7ca645edc12e7c5d1563bd3005de59d45c5c01504"
 }
