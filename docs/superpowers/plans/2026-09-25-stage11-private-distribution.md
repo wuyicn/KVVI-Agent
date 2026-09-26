@@ -96,12 +96,13 @@ git commit -m "feat: add macOS release preflight and admin entrypoint"
 - Create: `services/platform/src/bootstrap.mjs`
 - Create: `services/platform/tests/bootstrap.test.mjs`
 - Modify: `services/platform/src/server.mjs`
+- Create: `services/platform/sql/19-instance-bootstrap.sql`
 
 **Interfaces:**
 - Consumes: an empty data directory and a working `pg_config`.
 - Produces: `kvvi-admin install --plan|--apply`, `kvvi-admin start|stop|status`; one-time bootstrap token; `POST /bootstrap/owner`.
 
-- [ ] **Step 1: Write failing cluster and bootstrap tests**
+- [x] **Step 1: Write failing cluster and bootstrap tests**
 
 ```python
 def test_cluster_is_its_own(tmp_path):
@@ -125,23 +126,23 @@ test('bootstrap creates exactly one owner and then closes', async () => {
 })
 ```
 
-- [ ] **Step 2: Run tests and confirm the modules do not exist**
+- [x] **Step 2: Run tests and confirm the modules do not exist**
 
 Run: `python3 -m unittest distribution.tests.test_pg distribution.tests.test_install -v`
 Run: `cd services/platform && node --test --test-concurrency=1 tests/bootstrap.test.mjs`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement `initdb`, databases, roles, and transactional bootstrap**
+- [x] **Step 3: Implement `initdb`, databases, roles, and transactional bootstrap**
 
 `initdb` into `$KVVI_HOME/pgdata` with `--auth-local=peer --auth-host=scram-sha-256`, listening on `127.0.0.1:$KVVI_PG_PORT` only, socket in `$KVVI_HOME/run`. Create the three databases and the roles `services/platform/sql` expects (`kvvi_platform`, `kvvi_business`, `kvvi_audit_writer`, `kvvi_audit_reader`), then run `migrate.mjs`. Generate all secrets locally with `secrets.token_urlsafe` and write config `0600`. Start platform then runtime as separate processes; a launchd LaunchAgent restarts them at login. Store a consumed bootstrap marker in the platform database: company, owner account, membership, owner role, and marker commit in one transaction.
 
-- [ ] **Step 4: Run cluster, bootstrap, and isolation tests**
+- [x] **Step 4: Run cluster, bootstrap, and isolation tests**
 
 Run: `python3 -m unittest distribution.tests.test_pg distribution.tests.test_install -v`
 Run: `cd services/platform && node --test --test-concurrency=1 tests/bootstrap.test.mjs tests/isolation.test.mjs`
 Expected: PASS. `isolation.test.mjs` is included because the cluster bring-up must not weaken the three-database role separation it asserts.
 
-- [ ] **Step 5: Commit cluster bring-up and bootstrap**
+- [x] **Step 5: Commit cluster bring-up and bootstrap**
 
 ```bash
 git add distribution/lib/pg.py distribution/lib/install.py distribution/lib/supervisor.py distribution/tests services/platform/src/bootstrap.mjs services/platform/src/server.mjs services/platform/tests/bootstrap.test.mjs

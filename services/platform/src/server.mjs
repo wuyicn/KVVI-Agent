@@ -24,6 +24,7 @@ import { runtimeCookie, runtimeCredentialAvailable, runtimeContextHeaders } from
 import { handleAuth } from './auth.mjs'
 import { verifyToken } from './identity.mjs'
 import { isApiPath, handleApi } from './api-router.mjs'
+import { bootstrapRoutes } from './bootstrap.mjs'
 
 const PORT = Number(process.env.KVVI_PLATFORM_PORT ?? 7400)
 const HOST = process.env.KVVI_PLATFORM_HOST ?? '0.0.0.0'
@@ -58,6 +59,12 @@ const PENDING = {
  * 这些端点各自有自己的鉴权：登录凭账号口令，登出与会话查询凭委派令牌。
  */
 const USER_AUTH_PATHS = new Set(['/auth/login', '/auth/logout', '/auth/session'])
+
+/**
+ * 一次性首次初始化的令牌。安装时生成，写在配置文件（0600）里。
+ * 缺省为空 —— 空令牌在 `bootstrapOwner` 里一律**拒绝**，不是放行。
+ */
+const BOOTSTRAP_TOKEN = process.env.KVVI_BOOTSTRAP_TOKEN ?? ''
 
 /**
  * **公开**的签名侧端点：公钥不是秘密，业务系统要拿它配置信任锚点（§9.4.1）。
@@ -172,6 +179,28 @@ const server = createServer(async (req, res) => {
   // 「可核验」是自相矛盾的。
   if (path === '/topology' && method === 'GET') {
     return send(res, 200, topologySnapshot())
+  }
+
+  // ── 首次初始化（阶段十一）──────────────────────────────────────────
+  //
+  // 必须排在登录门**之前**：装完之后客户还没有账号，登录门会把他挡在
+  // 「登录页」上，而那时他连账号都没有 —— 会卡成一个死循环。
+  //
+  // 它自己带两道闸：一次性令牌，以及「只成功一次」的唯一约束。
+  // 端点本身不鉴权，所以**不能**顺手把公司 id 或账号 id 回显出去。
+  if (path === '/bootstrap/state' && method === 'GET') {
+    const out = await bootstrapRoutes({ method, path, body: null,
+      expectedToken: BOOTSTRAP_TOKEN })
+    return send(res, out.status, out.body)
+  }
+  if (path === '/bootstrap/owner' && method === 'POST') {
+    const raw = await readBody(req)
+    let body = null
+    try { body = raw ? JSON.parse(raw) : null } catch {
+      return send(res, 400, { error: 'KVVI_BAD_JSON' })
+    }
+    const out = await bootstrapRoutes({ method, path, body, expectedToken: BOOTSTRAP_TOKEN })
+    return send(res, out.status, out.body)
   }
 
   // ── KVVI 业务面板的数据端点 ────────────────────────────────────────

@@ -241,6 +241,7 @@ async function main() {
   migrations.push(await applyFile('kvvi_platform', '16-publish.sql', pre.kvvi_platform))
   migrations.push(await applyFile('kvvi_platform', '17-rate.sql', pre.kvvi_platform))
   migrations.push(await applyFile('kvvi_platform', '18-retention.sql', pre.kvvi_platform))
+  migrations.push(await applyFile('kvvi_platform', '19-instance-bootstrap.sql', pre.kvvi_platform))
   migrations.push(await applyFile('kvvi_platform', '21-systems-and-contracts.sql', pre.kvvi_platform))
   migrations.push(await applyFile('kvvi_platform', '22-platform-mode-grants.sql', pre.kvvi_platform))
   migrations.push(await applyFile('kvvi_business', '20-business.sql', pre.kvvi_business))
