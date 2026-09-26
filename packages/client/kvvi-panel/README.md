@@ -1,6 +1,7 @@
 # @deepseek-ai/dsh-client-kvvi-panel
 
-KVVI's business panel for the DSH web client: one sidebar entry plus one overlay page.
+KVVI's business panel for the DSH web client: one sidebar entry plus one overlay page
+that renders the company's published systems.
 
 ## Model Experience
 
@@ -13,7 +14,8 @@ the log.
 ## Contribution
 
 Two upstream-declared `list` slots are filled, so both registrations append rather than
-replace another plugin's occupant:
+replace another plugin's occupant. Both declare `locale: kvviPanel`, which is what puts
+the typed `t` seat on their components.
 
 | Slot | Declared by | Contribution |
 |---|---|---|
@@ -24,16 +26,64 @@ The two occupy different slots, so neither can render the other. They communicat
 through one namespaced DOM event (`kvvi-panel:open`) rather than a module-level mutable
 shared by every consumer.
 
+## The closed renderer
+
+A published system carries one `view-schema`, whose `componentsTree` is **data**. The
+renderer draws it through one explicit table (`src/client/registry.tsx`) whose 23 keys
+are the names the platform's `COMPONENT_REGISTRY` declares, each with the same
+`viewTypes`. Everything else about a tree is refused:
+
+| Condition | Result |
+|---|---|
+| `componentName` not in the table | `KVVI_COMPONENT_NOT_REGISTERED` — nothing is drawn |
+| component not allowed in this `view_type` | `KVVI_COMPONENT_WRONG_VIEW_TYPE` — nothing is drawn |
+| field component without `fieldBinding` | `KVVI_COMPONENT_FIELD_UNBOUND` — nothing is drawn |
+| `Table` (`DataBindingRef`) | `KVVI_TABLE_QUERY_UNSUPPORTED` — see below |
+
+The tree is validated **completely** before anything is drawn, so a contract either
+appears whole or is refused whole. A half-drawn form reads as a rendering bug, and the
+employee fills in the rest before discovering the submit cannot work.
+
+`fieldVisibility` is not decided here. The platform computes it from the session and
+sends it; `HIDDEN` is filtered twice — at render and again when the payload is built,
+because a form that renders without a field but submits it anyway has carried the hidden
+value out of the browser. `READONLY` and `MASKED` render as read-only controls, and a
+`MASKED` value is omitted from the update payload rather than posting the mask back.
+
+## Data sources
+
+| Panel view | Endpoint |
+|---|---|
+| 我的系统 | `GET /api/v1/systems` |
+| the open system's form | `GET /api/v1/systems/:assetId/runtime` |
+| 记录 | `GET /api/v1/systems/:assetId/records` |
+| one record | `GET`/`PATCH /api/v1/systems/:assetId/records/:recordId` |
+| 填单 submit | `POST /api/v1/systems/:assetId/records` |
+
+Failures stay distinguishable: the platform's stable code, a network failure, and "there
+is nothing" are three separate states, because one shared empty state would report them
+as the same fact. An update always sends the `rowVersion` it was rendered from, and
+`KVVI_ROW_VERSION_CONFLICT` is reported as its own state — a conflict needs a reload, a
+failure needs a retry.
+
 ## Known Limitations and Deferred Work
 
-- **The panel cannot reach the platform service yet.** The browser loads the DSH client
-  from the platform process's port, while KVVI's platform service listens on a different
-  origin (`7400`) and sends no CORS headers, so the direct `fetch` fails and the panel
-  shows "连不上平台服务". The read has to be bridged: either the platform service serves
-  the client's origin, or the fetch moves to the DSH host half and reaches the client
-  through a cordis service. That decision belongs to the product, not to this package.
-- **Contents are stubs.** The 待办, 我的系统, and 聚合口径 blocks state plainly that the
-  platform has no endpoint for them yet; only 我的权限 has a real source. They are not
-  placeholders that pretend to work.
-- **Copy is inline rather than locale-owned.** `verify-client-ui-i18n` will reject the
-  hardcoded strings; moving them into a typed dictionary is required before this ships.
+- **A published `LIST` view's `Table` cannot be drawn.** Its `DataBindingRef` names a
+  query the platform has no endpoint for, so the node is refused with
+  `KVVI_TABLE_QUERY_UNSUPPORTED` rather than drawn empty. Drawing an empty table would
+  report "no data" for "no data source". The 记录 half of the panel is the served
+  substitute: it lists the records of the system from the endpoint that exists.
+- **The production component registry is still a golden-sample fixture.** The repository
+  carries `COMPONENT_REGISTRY` only inside `样例/黄金样例/*/context.json`. Until a real
+  registry asset exists, this table is hand-kept in step with those samples, and a name
+  added there but not here becomes a refusal rather than a feature.
+- **The 记录 table shows model fields, not record metadata.** The record number is a
+  per-row leading cell; `state` and `rowVersion` are not columns. A system that wants to
+  show either in a list needs the `LIST` `Table` binding, which is the item above.
+- **No workflow action is offered yet.** The projection carries `workflow-spec` states and
+  transitions, and the detail view shows the current state's label, but no transition
+  button: the platform exposes no transition endpoint, and a button that cannot move a
+  record is worse than no button.
+- **Copy is locale-owned and English is machine-checked only for key parity.** The
+  dictionaries agree on their key set; the English sentences themselves have had no
+  native review.

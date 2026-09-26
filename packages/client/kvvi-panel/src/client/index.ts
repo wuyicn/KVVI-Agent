@@ -18,33 +18,46 @@
  * only process that knows who this session is, which company they belong to,
  * and what they may do. The DSH runtime knows no tenant and must not.
  *
+ * Copy comes from this package's own namespace. Both registrations declare
+ * `locale`, which is what puts the typed `t` seat on their components.
+ *
  * This module carries no JSX: the client bundle entry is fixed at
- * `src/client/index.ts`, so every component lives beside it in `Panel.tsx`.
+ * `src/client/index.ts`, so every component lives beside it in other files.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import { createKvviEntry, createKvviOverlay } from './Panel.tsx'
+import { en, NS, zh, type KvviKey } from './locales.ts'
+
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface LocaleNamespaceMap {
+    /** Business-panel copy: the systems list, the form/list/detail views, refusals. */
+    kvviPanel: KvviKey
+  }
+}
 
 /** Key distinguishing this package's occupants inside both `list` slots. */
 const KVVI_PANEL_ID = '@deepseek-ai/dsh-client-kvvi-panel'
 
-/** Services this browser half requires. Only the slot registry is mandatory. */
-export const inject = ['slots']
+/** Services this browser half requires: the slot registry and the dictionary. */
+export const inject = ['slots', 'locale']
 
 /**
- * Register this package's sidebar entry and overlay.
+ * Register this package's dictionaries, sidebar entry and overlay.
  *
  * The entry and the panel are two halves of one thing, so they share an open
- * flag held here: putting it in either component's local state would leave the
- * button unable to reach the panel. Subscribers are notified through the
- * renderer's own binding rather than a bespoke subscription in the components.
+ * flag held inside the overlay: putting it in either component's local state
+ * would leave the button unable to reach the panel.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'kvvi-panel: dictionaries')
+
   ctx.effect(
     () => ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register(
-      { name: 'sidebar.footer.action', id: KVVI_PANEL_ID },
+      { name: 'sidebar.footer.action', id: KVVI_PANEL_ID, locale: NS },
       createKvviEntry(),
     )),
     'kvvi-panel: sidebar entry',
@@ -52,7 +65,7 @@ export function apply(ctx: ClientContext): void {
 
   ctx.effect(
     () => ctx.slots.inject('shell.overlay', () => ctx.slots.register(
-      { name: 'shell.overlay', id: KVVI_PANEL_ID },
+      { name: 'shell.overlay', id: KVVI_PANEL_ID, locale: NS },
       createKvviOverlay(),
     )),
     'kvvi-panel: business panel',
