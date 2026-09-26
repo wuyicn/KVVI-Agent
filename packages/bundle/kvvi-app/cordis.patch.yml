@@ -19,6 +19,31 @@
 # until then a removed row can fail silently rather than loudly.
 
 - insert:
+    # KVVI's mode binding: one signed identity per request, one fixed agent preset
+    # per gateway (`USER` → `kvvi-worker`, `BUILDER` → `kvvi-builder`).
+    #
+    # ⚠️ **WHY THIS ROW IS HERE AND NOT IN A PRESET.** It is the row that decides
+    # *which* preset a session may load, so it cannot live inside a preset: a
+    # preset is mounted after the choice has already been made. It belongs to the
+    # host plane, next to the other rows `dsh-base`/`dsh-web-app` mount.
+    #
+    # ⚠️ **WHY IT MUST NOT BE OMITTED.** It was, and the product's core loop did
+    # not work. Without this row nothing rewrites `SessionCreateRequest`, so the
+    # preset the *client* asked for wins — every session ran `standard`, the
+    # `kvvi-builder` and `kvvi-worker` presets were never selected, and the
+    # builder's agent had no build skills at all. It is also the whole server-side
+    # half of PRD §2.6 (mode bound at session creation) and of §9.6.5 anchor ①
+    # (an employee never reaches the building engine): the client can ask for any
+    # preset, and this row is what refuses it.
+    #
+    # `secret` is the same value the platform signs its `x-kvvi-*` headers with.
+    # An empty one throws at construction — deliberately, because a router that
+    # verifies nothing is worse than no router: the requests would still pass,
+    # and every downstream reader would believe they had been checked.
+    - id: kvvi-mode-router
+      name: '@deepseek-ai/dsh-host-kvvi-mode-router'
+      config:
+        secret: !!js process.env.KVVI_INTERNAL_TOKEN ?? ''
     # KVVI's own brand occupants for the sidebar's brand slots.
     #
     # Upstream's `ui-brand-official` fills the same two slots but registers only

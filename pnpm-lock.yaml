@@ -1948,6 +1948,9 @@ importers:
       '@deepseek-ai/dsh-client-kvvi-panel':
         specifier: workspace:^
         version: link:../../client/kvvi-panel
+      '@deepseek-ai/dsh-host-kvvi-mode-router':
+        specifier: workspace:^
+        version: link:../../host/kvvi-mode-router
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
