@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { SidebarFooterActionOwnerProps } from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
+import { KvviAdminShell } from './AdminShell.tsx'
 import { KvviSystemShell } from './SystemShell.tsx'
 
 /**
@@ -39,6 +40,11 @@ export function KvviPanel({ t, onClose }: {
   readonly t: KvviTranslate
   readonly onClose: () => void
 }): ReactNode {
+  // 两半是同一层的两个入口：**业务**是员工每天用的，**企业管理**只有
+  // 所有者与管理员用得到。放在一个面板的两个页签里，是因为它们共享
+  // 「我是谁、我在哪家公司」这一个前提 —— 分成两个悬浮层会让这个前提看起来像两个。
+  const [page, setPage] = useState<'business' | 'admin'>('business')
+
   return (
     <div
       role="dialog"
@@ -61,6 +67,12 @@ export function KvviPanel({ t, onClose }: {
       >
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14 }}>
           <strong style={{ fontSize: 15 }}>{t('panel.title')}</strong>
+          <button type="button" aria-pressed={page === 'business'}
+            style={{ fontSize: 12, fontWeight: page === 'business' ? 600 : 400 }}
+            onClick={() => { setPage('business') }}>{t('panel.tab.business')}</button>
+          <button type="button" aria-pressed={page === 'admin'}
+            style={{ fontSize: 12, fontWeight: page === 'admin' ? 600 : 400 }}
+            onClick={() => { setPage('admin') }}>{t('admin.title')}</button>
           <span style={{ flex: 1 }} />
           <button
             type="button"
@@ -75,7 +87,7 @@ export function KvviPanel({ t, onClose }: {
           </button>
         </div>
 
-        <KvviSystemShell copy={t} />
+        {page === 'business' ? <KvviSystemShell copy={t} /> : <KvviAdminShell copy={t} />}
       </div>
     </div>
   )
