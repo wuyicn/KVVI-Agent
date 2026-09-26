@@ -281,7 +281,22 @@ const server = createServer(async (req, res) => {
   // 认证逻辑一行都不在这里：登录提交转发给身份层的 `/auth/login`，
   // 令牌校验转发给 `/auth/session`。这里只做「放行 / 打回登录页」。
   if (gated(path) || path.startsWith('/kvvi/')) {
-    const rawBody = await readBody(req)
+    // ⚠️ **只有登录门自己要看体的那几个路径才读体。**
+    //
+    // `readBody(req)` 会把请求流**读干**。而这道门对绝大多数被它盯上的路径
+    // 只做「有没有会话」的判定，读完就 `return null` 落回下面的转发 ——
+    // 于是转发拿到的是一个**已经结束的流**，请求头里却仍带着原来的
+    // `content-length`。上游等一个永远不会到来的请求体，请求就**挂住不返回**。
+    //
+    // 实测的表现极具误导性：
+    //   - `GET /`、`GET /healthz`、`GET /assets/*` 全部正常，页面 **HTTP 200**；
+    //   - `POST /api/*`（运行时的每一条 RPC，也就是整个界面的数据来源）**全部挂死**，
+    //     浏览器界面显示「重新连接中…」，输入框不可用；
+    //   - 绕过平台**直接打开运行时进程**（7401），界面一切正常。
+    // 「一半可用」比整条不通难查得多 —— 因为它同时给出「服务是好的」这个答案。
+    //
+    // 判据用 `isGatePath`：只有它认的路径（登录、登出）需要请求体，其余不读。
+    const rawBody = isGatePath(path) ? await readBody(req) : null
     const out = await handleGate({
       method, path, query: req.url ?? '', body: rawBody, headers: req.headers,
       login: async (credentials) => handleAuth({

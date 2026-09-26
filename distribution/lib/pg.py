@@ -16,12 +16,33 @@ KVVI 不碰那个集群，原因有两条，都不是洁癖：
    等于本机上任何进程都能读写全部数据。KVVI 自己 `initdb`，用 `scram-sha-256` 走 TCP，
    socket 放在 `$KVVI_HOME/run`（**0700**）。
 
-## 两个 macOS 专有的坑（探路时真撞到的）
+## macOS 专有的坑（探路时真撞到的）
 
 | 坑 | 现象 | 处理 |
 |---|---|---|
 | socket 目录不存在 | `could not create lock file ...: No such file or directory` —— 读起来像权限问题 | 启动**前** `mkdir`，并且 `chmod 700` |
 | 未设 `LC_ALL` | `FATAL: postmaster became multithreaded during startup` —— 报错里没提 locale | 启动时注入 `LC_ALL` |
+| 路径含空格 | `postgres: invalid argument: "Support/…/run"` —— 报错里看不见那个空格 | **不把启动参数塞进 `pg_ctl -o`**，改写进 `postgresql.conf` |
+
+## 为什么端口、监听地址和 socket 目录必须写进 `postgresql.conf`
+
+第一版把三样都塞在 `pg_ctl -o '-p … -c listen_addresses=… -c unix_socket_directories=…'`
+这一个字符串里。它在 `/tmp/kvvi-…` 这种无空格的验收目录下**一路绿灯**，于是问题
+被留到了客户机器上——而 macOS 的默认数据目录是
+`~/Library/Application Support/KVVI-Agent/…`，**含一个空格**：`pg_ctl` 按空白切分
+`-o` 的实参，`postgres` 收到的是 `Support/KVVI-Agent/…/run`，报
+`invalid argument` 然后拒绝启动。安装**卡在第 4 步**，界面永远起不来。
+
+修的时候顺带看到一个更要紧的后果：只写在 `-o` 里意味着这三样**不是集群的属性，
+而是那一条命令的属性**。任何不经过这条命令的启动（人工 `pg_ctl start -D pgdata`、
+将来的 launchd 单元、崩溃后的手工拉起）都会**静默退回**
+`/tmp` socket + `port 5432` + `listen_addresses='localhost'`，而 `initdb` 设的是
+`--auth-local=trust` —— 也就是本机任一进程都能免密以超级用户连上 KVVI 的库。
+写进配置文件之后，「这个集群监听哪里、socket 在哪」只有一处答案。
+
+写进去的值带单引号（`unix_socket_directories = '/路径 含空格/run'`）：
+配置文件的值由 postgres 自己的词法器读，**支持带引号的字符串**，
+而 `-o` 那条路不支持。
 
 ## 不解析 postgres 的报错文字
 
@@ -106,6 +127,60 @@ def _run(argv: Sequence[str], env: Optional[Dict[str, str]] = None,
                           env=env, timeout=timeout)
 
 
+#: 写进 `postgresql.conf` 的那一段的首尾标记。
+#: 用标记圈起来是为了**可重写**：安装会重跑（文档承诺幂等），
+#: 每次都先删掉旧的一段再追加，否则重跑十次就有十份 `port = …`，
+#: 而 postgres 取最后一份 —— 表面上「改过了」，实际生效的是最早那次的值。
+CLUSTER_CONF_BEGIN = '# >>> KVVI-Agent 写入的开始'
+CLUSTER_CONF_END = '# <<< KVVI-Agent 写入的结束'
+
+
+def cluster_conf_block(pg_port: int, socket_dir: Path) -> str:
+    """
+    要追加到 `postgresql.conf` 的一段。**纯函数**。
+
+    @param pg_port 集群端口
+    @param socket_dir socket 目录（可能含空格，所以带引号）
+    @returns 含首尾标记的文本块
+    """
+    return '\n'.join([
+        CLUSTER_CONF_BEGIN + '（勿手改：重装会覆盖这一段）',
+        '# 端口、监听地址与 socket 目录写在**集群配置**里，不写在 `pg_ctl -o` 里。',
+        '# `-o` 的实参由 pg_ctl 按空白切分，而默认数据目录里有一个空格'
+        '（Application Support），',
+        '# 会被切碎；更要紧的是，只写在 `-o` 里的话，不经过那条命令的启动'
+        '（人工拉起、launchd）',
+        '# 会静默退回 /tmp socket + 5432，而本地认证是 trust。',
+        f'port = {pg_port}',
+        "listen_addresses = '127.0.0.1'",
+        "unix_socket_directories = '" + str(socket_dir) + "'",
+        CLUSTER_CONF_END,
+        '',
+    ])
+
+
+def write_cluster_config(conf_path: Path, pg_port: int, socket_dir: Path) -> str:
+    """
+    把上面那一段写进 `postgresql.conf`（先删旧块，再追加）。**幂等**。
+
+    @param conf_path `postgresql.conf` 的路径
+    @param pg_port 集群端口
+    @param socket_dir socket 目录
+    @returns 写进去的文本块
+    """
+    block = cluster_conf_block(pg_port, socket_dir)
+    existing = conf_path.read_text(encoding='utf-8') if conf_path.is_file() else ''
+    if CLUSTER_CONF_BEGIN in existing and CLUSTER_CONF_END in existing:
+        head = existing.split(CLUSTER_CONF_BEGIN)[0]
+        tail = existing.split(CLUSTER_CONF_END, 1)[1]
+        # 旧块前后各有自己的换行，去掉首尾多余空行后再拼，避免重跑一次多一行。
+        existing = head.rstrip('\n') + '\n' + tail.lstrip('\n')
+    if existing and not existing.endswith('\n'):
+        existing += '\n'
+    conf_path.write_text(existing + block, encoding='utf-8')
+    return block
+
+
 @dataclass
 class ClusterPlan:
     """拉起一个集群的完整计划。"""
@@ -120,10 +195,17 @@ class ClusterPlan:
     steps: List[dict] = field(default_factory=list)
 
     def commands_flat(self) -> List[str]:
-        """全部命令拼平，便于断言「没有指向别处的集群」。"""
+        """全部命令拼平，便于断言「没有指向别处的集群」。
+
+        写进 `postgresql.conf` 的那一段也算在内 —— 它是**会生效的配置**，
+        不像 `argv` 那样只影响一次调用。漏掉它，「只监听回环」这类断言
+        就只检查了半句话。
+        """
         out: List[str] = []
         for step in self.steps:
             out.extend(str(a) for a in step.get('argv', []))
+            if step.get('content'):
+                out.append(str(step['content']))
             out.extend(f'{k}={v}' for k, v in (step.get('env') or {}).items())
         return out
 
@@ -156,6 +238,14 @@ class ClusterPlan:
                 os.chmod(self.socket_dir, 0o700)
                 self.log_file.parent.mkdir(parents=True, exist_ok=True)
                 done.append('mkdir-socket-dir')
+                continue
+            if kind == 'write-cluster-config':
+                # ⚠️ **即使 initdb 被跳过也要写。** 集群已存在但配置段缺失，
+                #    正是「上一版装的机器」的样子 —— 而它下一次启动就会退回 /tmp。
+                #    这一段是幂等重写，跑多少次结果一样。
+                write_cluster_config(self.data_dir / 'postgresql.conf',
+                                     self.pg_port, self.socket_dir)
+                done.append('write-cluster-config')
                 continue
             if kind == 'initdb':
                 self.home.mkdir(parents=True, exist_ok=True)
@@ -202,8 +292,6 @@ def cluster_plan(home: Path, pg_port: int, pg_bin: Path,
     ]
     start_argv = [
         str(pg_bin / 'pg_ctl'), '-D', str(data_dir),
-        '-o', (f'-p {pg_port} -c listen_addresses=127.0.0.1 '
-               f'-c unix_socket_directories={socket_dir}'),
         '-l', str(log_file), '-w', '-t', '60', 'start',
     ]
     steps = [
@@ -213,6 +301,11 @@ def cluster_plan(home: Path, pg_port: int, pg_bin: Path,
         #    少了它会得到 `could not create lock file ...: No such file or directory`。
         {'kind': 'mkdir-socket-dir', 'writes': True},
         {'kind': 'initdb', 'argv': initdb_argv, 'writes': True},
+        # ⚠️ 必须在 **initdb 之后、start 之前**：`postgresql.conf` 由 initdb 生成。
+        #    端口、监听地址、socket 目录都在这一段里 —— 见模块说明里
+        #    「为什么端口、监听地址和 socket 目录必须写进 postgresql.conf」。
+        {'kind': 'write-cluster-config', 'writes': True,
+         'content': cluster_conf_block(pg_port, socket_dir)},
         # ⚠️ `LC_ALL` 必须给。macOS 上不给会得到
         #    `FATAL: postmaster became multithreaded during startup` ——
         #    报错里除了那行 HINT 一个字都没提 locale。

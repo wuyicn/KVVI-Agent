@@ -85,7 +85,32 @@ export function resolveTarget(raw) {
 export function forwardHeaders(headers, target, extraCookie, trustedContext = {}) {
   const out = Object.fromEntries(Object.entries(headers)
     .filter(([name]) => !name.toLowerCase().startsWith('x-kvvi-')))
+  // ⚠️ **`content-length` 必须删掉。** 上面这句注释第一版就写了，代码里却没做 ——
+  //    而两者不一致的那段时间里，凡是被上游读干过请求体的转发都会**挂死**：
+  //    头里写着 `content-length: 75`，实际一个字节都不发，上游就一直在等。
+  //    删掉之后由 node 按实际发出的流决定（分块），
+  //    「体被谁读过」这件事就不再能影响请求是否返回。
+  for (const name of Object.keys(out)) {
+    if (name.toLowerCase() === 'content-length') delete out[name]
+  }
   out.host = target.host
+  // ⚠️ **`Origin` 必须跟着 Host 一起改写。**
+  //
+  // 运行时的 browser-trust 栅栏同时查两件事（`api-request-trust.ts`）：
+  // Host 属于本机或受信任主机，**且**浏览器带上的 `Origin` 与 Host 是同一个 authority。
+  // 只改 Host 不改 Origin，栅栏看到的是一对不自洽的值 ——
+  // `Host: 127.0.0.1:7401` 配 `Origin: http://127.0.0.1:7500`，于是回 403。
+  //
+  // 症状与请求方法有关，所以特别难猜：
+  //   - `GET /api/...`：浏览器不给同源 GET 附 `Origin`，栅栏放行；
+  //   - `POST /api/...`：**每一条 RPC 都带 `Origin`**，于是全部 403。
+  // 界面表现为「重新连接中…」，而 `GET /` 与静态资源一切正常。
+  //
+  // 改写而不是删除：请求真正到达运行时时的 Host 就是 `target.host`，
+  // 那么从运行时的视角看，Origin 与它同源才是**如实**的。
+  if (out.origin !== undefined) out.origin = `http://${target.host}`
+  // `Referer` 是页面的真实地址（平台那个 origin），留着会与上面这条不一致。
+  delete out.referer
   out['x-forwarded-host'] = headers.host ?? ''
   out['x-forwarded-proto'] = 'http'
   // ⚠️ **换掉浏览器的 Cookie，不是叠加**。

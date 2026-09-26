@@ -133,8 +133,56 @@ class ClusterOwnershipTest(unittest.TestCase):
     def test_server_listens_on_loopback_only(self):
         plan = cluster_plan(home=self.home, pg_port=54329, pg_bin=Path('/opt/homebrew/opt/postgresql@17/bin'))
         joined = ' '.join(plan.commands_flat())
-        self.assertIn('listen_addresses=127.0.0.1', joined)
+        self.assertIn("listen_addresses = '127.0.0.1'", joined)
         self.assertNotIn('listen_addresses=*', joined)
+        self.assertNotIn("listen_addresses = '*'", joined)
+
+    def test_cluster_settings_are_written_to_the_config_file(self):
+        # 端口、监听地址、socket 目录**必须落在集群配置里**。
+        # 只写在 `pg_ctl -o` 里的话，人工拉起或 launchd 拉起会退回 /tmp + 5432，
+        # 而本地认证是 trust —— 本机任一进程免密可连。
+        plan = cluster_plan(home=self.home, pg_port=54329, pg_bin=Path('/opt/homebrew/opt/postgresql@17/bin'))
+        kinds = [step['kind'] for step in plan.steps]
+        self.assertIn('write-cluster-config', kinds)
+        self.assertLess(kinds.index('initdb'), kinds.index('write-cluster-config'))
+        self.assertLess(kinds.index('write-cluster-config'), kinds.index('start-server'))
+        content = next(s for s in plan.steps if s['kind'] == 'write-cluster-config')['content']
+        self.assertIn('port = 54329', content)
+        self.assertIn("listen_addresses = '127.0.0.1'", content)
+        # socket 目录要**带引号**：默认数据目录里有一个空格，
+        # 不带引号的话 postgres 只读到空格前那半截。
+        self.assertIn(f"unix_socket_directories = '{plan.socket_dir}'", content)
+
+    def test_no_start_option_is_passed_through_pg_ctl_o(self):
+        # `-o` 的实参由 pg_ctl 按空白切分，而默认数据目录
+        # `~/Library/Application Support/KVVI-Agent/…` **含空格**——
+        # 探路时它在 /tmp/kvvi-… 下全绿，客户机器上装到第 4 步就停。
+        plan = cluster_plan(home=self.home, pg_port=54329, pg_bin=Path('/opt/homebrew/opt/postgresql@17/bin'))
+        start = next(step for step in plan.steps if step['kind'] == 'start-server')
+        self.assertNotIn('-o', start['argv'])
+
+    def test_socket_dir_with_a_space_survives_the_config_file(self):
+        # 回归测试：**用真的会出现在客户机器上的那个路径**。
+        # 这个用例的价值全在「含空格」三个字上，换成无空格路径就什么都测不到。
+        spaced = Path(self._tmp.name) / 'Application Support' / 'KVVI-Agent'
+        plan = cluster_plan(home=spaced, pg_port=54329,
+                            pg_bin=Path('/opt/homebrew/opt/postgresql@17/bin'))
+        content = next(s for s in plan.steps if s['kind'] == 'write-cluster-config')['content']
+        self.assertIn(f"unix_socket_directories = '{spaced / 'run'}'", content)
+
+    def test_cluster_config_rewrite_is_idempotent(self):
+        # 安装会重跑。重跑两次如果留下两份 `port = …`，postgres 取最后一份 ——
+        # 表面上「写过了」，实际生效的是哪一份要看运气。
+        from distribution.lib.pg import write_cluster_config
+        conf = Path(self._tmp.name) / 'postgresql.conf'
+        conf.write_text('# 原样保留\n', encoding='utf-8')
+        write_cluster_config(conf, 54329, self.home / 'run')
+        first = conf.read_text(encoding='utf-8')
+        write_cluster_config(conf, 54329, self.home / 'run')
+        second = conf.read_text(encoding='utf-8')
+        self.assertEqual(first, second)
+        self.assertEqual(second.count('port = 54329'), 1)
+        self.assertIn('# 原样保留', second)
 
 
 class DatabasePlanTest(unittest.TestCase):

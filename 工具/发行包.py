@@ -111,6 +111,7 @@ REQUIRED = [
     'services/platform/src/migrate.mjs',
     'services/platform/node_modules/pg/package.json',
     'vendor/dsh/apps/cli/lib/bin.js',
+    'vendor/dsh/packages/compaction/compaction-image-offload/lib/types/projection.js',
     'vendor/dsh/package.json',
     'contracts/meta-schemas/0a-full-r1/business-schema.v1.schema.json',
     '安装手册.md',
@@ -128,15 +129,33 @@ def should_skip(source_rel: str, rel: str) -> bool:
     probe = '/' + rel.strip('/') + '/'
     if any(piece in probe for piece in SKIP_ANYWHERE):
         return True
-    if '/lib/types/' in probe:
-        # `.d.ts` 是编译中间产物，运行时用不到；`lib/*.js` 要留。
-        return True
     if '/node_modules/' in probe:
         # 只有被显式列为「可移植依赖」的那一份才进包。见 PORTABLE_DEPENDENCIES。
         return not any(source_rel == keep or source_rel.startswith(keep + '/')
                        or keep.startswith(source_rel + '/')
                        for keep in PORTABLE_DEPENDENCIES)
-    return rel.endswith(SKIP_SUFFIX)
+    if rel.endswith(SKIP_SUFFIX):
+        return True
+    if '/lib/types/' in probe and not rel.endswith('/') and not rel.endswith('.js'):
+        # ⚠️ **`lib/types/` 不能整目录甩掉，目录本身更不能被剪掉。**
+        #
+        # 这里原来写的是「`lib/types/` 一律不进包」，理由是一句想当然：
+        # 「`.d.ts` 是编译中间产物，运行时用不到」。**前提是错的。**
+        # DSH 的 tsconfig 用 `outDir: lib/types`，所以 tsc 把**编译后的 `.js` 也落在那里**，
+        # 而包与包之间正是按 `.js` 相对路径互相 import 的：
+        # `.../session-format-catalog/lib/index.js`
+        #   → `.../dsh-compaction-image-offload/lib/types/projection.js`。
+        #
+        # 代价：源树里 `lib/types/**` 有 1946 个 `.js`、1946 个 `.d.ts`、3892 个 `.map`；
+        # 整目录一甩，1946 个运行时 `.js` 全没了（实测少 7785 个文件）。
+        # 症状极具误导性：**安装成功、界面 HTTP 200、登录成功**，
+        # 但运行时的 12 个条目 `failed to import`，24 个前端条目永远在等 `sessions` 服务 ——
+        # 界面打开是「Failed to load plugins」和一整屏待激活清单，对话区根本出不来。
+        # 而 G9 的验收只看 HTTP 200，于是这条一路绿灯。
+        #
+        # 现在只甩类型与 sourcemap（`.d.ts`、`.map`），`.js` 留下。
+        return True
+    return False
 
 
 def collect() -> list:
@@ -251,6 +270,32 @@ def scan_required(entries) -> list:
     return [path for path in REQUIRED if path not in have]
 
 
+def source_runtime_js_count() -> int:
+    """
+    源树里 `vendor/dsh/**/lib/types/**` 下的 `.js` 文件数（**任意深度**）。
+
+    **这是发行包 `lib/types` 那一类文件的数量判据。** 逐个列 `REQUIRED` 只能钉住
+    被点到的那几个；而这一类缺陷的形态是「整类少掉」。数量对齐是能同时抓住
+    「漏了一类」与「多了一坨」的判据。
+
+    ⚠️ 深度必须算全：`lib/types` 下还有子目录，只数直接落在 `lib/types/` 里那一层
+    会漏掉四成（实测 1107 : 1946）—— 而**漏掉的那部分恰好在 `find` 的判据之外**。
+
+    @returns 文件数；`vendor/dsh` 不在时返回 `0`（此时这一项不参与判定）
+    """
+    root = os.path.join(ROOT, 'vendor', 'dsh')
+    if not os.path.isdir(root):
+        return 0
+    count = 0
+    for base, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in ('node_modules', '.git')]
+        rel = '/' + os.path.relpath(base, root).replace(os.sep, '/') + '/'
+        if '/lib/types/' not in rel:
+            continue
+        count += sum(1 for name in files if name.endswith('.js'))
+    return count
+
+
 def check() -> int:
     """
     校验已有发行包。
@@ -278,6 +323,17 @@ def check() -> int:
             problems.append(f'运行时依赖不该进包：{name}')
         if name.startswith('vendor/dsh/') and '/node_modules/' in '/' + name + '/':
             problems.append(f'运行时依赖不该进包：{name}')
+
+    # ⚠️ **整类文件的数量对齐。** 见 `should_skip` 里 `lib/types` 那一段：
+    #    整整一类运行时 `.js` 曾经被静默甩掉，而逐个 `REQUIRED` 抓不住「少了一类」。
+    expected = source_runtime_js_count()
+    if expected > 0:
+        packed = sum(1 for name in names
+                     if name.startswith('vendor/dsh/') and '/lib/types/' in '/' + name
+                     and name.endswith('.js'))
+        if packed != expected:
+            problems.append(f'运行时代码不齐：vendor/dsh 下 lib/types 的 .js '
+                            f'源树有 {expected} 个，包里只有 {packed} 个')
 
     print(f'{C_OK}=== 发行包复核 ==={C_OFF}')
     print(f'  {os.path.relpath(ARCHIVE, ROOT)}：{len(names)} 个文件，'
@@ -338,6 +394,32 @@ def self_test() -> int:
             handle.write(saved)
 
     cases.append(('移除探针后恢复 → 通过', run_check()))
+
+    # ③ 摘掉一个**不在 `REQUIRED` 里**的 `lib/types/**.js`。
+    #    这一条针对的是「整类运行时代码被甩掉」那个缺陷：只核对 `REQUIRED`
+    #    逐个点名的文件是抓不住它的 —— 被点到的那个还在，少的是另外 1945 个。
+    with tempfile.TemporaryDirectory() as tmp:
+        broken = os.path.join(tmp, 'broken2.tar.gz')
+        victim = None
+        with tarfile.open(ARCHIVE, 'r:gz') as source:
+            with tarfile.open(broken, 'w:gz') as target:
+                for member in source.getmembers():
+                    if (victim is None and member.isfile()
+                            and '/lib/types/' in '/' + member.name and member.name.endswith('.js')
+                            and member.name not in {TOP + '/' + rel for rel in REQUIRED}):
+                        victim = member.name
+                        continue
+                    target.addfile(member, source.extractfile(member)
+                                   if member.isfile() else None)
+        with open(ARCHIVE, 'rb') as handle:
+            saved = handle.read()
+        shutil.copy2(broken, ARCHIVE)
+        cases.append((f'少一个 lib/types 的 .js（{victim.split("/")[-1] if victim else "?"}）→ 红',
+                      victim is not None and not run_check()))
+        with open(ARCHIVE, 'wb') as handle:
+            handle.write(saved)
+
+    cases.append(('恢复后仍通过 → 通过', run_check()))
 
     failed = [name for name, ok in cases if not ok]
     for name, ok in cases:

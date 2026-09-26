@@ -39,9 +39,13 @@ const servers = []
 async function fakeUpstream() {
   const seen = []
   const server = createServer((req, res) => {
-    seen.push(req.headers)
-    res.writeHead(200, { 'content-type': 'text/plain' })
-    res.end('upstream ok')
+    const chunks = []
+    req.on('data', (chunk) => { chunks.push(chunk) })
+    req.on('end', () => {
+      seen.push({ headers: req.headers, body: Buffer.concat(chunks).toString('utf8') })
+      res.writeHead(200, { 'content-type': 'text/plain' })
+      res.end('upstream ok')
+    })
   })
   server.listen(0, '127.0.0.1')
   await once(server, 'listening')
@@ -82,13 +86,13 @@ describe('转发处理器 · 运行时凭据注入', () => {
 
     // ① 运行时还没写出凭据。
     await hit(handler, port)
-    assert.equal(upstream.seen[0].cookie, undefined,
+    assert.equal(upstream.seen[0].headers.cookie, undefined,
       '没有凭据时不该带 cookie 头')
 
     // ② 运行时起来了，凭据文件出现。
     credential = 'dsh-auth-XXX=v1.body.sig'
     await hit(handler, port)
-    assert.equal(upstream.seen[1].cookie, credential,
+    assert.equal(upstream.seen[1].headers.cookie, credential,
       '凭据后来才出现，平台却没有用上它 —— 全新安装的界面会永远打不开')
   })
 
@@ -101,7 +105,7 @@ describe('转发处理器 · 运行时凭据注入', () => {
     servers.push(server)
     await hit(handler, server.address().port)
 
-    const cookie = upstream.seen[0].cookie
+    const cookie = upstream.seen[0].headers.cookie
     assert.equal(cookie, 'injected=1')
     // 浏览器那份是 KVVI 自己的会话 Cookie，运行时既不认识它、也不该看到它。
     assert.ok(!cookie.includes('kvvi-session'),
@@ -142,7 +146,116 @@ describe('转发处理器 · 运行时凭据注入', () => {
     credential = 'injected=ws'
     await handler(request, socket, Buffer.alloc(0)).catch(() => {})
     await new Promise((r) => setTimeout(r, 50))
-    assert.equal(upstream.seen.at(-1)?.cookie, 'injected=ws',
+    assert.equal(upstream.seen.at(-1)?.headers.cookie, 'injected=ws',
       '升级握手没带上注入凭据 —— 实时通道会静默失败，而 REST 一切正常')
+  })
+})
+
+/**
+ * 转发**带请求体**的请求。
+ *
+ * ── 这一组为什么必须存在 ────────────────────────────────────────────────
+ *
+ * 平台第一版在登录门那一段无条件 `await readBody(req)`：**把请求流读干**，
+ * 然后对绝大多数路径 `return null` 落回转发。转发拿到的是一段已经结束的流，
+ * 而请求头里仍带着原来的 `content-length` —— 上游一直在等一个永远不来的体。
+ *
+ * 症状的误导性在于它**同时给出「服务是好的」这个答案**：
+ *
+ * | 请求 | 结果 |
+ * |---|---|
+ * | `GET /`、`GET /healthz`、`GET /assets/*` | 正常，页面 **HTTP 200** |
+ * | `POST /api/*`（运行时的每一条 RPC，界面的全部数据来源） | **挂死，永不返回** |
+ * | 绕过平台直接打开运行时进程 | 界面一切正常 |
+ *
+ * 于是界面表现为「重新连接中…」、输入框不可用，而代理与运行时各自都「没问题」。
+ */
+describe('转发 · 请求体', () => {
+  test('★ 请求体已经被读过，转发也必须返回（而不是挂死）', async () => {
+    const upstream = await fakeUpstream()
+    const handler = createProxyHandler(upstream.url, () => 'injected=1')
+    // 模拟第一版平台的行为：先在请求处理器里把体读完，再交给转发。
+    const server = createServer(async (req, res) => {
+      for await (const _chunk of req) { /* 读干，什么都不留 */ }
+      await handler(req, res)
+    })
+    server.listen(0, '127.0.0.1')
+    await once(server, 'listening')
+    servers.push(server)
+    const { port } = server.address()
+
+    const controller = new AbortController()
+    const guard = setTimeout(() => { controller.abort() }, 4_000)
+    let status
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/api/session/list`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ type: 'client-request', rpcId: 'r1' }),
+        signal: controller.signal,
+      })
+      status = res.status
+    } catch (error) {
+      assert.fail('转发挂死了：' + String(error?.message ?? error))
+    } finally {
+      clearTimeout(guard)
+    }
+    assert.equal(status, 200, '转发没有把上游的响应送回来')
+    // ⚠️ 判据是**「声明的长度」必须等于「实际发出的字节」**，不是「必须没有 content-length」。
+    //    保留一个写着 75 却一个字节都不发的头，正是挂死的原因；
+    //    删掉之后由 node 按实际发出的流决定（这里是 `content-length: 0`），
+    //    两者一致就一定会返回。断言「没有这个头」会把正确实现也判红。
+    const declared = upstream.seen[0].headers['content-length']
+    assert.equal(Number(declared ?? upstream.seen[0].body.length), upstream.seen[0].body.length,
+      `声明了 ${String(declared)} 字节却只发出 ${String(upstream.seen[0].body.length)} 字节：`
+      + '上游会一直等下去，请求永不返回')
+  })
+
+  test('体还在时，转发把它原样送到上游', async () => {
+    const upstream = await fakeUpstream()
+    const handler = createProxyHandler(upstream.url, () => 'injected=1')
+    const server = createServer(handler)
+    server.listen(0, '127.0.0.1')
+    await once(server, 'listening')
+    servers.push(server)
+    const body = JSON.stringify({ type: 'client-request', rpcId: 'r2', method: 'session.list' })
+
+    const res = await fetch(`http://127.0.0.1:${server.address().port}/api/session/list`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body,
+    })
+    assert.equal(res.status, 200)
+    assert.equal(upstream.seen[0].body, body, '请求体没有原样到达上游')
+  })
+
+  test('`forwardHeaders` 一律剥掉 `content-length`（大小写不敏感）', () => {
+    const headers = forwardHeaders(
+      { 'content-length': '75', 'Content-Type': 'application/json' },
+      new URL('http://127.0.0.1:7401'), 'c=1')
+    const names = Object.keys(headers).map((name) => name.toLowerCase())
+    assert.equal(names.includes('content-length'), false)
+    assert.equal(headers['Content-Type'], 'application/json',
+      '只该删 content-length，别的头要原样留着')
+  })
+
+  test('★ `Origin` 跟着 Host 一起改写（只改一个会让每条 POST 都 403）', () => {
+    const headers = forwardHeaders(
+      { host: '127.0.0.1:7500', origin: 'http://127.0.0.1:7500' },
+      new URL('http://127.0.0.1:7401'), 'c=1')
+    // 运行时的栅栏要求 Origin 与 Host 是同一个 authority。
+    // 只改 Host 会得到 `127.0.0.1:7401` 配 `127.0.0.1:7500` 这一对不自洽的值 → 403。
+    assert.equal(headers.host, '127.0.0.1:7401')
+    assert.equal(headers.origin, 'http://127.0.0.1:7401')
+    // `Referer` 留着就会与 Origin 不一致。
+    assert.equal('referer' in headers, false)
+  })
+
+  test('浏览器没带 `Origin` 时也不凭空造一个', () => {
+    const headers = forwardHeaders({ host: '127.0.0.1:7500' },
+      new URL('http://127.0.0.1:7401'), 'c=1')
+    // 栅栏对「没有 Origin」是放行的（Host 那一关已经绑住了请求）。
+    // 无端加一个 Origin，等于替调用方声明了它没声明的东西。
+    assert.equal('origin' in headers, false)
   })
 })
