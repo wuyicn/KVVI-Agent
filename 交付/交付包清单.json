@@ -39,8 +39,8 @@
       "path": "services/platform",
       "kind": "平台服务进程（身份层 / 授权 / 签名 / 认证端点）",
       "version": "0.1.0",
-      "fileCount": 70,
-      "digest": "sha256:2e20e7f4a52caf1b92065f7e46d98f621ec929bc9806f7df5f5a4661bf73e907"
+      "fileCount": 74,
+      "digest": "sha256:4c47a6afed20b9c0d550f78794bc943205e2558b592b29edbded79ef20bbccba"
     },
     {
       "name": "runtime-service",
@@ -64,15 +64,15 @@
       "kind": "工作模式预设",
       "version": null,
       "fileCount": 2,
-      "digest": "sha256:cf7f98c0b0a62f2412ee752cb8f98bd162c324b125f2499052009b066c8ed186"
+      "digest": "sha256:1f5ebe181a7bf35be7cf11ddecd8a92f404e41159769871e270253bcae629ebc"
     },
     {
       "name": "client-plugin-brand",
       "path": "vendor/dsh/packages/client/kvvi-brand",
       "kind": "KVVI 品牌客户端插件",
       "version": null,
-      "fileCount": 6,
-      "digest": "sha256:50f2de6233a0f6671445c83423808a083fbdedfd2653b6c03998d6d9a06694b5"
+      "fileCount": 7,
+      "digest": "sha256:27bf820108b1e313da62d3a3292a4091e02203189091b263ca6f4f8272db4732"
     },
     {
       "name": "bundle-kvvi-app",
@@ -80,7 +80,7 @@
       "kind": "KVVI Profile Bundle",
       "version": null,
       "fileCount": 5,
-      "digest": "sha256:60eec2d3760035fd5fe897c786613b7dd074f6b617467e0c7a80e5ea3958e2f6"
+      "digest": "sha256:c02220758d95f9faf291837870200ac9f27ae316616cc59c6f76b6047cdca397"
     },
     {
       "name": "schema-samples",
@@ -91,5 +91,5 @@
       "digest": "sha256:c0c9fe33ba8f6aeef9135be6f2386101d7c7837b0f5edf30abfacc68166aa128"
     }
   ],
-  "deliveryDigest": "sha256:f3765a7fc3c11188501fd7c2f43cfb5fd9639e4380eb1a404c56831fc29e9e9e"
+  "deliveryDigest": "sha256:4c9bab22a3cd95b84a07fc82e7ead96c1f322d462d0525bd00f5d0b72da31fc4"
 }
