@@ -40,7 +40,7 @@
 - Consumes: `tokenFromCookie`, `handleAuth('/auth/session')`.
 - Produces: `handleApi({method,path,query,body,headers,session}) -> {status,body}` for `/api/v1/*`.
 
-- [ ] **Step 1: Write failing authentication and tenant-source tests**
+- [x] **Step 1: Write failing authentication and tenant-source tests**
 
 ```js
 test('API rejects missing session', async () => {
@@ -52,21 +52,21 @@ test('API ignores caller companyId', async () => {
 })
 ```
 
-- [ ] **Step 2: Run the focused test and verify 404/proxy failure**
+- [x] **Step 2: Run the focused test and verify 404/proxy failure**
 
 Run: `cd services/platform && node --test --test-concurrency=1 tests/api-router.test.mjs`  
 Expected: FAIL because `/api/v1` is not owned by the platform service.
 
-- [ ] **Step 3: Implement router ownership, JSON parsing, and verified session injection**
+- [x] **Step 3: Implement router ownership, JSON parsing, and verified session injection**
 
 Reserve `/api/v1/` before the runtime proxy. Strip identity-like body keys (`companyId`, `tenant`, `actor`, `roles`, `gateway`) using the same recursive guard as command execution.
 
-- [ ] **Step 4: Run API, auth, and proxy tests**
+- [x] **Step 4: Run API, auth, and proxy tests**
 
 Run: `cd services/platform && node --test --test-concurrency=1 tests/api-router.test.mjs tests/auth.test.mjs`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit the API router**
+- [x] **Step 5: Commit the API router**
 
 ```bash
 git add services/platform/src/api-router.mjs services/platform/src/server.mjs services/platform/src/gate.mjs services/platform/tests/api-router.test.mjs
@@ -85,7 +85,7 @@ git commit -m "feat: add authenticated product API router"
 - Consumes: `contractsOfSystem(companyId, assetId)` and existing validators.
 - Produces: `runtimeProjection(companyId, assetId) -> {system,models,views,workflows,permissions,tools}`.
 
-- [ ] **Step 1: Add failing complete/missing/tampered projection tests**
+- [x] **Step 1: Add failing complete/missing/tampered projection tests**
 
 ```js
 test('missing required contract fails closed', async () => {
@@ -99,21 +99,21 @@ test('tampered contract fails before projection', async () => {
 })
 ```
 
-- [ ] **Step 2: Run the test and confirm missing implementation**
+- [x] **Step 2: Run the test and confirm missing implementation**
 
 Run: `cd services/platform && node --test --test-concurrency=1 tests/runtime-projection.test.mjs`  
 Expected: FAIL with missing export.
 
-- [ ] **Step 3: Implement validation and cross-contract binding**
+- [x] **Step 3: Implement validation and cross-contract binding**
 
 Require `business-schema`, form/list `view-schema`, `permission-spec`, `workflow-spec`, `tool-spec`, and `app-model-command`. Verify every rendered field exists, every workflow state belongs to the model, every tool command is declared, and every component exists in the production component registry.
 
-- [ ] **Step 4: Run projection and contract suites**
+- [x] **Step 4: Run projection and contract suites**
 
 Run: `cd services/platform && node --test --test-concurrency=1 tests/contracts.test.mjs tests/runtime-projection.test.mjs`  
 Expected: PASS for valid fixture and named errors for incomplete/tampered fixtures.
 
-- [ ] **Step 5: Commit the runtime projection**
+- [x] **Step 5: Commit the runtime projection**
 
 ```bash
 git add services/platform/src/runtime-projection.mjs services/platform/src/contracts.mjs services/platform/tests/runtime-projection.test.mjs services/platform/tests/fixtures/published-system.mjs
@@ -133,7 +133,7 @@ git commit -m "feat: compile published contracts for runtime"
 - Consumes: `runtimeProjection`, `handleCommand`, `readRecord`, `createRecord`, `updateRecord`, `step`.
 - Produces: `GET /api/v1/systems`; `GET /api/v1/systems/:assetId/runtime`; record list/get/create/update; workflow actions.
 
-- [ ] **Step 1: Add failing employee journey API tests**
+- [x] **Step 1: Add failing employee journey API tests**
 
 ```js
 test('read-only employee cannot update', async () => {
@@ -150,21 +150,21 @@ test('stale row version is a conflict', async () => {
 })
 ```
 
-- [ ] **Step 2: Run and verify routes are absent**
+- [x] **Step 2: Run and verify routes are absent**
 
 Run: `cd services/platform && node --test --test-concurrency=1 tests/system-api.test.mjs`  
 Expected: FAIL with 404.
 
-- [ ] **Step 3: Implement routes as thin adapters over existing execution modules**
+- [x] **Step 3: Implement routes as thin adapters over existing execution modules**
 
 Do not duplicate authorization in `system-api.mjs`. Map HTTP inputs to typed commands, call the shared execution point, then map stable domain error codes to 400/403/404/409 responses.
 
-- [ ] **Step 4: Run system, permission, workflow, and differential tests**
+- [x] **Step 4: Run system, permission, workflow, and differential tests**
 
 Run: `cd services/platform && node --test --test-concurrency=1 tests/system-api.test.mjs tests/permissions.test.mjs tests/workflow.test.mjs tests/diff.test.mjs`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit runtime APIs**
+- [x] **Step 5: Commit runtime APIs**
 
 ```bash
 git add services/platform/src/system-api.mjs services/platform/src/api-router.mjs services/platform/src/business.mjs services/platform/src/commands.mjs services/platform/tests/system-api.test.mjs
@@ -187,7 +187,7 @@ git commit -m "feat: expose published system runtime APIs"
 - Consumes: Stage 9 API JSON and registered `view-schema` components.
 - Produces: clickable “我的系统”, form/list/detail/workflow UI inside DSH overlay.
 
-- [ ] **Step 1: Add failing renderer tests for allowed and unknown components**
+- [x] **Step 1: Add failing renderer tests for allowed and unknown components**
 
 ```tsx
 it('refuses an unregistered component', async () => {
@@ -200,21 +200,21 @@ it('does not submit hidden fields', async () => {
 })
 ```
 
-- [ ] **Step 2: Run the client test and confirm components are missing**
+- [x] **Step 2: Run the client test and confirm components are missing**
 
 Run: `cd vendor/dsh && pnpm vitest run packages/client/kvvi-panel/tests/runtime-ui.spec.tsx`  
 Expected: FAIL with missing modules.
 
-- [ ] **Step 3: Implement a closed renderer and API client**
+- [x] **Step 3: Implement a closed renderer and API client**
 
 Registry keys are explicit imports such as `TextInput`, `NumberInput`, `Select`, `DateInput`, `Table`, and `FormPage`. Unknown keys render a blocking error. System rows become buttons that load the runtime projection; writes include `rowVersion` and display stable server errors.
 
-- [ ] **Step 4: Run client tests and bundle**
+- [x] **Step 4: Run client tests and bundle**
 
 Run: `cd vendor/dsh && pnpm vitest run packages/client/kvvi-panel/tests/runtime-ui.spec.tsx && pnpm --filter @deepseek-ai/dsh-client-kvvi-panel bundle`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit the runtime UI**
+- [x] **Step 5: Commit the runtime UI**
 
 ```bash
 git add forks/dsh/变更/packages/client/kvvi-panel
@@ -234,25 +234,25 @@ git commit -m "feat: render published systems in DSH workbench"
 - Consumes: Tasks 1–4.
 - Produces: G7 verdict from draft contracts through first employee record.
 
-- [ ] **Step 1: Write the failing e2e test**
+- [x] **Step 1: Write the failing e2e test**
 
 Create a generic request system fixture, submit/approve/publish it, fetch its runtime projection as an employee, create a record, and read it back through the list endpoint.
 
-- [ ] **Step 2: Run before evidence wiring**
+- [x] **Step 2: Run before evidence wiring**
 
 Run: `cd services/platform && node --test --test-concurrency=1 tests/publish-runtime-e2e.test.mjs`  
 Expected: PASS only after Tasks 1–4; `python3 工具/check_stage9.py` still FAILS until evidence is registered.
 
-- [ ] **Step 3: Register the G7 commands and UI bundle evidence**
+- [x] **Step 3: Register the G7 commands and UI bundle evidence**
 
 Include contract completeness, runtime APIs, client renderer bundle, and end-to-end record creation.
 
-- [ ] **Step 4: Run G7 and progress consistency**
+- [x] **Step 4: Run G7 and progress consistency**
 
 Run: `python3 工具/check_stage9.py && python3 工具/进度.py --check`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit Stage 9 evidence**
+- [x] **Step 5: Commit Stage 9 evidence**
 
 ```bash
 git add 工具/check_stage9.py 工具/验收证据包.py services/platform/tests/publish-runtime-e2e.test.mjs 进度.md docs/阶段九-系统运行闭环-取证.md 交付/证据
