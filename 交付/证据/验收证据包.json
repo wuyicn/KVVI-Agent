@@ -249,11 +249,11 @@
       "stage": "阶段十",
       "name": "G8 UI 与 Agent 差异等价",
       "command": "python3 工具/check_stage10.py --run-only",
-      "exitCode": 0,
-      "ok": true,
+      "exitCode": 1,
+      "ok": false,
       "evidence": "交付/证据/阶段十-G8-UI-与-Agent-差异等价.txt",
-      "digest": "sha256:95dfea60d44fbe355cbda2c58ff762bb4e1826535240d9f5b581a75fa84e16d6",
-      "commit": "c14fffe11dd6cf24220b8206111e87a83d69519e",
+      "digest": "sha256:f79930eb4cf78447e880b410142c56d4d1785827f7cf939f44c415ea1a8e1402",
+      "commit": "3a159633527700763a891a1036d590393a05ada3",
       "evidenceClasses": [
         "admin_api",
         "admin_ui",
@@ -285,6 +285,8 @@
     }
   ],
   "deliveryDigest": "sha256:e2e5e460623c01aa21e2ad6f72f9f841b89f093dc8fea9f05752bbc0fd1fca5c",
-  "failed": [],
-  "bundleDigest": "sha256:075aa2188c4e3053b71202f7ca645edc12e7c5d1563bd3005de59d45c5c01504"
+  "failed": [
+    "阶段十/G8 UI 与 Agent 差异等价"
+  ],
+  "bundleDigest": "sha256:5297ad783c667b05246dd1ca3748d91ba60de58aac8838dbf7dc15d29666b929"
 }
