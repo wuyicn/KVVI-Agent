@@ -171,6 +171,7 @@ async function errorOf(
     detail?: unknown
     missing?: unknown
     fields?: unknown
+    states?: unknown
     currentRowVersion?: unknown
   }
   const code = typeof record.error === 'string' ? record.error : `KVVI_HTTP_${String(res.status)}`
