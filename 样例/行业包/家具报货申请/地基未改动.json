@@ -24,8 +24,8 @@
     },
     "platform-service": {
       "path": "services/platform",
-      "digest": "sha256:c80a8fbff871f1e435aedb32a5a327bdc87fd1fd90ced3a8ea299b1530c6cff8",
-      "fileCount": 65
+      "digest": "sha256:37cf67286459c6ff8c594129a3c11b8607ce01014e80e9a3d51e846c3a4ca52a",
+      "fileCount": 67
     },
     "runtime-service": {
       "path": "services/runtime",
@@ -143,6 +143,12 @@
     },
     {
       "reason": "阶段九任务 1：平台认领 /api/v1/ 并提供受鉴权的产品 API 路由",
+      "changedComponents": [
+        "platform-service"
+      ]
+    },
+    {
+      "reason": "阶段九任务 2：新增运行时投影 runtime-projection.mjs（契约闭合校验与跨契约绑定）",
       "changedComponents": [
         "platform-service"
       ]
