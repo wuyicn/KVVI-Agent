@@ -44,7 +44,7 @@
 - Consumes: current delivery manifest, the frozen `KVVI_PG_MAJOR = 17`.
 - Produces: `kvvi-admin preflight --config <path> -> JSON report`; release archive layout.
 
-- [ ] **Step 1: Write failing preflight tests**
+- [x] **Step 1: Write failing preflight tests**
 
 ```python
 def test_wrong_postgres_major_names_both_versions(tmp_path):
@@ -64,21 +64,21 @@ def test_port_collision_fails_without_writes(tmp_path, occupied_port):
     assert list(tmp_path.iterdir()) == []
 ```
 
-- [ ] **Step 2: Run tests and confirm missing module**
+- [x] **Step 2: Run tests and confirm missing module**
 
 Run: `python3 -m unittest distribution.tests.test_preflight -v`
 Expected: FAIL with missing `distribution.lib.preflight`.
 
-- [ ] **Step 3: Implement release manifest and read-only checks**
+- [x] **Step 3: Implement release manifest and read-only checks**
 
 Check macOS version, CPU architecture, both Homebrew prefixes (`/opt/homebrew` for Apple Silicon, `/usr/local` for Intel), `pg_config` presence, PostgreSQL major version, memory, disk, the KVVI port and the PostgreSQL port, writable target directory, and clock sanity. Emit stable codes plus one line of human guidance per code. Create nothing during preflight.
 
-- [ ] **Step 4: Run tests and rebuild release archive**
+- [x] **Step 4: Run tests and rebuild release archive**
 
-Run: `python3 -m unittest distribution.tests.test_preflight -v && python3 工具/交付包.py --build`
-Expected: PASS; archive includes `distribution/` and the manifest digest updates.
+Run: `python3 -m unittest distribution.tests.test_preflight -v && python3 工具/交付包.py --write && python3 工具/交付包.py --check && python3 工具/交付包.py --self-test`
+Expected: PASS; the manifest lists a `distribution` component and the digest updates. Run `--write` before `--self-test`: the reverse test assumes a fresh manifest, and a stale one makes its positive case red for the wrong reason.
 
-- [ ] **Step 5: Commit release layout**
+- [x] **Step 5: Commit release layout**
 
 ```bash
 git add distribution 工具/交付包.py

@@ -1,0 +1,37 @@
+{
+  "bundleVersion": "kvvi-distribution/v1",
+  "edition": "macos-pilot",
+  "spec": "KVVI-Agent 私有化发行版与产品闭环补充需求-v1.0.md §9.5",
+  "requires": {
+    "os": "macOS",
+    "minMacosVersion": "13.0",
+    "postgresql": {
+      "formula": "postgresql@17",
+      "major": 17,
+      "installCommand": "brew install postgresql@17",
+      "note": "Homebrew 提供的是二进制，不是服务。KVVI 用它自建独立集群，不连客户已有的库。"
+    },
+    "minMemoryGiB": 4,
+    "minDiskGiB": 10
+  },
+  "defaults": {
+    "pgPort": 54329,
+    "platformPort": 7400,
+    "home": "~/Library/Application Support/KVVI-Agent"
+  },
+  "databases": [
+    { "name": "kvvi_platform", "role": "kvvi_platform", "purpose": "身份、授权、契约、发布、会话" },
+    { "name": "kvvi_business", "role": "kvvi_business", "purpose": "业务记录（RLS 强制租户与行范围）" },
+    { "name": "kvvi_audit", "roles": { "writer": "kvvi_audit_writer", "reader": "kvvi_audit_reader" },
+      "purpose": "审计链（只能经 audit_append 写入）" }
+  ],
+  "degradations": [
+    "三个独立 PostgreSQL 实例 → 一个实例内的三个独立数据库：库、角色、RLS 与审计规则保留，实例级进程与配置隔离减弱。",
+    "两个容器 → 同一用户下的两个进程：不满足 PRD §4.6.5「不同容器或不同系统用户」。"
+  ],
+  "notClaimed": [
+    "Linux 企业服务器部署",
+    "只下载一个发行包即可使用（第一版要求预装 Homebrew PostgreSQL）",
+    "三个独立数据库实例"
+  ]
+}

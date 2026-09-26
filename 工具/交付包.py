@@ -54,6 +54,7 @@ COMPONENTS = [
     ('protocol', 'protocol', '规范层（kvvi-json-c14n 双实现）', None),
     ('meta-schema-validator', 'tools/meta-schema', '验证器（Node 侧）', None),
     ('meta-schema-validator-full', 'tools/meta-schema-full', '验证器（全量结构）', None),
+    ('distribution', 'distribution', 'macOS 试点发行版（安装向导 / 前置检查 / 备份恢复 / 升级）', None),
     ('platform-service', 'services/platform', '平台服务进程（身份层 / 授权 / 签名 / 认证端点）', 'package.json'),
     ('runtime-service', 'services/runtime', 'Agent 运行时进程（容器入口）', None),
     ('agent-preset-builder', 'vendor/dsh/packages/preset/agent-presets/presets/kvvi-builder',
@@ -73,14 +74,32 @@ FORBIDDEN_PATTERNS = [
      '内嵌的进程间令牌'),
 ]
 
-# 扫描时跳过的目录：构建产物与依赖不属于「交付内容」，
+# 扫描时跳过的目录：依赖与缓存不属于「交付内容」，
 # 但它们的**存在**也不该让校验失败 —— 所以是跳过，不是忽略。
-SKIP_DIRS = {'.git', 'node_modules', '__pycache__', '.venv', 'lib', 'dist', '.cache'}
+SKIP_DIRS = {'.git', 'node_modules', '__pycache__', '.venv', '.cache'}
+
+# ⚠️ `lib` 与 `dist` **不能一律跳过**。
+#
+# 它们在 JS/TS 包里是构建产物（不该进包），但在 Python 包里 `lib/` 是**源码目录**。
+# 第一版把 `lib` 写进 SKIP_DIRS，于是 `distribution/lib/preflight.py` 一声不响地
+# 被排除在交付内容之外 —— 交付包看起来是完整的，装到客户机器上却没有安装逻辑。
+# 这类「静默少文件」比报错难查得多。
+#
+# 判据：**只有当一个目录的上一级有 `package.json` 时，`lib`/`dist` 才算构建产物。**
+# 那是「这是一个 npm 包」的可判定信号，不是猜。
+BUILD_OUTPUT_DIRS = {'lib', 'dist'}
+
+
+def _is_build_output(parent, name):
+    if name not in BUILD_OUTPUT_DIRS:
+        return False
+    return os.path.isfile(os.path.join(parent, 'package.json'))
 
 
 def iter_files(abs_dir):
     for base, dirs, files in os.walk(abs_dir):
-        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        dirs[:] = [d for d in dirs
+                   if d not in SKIP_DIRS and not _is_build_output(base, d)]
         for name in files:
             yield os.path.join(base, name)
 
