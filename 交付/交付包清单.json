@@ -88,7 +88,7 @@
       "kind": "KVVI Profile Bundle",
       "version": null,
       "fileCount": 5,
-      "digest": "sha256:c02220758d95f9faf291837870200ac9f27ae316616cc59c6f76b6047cdca397"
+      "digest": "sha256:c4a0a6d536bfbf057ce2431d3780aaad08f81b2a60f5cd984db263310a3ece34"
     },
     {
       "name": "schema-samples",
@@ -99,5 +99,5 @@
       "digest": "sha256:c0c9fe33ba8f6aeef9135be6f2386101d7c7837b0f5edf30abfacc68166aa128"
     }
   ],
-  "deliveryDigest": "sha256:3da2ea206a1c4c35a6fede8f999203236d16a05f7f7058834cb73e9d6f8bdc54"
+  "deliveryDigest": "sha256:8830f3bf5022a8ef2b4e86dd6dc83f1ed87d1c303353b172aa85557091fa26c3"
 }

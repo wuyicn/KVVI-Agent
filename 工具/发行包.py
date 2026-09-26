@@ -70,6 +70,18 @@ CONTENTS = [
     ('vendor/dsh', 'vendor/dsh'),
     ('contracts', 'contracts'),
     ('protocol', 'protocol'),
+    # ⚠️ **搭建引擎的契约校验器，不能漏。**
+    #
+    # `kvvi-builder` 预设里每个构建 skill 都写着「用 `data-model` 建模，
+    # 再用 `node tools/meta-schema/node/cli.mjs --contract … --checks complete` 校验」——
+    # 而第一版的发行包里**没有 `tools/` 这个目录**。于是搭建者按 skill 里的命令去跑，
+    # 找不到文件，只能自己找替代方案（实测它试了 ajv、翻了半天目录），
+    # 「定契约」这一步就没有机器判据了。
+    #
+    # 它其实**本来就该跟着走**：`cli.mjs` 用 `dirname^4` 定位仓库根，
+    # 然后去读 `protocol/kvvi-json-c14n/…` 与 `contracts/meta-schemas/…`——
+    # 而这两样发行包里一直都有。少的就是 `tools/` 这一项。
+    ('tools/meta-schema', 'tools/meta-schema'),
 ]
 
 #: 整树收录时排除的路径片段。缓存与 Git 元数据一律不进包。
@@ -89,7 +101,7 @@ SKIP_ANYWHERE = ('/.git/', '/__pycache__/', '/.cache/',
 #: 第一版把 `node_modules` 写进 `SKIP_ANYWHERE`，于是平台的依赖也被甩掉，
 #: 而那些必需文件是在 `--build` 之后才被 `REQUIRED` 检查抓到的 ——
 #: **一个把该带的东西也甩掉的规则，与一个把不该带的东西带上的规则，同样坏。**
-PORTABLE_DEPENDENCIES = ('services/platform',)
+PORTABLE_DEPENDENCIES = ('services/platform', 'tools/meta-schema')
 
 #: 只保留构建产物、不保留源码树里的临时文件。
 SKIP_SUFFIX = ('.pyc', '.log', '.tsbuildinfo')
@@ -107,6 +119,9 @@ REQUIRED = [
     'distribution/lib/install.py',
     'distribution/lib/preflight.py',
     'distribution/manifest.json',
+    'tools/meta-schema/node/cli.mjs',
+    'tools/meta-schema/node/node_modules/ajv/package.json',
+    'protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/node/kvvi-json-c14n.mjs',
     'services/platform/src/server.mjs',
     'services/platform/src/migrate.mjs',
     'services/platform/node_modules/pg/package.json',
@@ -319,10 +334,13 @@ def check() -> int:
         if path not in names:
             problems.append(f'缺必需文件：{path}')
     for name in names:
-        if '/node_modules/' in '/' + name + '/' and not name.startswith('services/platform/'):
-            problems.append(f'运行时依赖不该进包：{name}')
-        if name.startswith('vendor/dsh/') and '/node_modules/' in '/' + name + '/':
-            problems.append(f'运行时依赖不该进包：{name}')
+        # ⚠️ 判据从 `PORTABLE_DEPENDENCIES` **取**，不在这里另写一份名单。
+        #    第一版把 `services/platform/` 写死在条件里，于是第二个可移植依赖
+        #    （`tools/meta-schema`）加上去时，规则立刻把它判成违规 ——
+        #    而这其实是规则自己没跟上，不是包错了。名单写两处，就会漂移一处。
+        if '/node_modules/' in '/' + name + '/':
+            if not any(name.startswith(keep + '/') for keep in PORTABLE_DEPENDENCIES):
+                problems.append(f'运行时依赖不该进包：{name}')
 
     # ⚠️ **整类文件的数量对齐。** 见 `should_skip` 里 `lib/types` 那一段：
     #    整整一类运行时 `.js` 曾经被静默甩掉，而逐个 `REQUIRED` 抓不住「少了一类」。
