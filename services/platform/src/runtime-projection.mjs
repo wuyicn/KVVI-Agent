@@ -110,6 +110,7 @@ function statesOf(spec) {
  * @param {string} assetId 系统代号
  * @returns {Promise<{system: object, models: object, views: object,
  *   workflows: object, permissions: object, tools: object, commands: object}>}
+ *   其中 `workflows[assetId].states` 保持**契约的数组形状**，派生查表在 `stateLabels`。
  * @throws {Error} `code === 'KVVI_RUNTIME_CONTRACT_INCOMPLETE'` 缺契约或系统不存在；
  *   `code === 'KVVI_RUNTIME_FIELD_UNBOUND'` 视图引用了模型里没有的字段；
  *   `message === 'KVVI_CONTRACT_CONTENT_TAMPERED'` 内容指纹不符
@@ -185,7 +186,12 @@ export async function runtimeProjection(companyId, assetId) {
     system,
     models: { [assetId]: model },
     views: { [assetId]: view },
-    workflows: { [assetId]: { ...workflow, states } },
+    // ⚠️ **不改写契约里的 `states`。** 它是数组（契约的形状），
+    //    而流程运行时 `workflow.mjs` 正是按数组读的 —— 投影把它折成对象时，
+    //    「这一个系统的状态表」就有了两个形状，两条读取路径迟早分叉。
+    //    真实发生过：阶段十接流程端点时 `loadSpec` 撞上 `spec.states.map is not a function`。
+    //    派生出来的查表放在 `stateLabels` 里，名字说明它是**派生**的。
+    workflows: { [assetId]: { ...workflow, stateLabels: states } },
     permissions: { [assetId]: permission },
     tools: { [assetId]: tool },
     commands: { [assetId]: command },

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-验收证据包（历史阶段一至七 + 补充需求阶段八、九）。
+验收证据包（历史阶段一至七 + 补充需求阶段八、九、十）。
 
 ## 判据
 
@@ -34,6 +34,8 @@
     python3 工具/验收证据包.py --refresh-stage8  # 仅复验并替换尚未交付的 G6
     python3 工具/验收证据包.py --append-stage9   # 保留旧条目，只追加 G7
     python3 工具/验收证据包.py --refresh-stage9  # 仅复验并替换尚未交付的 G7
+    python3 工具/验收证据包.py --append-stage10  # 保留旧条目，只追加 G8
+    python3 工具/验收证据包.py --refresh-stage10 # 仅复验并替换尚未交付的 G8
 """
 
 import hashlib
@@ -110,6 +112,31 @@ STAGE9 = ('阶段九', '系统运行闭环', [
     ('G7 系统运行闭环', ['python3', '工具/check_stage9.py', '--run-only']),
 ])
 
+STAGE10 = ('阶段十', '员工与管理闭环', [
+    ('G8 UI 与 Agent 差异等价', ['python3', '工具/check_stage10.py', '--run-only']),
+])
+
+STAGE10_SOURCES = [
+    'services/platform/src/admin-api.mjs',
+    'services/platform/src/api-router.mjs',
+    'services/platform/src/system-api.mjs',
+    'services/platform/src/runtime-projection.mjs',
+    'services/platform/src/workflow.mjs',
+    'services/platform/tests/admin-api.test.mjs',
+    'services/platform/tests/ui-agent-e2e.test.mjs',
+    'services/platform/tests/api-router.test.mjs',
+    'forks/dsh/变更/packages/tool/kvvi-business/src/client.ts',
+    'forks/dsh/变更/packages/tool/kvvi-business/src/index.ts',
+    'forks/dsh/变更/packages/tool/kvvi-business/tests/tools.spec.ts',
+    'forks/dsh/变更/packages/client/kvvi-panel/src/client/AdminShell.tsx',
+    'forks/dsh/变更/packages/client/kvvi-panel/src/client/MemberAdmin.tsx',
+    'forks/dsh/变更/packages/client/kvvi-panel/src/client/RoleAdmin.tsx',
+    'forks/dsh/变更/packages/client/kvvi-panel/src/client/PolicyEditor.tsx',
+    'forks/dsh/变更/packages/client/kvvi-panel/tests/admin-ui.spec.tsx',
+    'forks/dsh/变更/packages/preset/agent-presets/presets/kvvi-worker/agent.cordis.yml',
+    '工具/check_stage10.py',
+]
+
 STAGE9_SOURCES = [
     'services/platform/src/api-router.mjs',
     'services/platform/src/system-api.mjs',
@@ -161,7 +188,7 @@ def collect() -> int:
     print('判据：阶段一至六的**全部**测试记录与指纹（PRD §7.1 阶段七）')
     print()
 
-    all_stages = STAGES + [STAGE8, STAGE9]
+    all_stages = STAGES + [STAGE8, STAGE9, STAGE10]
     for stage, title, checks in all_stages:
         print('%s%s · %s%s' % (C_OK, stage, title, C_OFF))
         for name, cmd in checks:
@@ -189,6 +216,8 @@ def collect() -> int:
                          STAGE8_SOURCES),
                 '阶段九': (['contracts', 'runtime_api', 'client_ui', 'end_to_end'],
                          STAGE9_SOURCES),
+                '阶段十': (['admin_api', 'admin_ui', 'worker_tools', 'differential',
+                           'signed_context', 'worker_composition'], STAGE10_SOURCES),
             }
             if stage in supplementary:
                 classes, sources = supplementary[stage]
@@ -327,6 +356,20 @@ def refresh_stage8() -> int:
     return _write_stage(*STAGE8, STAGE8_SOURCES, classes, replace=True)
 
 
+def append_stage10() -> int:
+    """只追加阶段十；既有阶段、条目与证据文件不重跑、不改写。"""
+    classes = ['admin_api', 'admin_ui', 'worker_tools', 'differential',
+               'signed_context', 'worker_composition']
+    return _write_stage(*STAGE10, STAGE10_SOURCES, classes, replace=False)
+
+
+def refresh_stage10() -> int:
+    """只复验阶段十；历史阶段的记录与证据文件保持逐字节不变。"""
+    classes = ['admin_api', 'admin_ui', 'worker_tools', 'differential',
+               'signed_context', 'worker_composition']
+    return _write_stage(*STAGE10, STAGE10_SOURCES, classes, replace=True)
+
+
 def append_stage9() -> int:
     """只追加阶段九；既有阶段、条目与证据文件不重跑、不改写。"""
     classes = ['contracts', 'runtime_api', 'client_ui', 'end_to_end']
@@ -373,6 +416,10 @@ def verify() -> int:
 
 
 def main() -> int:
+    if '--refresh-stage10' in sys.argv:
+        return refresh_stage10()
+    if '--append-stage10' in sys.argv:
+        return append_stage10()
     if '--refresh-stage9' in sys.argv:
         return refresh_stage9()
     if '--append-stage9' in sys.argv:

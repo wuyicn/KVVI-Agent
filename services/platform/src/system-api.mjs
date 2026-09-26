@@ -22,6 +22,7 @@ import { scopeContext, fieldVisibility, projectFields, canAct } from './authoriz
 import { createRecord, readRecord, listRecords, updateRecord } from './refs.mjs'
 import { runtimeProjection } from './runtime-projection.mjs'
 import { publishedSystems } from './publish.mjs'
+import { step, nextActions, submitterOf, WorkflowError } from './workflow.mjs'
 
 /**
  * 把已验证的会话折成执行点要的 `ctx`。
@@ -52,6 +53,14 @@ const STATUS_OF = Object.freeze({
   KVVI_RUNTIME_TRANSITION_DANGLING: 409,
   KVVI_CONTRACT_CONTENT_TAMPERED: 409,
   KVVI_BAD_REQUEST: 400,
+  // 流程迁移的拒绝码。它们与 `workflow.mjs` 的抛出一一对应 —— 换名字等于
+  // 让界面与 Agent 各认一套，而 G8 的判据正是「两条通道给同样的码」。
+  KVVI_UNKNOWN_STATE: 409,
+  KVVI_UNKNOWN_ACTION: 409,
+  KVVI_TERMINAL_STATE: 409,
+  KVVI_NO_TRANSITION: 409,
+  KVVI_ACTION_NOT_PERMITTED: 403,
+  KVVI_SELF_APPROVAL_FORBIDDEN: 403,
 })
 
 const fail = (code, extra = {}) => ({
@@ -65,22 +74,38 @@ const fail = (code, extra = {}) => ({
  * @param assetId 系统代号
  * @returns {Promise<{status: number, body: object}>}
  */
+/**
+ * 投影失败 → HTTP 答复。**三个调用点共用这一份**。
+ *
+ * ⚠️ 投影的 `detail` 是**结构化**的：`{assetId, missing}` / `{assetId, fields}`
+ *    / `{assetId, states}`。原样塞进一个 `detail` 字段，它就变成谁也取不到的
+ *    嵌套对象 —— 而「逐份报出缺了哪些」正是这条判据**可用的前提**：
+ *    补的人得知道补哪一份。所以摊平到顶层。
+ *
+ * ⚠️ 三个调用点必须共用：阶段十接流程端点时，新写的两处各自写了一遍
+ *    `catch (error) { return fail(code, { assetId }) }`，于是**理由又消失了** ——
+ *    排查时只看到 `KVVI_RUNTIME_CONTRACT_INCOMPLETE`，看不到缺的是哪一份。
+ *    一份实现、三个调用点，是这类「第二处悄悄比第一处差」的唯一解。
+ *
+ * @param error 投影抛出的错误
+ * @param assetId 系统代号
+ * @returns `{status, body}`
+ */
+function projectionFailure(error, assetId) {
+  if (error?.message === 'KVVI_CONTRACT_CONTENT_TAMPERED') {
+    return fail('KVVI_CONTRACT_CONTENT_TAMPERED', { assetId })
+  }
+  return {
+    status: STATUS_OF[error?.code] ?? 400,
+    body: { error: error?.code ?? 'KVVI_BAD_REQUEST', assetId, ...(error?.detail ?? {}) },
+  }
+}
+
 async function systemRuntime(ctx, assetId) {
   try {
     return { status: 200, body: await runtimeProjection(ctx.companyId, assetId) }
   } catch (error) {
-    if (error?.message === 'KVVI_CONTRACT_CONTENT_TAMPERED') {
-      return fail('KVVI_CONTRACT_CONTENT_TAMPERED', { assetId })
-    }
-    // ⚠️ 投影的 `detail` 是**结构化**的：`{assetId, missing}` / `{assetId, fields}`
-    //    / `{assetId, states}`。原样塞进一个 `detail` 字段，它就变成谁也取不到的
-    //    嵌套对象 —— 而「逐份报出缺了哪些」正是这条判据**可用的前提**：
-    //    补的人得知道补哪一份。所以在这里摊平到顶层。
-    //    是 e2e 测试抓到的：状态码与错误码都对，缺的那份契约却消失在响应里。
-    return {
-      status: STATUS_OF[error?.code] ?? 400,
-      body: { error: error?.code ?? 'KVVI_BAD_REQUEST', assetId, ...(error?.detail ?? {}) },
-    }
+    return projectionFailure(error, assetId)
   }
 }
 
@@ -186,6 +211,119 @@ async function recordUpdate(ctx, assetId, recordId, payload) {
   return { status: 200, body: { recordId: updated.recordId, rowVersion: updated.rowVersion } }
 }
 
+/**
+ * 读一个系统的**流程契约**。
+ *
+ * 投影的六个必需契约里就有 `workflow-spec`，所以这里再取一次不算多花一次
+ * 业务判断 —— 而把「这个记录现在能走哪一步」算在客户端意味着
+ * 自审批禁令、终态不可写这些规则要在浏览器里再实现一遍。
+ * @param ctx 会话派生的上下文
+ * @param assetId 系统代号
+ * @returns `workflow-spec` 的内容
+ */
+async function workflowOf(ctx, assetId) {
+  const projection = await runtimeProjection(ctx.companyId, assetId)
+  return projection.workflows[assetId]
+}
+
+/**
+ * 一条记录当前**可执行**的流程动作。
+ *
+ * 只列出**该会话真的有 FLOW 权限**的那些：把没权限的动作也列出来，
+ * 界面会画一个按了就 403 的按钮，而那与「这一步不被流程允许」是两件事 ——
+ * 用户分不清自己是「不能」还是「不该」。
+ * @param ctx 上下文
+ * @param assetId 系统代号
+ * @param recordId 记录
+ * @returns `{status, body}`
+ */
+async function recordActions(ctx, assetId, recordId) {
+  if (!await canAct(ctx.companyId, ctx.userId, 'FORM', assetId, 'read')) {
+    return { status: 403, body: { error: 'KVVI_NOT_ALLOWED',
+      detail: `没有 ${assetId} 的 read 动作权限` } }
+  }
+  const scope = await scopeContext(ctx)
+  const record = await readRecord(ctx, scope, {
+    companyId: ctx.companyId, schemaCode: assetId, id: recordId,
+  })
+  if (record === null) return fail('KVVI_NO_SUCH_RECORD', { recordId })
+
+  let workflow
+  try {
+    workflow = await workflowOf(ctx, assetId)
+  } catch (error) {
+    return projectionFailure(error, assetId)
+  }
+  const candidates = nextActions(workflow, record.state)
+  const granted = []
+  for (const candidate of candidates) {
+    // ⚠️ 逐条判权限（`canAct` 是唯一判据），不在本层另立规则。
+    if (await canAct(ctx.companyId, ctx.userId, 'FLOW', workflow.workflow_code ?? '*',
+      candidate.action)) granted.push(candidate)
+  }
+  return { status: 200, body: { recordId, state: record.state, actions: granted } }
+}
+
+/**
+ * 执行一步流程迁移。
+ *
+ * `rowVersion` 与记录更新一样是**必填**：流程迁移会改 `state`，而「最后写入者
+ * 获胜」在流程上比在字段上更坏 —— 一个已经批过的单子会被另一条路径重新推回待审批。
+ * @param ctx 上下文
+ * @param assetId 系统代号
+ * @param recordId 记录
+ * @param payload 请求体（身份字段已在入口剥掉）
+ * @returns `{status, body}`
+ */
+async function recordTransition(ctx, assetId, recordId, payload) {
+  const action = payload?.action
+  if (typeof action !== 'string' || action === '') {
+    return fail('KVVI_BAD_REQUEST', { detail: 'action 必填' })
+  }
+  if (typeof payload?.rowVersion !== 'number') {
+    return fail('KVVI_BAD_REQUEST', { detail: 'rowVersion 必填（乐观并发）' })
+  }
+  if (!await canAct(ctx.companyId, ctx.userId, 'FORM', assetId, 'read')) {
+    return { status: 403, body: { error: 'KVVI_NOT_ALLOWED',
+      detail: `没有 ${assetId} 的 read 动作权限` } }
+  }
+  const scope = await scopeContext(ctx)
+  const record = await readRecord(ctx, scope, {
+    companyId: ctx.companyId, schemaCode: assetId, id: recordId,
+  })
+  if (record === null) return fail('KVVI_NO_SUCH_RECORD', { recordId })
+
+  let workflow
+  try {
+    workflow = await workflowOf(ctx, assetId)
+  } catch (error) {
+    return projectionFailure(error, assetId)
+  }
+
+  // 自审批禁令要的提交人：执行点的 `submitterOf` 是唯一来源，本层不猜。
+  const submitterUserId = await submitterOf(recordId)
+  try {
+    const result = await step({
+      ctx, spec: workflow, recordId, from: record.state, action, submitterUserId,
+      applyTransition: async ({ toState }) => {
+        // 状态写回**带版本号**：迁移与并发写走同一条乐观并发，
+        // 不这么做的话两条路径互相覆盖且都不报错。
+        const updated = await updateRecord(ctx, scope, {
+          companyId: ctx.companyId, schemaCode: assetId, id: recordId,
+        }, { state: toState, rowVersion: payload.rowVersion })
+        if (updated === null) throw new WorkflowError('KVVI_ROW_VERSION_CONFLICT')
+        return updated
+      },
+    })
+    return { status: 200, body: {
+      recordId, from: result.from, state: result.to, rowVersion: result.applied.rowVersion,
+    } }
+  } catch (error) {
+    if (error instanceof WorkflowError) return fail(error.code, error.detail)
+    throw error
+  }
+}
+
 /** 列一个系统的记录（行范围由 RLS 决定，本模块不做行过滤）。 */
 async function recordList(ctx, assetId) {
   if (!await canAct(ctx.companyId, ctx.userId, 'FORM', assetId, 'read')) {
@@ -252,6 +390,16 @@ export async function systemRoutes({ method, path, payload, session }) {
       const recordId = decodeURIComponent(parts[3])
       if (method === 'GET') return recordGet(ctx, assetId, recordId)
       if (method === 'PATCH') return recordUpdate(ctx, assetId, recordId, payload)
+    }
+
+    // 流程：可执行的动作，以及执行一步。两条都是「记录级」的，
+    // 路径挂在记录下面而不是另开一段 —— 流程不属于系统，属于某一张单子。
+    if (parts.length === 5 && parts[2] === 'records') {
+      const recordId = decodeURIComponent(parts[3])
+      if (parts[4] === 'actions' && method === 'GET') return recordActions(ctx, assetId, recordId)
+      if (parts[4] === 'transitions' && method === 'POST') {
+        return recordTransition(ctx, assetId, recordId, payload)
+      }
     }
   }
 

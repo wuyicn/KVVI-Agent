@@ -27,6 +27,8 @@
 import { tokenFromCookie } from './gate.mjs'
 import { systemRoutes } from './system-api.mjs'
 import { adminRoutes } from './admin-api.mjs'
+import { loadSession } from './identity.mjs'
+import { verifyRuntimeContextHeaders } from './runtime-auth.mjs'
 
 /** 产品 API 的前缀。与运行时 RPC 的 `/api` 区分靠**更具体**的路径。 */
 const PREFIX = '/api/v1'
@@ -38,6 +40,44 @@ const PREFIX = '/api/v1'
  * 模型可见的逻辑引用不得带租户；这里同理：**调用方不得声明租户**）。
  */
 const IDENTITY_KEYS = Object.freeze(['companyId', 'tenant', 'actor', 'roles', 'gateway'])
+
+/**
+ * 用签名的运行时会话上下文换一个会话事实。
+ *
+ * ── 公司、用户、网关**从会话行读**，不从请求头读 ────────────────────────
+ *
+ * 头里也带着这三样，它们是签名的一部分。但签名只证明「平台签过这些字段」，
+ * 不证明「它们此刻仍然成立」：会话可能已被停用、账号可能已被挂起。
+ * 所以本函数用头里的 `sessionId` **定位**会话，再用**会话行**作为唯一事实 ——
+ * 并逐字段核对头与会话是否一致，不一致一律拒绝（重放或伪造）。
+ *
+ * @param headers 请求头
+ * @returns 会话事实；没有可用上下文或核对不过时为 `null`
+ */
+async function sessionFromRuntimeContext(headers) {
+  let context
+  try {
+    context = verifyRuntimeContextHeaders(headers)
+  } catch {
+    // 三种失败（缺失、过期、签名不符）对调用方是同一件事：没有可用凭据。
+    // 分开报会把「签名不符」变成一个可探测的信号。
+    return null
+  }
+  try {
+    const live = await loadSession(context.sessionId)
+    if (live === null) return null
+    if (live.state !== 'ACTIVE' || live.userStatus !== 'ACTIVE') return null
+    if (live.userId !== context.userId
+      || live.companyId !== context.companyId
+      || live.gateway !== context.gateway) return null
+    return {
+      sessionId: live.sessionId, userId: live.userId, companyId: live.companyId,
+      gateway: live.gateway, state: live.state,
+    }
+  } catch {
+    return null
+  }
+}
 
 /**
  * 该路径是否属于产品 API。
@@ -117,29 +157,38 @@ export function statusOf(code) {
 export async function handleApi({ method, path, query, body, headers, loadSession }) {
   if (!isApiPath(path)) return null
 
-  // ── ① 鉴权：两种凭据都认 ────────────────────────────────────────────
+  // ── ① 鉴权：三种凭据 ────────────────────────────────────────────────
   //   - `Authorization: Bearer …` —— 显式调用方（脚本、另一个前端）
   //   - 同源 Cookie —— 登录门设的 HttpOnly Cookie，浏览器自动带上
+  //   - **签名的运行时会话上下文** —— 运行时进程里的工具（Worker Agent）用它
+  //
+  // ⚠️ 第三条不是「多开一道门」。运行时进程**不可能**持有用户的 Cookie 或
+  //    委派令牌：那是浏览器的东西，而工具执行时没有浏览器。它有的是平台在
+  //    转发请求时签下的身份上下文（`runtime-auth.mjs`，双方共用同一份协议）。
+  //    所以它证明的是「这个调用来自运行时的某次已验证会话」，凭据强度与
+  //    会话令牌同级 —— 都是**平台自己签的**。
   const fromHeader = (headers?.authorization ?? '').replace(/^Bearer\s+/iu, '')
   const token = fromHeader !== '' ? fromHeader : tokenFromCookie(headers?.cookie)
-  if (token === undefined || token === '') {
-    return { status: 401, body: { error: 'KVVI_TOKEN_REQUIRED' } }
-  }
 
   let session
-  try {
-    const out = await loadSession(token)
-    if (out === null) return { status: 401, body: { error: 'KVVI_INVALID_TOKEN' } }
-    if (out.status !== 200) {
-      // 会话端点自己的拒绝原样带出（401 / 403 / 503 各有含义）
-      return out
+  if (token === undefined || token === '') {
+    session = await sessionFromRuntimeContext(headers)
+    if (session === null) return { status: 401, body: { error: 'KVVI_TOKEN_REQUIRED' } }
+  } else {
+    try {
+      const out = await loadSession(token)
+      if (out === null) return { status: 401, body: { error: 'KVVI_INVALID_TOKEN' } }
+      if (out.status !== 200) {
+        // 会话端点自己的拒绝原样带出（401 / 403 / 503 各有含义）
+        return out
+      }
+      session = out.body
+    } catch (error) {
+      return { status: 503, body: {
+        error: 'KVVI_IDENTITY_UNAVAILABLE',
+        detail: String(error && error.message ? error.message : error).slice(0, 200),
+      } }
     }
-    session = out.body
-  } catch (error) {
-    return { status: 503, body: {
-      error: 'KVVI_IDENTITY_UNAVAILABLE',
-      detail: String(error && error.message ? error.message : error).slice(0, 200),
-    } }
   }
 
   // ── ② 解析请求体，剥掉身份类字段 ───────────────────────────────────

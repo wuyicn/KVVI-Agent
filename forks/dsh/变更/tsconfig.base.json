@@ -160,6 +160,7 @@
       "@deepseek-ai/dsh-client-kvvi-brand": ["./packages/client/kvvi-brand/src"],
       "@deepseek-ai/dsh-client-kvvi-panel": ["./packages/client/kvvi-panel/src"],
       "@deepseek-ai/dsh-host-kvvi-mode-router": ["./packages/host/kvvi-mode-router/src"],
+      "@deepseek-ai/dsh-tool-kvvi-business": ["./packages/tool/kvvi-business/src"],
       // One wildcard maps every @deepseek-ai/dsh-<name> to its source. Package
       // dir names are unique across groups, so first-on-disk-wins resolution is
       // unambiguous; adding a package under an existing group needs no edit

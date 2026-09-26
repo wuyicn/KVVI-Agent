@@ -31,16 +31,19 @@
 #    exact structured parameters before an irreversible action and records that
 #    confirmation (PRD §9.8.2).
 #
-# ── STATUS: SKELETON ────────────────────────────────────────────────────────
+# ── STATUS: the mode boundary and the business tools are both in place ──────
 #
-# This preset is deliberately minimal. The business read views, action endpoints
-# and the contract client that reaches them are NOT built yet — they arrive with
-# 阶段五 (接口契约与授权) and 阶段六 (工作模式) of the roadmap (PRD §7.1).
+# The business tools arrive through `@deepseek-ai/dsh-tool-kvvi-business`, which
+# calls the KVVI platform service under this session's signed identity. Adding
+# them must NOT be done by handing this mode the builder's tools: that would
+# collapse the two gateways into one and remove the whole point of the
+# separation. The tool list below is therefore closed — six business tools, the
+# user question tool, and nothing that can build.
 #
-# Until then this preset ships the persona and the mode boundary only. Adding
-# the business tools must NOT be done by handing this mode the builder's tools:
-# that would collapse the two gateways into one and remove the whole point of
-# the separation.
+# There is still no shell, no filesystem, no web fetch and no subagent: a worker
+# answering from the company's own records has no reason to run commands, and a
+# mode that can run commands is a mode whose permissions cannot be reasoned
+# about.
 
 # ── identity ────────────────────────────────────────────────────────────────
 
@@ -75,9 +78,24 @@
 
 # ── clarification ───────────────────────────────────────────────────────────
 
-# The only tool this mode ships today, and it is load-bearing: red line 2 and
-# the ambiguity rule above both depend on the agent being able to stop and ask
-# rather than guess. Business read views and action endpoints are added here
-# later, through the contract client — never by copying builder tools across.
+# Load-bearing, not decoration: the ambiguity rule above depends on the agent
+# being able to stop and ask rather than guess.
 - id: tool-ask-user
   name: '@deepseek-ai/dsh-tool-ask-user'
+
+# ── business tools ──────────────────────────────────────────────────────────
+#
+# Every one of these is a call into the customer's platform service under the
+# employee's own identity (PRD §2.5 red line 1). The identity is the signed
+# context the runtime verified for this session — never an argument the model
+# produced — so a prompt-injected model cannot name another company.
+#
+# ⚠️ `platformUrl` and `contextSecret` have no defaults on purpose. A default
+#    URL would silently point a worker at nothing, or at the wrong deployment;
+#    a default secret would be a shared secret committed to a repository.
+#    Misconfiguration must fail at load, not at the first tool call.
+- id: tool-kvvi-business
+  name: '@deepseek-ai/dsh-tool-kvvi-business'
+  config:
+    platformUrl: !!js process.env.KVVI_PLATFORM_URL ?? 'http://127.0.0.1:7400'
+    contextSecret: !!js process.env.KVVI_INTERNAL_TOKEN ?? ''

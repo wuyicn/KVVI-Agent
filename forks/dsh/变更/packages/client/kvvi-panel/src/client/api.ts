@@ -78,9 +78,17 @@ export interface ModelSpec {
   readonly fields?: readonly ModelField[]
 }
 
-/** A published `workflow-spec` document, as the projection adds states. */
+/**
+ * A published `workflow-spec` document, as the projection returns it.
+ *
+ * `states` keeps the contract's **array** shape (the workflow runtime reads it
+ * that way); the projection's derived code-to-state lookup is `stateLabels`.
+ * Two shapes for one fact is how the two readers drift apart — the client reads
+ * the derived one and never re-shapes the contract's own.
+ */
 export interface WorkflowSpec {
-  readonly states?: Readonly<Record<string, { readonly label?: string }>>
+  readonly states?: readonly { readonly state_code?: string; readonly label?: string }[]
+  readonly stateLabels?: Readonly<Record<string, { readonly label?: string }>>
   readonly transitions?: readonly {
     readonly from_state?: string
     readonly to_state?: string
@@ -310,4 +318,137 @@ export function updateRecord(
   return request('PATCH',
     `/systems/${encodeURIComponent(assetId)}/records/${encodeURIComponent(recordId)}`,
     { data, rowVersion })
+}
+
+// ── 管理 API（阶段十）─────────────────────────────────────────────────────
+//
+// 判定全在服务端。这里的函数不含任何「我是不是管理员」的判断 ——
+// 客户端判一次会让「界面隐藏了按钮」看起来像权限，而那改一个请求就绕过去了。
+
+/** 本公司的一个成员。 */
+export interface Member {
+  readonly userId: string
+  readonly login: string
+  readonly status: string
+  readonly deptId: string | null
+  readonly deptName: string | null
+  readonly shopId: string | null
+  readonly roleCodes: readonly string[]
+  readonly builder: boolean
+  readonly platformRole: string | null
+}
+
+/** 一条策略：一次授权动作在一个维度上的那个面。 */
+export interface Policy {
+  readonly dimension: string
+  readonly resourceCode: string
+  readonly actions: readonly string[]
+  readonly dataScopes: readonly string[]
+  readonly fieldVisibility: string | null
+}
+
+/** 本公司的一个角色。 */
+export interface Role {
+  readonly roleCode: string
+  readonly name: string
+  readonly memberCount: number
+  /** 平台保留角色（`owner`/`admin`）不在这里配置。 */
+  readonly reserved: boolean
+  readonly policies: readonly Policy[]
+}
+
+/** 一个部门。 */
+export interface Department {
+  readonly deptId: string
+  readonly parentId: string | null
+  readonly name: string
+}
+
+/**
+ * 调用者能做什么。
+ *
+ * ⚠️ 这是给界面决定**显示什么**用的，不是权限判定：每个接口各自再判一次。
+ * 把它当权限用的实现，会在有人直接发请求时暴露。
+ */
+export interface AdminCapabilities {
+  readonly role: string | null
+  readonly canManageMembers: boolean
+  readonly canManageRoles: boolean
+  readonly canManagePlatformRoles: boolean
+  readonly canManageBuilder: boolean
+  readonly dimensions: readonly string[]
+  readonly dataScopes: readonly string[]
+  readonly fieldVisibilities: readonly string[]
+}
+
+/** 读调用者的管理能力。 */
+export function adminCapabilities(signal?: AbortSignal): Promise<ApiResult<AdminCapabilities>> {
+  return request('GET', '/admin/capabilities', undefined, signal)
+}
+
+/** 列本公司成员。 */
+export function listMembers(signal?: AbortSignal): Promise<ApiResult<{ items: Member[] }>> {
+  return request('GET', '/admin/members', undefined, signal)
+}
+
+/** 建账号并加入本公司。 */
+export function createMember(
+  input: { login: string; password: string; deptId?: string },
+): Promise<ApiResult<{ userId: string; login: string }>> {
+  return request('POST', '/admin/members', input)
+}
+
+/** 停用账号（其全部会话立刻结束）。 */
+export function suspendMember(userId: string): Promise<ApiResult<{ endedSessions: number }>> {
+  return request('POST', `/admin/members/${encodeURIComponent(userId)}/suspend`, {})
+}
+
+/** 恢复账号（需要重新登录）。 */
+export function reactivateMember(userId: string): Promise<ApiResult<{ userId: string }>> {
+  return request('POST', `/admin/members/${encodeURIComponent(userId)}/reactivate`, {})
+}
+
+/** 授予或收回搭建模式。**仅所有者**。 */
+export function setBuilderAccess(
+  userId: string,
+  grant: boolean,
+): Promise<ApiResult<{ builder: boolean; changed?: boolean; ended?: number }>> {
+  return request(grant ? 'POST' : 'DELETE',
+    `/admin/members/${encodeURIComponent(userId)}/builder`, grant ? {} : undefined)
+}
+
+/** 授予或收回平台保留角色。**仅所有者**。 */
+export function setPlatformRole(
+  userId: string,
+  roleCode: string,
+  grant: boolean,
+): Promise<ApiResult<{ roleCode: string; endedSessions?: number }>> {
+  return request(grant ? 'POST' : 'DELETE',
+    `/admin/members/${encodeURIComponent(userId)}/platform-role/${encodeURIComponent(roleCode)}`,
+    grant ? {} : undefined)
+}
+
+/** 列本公司角色。 */
+export function listRoles(signal?: AbortSignal): Promise<ApiResult<{ items: Role[] }>> {
+  return request('GET', '/admin/roles', undefined, signal)
+}
+
+/** 建业务角色。 */
+export function createRole(
+  input: { roleCode: string; name: string },
+): Promise<ApiResult<{ roleCode: string }>> {
+  return request('POST', '/admin/roles', input)
+}
+
+/** **整体替换**一个角色的策略。 */
+export function replacePolicies(
+  roleCode: string,
+  policies: readonly Policy[],
+): Promise<ApiResult<{ roleCode: string; count: number }>> {
+  return request('PUT', `/admin/roles/${encodeURIComponent(roleCode)}/policies`, { policies })
+}
+
+/** 列本公司部门。 */
+export function listDepartments(signal?: AbortSignal): Promise<ApiResult<{ items: Department[] }>> {
+  return request('GET', '/admin/departments', undefined, signal)
 }

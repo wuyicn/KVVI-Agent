@@ -173,6 +173,14 @@ async function grantOnSystem(userId, actions) {
        actions, data_scopes, field_visibility)
      VALUES ($1,$2,$3,'DATA','*','{}',$4,'VISIBLE')`,
     [randomUUID(), A.company, roleId, ['SELF', 'COMPANY']])
+  // ⚠️ 流程维度**必须单独授**：`nextActions` 会按 FLOW 权限过滤，
+  //    漏了它的表现是「契约里明明有 submit，可执行清单却是空的」——
+  //    看起来像流程引擎坏了，其实是夹具少了一条策略。
+  await pool('platform').query(
+    `INSERT INTO policies (policy_id, company_id, role_id, dimension, resource_code,
+       actions, data_scopes, field_visibility)
+     VALUES ($1,$2,$3,'FLOW','*',$4,'{}',NULL)`,
+    [randomUUID(), A.company, roleId, ['submit', 'approve', 'reject']])
 }
 
 before(async () => {
@@ -222,7 +230,7 @@ describe('阶段九 · G7 端到端', () => {
     assert.equal(body.models[ASSET].schema_code, ASSET)
     assert.equal(body.models[ASSET].fields.length, 4, '投影里的模型字段数与源契约不符')
     assert.equal(body.views[ASSET].view_type, 'FORM')
-    assert.equal(body.workflows[ASSET].states.draft.initial, true)
+    assert.equal(body.workflows[ASSET].stateLabels.draft.initial, true)
     // 投影自证：同一个系统两次调用给同一枚指纹。
     const again = await api('GET', `/api/v1/systems/${ASSET}/runtime`, employee)
     assert.equal(again.body.digest, body.digest, '同一份契约两次投影指纹不同')
@@ -278,7 +286,57 @@ describe('阶段九 · G7 端到端', () => {
     assert.equal(after.body.data.amount, '0')
   })
 
-  test('⑦ 没有会话就没有任何业务数据', async () => {
+  test('⑦ 流程动作：可执行清单与执行一步', async () => {
+    const created = await api('POST', `/api/v1/systems/${ASSET}/records`, employee,
+      { data: { title: '走流程的单子' } })
+    assert.equal(created.status, 201)
+    const recordId = created.body.recordId
+
+    // 契约里 draft 上只有 submit 一条迁移（见 `workflow()` 夹具）。
+    const actions = await api('GET',
+      `/api/v1/systems/${ASSET}/records/${recordId}/actions`, employee)
+    assert.equal(actions.status, 200)
+    assert.equal(actions.body.state, 'draft')
+    assert.deepEqual(actions.body.actions.map((a) => a.action), ['submit'])
+
+    // 不带 rowVersion → 400。流程改的是 state，而「最后写入者获胜」
+    // 在流程上比在字段上更坏：批过的单子会被推回待审批。
+    const noVersion = await api('POST',
+      `/api/v1/systems/${ASSET}/records/${recordId}/transitions`, employee, { action: 'submit' })
+    assert.equal(noVersion.status, 400)
+    assert.equal(noVersion.body.error, 'KVVI_BAD_REQUEST')
+
+    const moved = await api('POST',
+      `/api/v1/systems/${ASSET}/records/${recordId}/transitions`, employee,
+      { action: 'submit', rowVersion: created.body.rowVersion })
+    assert.equal(moved.status, 200)
+    assert.equal(moved.body.from, 'draft')
+    assert.equal(moved.body.state, 'submitted')
+
+    // 终态不可写：契约里 submitted 是 terminal，没有任何迁移。
+    const terminal = await api('GET',
+      `/api/v1/systems/${ASSET}/records/${recordId}/actions`, employee)
+    assert.deepEqual(terminal.body.actions, [], '终态还列出了可执行动作')
+
+    // 落库了才算数 —— 从记录端点重新读。
+    const after = await api('GET', `/api/v1/systems/${ASSET}/records/${recordId}`, employee)
+    assert.equal(after.body.state, 'submitted')
+  })
+
+  test('⑦b 流程动作不在契约里 → 稳定拒绝，且**状态不变**', async () => {
+    const created = await api('POST', `/api/v1/systems/${ASSET}/records`, employee,
+      { data: { title: '乱来一步' } })
+    const r = await api('POST',
+      `/api/v1/systems/${ASSET}/records/${created.body.recordId}/transitions`, employee,
+      { action: 'approve', rowVersion: created.body.rowVersion })
+    assert.equal(r.status, 409)
+    assert.equal(r.body.error, 'KVVI_UNKNOWN_ACTION')
+    const after = await api('GET',
+      `/api/v1/systems/${ASSET}/records/${created.body.recordId}`, employee)
+    assert.equal(after.body.state, 'draft', '被拒的迁移改了状态')
+  })
+
+  test('⑧ 没有会话就没有任何业务数据', async () => {
     const r = await api('GET', `/api/v1/systems/${ASSET}/records`, null)
     assert.equal(r.status, 401)
     assert.equal(r.body.error, 'KVVI_TOKEN_REQUIRED')

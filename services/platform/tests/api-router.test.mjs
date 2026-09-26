@@ -11,6 +11,7 @@
  * | 1 | 无会话 → 401 | 任何人打一下接口就能读到别家公司的系统 |
  * | 2 | **调用方传的 companyId 无效** | 传一个别的公司 id 就跨租户了 |
  * | 3 | 身份类字段被**递归**剥掉 | 嵌套在 data 里的 `companyId` 一样能钻进执行点 |
+ * | 4 | 运行时会话上下文可作凭据，但**身份以会话行为准** | 头里带一个别人的 userId 就能以他的身份读数据 |
  *
  * ⚠️ 第 3 条尤其要紧：命令执行点已经有一层「剥身份字段」的保护，
  * 但它保护的是**它自己那条路**。API 是新入口，**必须在入口处再剥一次** ——
@@ -58,6 +59,19 @@ async function api(method, path, tokenv, body) {
   let parsed = null
   try { parsed = await res.json() } catch { /* 非 JSON 也无妨 */ }
   return { status: res.status, body: parsed, process: res.headers.get('x-kvvi-process') }
+}
+
+/** 用签名的运行时会话上下文打产品 API（Worker Agent 工具走的就是这条路）。 */
+async function apiAsRuntime(method, path, context, body) {
+  const { runtimeContextHeaders } = await import('../src/runtime-auth.mjs')
+  const headers = runtimeContextHeaders(context, INTERNAL)
+  if (body !== undefined) headers['content-type'] = 'application/json'
+  const res = await fetch(`${BASE}${path}`, {
+    method, headers, body: body === undefined ? undefined : JSON.stringify(body),
+  })
+  let parsed = null
+  try { parsed = await res.json() } catch { /* 非 JSON 也无妨 */ }
+  return { status: res.status, body: parsed }
 }
 
 before(async () => {
@@ -135,5 +149,63 @@ describe('阶段九 · 受鉴权的产品 API 路由', () => {
     assert.ok(!echoed.includes(B.company), '别家公司的 id 穿过了入口剥离')
     assert.ok(!echoed.includes('"gateway":"BUILDER"'), '嵌套的 gateway 没被剥掉')
     assert.ok(!echoed.includes('"roles"'), '嵌套的 roles 没被剥掉')
+  })
+
+  test('★ 运行时会话上下文可作凭据 —— Worker 工具没有浏览器凭据', async () => {
+    const r = await apiAsRuntime('GET', '/api/v1/systems', {
+      sessionId: alice.session.sessionId, userId: A.alice,
+      companyId: A.company, gateway: 'USER',
+    })
+    assert.equal(r.status, 200)
+    assert.equal(r.body.companyId, A.company)
+  })
+
+  test('★ 头里换一个人 → 拒（身份以会话行为准，不以头为准）', async () => {
+    // 签名是平台签的，所以「改头」不成立；这里模拟的是**签名者为别人签**：
+    // 会话 id 是 alice 的，userId 却是别人。两者不一致必须拒绝 ——
+    // 否则一个知道密钥的组件就能以别人的身份读数据。
+    const r = await apiAsRuntime('GET', '/api/v1/systems', {
+      sessionId: alice.session.sessionId, userId: A.bob,
+      companyId: A.company, gateway: 'USER',
+    })
+    assert.equal(r.status, 401)
+  })
+
+  test('★ 网关不一致 → 拒（USER 会话不能被当成 BUILDER 用）', async () => {
+    const r = await apiAsRuntime('GET', '/api/v1/systems', {
+      sessionId: alice.session.sessionId, userId: A.alice,
+      companyId: A.company, gateway: 'BUILDER',
+    })
+    assert.equal(r.status, 401)
+  })
+
+  test('★ 会话被结束后，运行时会话上下文立刻失效', async () => {
+    const s = await makeSession(A.alice, A.company)
+    const before = await apiAsRuntime('GET', '/api/v1/systems', {
+      sessionId: s.session.sessionId, userId: A.alice,
+      companyId: A.company, gateway: 'USER',
+    })
+    assert.equal(before.status, 200)
+
+    const { endSession } = await import('../src/identity.mjs')
+    await endSession(s.session.sessionId, 'LOGOUT')
+
+    const after = await apiAsRuntime('GET', '/api/v1/systems', {
+      sessionId: s.session.sessionId, userId: A.alice,
+      companyId: A.company, gateway: 'USER',
+    })
+    assert.equal(after.status, 401, '会话结束后的签名上下文仍可用')
+  })
+
+  test('★ 签名不对 → 拒（浏览器伪造同名头无效）', async () => {
+    const res = await fetch(`${BASE}/api/v1/systems`, { headers: {
+      'x-kvvi-session': alice.session.sessionId,
+      'x-kvvi-user': A.alice,
+      'x-kvvi-company': A.company,
+      'x-kvvi-gateway': 'USER',
+      'x-kvvi-issued-at': String(Date.now()),
+      'x-kvvi-signature': 'f'.repeat(64),
+    } })
+    assert.equal(res.status, 401)
   })
 })
