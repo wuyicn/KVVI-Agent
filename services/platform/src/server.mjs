@@ -23,6 +23,7 @@ import { handleGate, gated, isGatePath, tokenFromCookie } from './gate.mjs'
 import { runtimeCookie, runtimeCredentialAvailable, runtimeContextHeaders } from './runtime-auth.mjs'
 import { handleAuth } from './auth.mjs'
 import { verifyToken } from './identity.mjs'
+import { isApiPath, handleApi } from './api-router.mjs'
 
 const PORT = Number(process.env.KVVI_PLATFORM_PORT ?? 7400)
 const HOST = process.env.KVVI_PLATFORM_HOST ?? '0.0.0.0'
@@ -192,6 +193,27 @@ const server = createServer(async (req, res) => {
       loadSession: (token) => handleAuth({
         method: 'GET', path: '/auth/session', body: null,
         headers: { ...req.headers, authorization: 'Bearer ' + token },
+      }),
+    })
+    if (out !== null) return send(res, out.status, out.body)
+  }
+
+  // ── 产品 API（`/api/v1/*`）─────────────────────────────────────────
+  //
+  // 必须排在登录门**与** Web UI 转发之前：
+  //   - 排在转发之前：`/api` 是运行时的 prefix 路由，晚一步就被它接走了；
+  //   - 排在登录门之前：登录门对未登录请求回 **303 到登录页**，
+  //     而 API 调用方要的是 **401**（它不会去跟一个重定向）。
+  //     两者语义不同，不能共用一个「未鉴权」分支。
+  if (isApiPath(path)) {
+    const out = await handleApi({
+      method, path, query: req.url ?? '', body: await readBody(req),
+      headers: req.headers,
+      // ★ 复用认证模块自己的会话端点，不另算一遍身份
+      loadSession: (token) => handleAuth({
+        method: 'GET', path: '/auth/session', body: null,
+        headers: { ...req.headers, authorization: 'Bearer ' + token },
+        omitOtherGateway: true,
       }),
     })
     if (out !== null) return send(res, out.status, out.body)

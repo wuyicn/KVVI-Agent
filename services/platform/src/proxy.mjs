@@ -39,7 +39,12 @@ const UPSTREAM_TIMEOUT_MS = 30_000
  * 本进程。少了这一条，`/kvvi/panel` 会被转发给运行时并回 404，
  * 而症状看起来像「面板连不上平台服务」。
  */
-const OWNED_PREFIXES = ['/healthz', '/topology', '/auth/', '/sign/', '/registry/', '/kvvi/']
+const OWNED_PREFIXES = ['/healthz', '/topology', '/auth/', '/sign/', '/registry/', '/kvvi/',
+                        // 产品 API（阶段九）。**必须比运行时的 `/api` 更具体** ——
+                        // 运行时的 RPC 通道注册为 `prefix /api`，若不在这里认领，
+                        // `/api/v1/*` 会被转发给它并回 404（实测如此）。
+                        // 运行时对 `/api/v1` 的响应一直是 404，所以认领不改变它的行为。
+                        '/api/v1/']
 
 /**
  * 该路径是否属于本进程。

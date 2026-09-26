@@ -39,8 +39,8 @@
       "path": "services/platform",
       "kind": "平台服务进程（身份层 / 授权 / 签名 / 认证端点）",
       "version": "0.1.0",
-      "fileCount": 63,
-      "digest": "sha256:f2fafb5fb3c0d1a499e51f9beb5c2e4ab9220d928112462d953d444053a11458"
+      "fileCount": 65,
+      "digest": "sha256:c80a8fbff871f1e435aedb32a5a327bdc87fd1fd90ced3a8ea299b1530c6cff8"
     },
     {
       "name": "runtime-service",
@@ -88,8 +88,8 @@
       "kind": "产出样例与蓝图（验收基准）",
       "version": null,
       "fileCount": 94,
-      "digest": "sha256:cb4986f7189c729db3ec9511ed46081d98f1d88511a71c4a62731fa4a839ebc0"
+      "digest": "sha256:91800fd344f3216f876d7cc2b4c3e7b5114c3138d2ffdde5c3209d4b85cf1af7"
     }
   ],
-  "deliveryDigest": "sha256:e2e5e460623c01aa21e2ad6f72f9f841b89f093dc8fea9f05752bbc0fd1fca5c"
+  "deliveryDigest": "sha256:5051a43da8fd6627f28b98c3bc60660dc11cd6ed414dcf00239650e2f283e274"
 }
