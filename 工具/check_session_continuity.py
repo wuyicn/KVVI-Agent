@@ -108,11 +108,13 @@ class Client:
         except ValueError:
             return 0
 
-    def call(self, method, path, payload=None, absorb=True):
+    def call(self, method, path, payload=None, absorb=True, extra_headers=None):
         """调一条接口。@returns `(status, body, set_cookie_values)`"""
         data = None if payload is None else json.dumps(payload).encode()
         headers = {'accept': 'application/json',
                    'cookie': '; '.join('%s=%s' % kv for kv in self.cookies.items())}
+        if extra_headers:
+            headers.update(extra_headers)
         if data is not None:
             headers['content-type'] = 'application/json'
         request = urllib.request.Request(self.platform + path, data=data,
@@ -395,25 +397,34 @@ def check_no_replay(platform, db, report, staff):
     after_records, after_audit = count(), audit()
     ok = (before_records == after_records and before_audit == after_audit)
 
-    # B：幂等保护（量事实，不作判定）
-    payload = {'data': {'customer_name': '重连重放探针-%d' % int(time.time()),
-                        'follow_status': '未跟进'}}
-    created = []
-    for _ in range(3):
-        status, body, _ = staff.call('POST', '/api/v1/systems/customer/records', payload)
-        created.append((status, body.get('recordId') if isinstance(body, dict) else None))
-    distinct = len({r for _s, r in created if r})
-    replay_note = ('写操作没有幂等键：同一条建记录请求打三次 → 建出 %d 条不同的记录。'
-                   '「重连不重放」目前靠的是**客户端不自动重试**，'
-                   '而不是服务端认得出重复 —— 这条记在案，不计入通过/失败。'
-                   % distinct)
-
-    return report.check(
-        '⑤', 'A：重复重连不产生任何副作用（业务数据与审计都不变）', ok,
+    first = report.check(
+        '⑤a', '重复重连不产生任何副作用（业务数据与审计都不变）', ok,
         '记录 %d→%d 条；审计 %d→%d 行；同一条读 RPC 用同一个 rpcId 打了 3 次'
-        % (before_records, after_records, before_audit, after_audit)
-        + '\n' + replay_note,
+        % (before_records, after_records, before_audit, after_audit),
         '' if ok else '重连把副作用放了一遍 —— 这正是「重复重连不能重复提交」要防的')
+
+    # B：**带幂等键的写**重发三次，只该有一条记录。
+    #    这是 A 之外的另一半：A 证的是「我们这层不重放」，
+    #    B 证的是「就算有人重放了，服务端也认得出重复」。
+    #    前一版这一问只是「量个事实」—— 因为那时**没有**幂等键。
+    stamp = int(time.time())
+    data = {'customer_name': '幂等探针-%d' % stamp, 'follow_status': '未跟进'}
+    keys = []
+    for _ in range(3):
+        status, body, _ = staff.call(
+            'POST', '/api/v1/systems/customer/records', {'data': data},
+            extra_headers={'idempotency-key': 'probe-%d' % stamp})
+        keys.append((status, body.get('recordId') if isinstance(body, dict) else None))
+    distinct = len({r for _s, r in keys if r})
+    ok_b = distinct == 1 and all(s == 201 for s, _r in keys)
+    second = report.check(
+        '⑤b', '带同一个幂等键的写重发三次，只产生一条记录', ok_b,
+        '三次响应：%s；不同 recordId %d 个'
+        % (', '.join('%s%s' % (s, '' if r is None else '/' + str(r)[:8]) for s, r in keys), distinct),
+        '' if ok_b else ('写操作没有幂等键，或键没有生效 —— '
+                         '重连的重试会建出重复记录。'
+                         '（这一条在旧版平台上必然失败：幂等键是后加的。）'))
+    return first and second
 
 
 # ── 入口 ──────────────────────────────────────────────────────────────────────
