@@ -256,9 +256,34 @@ async function initialStateOf(ctx, assetId) {
   }
 }
 
-async function workflowOf(ctx, assetId) {
-  const projection = await runtimeProjection(ctx.companyId, assetId)
+/**
+ * 取这个系统的流程契约。
+ *
+ * @param {object} ctx 会话上下文
+ * @param {string} assetId 业务系统代号
+ * @param {number|null} [workflowVersion] 记录钉住的那一版；`null`/省略 = 当前最新版
+ * @returns {Promise<object>} 流程契约的 Spec（附派生查表）
+ */
+async function workflowOf(ctx, assetId, workflowVersion = null) {
+  const projection = await runtimeProjection(ctx.companyId, assetId, { workflowVersion })
   return projection.workflows[assetId]
+}
+
+/**
+ * 这个系统**当前**的流程版本号（没有流程时为 null）。
+ *
+ * 建记录时用它把版本**钉进记录**：钉住之后，之后发布的每一版都只影响新记录。
+ * @param {object} ctx 会话上下文
+ * @param {string} assetId 业务系统代号
+ * @returns {Promise<number|null>} 版本号
+ */
+async function currentWorkflowVersion(ctx, assetId) {
+  try {
+    const workflow = await workflowOf(ctx, assetId)
+    return (workflow?.states ?? []).length > 0 ? (workflow.workflowVersion ?? null) : null
+  } catch (error) {
+    return null
+  }
 }
 
 /**
@@ -285,7 +310,8 @@ async function recordActions(ctx, assetId, recordId) {
 
   let workflow
   try {
-    workflow = await workflowOf(ctx, assetId)
+    // ★ 按**记录钉住的那一版**取流程，不是当前最新版。
+    workflow = await workflowOf(ctx, assetId, record.workflowVersion)
   } catch (error) {
     return projectionFailure(error, assetId)
   }
@@ -338,7 +364,9 @@ async function recordTransition(ctx, assetId, recordId, payload) {
 
   let workflow
   try {
-    workflow = await workflowOf(ctx, assetId)
+    // 同上：迁移也按记录钉住的那一版判 —— 否则「在途记录维持原流转规则」
+    // 会在这一步漏掉（动作清单按旧版给，执行却按新版校验，两边对不上）。
+    workflow = await workflowOf(ctx, assetId, record.workflowVersion)
   } catch (error) {
     return projectionFailure(error, assetId)
   }
@@ -445,6 +473,9 @@ export async function systemRoutes({ method, path, payload, session, headers = {
               // 「草稿」不是不能用：搭建者想要它就**在契约里声明一个 initial 的
               // 草稿态**。契约是唯一来源，运行时不替它发明一个。
               state: await initialStateOf(ctx, assetId),
+              // ★ 同时把**这一版**流程钉进记录。之后发布的每一版都只影响新记录 ——
+              //   氚云那条不变量（「流程修改仅对新提交数据生效」）就落在这里。
+              workflowVersion: await currentWorkflowVersion(ctx, assetId),
             })
             return { status: 201, body: created }
           },

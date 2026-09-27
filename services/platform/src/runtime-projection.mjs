@@ -31,7 +31,7 @@
 
 import { createHash } from 'node:crypto'
 import { pool } from './db.mjs'
-import { contractsOfSystem } from './contracts.mjs'
+import { contractAt, contractsOfSystem } from './contracts.mjs'
 
 /**
  * 一个可运行系统**必需**的契约。
@@ -115,7 +115,7 @@ function statesOf(spec) {
  *   `code === 'KVVI_RUNTIME_FIELD_UNBOUND'` 视图引用了模型里没有的字段；
  *   `message === 'KVVI_CONTRACT_CONTENT_TAMPERED'` 内容指纹不符
  */
-export async function runtimeProjection(companyId, assetId) {
+export async function runtimeProjection(companyId, assetId, options = {}) {
   // ① 系统本身要在。不在就与「契约不全」同一类结果：
   //    两者对调用方的含义都是「这个系统现在不能跑」。
   const sys = await pool('platform').query(
@@ -137,6 +137,28 @@ export async function runtimeProjection(companyId, assetId) {
   //    `contractsOfSystem` 已经在读的时候**重算指纹**，不符即抛 ——
   //    所以「内容被改过」在产出任何东西之前就检出。
   const all = await contractsOfSystem(companyId, assetId)
+
+  // ②b ★ **流程可以钉在历史版本上。**
+  //
+  // 氚云的流程介绍里有一条明确的不变量：「流程修改**仅对新提交数据生效**，
+  // 已有数据维持原流转规则。」这一条要成立，运行时就得按记录**自己那一版**
+  // 的流程去判，而不是按当前最新版 —— 否则一次发布会让在途记录
+  // 跳到新流程上，而它当前那个状态在新版里还存不存在都没人问过。
+  //
+  // ⚠️ **只钉流程这一份。** 模型、视图、权限照旧用最新版：
+  //    「发布只对新数据生效」说的是**流程的走法**，不是「整份应用冻在某一天」——
+  //    把六份全钉住会变成另一件更大的事（那更像版本化发布，而不是流程兼容）。
+  const pinned = options.workflowVersion
+  if (pinned !== undefined && pinned !== null) {
+    const at = await contractAt(companyId, 'workflow-spec', assetId, pinned)
+    if (at === null) {
+      // 查不到就报出来，**不退回最新版** —— 静默退回等于把这条不变量又丢掉一次，
+      // 而症状是「在途记录悄悄改走了新流程」，比直接报错难查得多。
+      throw new ProjectionError('KVVI_WORKFLOW_VERSION_MISSING',
+        { assetId, version: pinned })
+    }
+    all['workflow-spec'] = at
+  }
 
   // ③ 必需的六份一个都不能少。**逐份报出缺了哪些**，
   //    而不是只说一句「不完整」—— 补的人需要知道补哪一份。
@@ -191,7 +213,11 @@ export async function runtimeProjection(companyId, assetId) {
     //    「这一个系统的状态表」就有了两个形状，两条读取路径迟早分叉。
     //    真实发生过：阶段十接流程端点时 `loadSpec` 撞上 `spec.states.map is not a function`。
     //    派生出来的查表放在 `stateLabels` 里，名字说明它是**派生**的。
-    workflows: { [assetId]: { ...workflow, stateLabels: states } },
+    // `workflowVersion` 是**这一份流程契约的版本号**，由外层信封带进来 ——
+    // 内容里没有它。建记录时要把版本钉进记录，就是从这里取的。
+    // ⚠️ 它**不进下面的 digest**：那是契约内容的自证，版本号属于信封，不属于内容。
+    workflows: { [assetId]: { ...workflow, stateLabels: states,
+                              workflowVersion: all['workflow-spec'].version } },
     permissions: { [assetId]: permission },
     tools: { [assetId]: tool },
     commands: { [assetId]: command },

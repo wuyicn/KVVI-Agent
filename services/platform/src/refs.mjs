@@ -69,7 +69,7 @@ export async function readRecord(ctx, scope, logical) {
     await applyScopeGucs(client, scope)
     const { rows } = await client.query(
       `SELECT record_id, company_id, schema_code, dept_id, shop_id, owner_id,
-              state, record_no, data, row_version
+              state, record_no, data, row_version, workflow_version
          FROM business_records
         WHERE record_id = $1 AND company_id = $2`, [handle.id, handle.companyId])
     await client.query('COMMIT')
@@ -79,6 +79,10 @@ export async function readRecord(ctx, scope, logical) {
       recordId: r.record_id, companyId: r.company_id, schemaCode: r.schema_code,
       deptId: r.dept_id, shopId: r.shop_id, ownerId: r.owner_id,
       state: r.state, recordNo: r.record_no, data: r.data, rowVersion: Number(r.row_version),
+      // 这条记录进入流程时钉住的那一版流程契约；NULL = 钉住机制之前创建的记录。
+      // **只在这条读取路径上给** —— 列表那条不返回它：列表是给界面用的，
+      // 而「走哪一版流程」是运行时内部的事，没有理由出现在列表投影里。
+      workflowVersion: r.workflow_version === null ? null : Number(r.workflow_version),
     }
   } catch (error) {
     await client.query('ROLLBACK')
@@ -145,11 +149,14 @@ export async function createRecord(ctx, scope, input) {
     })
     const { rows } = await client.query(
       `INSERT INTO business_records (record_id, company_id, schema_code, dept_id,
-         shop_id, owner_id, state, record_no, data)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8)
+         shop_id, owner_id, state, record_no, data, workflow_version)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING record_id, record_no, row_version`,
       [ctx.companyId, input.schemaCode, scope.deptId, scope.shopId,
-       ctx.userId, input.state ?? 'draft', recordNo, input.data ?? {}])
+       ctx.userId, input.state ?? 'draft', recordNo, input.data ?? {},
+       // ★ **出生时钉住流程版本。** 它决定这条记录之后走哪一版流程；
+       //    不钉的话，一次发布会把在途记录也带走（见迁移 26 的注释）。
+       input.workflowVersion ?? null])
     // `rowVersion` 一并返回：创建者立刻就能改自己刚建的记录，
     // 不必「再读一次拿版本」—— 读与写之间正是丢更新的窗口。
     return {

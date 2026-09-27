@@ -387,6 +387,68 @@ describe('阶段九 · G7 端到端', () => {
     assert.deepEqual(actions.body.actions.map((a) => a.action), ['start_follow'])
   })
 
+  test('⑩ ★ 发布只对**新**记录生效：在途记录维持它开始时那一版流程', async () => {
+    // 氚云的流程介绍把这条写成不变量：「流程修改仅对新提交数据生效，
+    // 已有数据维持原流转规则」。没有它，一次发布会让在途记录跳到新流程上，
+    // 而它当前那个状态在新版里还存不存在都没人问过。
+    //
+    // 这里把 ⑨ 已经改成 `not_followed → following` 的流程**再改一版**：
+    // 状态名全换，动作名也换。已经在走的那条记录必须**看不见**新版。
+    const anOldOne = await api('POST', `/api/v1/systems/${ASSET}/records`, employee,
+      { data: { title: '改版之前就在走的单子' } })
+    assert.equal(anOldOne.status, 201)
+    const pinnedVersion = (await api('GET',
+      `/api/v1/systems/${ASSET}/records/${anOldOne.body.recordId}`, employee)).body
+    assert.equal(pinnedVersion.state, 'not_followed')
+
+    await publish(ASSET, ['business-schema', 'view-schema', 'workflow-spec',
+                          'permission-spec', 'tool-spec', 'app-model-command'],
+                  '通用事项登记（流程改版）', {
+      'workflow-spec': {
+        businessSchemaRef: { asset_type: 'BUSINESS_SCHEMA', asset_id: ASSET },
+        states: [
+          // 新版把初始状态改了名、动作也换了名 —— 与老版**没有任何重叠**，
+          // 于是「它读的是哪一版」这件事在结果上是可分辨的，不用去猜。
+          { state_code: 'churned_v2', name: 'v2 起点', initial: true, terminal: false },
+          { state_code: 'done_v2', name: 'v2 终点', initial: false, terminal: true },
+        ],
+        actions: [{ action_code: 'advance_v2', kind: 'SUBMIT', capability_ref: {} }],
+        transitions: [{ transition_code: 'v2_step', from_state: 'churned_v2',
+                        to_state: 'done_v2', action_code: 'advance_v2' }],
+        approverRef: { kind: 'SINGLE', role_ref: {
+          permission_ref: { asset_type: 'PERMISSION', asset_id: 'role_directory' },
+          subresource: { type: 'ROLE', code: 'supervisor' } } },
+      },
+    })
+
+    // ① 新版记录：出生在新版的初始状态上，走新版的动作。
+    const fresh = await api('POST', `/api/v1/systems/${ASSET}/records`, employee,
+      { data: { title: '改版之后新建的单子' } })
+    const freshRead = await api('GET',
+      `/api/v1/systems/${ASSET}/records/${fresh.body.recordId}`, employee)
+    assert.equal(freshRead.body.state, 'churned_v2', '新记录没走新版流程')
+
+    // ② 老记录：**还在老版上**。它的状态、它的可执行动作，都不该被新版带走。
+    const stillOld = await api('GET',
+      `/api/v1/systems/${ASSET}/records/${anOldOne.body.recordId}`, employee)
+    assert.equal(stillOld.body.state, 'not_followed',
+                 '在途记录被新版流程带走了 —— 「发布只对新数据生效」没成立')
+
+    const oldActions = await api('GET',
+      `/api/v1/systems/${ASSET}/records/${anOldOne.body.recordId}/actions`, employee)
+    assert.equal(oldActions.status, 200)
+    assert.deepEqual(oldActions.body.actions.map((a) => a.action), ['start_follow'],
+                     '在途记录的可执行动作按新版给了')
+
+    // ③ 而且它**真的还推得动**（动作清单与执行走的是同一版，不是各走各的）。
+    const moved = await api('POST',
+      `/api/v1/systems/${ASSET}/records/${anOldOne.body.recordId}/transitions`, employee,
+      { action: 'start_follow', rowVersion: (await api('GET',
+        `/api/v1/systems/${ASSET}/records/${anOldOne.body.recordId}`, employee)).body.rowVersion })
+    assert.equal(moved.status, 200)
+    assert.equal(moved.body.state, 'following')
+  })
+
   test('⑧ 没有会话就没有任何业务数据', async () => {
     const r = await api('GET', `/api/v1/systems/${ASSET}/records`, null)
     assert.equal(r.status, 401)

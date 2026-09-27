@@ -125,6 +125,38 @@ export async function contractVersions(companyId, contractType, assetId = null) 
                             publishedAt: r.published_at }))
 }
 
+/**
+ * 读本公司某类契约的**指定版本**。
+ *
+ * 「发布只对新数据生效」要成立，就必须**读得回历史版本** ——
+ * 一条在途记录钉住的是它进入流程那一刻的流程契约（`business_records.workflow_version`），
+ * 而不是「当前最新版」。历史版本一直留着（契约只追加、不覆盖），所以读得回来。
+ *
+ * 指纹照 `latestContract` 一样重算核对：**内容被改过**要在产出任何东西之前检出，
+ * 而不是让一条被改过的流程静默参与判定。
+ *
+ * @param {string} companyId 公司
+ * @param {string} contractType 契约类型
+ * @param {string} assetId 系统代号
+ * @param {number} version 版本号
+ * @returns {Promise<{version: number, digest: string, content: unknown}|null>}
+ */
+export async function contractAt(companyId, contractType, assetId, version) {
+  const { rows } = await pool('platform').query(
+    `SELECT version, digest, content FROM published_contracts
+      WHERE company_id = $1 AND contract_type = $2 AND asset_id = $3 AND version = $4`,
+    [companyId, contractType, assetId, version])
+  if (rows.length !== 1) return null
+  const r = rows[0]
+  const actual = digestOf(r.content)
+  if (actual !== r.digest) {
+    const error = new Error('KVVI_CONTRACT_CONTENT_TAMPERED')
+    error.detail = { contractType, expected: r.digest, actual, version: r.version }
+    throw error
+  }
+  return { version: r.version, digest: r.digest, content: r.content }
+}
+
 /** 计算契约内容的指纹。导出是给测试与调用方核对用的，不是第二套算法。 */
 export function digestOfContract(content) {
   return digestOf(content)
