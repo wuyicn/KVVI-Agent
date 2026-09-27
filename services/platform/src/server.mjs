@@ -380,7 +380,19 @@ const server = createServer(async (req, res) => {
     VALIDATED.set(req, outcome)
   }
 
-  if (gated(path) || path.startsWith('/kvvi/')) {
+  // ⚠️ `/api/*` **不进登录门**。上面那一段已经判完了，而且判得更细。
+  //
+  // 让门再判一遍的后果是「同一个问题，两个答案」：
+  // 上面的判据带**宽限期**（会话还有效就放行，顺手换一张新的），
+  // 而门走的是 `/auth/session`，那里**不带宽限**。于是刚被放行的请求
+  // 紧接着被门判成未登录，**303 到登录页、并把刚拿到的那张凭据清掉** ——
+  // 实测里表现成：探测第一次成功、第二次 303、之后全部
+  // `KVVI_SESSION_REQUIRED`（因为 Cookie 已经被清空了）。
+  //
+  // 而且这条语义本来就不对：`/api/*` 是运行时的 RPC，不是页面。
+  // 「未登录跳登录页」对页面成立，对 RPC 是灾难（拿到 HTML，`JSON.parse` 当场炸）。
+  // 门拦的是**界面**，不是端点 —— 这句话在这个文件里已经写过一次了。
+  if (!path.startsWith('/api/') && (gated(path) || path.startsWith('/kvvi/'))) {
     // ⚠️ **只有登录门自己要看体的那几个路径才读体。**
     //
     // `readBody(req)` 会把请求流**读干**。而这道门对绝大多数被它盯上的路径
