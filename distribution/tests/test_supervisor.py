@@ -24,6 +24,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -317,6 +318,100 @@ class ReadinessTest(unittest.TestCase):
             report = readiness_report(home=self.home, platform_port=port)
             codes = [i['code'] for i in report['issues']]
             self.assertIn('KVVI_PORT_IN_USE', codes)
+
+
+class StopReallyEndsTheProcessTest(unittest.TestCase):
+    """`stop` 的承诺是「进程没了」，不是一个礼貌的请求。
+
+    ⚠️ 这一组是**负向**的：起一个真的进程，让它拒绝 SIGTERM，然后要求
+    `stop` 之后它真的不在。第一版 `stop` 只做三件事 —— 发 15 号信号、
+    删 pid 文件、报成功 —— 三件都对，合起来却不保证进程没了。
+    试点上因此留下两个活了两个半小时的孤儿平台进程（见问题 24），
+    而它们各自还被一个浏览器连着：**旧进程里的授权版本是撤权之前的那一份。**
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self._tmp.name) / 'kvvi'
+        (self.home / 'run').mkdir(parents=True)
+        self.root = Path(self._tmp.name) / 'release'
+        self.addCleanup(self._tmp.cleanup)
+        # 快跑：判据是「会不会升级」，不是「等不等得起 10 秒」。
+        patcher = mock.patch.multiple(
+            'distribution.lib.supervisor',
+            STOP_WAIT_SECONDS=0.5, STOP_KILL_WAIT_SECONDS=3.0, STOP_POLL_SECONDS=0.05)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _child(self, body: str, *, await_ready: bool = False) -> subprocess.Popen:
+        """
+        起一个独立会话的子进程（与 supervisor 自己的起法一致）。
+        @param await_ready 等到子进程打印 `ready` 再返回
+        """
+        process = subprocess.Popen([sys.executable, '-u', '-c', body],
+                                   stdout=subprocess.PIPE if await_ready else subprocess.DEVNULL,
+                                   stderr=subprocess.DEVNULL,
+                                   text=True, start_new_session=True)
+        def _reap() -> None:
+            if process.poll() is None:
+                process.kill()
+            if process.stdout is not None:
+                process.stdout.close()
+        self.addCleanup(_reap)
+        if await_ready:
+            # 等它**装好处理器**再发信号。不等的话，信号可能先到，默认动作把
+            # 进程杀掉 —— 于是「升级到 SIGKILL」这条判据被一次竞态蒙对。
+            self.assertEqual(process.stdout.readline().strip(), 'ready')
+        return process
+
+    def _write_pid(self, program: str, pid: int) -> Path:
+        path = self.home / 'run' / (program + '.pid')
+        path.write_text(str(pid) + '\n')
+        return path
+
+    def _stop(self, program: str) -> dict:
+        plan = stop_plan(home=self.home, release_root=self.root)
+        plan.steps = [s for s in plan.steps if s['program'] == program]
+        return plan.apply()
+
+    def test_a_process_that_ignores_sigterm_is_killed_and_that_is_reported(self):
+        stubborn = self._child(
+            'import signal, time, sys\n'
+            'signal.signal(signal.SIGTERM, signal.SIG_IGN)\n'
+            'print("ready", flush=True)\n'
+            'time.sleep(120)\n',
+            await_ready=True)
+        self._write_pid('platform', stubborn.pid)
+        result = self._stop('platform')
+        self.assertTrue(result['ok'], result['errors'])
+        self.assertIsNotNone(stubborn.poll(), 'SIGTERM 被忽略之后进程仍然活着 —— '
+                                              '旧进程会继续服务撤权前就开着的那一页')
+        # 升级这件事必须**看得见**：静默升级会让平台的关停路径有 bug 而没人知道。
+        self.assertIn('SIGKILL', ' '.join(result['steps']))
+
+    def test_a_cooperative_process_is_stopped_without_escalation(self):
+        cooperative = self._child('import time\ntime.sleep(120)\n')
+        self._write_pid('platform', cooperative.pid)
+        result = self._stop('platform')
+        self.assertTrue(result['ok'], result['errors'])
+        self.assertEqual(result['steps'], ['stop-platform'])
+        self.assertIsNotNone(cooperative.poll())
+
+    def test_a_stale_pid_file_is_cleaned_up_and_not_reported_as_running(self):
+        dead = self._child('import time\ntime.sleep(120)\n')
+        dead_pid = dead.pid
+        dead.kill()
+        dead.wait(timeout=10)
+        pid_file = self._write_pid('platform', dead_pid)
+        result = self._stop('platform')
+        self.assertTrue(result['ok'], result['errors'])
+        self.assertFalse(pid_file.exists(), 'pid 文件留着，下一次 status 会对着一具尸体报「运行中」')
+
+    def test_the_wait_constants_are_positive(self):
+        # 等到 0 秒等于没等 —— 那样这条判据就退化回「发个信号就当成了」。
+        from distribution.lib import supervisor as module
+        self.assertGreater(module.STOP_WAIT_SECONDS, 0)
+        self.assertGreater(module.STOP_KILL_WAIT_SECONDS, 0)
 
 
 if __name__ == '__main__':

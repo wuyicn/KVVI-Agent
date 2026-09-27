@@ -426,6 +426,27 @@ def check() -> int:
             problems.append(f'运行时代码不齐：vendor/dsh 下 lib/types 的 .js '
                             f'源树有 {expected} 个，包里只有 {packed} 个')
 
+    # ⚠️ **包里的字节必须还是当前源树的字节。**
+    #
+    # `archiveSha256` 只说「包自己没被改过」—— 源树改了、包没重打，它一声不响。
+    # 第一版的 check 只拿 `vendor/dsh` 下 `lib/types` 的**文件数**比一比，于是：
+    # 修完 `services/platform/src/server.mjs`（关停硬期限）与
+    # `distribution/lib/supervisor.py`（SIGKILL 升级）之后，`--check` 依然全绿，
+    # 而 tar 里是**旧字节** —— 拿它去部署，测的是修复前的行为（踩过一次）。
+    #
+    # 这里用**打包时自己那套算法**重算内容指纹：一致 = 包里每一个字节都还是
+    # 当前源树的字节。名单也在 `collect()` 里，不另写一份。
+    fresh = hashlib.sha256()
+    for absolute, rel in collect():
+        with open(absolute, 'rb') as handle:
+            body = handle.read()
+        fresh.update(rel.encode('utf-8'))
+        fresh.update(b'\0')
+        fresh.update(hashlib.sha256(body).hexdigest().encode('ascii'))
+        fresh.update(b'\0')
+    if 'sha256:' + fresh.hexdigest() != manifest['contentDigest']:
+        problems.append('包的内容与当前源树不一致 —— 源树改过而包没重打（跑 --build）')
+
     print(f'{C_OK}=== 发行包复核 ==={C_OFF}')
     print(f'  {os.path.relpath(ARCHIVE, ROOT)}：{len(names)} 个文件，'
           f"{manifest['archiveBytes'] / (1024 ** 2):.1f} MB")
@@ -485,6 +506,23 @@ def self_test() -> int:
             handle.write(saved)
 
     cases.append(('移除探针后恢复 → 通过', run_check()))
+
+    # ④ **源树改了而包没重打。**
+    #    这一条针对的是「计数对齐只覆盖 vendor/dsh 的 lib/types」那个盲区：
+    #    修复 `services/platform/src/server.mjs` 之后 `--check` 依然全绿，
+    #    而 tar 里是旧字节 —— 拿它去部署，测的是修复前的行为。踩过一次。
+    victim = os.path.join(ROOT, 'services', 'platform', 'src', 'server.mjs')
+    with open(victim, 'rb') as handle:
+        saved = handle.read()
+    with open(victim, 'ab') as handle:
+        handle.write('\n// 反向测试注入\n'.encode('utf-8'))
+    try:
+        cases.append(('源树改过而包没重打 → 红', not run_check()))
+    finally:
+        with open(victim, 'wb') as handle:
+            handle.write(saved)
+
+    cases.append(('源树还原后 → 通过', run_check()))
 
     # ③ 摘掉一个**不在 `REQUIRED` 里**的 `lib/types/**.js`。
     #    这一条针对的是「整类运行时代码被甩掉」那个缺陷：只核对 `REQUIRED`

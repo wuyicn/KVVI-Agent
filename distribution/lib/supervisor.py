@@ -28,11 +28,73 @@ import plistlib
 import shutil
 import socket
 import subprocess
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from distribution.lib.pg import cluster_is_running, cluster_start_step, pg_bin_dir
+
+#: `stop` 等 SIGTERM 生效的秒数。
+#:
+#: ⚠️ **这个等待不是礼貌，是判据的一部分。** 早先的 `stop` 是「发个 15 号信号、
+#: 删掉 pid 文件、报成功」—— 三步都是对的，合起来却不保证**进程真的没了**。
+#: 实测：平台在 SIGTERM 里只调 `server.close()`，而它会放掉监听套接字（所以新进程
+#: 能绑上端口）却把回调挂在「所有既有连接关闭」之后；浏览器长期持有 keep-alive
+#: 与流式连接，那个回调永远不触发。于是现场留下**两个活了两个半小时的孤儿平台
+#: 进程**，各自还被一个浏览器连着，而 `status` 读 pid 文件根本看不见它们。
+#:
+#: 后果不止占内存：重启之后，**撤权前就开着的那一页会被旧进程继续服务**，
+#: 而旧进程里的授权版本是撤权之前的那一份。PRD §9.4.4 要求「平台在线时撤销立即
+#: 生效」。所以「进程没了」必须是被**验过**的，不能是发过信号就当成了。
+STOP_WAIT_SECONDS = 10.0
+
+#: SIGTERM 没生效后再等 SIGKILL 的秒数。
+STOP_KILL_WAIT_SECONDS = 5.0
+
+#: 轮询间隔。
+STOP_POLL_SECONDS = 0.1
+
+
+def _process_alive(pid: int) -> bool:
+    """
+    进程是否还在。
+    @param pid 进程号
+    @returns 还在为 True；不存在（或已退出待回收）为 False
+    """
+    # 先认领自己的子进程：它退出之后会变成僵尸，而 `os.kill(pid, 0)` 对僵尸
+    # **仍然成功** —— 于是一个已经死掉的进程会被判成「还在」，stop 白等一整轮
+    # 再升级到 SIGKILL，最后报一条假的「杀不掉」。这一条是测试当场抓到的。
+    try:
+        if os.waitpid(pid, os.WNOHANG) == (pid, 0):
+            return False
+    except ChildProcessError:
+        # 不是我们的子进程 —— 这才是线上的常态：`kvvi-admin stop` 与当初
+        # 拉起进程的那次调用是两个不同的进程，所以它问不出退出状态。
+        pass
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        # 活着，只是不归我们管 —— 对「还在不在」这个问题来说这就够了。
+        return True
+    return True
+
+
+def _await_exit(pid: int, seconds: float) -> bool:
+    """
+    等进程退出。
+    @param pid 进程号
+    @param seconds 最多等多久
+    @returns 已退出为 True；到期仍在为 False
+    """
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        if not _process_alive(pid):
+            return True
+        time.sleep(STOP_POLL_SECONDS)
+    return not _process_alive(pid)
 
 #: 启动顺序即元组顺序。平台在前。
 PROGRAMS = ('platform', 'runtime')
@@ -117,15 +179,40 @@ class ProcessPlan:
                     done.append(step['kind'] + ': 未运行')
                     continue
                 pid = int(pid_file.read_text().strip() or '0')
+                if not _process_alive(pid):
+                    # pid 文件是**上一次**留下的：进程早就没了。先删文件再报，
+                    # 否则下一次 `status` 又会对着一具尸体报「运行中」。
+                    pid_file.unlink(missing_ok=True)
+                    done.append(step['kind'] + ': 进程已不在')
+                    continue
                 try:
                     os.kill(pid, 15)
                 except ProcessLookupError:
+                    pid_file.unlink(missing_ok=True)
                     done.append(step['kind'] + ': 进程已不在')
+                    continue
                 except PermissionError:
                     errors.append({'kind': step['kind'], 'stderr': f'无权结束 pid {pid}'})
                     continue
+                if not _await_exit(pid, STOP_WAIT_SECONDS):
+                    # 优雅关停没生效 —— 升级到 SIGKILL，并把这次升级**报出来**。
+                    # 静默升级会让「平台的关停路径有 bug」这件事永远没人知道。
+                    try:
+                        os.kill(pid, 9)
+                    except ProcessLookupError:
+                        pass
+                    except PermissionError:
+                        errors.append({'kind': step['kind'],
+                                       'stderr': f'pid {pid} 不接受 SIGTERM，也无权结束它'})
+                        continue
+                    if not _await_exit(pid, STOP_KILL_WAIT_SECONDS):
+                        errors.append({'kind': step['kind'],
+                                       'stderr': f'pid {pid} 在 SIGTERM 与 SIGKILL 之后仍在'})
+                        continue
+                    done.append(step['kind'] + ': SIGTERM 未生效，已用 SIGKILL 结束')
+                else:
+                    done.append(step['kind'])
                 pid_file.unlink(missing_ok=True)
-                done.append(step['kind'])
             return {'ok': not errors, 'steps': done, 'errors': errors, 'pids': pids}
 
         for step in self.steps:

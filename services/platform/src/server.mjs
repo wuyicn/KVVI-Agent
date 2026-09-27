@@ -530,9 +530,34 @@ server.listen(PORT, HOST, () => {
   }))
 })
 
+// 关停时必须**真的退出**，而不是「放掉监听然后一直活着」。
+//
+// `server.close()` 只做两件事：停止接受新连接、放掉监听套接字（所以下一个进程
+// 能绑上同一个端口），然后把回调挂在「所有既有连接都关掉」之后。而浏览器会长期
+// 持有 keep-alive 与流式连接 —— 那个回调**永远不触发**，进程活到天荒地老，
+// 而 `kvvi-admin stop` 早就报了成功。
+//
+// 后果不是「多个进程占内存」这么轻：
+//   · 重启之后，**撤权前就开着的那一页会被旧进程继续服务** —— 旧进程里的授权
+//     版本是撤权之前的那一份。PRD §9.4.4 要求「平台在线时撤销立即生效」。
+//   · `status` 读 pid 文件，而 pid 文件已被新进程覆盖 —— 旧进程**查不到**。
+// 试点上实测到两个这样的孤儿进程，各自还被一个浏览器连着（见问题 24）。
+const SHUTDOWN_GRACE_MS = Number(process.env.KVVI_SHUTDOWN_GRACE_MS ?? 5000)
+
 for (const signal of ['SIGTERM', 'SIGINT']) {
   process.on(signal, () => {
     console.log(JSON.stringify({ event: 'platform-service-down', signal }))
     server.close(() => process.exit(0))
+    // 空闲连接先放掉：它们本来就没有请求在飞，等它们没有意义。
+    server.closeIdleConnections()
+    // 还在干活的连接给一段时间收尾，到点就**强制**关掉并退出 —— 硬期限才是
+    // 这条语义的落点：`stop` 承诺的是「进程没了」，不是一个礼貌的请求。
+    const hardStop = setTimeout(() => {
+      console.log(JSON.stringify({ event: 'platform-service-down', signal, forced: true }))
+      server.closeAllConnections()
+      process.exit(0)
+    }, SHUTDOWN_GRACE_MS)
+    // 定时器自己不能成为「进程还活着」的理由。
+    hardStop.unref()
   })
 }

@@ -61,6 +61,11 @@ STAGES = [
         ('G2 fork 改造点', ['python3', '工具/g2_改造点.py', '--check']),
         ('两进程骨架与 N3 拓扑', ['python3', '工具/check_topology.py']),
         ('构建配置', ['python3', '工具/check_build.py']),
+        # 问题 24：`stop` 报成功而进程还活着。静态侧 4 组 11 条判据 +
+        # 反向测试 8 项（挖掉硬期限、SIGKILL 升级、僵尸判定、负向断言，各自必须变红）。
+        # 它证的是「关停承诺有机器判据」，不是「关停行为正确」—— 行为由
+        # `distribution/tests/test_supervisor.py` 的真进程负向用例负责。
+        ('关停判据（问题 24）', ['bash', '工具/check_shutdown_自测.sh']),
     ]),
     ('阶段二', '品牌与外壳', [
         ('品牌残留', ['python3', '工具/check_brand.py']),

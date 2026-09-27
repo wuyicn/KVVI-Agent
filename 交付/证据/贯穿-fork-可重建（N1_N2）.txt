@@ -3,7 +3,14 @@ $ python3 工具/fork.py --rebuild --into /tmp/kvvi-evidence-fork
 ▸ 第 1 步：取上游干净副本（基线 ddefc45fbc7f，来源 local）
   ✓ 12071 个文件
 ▸ 第 2 步：覆盖我们的改动
-  ✓ 48 个文件
+  ✓ 78 个文件
 ▸ 第 3 步：逐字节比对指纹
-  [32m✓ 48/48 个文件与指纹一致[0m
-[32m✓ 重建结果与指纹逐字节一致[0m
+  [32m✓ 69/78 个文件与指纹一致[0m
+    [31m✗ packages/bundle/kvvi-app/cordis.patch.yml：sha256:492d5a8b45ed7ca4211c43c1ca09bfcf94a17217861cc1b9fceb53f8010c24e9[0m
+    [31m✗ packages/bundle/kvvi-app/package.json：sha256:76e61603cbe32e728ef441207022c574fc757a92eafda98e252283038a4f912c[0m
+    [31m✗ packages/client/kvvi-panel/src/client/AdminShell.tsx：sha256:d096e60651d05520106eb4cb79de8b6f88611554958ce1fdf6215a79b9455dd1[0m
+    [31m✗ packages/client/kvvi-panel/src/client/api.ts：sha256:86085d201a3c6419096d5029bbb361d23bda3c3609c106e2ba5f79b1ec7d2562[0m
+    [31m✗ packages/client/kvvi-panel/src/client/index.ts：sha256:22029bb5112822437bf260b320ac211535b9225e78a8f3c8845eb358d9dad66b[0m
+    [33m⚠ apps/cli/package.json：重建结果既不是我们要的，也不是基线 —— **上游的那个文件变了**，需要重新对齐（这正是希望它大声失败的情形）[0m
+    [33m⚠ pnpm-lock.yaml：重建结果既不是我们要的，也不是基线 —— **上游的那个文件变了**，需要重新对齐（这正是希望它大声失败的情形）[0m
+[31m✗ 重建结果与指纹不一致[0m
