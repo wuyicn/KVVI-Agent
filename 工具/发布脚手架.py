@@ -429,10 +429,10 @@ def main():
         print('  ✓ %s' % json.dumps(body, ensure_ascii=False)[:200])
 
     print('\n=== ⑤ 发布（所有者 %s）===' % owner_login)
+    # 发布**不带内容** —— 内容在提交时就存进草案了。
+    # 带什么都不能改变发出去的东西，所以这里连参数都不给。
     status, body = owner.call(
-        'POST', '/api/v1/publish/drafts/%s/publish' % draft_id,
-        {'assetId': args.asset_id, 'name': args.asset_id, 'schemaCode': args.asset_id,
-         'contracts': contracts})
+        'POST', '/api/v1/publish/drafts/%s/publish' % draft_id, {})
     if status != 201:
         print('  ✗ HTTP %s %s' % (status, json.dumps(body, ensure_ascii=False)[:400]))
         return 3

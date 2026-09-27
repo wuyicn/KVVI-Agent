@@ -119,7 +119,7 @@ export async function writePolicies({ client, companyId, rows }) {
  * @param {object} input 入参
  * @returns {Promise<object>} 草案
  */
-export async function submitDraft({ ctx, change, diffReport, invariant }) {
+export async function submitDraft({ ctx, change, diffReport, invariant, payload = null }) {
   if (!diffReport || !diffReport.faces || diffReport.faces.length < DIFF_FACES.length) {
     await appendDenial({
       companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
@@ -144,11 +144,15 @@ export async function submitDraft({ ctx, change, diffReport, invariant }) {
   const draftId = randomUUID()
   const changeDigest = digestOf(change)
   await pool('platform').query(
+    // ★ `payload` 是**要发布的内容本身**（编译好的策略行、系统代号、契约内容）。
+    //   提交时存下来，发布时只认它 —— 审批人不必、也无法重新提供内容。
+    //   只留摘要证明不了「发出去的是批过的那一份」：摘要是单向的。
     `INSERT INTO publish_drafts (draft_id, company_id, proposer_user_id, status,
-       change_digest, diff_report, invariant)
-     VALUES ($1,$2,$3,'AWAITING_APPROVAL',$4,$5,$6)`,
+       change_digest, diff_report, invariant, payload)
+     VALUES ($1,$2,$3,'AWAITING_APPROVAL',$4,$5,$6,$7)`,
     [draftId, ctx.companyId, ctx.userId, changeDigest,
-     JSON.stringify(diffReport), JSON.stringify(invariant ?? {})])
+     JSON.stringify(diffReport), JSON.stringify(invariant ?? {}),
+     JSON.stringify(payload ?? {})])
   await append({
     companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
     gateway: ctx.gateway, sessionId: ctx.sessionId,

@@ -146,6 +146,19 @@ export async function publishSubmit({ session, payload }) {
       // 「No independent evaluator」）。**不假装它通过了** —— 传 `null`
       // 让 `submitDraft` 明白「这次没有求值」，而不是传 `{ok:true}` 让它以为有。
       invariant: null,
+      // ★ **要发布的内容，提交时就存下来。**
+      //   发布那一步只认草案里的这一份，审批人不必、也无法重新提供内容 ——
+      //   否则「批的」与「发的」中间那道缝只能靠 `change_digest` 一个人守，
+      //   而摘要是单向的：它证明两样东西相同，不提供那两样东西。
+      payload: {
+        assetId,
+        name: payload?.name ?? assetId,
+        schemaCode: payload?.schemaCode ?? assetId,
+        rows: prepared.rows,
+        notEnforced: prepared.notEnforced,
+        // 契约内容也存下来 —— 发布时按它登记，不再向调用方要一次。
+        contracts: payload.contracts,
+      },
     })
   } catch (error) {
     // ⚠️ **判据是「这是不是一个领域错误」，不是「它有没有 `code`」。**
@@ -258,18 +271,20 @@ export async function publishCommit({ session, draftId, payload }) {
     return fail(403, 'KVVI_NOT_OWNER')
   }
 
-  const assetId = payload?.assetId
-  const contracts = payload?.contracts
-  if (typeof assetId !== 'string' || contracts === undefined) {
-    return fail(400, 'KVVI_ASSET_ID_REQUIRED')
+  // ★ **内容来自草案，不来自这一次请求。**
+  //   发布用的一定是提交时存下的那一份 —— 请求体里带什么都不能改变它。
+  const { rows: draftRows } = await pool('platform').query(
+    `SELECT payload FROM publish_drafts WHERE draft_id = $1 AND company_id = $2`,
+    [draftId, session.companyId])
+  if (draftRows.length !== 1) return fail(404, 'KVVI_NO_SUCH_DRAFT')
+  const stored = draftRows[0].payload ?? {}
+  if (stored.assetId === undefined || !Array.isArray(stored.rows)) {
+    return fail(409, 'KVVI_DRAFT_PAYLOAD_MISSING',
+      { detail: '这张草案里没有要发布的内容（它可能是改造之前提交的）。重新提交一次。' })
   }
-  let prepared
-  try {
-    prepared = await prepareDraft({ session, assetId, contracts })
-  } catch (error) {
-    if (error instanceof CompileError) return fail(400, error.code, error.detail)
-    throw error
-  }
+  const assetId = stored.assetId
+  const contracts = stored.contracts ?? {}
+  const prepared = { rows: stored.rows, notEnforced: stored.notEnforced ?? [] }
 
   const result = await publishDraft({
     ctx: { ...session },
@@ -300,8 +315,8 @@ export async function publishCommit({ session, draftId, payload }) {
     },
     system: {
       assetId,
-      name: payload?.name ?? assetId,
-      schemaCode: payload?.schemaCode ?? assetId,
+      name: stored.name ?? assetId,
+      schemaCode: stored.schemaCode ?? assetId,
     },
     contracts: PUBLISH_CONTRACTS.map((contractType) => ({
       contractType, assetId, content: contracts[contractType],
@@ -333,8 +348,11 @@ export async function publishList({ session }) {
  */
 export async function publishDetail({ session, draftId }) {
   const { rows } = await pool('platform').query(
+    // ⚠️ 列名是 `approval_opinion`，不是 `opinion`。
+    //    这条路由此前**一条测试都没有**，于是「选了一个不存在的列」这件事
+    //    一直躺在那里 —— 直到补上入口测试才当场变红。
     `SELECT draft_id, status, change_digest, diff_report, invariant, created_at,
-            approved_by, approved_at, opinion, published_at
+            approved_by, approved_at, approval_opinion, published_at
        FROM publish_drafts WHERE draft_id = $1 AND company_id = $2`,
     [draftId, session.companyId])
   if (rows.length !== 1) return fail(404, 'KVVI_NO_SUCH_DRAFT')

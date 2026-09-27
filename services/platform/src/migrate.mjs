@@ -248,6 +248,7 @@ async function main() {
   migrations.push(await applyFile('kvvi_platform', '21-systems-and-contracts.sql', pre.kvvi_platform))
   migrations.push(await applyFile('kvvi_platform', '22-platform-mode-grants.sql', pre.kvvi_platform))
   migrations.push(await applyFile('kvvi_platform', '23-idempotency.sql', pre.kvvi_platform))
+  migrations.push(await applyFile('kvvi_platform', '24-draft-payload.sql', pre.kvvi_platform))
   migrations.push(await applyFile('kvvi_business', '20-business.sql', pre.kvvi_business))
   migrations.push(await applyFile('kvvi_audit', '30-audit.sql', pre.kvvi_audit))
   await grantPlatform()
