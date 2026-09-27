@@ -59,3 +59,19 @@
     # replaces and needs no upstream source edit.
     - id: kvvi-panel
       name: '@deepseek-ai/dsh-client-kvvi-panel'
+
+# ⚠️ A patch **replaces the targeted row's whole `config`**, it does not merge
+# into it (`dsh-base`'s patch header says so). `goal` has exactly one config
+# field, so restating it here is safe — and that fact is the reason this stays
+# a two-line change instead of a copy of upstream's row.
+#
+# Why bound it at all: the harness default is 256 rounds, and a goal round is
+# admitted whenever the agent goes idle while the goal is active and armed. A
+# builder goal that can never be satisfied — a typo'd success criterion, a
+# validator that is not installed, a contract the model keeps failing — would
+# therefore run unattended for 256 rounds before anything stopped it. A build is
+# a bounded piece of work, not an open-ended agent run; 24 rounds is generous
+# for one and small enough that a stuck loop is noticed.
+- id: goal
+  config:
+    defaultMaxGoalRounds: 24
