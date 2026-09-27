@@ -189,6 +189,39 @@ description: 审批流编排——状态、动作、迁移、审批人链，产�
 - 非参与者能否看到进度（通常可看，不能操作）
 - 审批意见谁可见
 
+### 5.1 流程的权限策略怎么写（**照这四条写，别自己发明**）
+
+流程权限在 `permission-spec` 里是 `dimension: "FLOW"` 的那些策略。
+它们有四个坑，每一个都会让员工**点不动流程按钮**，而报错只说「没权限」：
+
+| # | 写什么 | 别写成 | 为什么 |
+|---|---|---|---|
+| 1 | `resource_ref.asset_id` = **业务对象**的代号（与 `businessSchemaRef.asset_id` 同一个值） | 流程自己的名字（如 `customer_follow`） | **流程没有独立身份** —— 它就是这张表单的一个开关。平台注册、投影、判权限全都按业务对象走，写流程名会得到一条**永远匹配不上**的策略 |
+| 2 | `actions` 写**类别**：`INITIATE` / `SUBMIT` / `WITHDRAW` / `APPROVE` / `REJECT` / `CLOSE` / `REOPEN` | `action_code`（如 `start_follow`） | `action_code` 是**业务名**，是给人看的；判权限用的是**类别**（`permission-spec` 的 schema 里这是闭枚举）。混用会永远不匹配 |
+| 3 | `subresource.state` = 状态码，表示**只在这个状态下**成立；**不写**表示不限状态 | 忘了写却以为它生效 | 写了就只在那个状态下放行；「跟进中才能成交」这类规则靠它表达 |
+| 4 | 记录**出生**在 `states[]` 里 `initial: true` 的那个状态 | 以为记录先当「草稿」 | 新记录的初始状态**来自这份契约**。想让记录先当草稿，就在 `states[]` 里声明一个 `initial: true` 的草稿态 —— 平台不会替你发明一个 |
+
+**一个能用的例子**（销售能发起、跟进中能成交、主管任何状态都能看）：
+
+```json
+{
+  "policy_code": "sales_flow_advance",
+  "role_code": "sales",
+  "role_ref": { "permission_ref": { "...": "指向角色目录" },
+                "subresource": { "type": "ROLE", "code": "sales" } },
+  "dimension": "FLOW",
+  "resource_ref": { "asset_type": "WORKFLOW", "asset_id": "customer", "...": "与业务对象同一个 id" },
+  "effect": "ALLOW",
+  "subresource": { "type": "STATE", "code": "following" },
+  "actions": ["SUBMIT", "CLOSE"],
+  "capability_refs": []
+}
+```
+
+⚠️ 上面第 1、2 条**在 v1 试点里真的写错过**，而症状是
+「界面上一个流程按钮都没有」—— 那时它看起来像流程引擎坏了，
+实际是策略里两个字段各写了一套自己的名字。
+
 ---
 
 # 四、一份完整的、已验证的示例
