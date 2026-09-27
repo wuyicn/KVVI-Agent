@@ -22,6 +22,7 @@ import { scopeContext, fieldVisibility, projectFields, canAct } from './authoriz
 import { createRecord, readRecord, listRecords, updateRecord } from './refs.mjs'
 import { runtimeProjection } from './runtime-projection.mjs'
 import { publishedSystems } from './publish.mjs'
+import { idempotencyKeyOf, withIdempotency } from './idempotency.mjs'
 import { step, nextActions, submitterOf, WorkflowError } from './workflow.mjs'
 
 /**
@@ -353,7 +354,7 @@ async function recordList(ctx, assetId) {
  * @param {object} input.session 已验证的会话
  * @returns {Promise<{status: number, body: object}>}
  */
-export async function systemRoutes({ method, path, payload, session }) {
+export async function systemRoutes({ method, path, payload, session, headers = {} }) {
   const ctx = ctxOf(session)
   const parts = path.split('/').filter((p) => p !== '')
 
@@ -378,11 +379,23 @@ export async function systemRoutes({ method, path, payload, session }) {
           return { status: 403, body: { error: 'KVVI_NOT_ALLOWED',
             detail: `没有 ${assetId} 的 create 动作权限` } }
         }
-        const scope = await scopeContext(ctx)
-        const created = await createRecord(ctx, scope, {
-          schemaCode: assetId, data: payload?.data ?? {},
+        // ★ **建记录带幂等键。**
+        //
+        // 这是最容易重复发一次的那个动作：请求出去了、响应没回来、连接断了，
+        // 重连之后客户端**不知道那一次到底成没成**。在此之前，
+        // 「重连不重放」靠的是客户端不自动重试 —— 一个约定，不是判据
+        // （验收的第 ⑤ 条量出过：同一条请求打三次，建出三条不同的记录）。
+        const key = idempotencyKeyOf(headers)
+        return await withIdempotency({
+          ctx, endpoint: `POST /systems/${assetId}/records`, key,
+          run: async () => {
+            const scope = await scopeContext(ctx)
+            const created = await createRecord(ctx, scope, {
+              schemaCode: assetId, data: payload?.data ?? {},
+            })
+            return { status: 201, body: created }
+          },
         })
-        return { status: 201, body: created }
       }
     }
 

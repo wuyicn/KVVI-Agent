@@ -213,7 +213,10 @@ export async function handleApi({ method, path, query, body, headers, loadSessio
   //   （前者要求所有者/管理员角色，后者只要求一个有效会话），
   //   而且它的**每一个分支各自过闸** —— 一处粗判会让新增的子路径默认放行。
   const rest = path.slice(PREFIX.length) || '/'
-  const routes = { method, path: rest, payload, session }
+  // ⚠️ `headers` 要一路传下去：幂等键**只认请求头** ——
+  //    放进请求体它就成了一条模型可见的参数，而「重发不产生第二次效果」
+  //    这条判据不该由模型决定。
+  const routes = { method, path: rest, payload, session, headers: headers ?? {} }
   // ⚠️ 交给 `adminRoutes` 的是**去掉 `/admin` 之后**的路径。传整条路径的话，
   //    它的 `parts[0]` 是 `'admin'`，于是每一个分支都落到兜底 404 ——
   //    而 404 看起来像「端点没写」，不像「前缀剥错了」。

@@ -31,7 +31,7 @@ import { createHash } from 'node:crypto'
 import { pool } from './db.mjs'
 import { latestContract } from './contracts.mjs'
 import { compilePermissionSpec, CompileError } from './policy-compile.mjs'
-import { PublishError, buildDiffReport, submitDraft, approveDraft, publishDraft }
+import { PublishError, buildDiffReport, submitDraft, approveDraft, publishDraft, writePolicies }
   from './publish.mjs'
 import { holdsPlatformRole, isPlatformAdmin } from './authorization.mjs'
 
@@ -274,34 +274,29 @@ export async function publishCommit({ session, draftId, payload }) {
   const result = await publishDraft({
     ctx: { ...session },
     draftId,
-    // ★ **唯一的策略写入点。** 全仓 `INSERT INTO policies` 两处：
-    //   这里，与 `admin-api.mjs` 的角色编辑器（那一条是发布通道的旁路，
-    //   见试点问题 #16，未决）。发布这条路径上，写库只发生在这一个回调里。
-    apply: async ({ draft }) => {
+    // ★ 写策略的 SQL **不在这里**（见 `publish.mjs` 的 `writePolicies`）。
+    //   这条路径上写库只发生在那个函数里，而它住在发布模块内部 ——
+    //   `工具/check_publish_channel.py` 静态盯着「产品代码里只有发布模块写得动
+    //   策略存储」这件事（§9.6.3）。把 SQL 搬到路由里等于给这条保证开第二个口子。
+    // ★ **策略的写入不在这里** —— 见 `publish.mjs` 的 `writePolicies`。
+    //   写策略的 SQL 只能有一处，而那一处是 `publish.mjs`；
+    //   `工具/check_publish_channel.py` 静态盯着这件事（§9.6.3）。
+    apply: async () => {
       const client = await pool('platform').connect()
       try {
         await client.query('BEGIN')
-        await client.query('DELETE FROM policies WHERE company_id = $1', [draft.company_id])
-        for (const row of prepared.rows) {
-          await client.query(
-            `INSERT INTO policies (policy_id, company_id, role_id, dimension,
-               resource_code, actions, data_scopes, field_visibility)
-             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (company_id, role_id, dimension, resource_code) DO UPDATE
-               SET actions = EXCLUDED.actions,
-                   data_scopes = EXCLUDED.data_scopes,
-                   field_visibility = EXCLUDED.field_visibility`,
-            [draft.company_id, row.roleId, row.dimension, row.resourceCode,
-             row.actions, row.dataScopes, row.fieldVisibility])
-        }
+        const written = await writePolicies({
+          // 公司**只来自会话** —— 调用方传的 companyId 在路由那一层就被剥掉了。
+          client, companyId: session.companyId, rows: prepared.rows,
+        })
         await client.query('COMMIT')
+        return { ...written, notEnforced: prepared.notEnforced.length }
       } catch (error) {
         await client.query('ROLLBACK').catch(() => undefined)
         throw error
       } finally {
         client.release()
       }
-      return { policies: prepared.rows.length, notEnforced: prepared.notEnforced.length }
     },
     system: {
       assetId,

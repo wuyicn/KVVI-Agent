@@ -188,6 +188,8 @@ async function grantPlatform() {
     // DELETE **按表给，不按库给**。三张表各有明确理由：
     //   `rate_events`          限流记账清理过期窗口
     //   `platform_mode_grants` 收回搭建模式
+    //   `idempotency_keys`     清扫过期窗口（`pruneIdempotencyKeys`）。
+    //      不扫的话这张表只增不减，而它的每一条都存着一份响应体。
     //   `policies` / `role_members`  一次授权动作是**整体替换**：
     //      「删掉这个角色上的旧策略，写入新策略」必须能同时做，
     //      否则「换一个人能看什么」这件事永远只能是追加 —— 只能加不能减的
@@ -197,7 +199,8 @@ async function grantPlatform() {
     //    撞上 `permission denied for table policies`。那不是「配置写错」，
     //    是这个 GRANT 少了表 —— 报错发生时已经写进事务，看起来像业务错误。
     await client.query(
-      `GRANT DELETE ON rate_events, platform_mode_grants, policies, role_members
+      `GRANT DELETE ON rate_events, platform_mode_grants, policies, role_members,
+                        idempotency_keys
          TO kvvi_platform`)
     await client.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO kvvi_platform`)
   } finally {
@@ -244,6 +247,7 @@ async function main() {
   migrations.push(await applyFile('kvvi_platform', '19-instance-bootstrap.sql', pre.kvvi_platform))
   migrations.push(await applyFile('kvvi_platform', '21-systems-and-contracts.sql', pre.kvvi_platform))
   migrations.push(await applyFile('kvvi_platform', '22-platform-mode-grants.sql', pre.kvvi_platform))
+  migrations.push(await applyFile('kvvi_platform', '23-idempotency.sql', pre.kvvi_platform))
   migrations.push(await applyFile('kvvi_business', '20-business.sql', pre.kvvi_business))
   migrations.push(await applyFile('kvvi_audit', '30-audit.sql', pre.kvvi_audit))
   await grantPlatform()

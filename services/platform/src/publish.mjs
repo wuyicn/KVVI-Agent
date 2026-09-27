@@ -73,6 +73,48 @@ export function buildDiffReport(before, after) {
 }
 
 /**
+ * 把编译好的策略**写进 `policies`**（§9.6.3 唯一的生效通道）。
+ *
+ * ⚠️ **这段 SQL 必须住在 `publish.mjs` 里，不能搬到调用方。**
+ *
+ * 第一版把它写在 `publish-api.mjs` 的路由里，于是
+ * `工具/check_publish_channel.py` 当场变红：它的判据是
+ * 「产品代码里**只有 `publish.mjs`** 能写 `policies`」。
+ * 那条判据是对的 —— 它是 §9.6.3「搭建者绕过发布、直接改策略存储」这件事
+ * 在代码层面的**唯一**保证（数据库层不拦直写，记为 N24）。
+ * 把 SQL 挪到路由里，就等于给这条保证开了第二个写入口，
+ * 而第二个入口一旦存在，第三个就不远了。
+ *
+ * 所以调用方只负责**给出要写什么**（编译好的行），写入留在这里。
+ *
+ * ⚠️ 整体替换，不是追加：`DELETE` 之后整批写入，且与发布记录**同一个事务**
+ * （由 `publishDraft` 的调用方保证）。只加不减的权限界面等于没有权限界面。
+ *
+ * @param {object} input 入参
+ * @param {object} input.client 已开启事务的 pg 客户端
+ * @param {string} input.companyId 公司
+ * @param {Array<object>} input.rows 编译好的策略行
+ * @returns {Promise<{policies: number}>} 写入条数
+ */
+export async function writePolicies({ client, companyId, rows }) {
+  await client.query('DELETE FROM policies WHERE company_id = $1', [companyId])
+  for (const row of rows) {
+    await client.query(
+      `INSERT INTO policies (policy_id, company_id, role_id, dimension,
+         resource_code, actions, data_scopes, field_visibility)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (company_id, role_id, dimension, resource_code) DO UPDATE
+         SET actions = EXCLUDED.actions,
+             data_scopes = EXCLUDED.data_scopes,
+             field_visibility = EXCLUDED.field_visibility`,
+      [companyId, row.roleId, row.dimension, row.resourceCode,
+       row.actions, row.dataScopes, row.fieldVisibility])
+  }
+  return { policies: rows.length }
+}
+
+
+/**
  * 提交待发布草案（第 1 步：**差异报告**）。
  * @param {object} input 入参
  * @returns {Promise<object>} 草案
