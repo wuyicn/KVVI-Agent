@@ -364,6 +364,40 @@ def check_revocation(platform, db, report, staff, user_login):
                        '回一个笼统的 401，运维会去查错的地方'))
 
 
+def probe_payload(staff, stamp):
+    """
+    按**当前发布的模型**现算一份合法的建记录载荷。
+
+    ⚠️ 不写死字段名。写死的后果实测过一次：契约里加了必填之后，
+    这一条从「验幂等键」变成「三次 400」，而报出去的是「幂等键没生效」——
+    把「我的载荷不合法」说成了「平台坏了」。
+
+    `required` 与 `required_field` 是两道闸，而**两者都只落在模型声明过的字段上**，
+    所以「把所有声明过的字段都填上」同时满足两层，且不依赖任何具体系统。
+
+    @param staff 已登录的员工会话
+    @param stamp 时间戳（让每次探测的记录名可辨）
+    @returns `{字段: 值}`；读不到模型时退回一个最小载荷（宁可能失败，也不假装成功）
+    """
+    try:
+        _status, body, _headers = staff.call('GET', '/api/v1/systems/customer/runtime')
+        fields = [f for f in ((body or {}).get('models', {}).get('customer', {})
+                              .get('fields') or []) if f.get('field_code')]
+    except Exception:
+        fields = []
+    if not fields:
+        return {'customer_name': '幂等探针-%d' % stamp}
+    payload = {}
+    for field in fields:
+        code = field['field_code']
+        # 值一律给字符串：运行时不校验字段值的**类型**（那是另一个话题），
+        # 而这一条要测的是幂等，不是类型校验。
+        payload[code] = '探针-%d' % stamp if code.endswith('name') else '探针'
+    payload.setdefault('customer_name', '幂等探针-%d' % stamp)
+    payload['customer_name'] = '幂等探针-%d' % stamp
+    return payload
+
+
 def check_no_replay(platform, db, report, staff):
     """
     ⑤ 重连不重放。
@@ -407,8 +441,17 @@ def check_no_replay(platform, db, report, staff):
     #    这是 A 之外的另一半：A 证的是「我们这层不重放」，
     #    B 证的是「就算有人重放了，服务端也认得出重复」。
     #    前一版这一问只是「量个事实」—— 因为那时**没有**幂等键。
+    #
+    # ⚠️ **载荷按契约的模型现算，不写死字段名。**
+    #
+    # 第一版写死了 `{customer_name, follow_status}` —— 于是契约里一加必填
+    # （先是模型层的 `required`，再是按角色的 `required_field`），这一条就
+    # 变成「三次都是 400、一条也没建出来」，而它报的是「幂等键没生效」。
+    # **那是把「我的载荷不合法」说成了「平台坏了」。**
+    # 现在：从运行时投影读模型，把**每个声明了的字段**都填上 ——
+    # 覆盖两层必填（模型层与权限层），脚本也不再随契约漂移。
     stamp = int(time.time())
-    data = {'customer_name': '幂等探针-%d' % stamp, 'follow_status': '未跟进'}
+    data = probe_payload(staff, stamp)
     keys = []
     for _ in range(3):
         status, body, _ = staff.call(
