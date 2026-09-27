@@ -224,3 +224,29 @@ describe('会话续发：不加宽就是不加宽', () => {
       '过期凭据在续发端点之外也被接受了 —— 「过期」于是不再是判据')
   })
 })
+
+/**
+ * 路由：端点写好了不等于**到得了**。
+ *
+ * ── 这一条为什么必须补 ──────────────────────────────────────────────────
+ *
+ * 上面那一组全部直接调 `handleAuth`，**绕过了 `server.mjs` 的路由**。
+ * 于是 `/auth/renew` 端点写得再对，只要没进 `USER_AUTH_PATHS`，
+ * 真实请求就会被转发给运行时，而运行时的回答是一句小写的 `unauthorized` ——
+ * 看起来像「凭据不对」，实际是「这条路径根本没人处理」。
+ *
+ * 实测就是这么撞的：单元测试全绿，装在试点实例上一调才发现。
+ * 手搭的 ctx 测不出路由，这条静态断言补的就是那一段。
+ */
+describe('路由：新端点必须在「本进程自己应答」的名单里', () => {
+  test('★ `/auth/renew` 不会被转发给运行时', async () => {
+    const source = await (await import('node:fs/promises'))
+      .readFile('src/server.mjs', 'utf8')
+    const match = /const USER_AUTH_PATHS = new Set\(\[([\s\S]*?)\]\)/.exec(source)
+    assert.notEqual(match, null, '找不到 USER_AUTH_PATHS —— 这段断言的锚点没了')
+    for (const path of ['/auth/login', '/auth/logout', '/auth/session', '/auth/renew']) {
+      assert.ok(match[1].includes(`'${path}'`),
+        `${path} 不在 USER_AUTH_PATHS 里 —— 它会被转发给运行时并得到一句 unauthorized`)
+    }
+  })
+})

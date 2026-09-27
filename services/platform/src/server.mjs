@@ -80,7 +80,13 @@ const PENDING = {
  *
  * 这些端点各自有自己的鉴权：登录凭账号口令，登出与会话查询凭委派令牌。
  */
-const USER_AUTH_PATHS = new Set(['/auth/login', '/auth/logout', '/auth/session'])
+// ⚠️ `/auth/renew` **必须在这里**。这个 Set 是「本进程自己应答」的名单，
+//    不在里面的 `/auth/*` 会被转发给运行时 —— 而运行时对它的回答是
+//    一句小写的 `unauthorized`，看起来像「凭据不对」，
+//    实际是「这条路径根本没人处理」。实测就这么撞过一次：
+//    单元测试直接调 `handleAuth`，绕过了路由，于是怎么测都是绿的。
+const USER_AUTH_PATHS = new Set(['/auth/login', '/auth/logout', '/auth/session',
+  '/auth/renew'])
 
 /**
  * 一次性首次初始化的令牌。安装时生成，写在配置文件（0600）里。

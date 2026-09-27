@@ -48,7 +48,7 @@
       "kind": "平台服务进程（身份层 / 授权 / 签名 / 认证端点）",
       "version": "0.1.0",
       "fileCount": 79,
-      "digest": "sha256:f366e2fb27cfdc14bc47aa95af7664d16e2df77c5b1c24c9729ceb3134457868"
+      "digest": "sha256:c376ddee36165ba400624b161327a2958c28b7ab8d192cf054d6c539edaf7059"
     },
     {
       "name": "runtime-service",
@@ -99,5 +99,5 @@
       "digest": "sha256:c0c9fe33ba8f6aeef9135be6f2386101d7c7837b0f5edf30abfacc68166aa128"
     }
   ],
-  "deliveryDigest": "sha256:ef51a50ef5f0028e9cbb028d68d6f8b600a12cc0e657451eb6b195b878dc25d2"
+  "deliveryDigest": "sha256:81b4855f37ccce51c5f59d24cee52e332d732d0360bd1f8336ff161619fca08f"
 }
