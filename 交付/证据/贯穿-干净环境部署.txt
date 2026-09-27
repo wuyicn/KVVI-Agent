@@ -5,9 +5,9 @@ $ python3 工具/交付环境.py
 
 [1] 先确认部署对象**就是**被指纹覆盖的那一份
   [31m✗ 交付包完整性未通过 —— 拒绝部署[0m
-      [32m✓[0m bundle-kvvi-app            v—             5 个文件  sha256:8ab3cb6db2852f070399f29
-      [32m✓[0m schema-samples             v—            94 个文件  sha256:c0c9fe33ba8f6aeef9135be
 
-      [31m✗ distribution 的内容变了而清单没刷新（sha256:8676ef4267e → sha256:22b0496c822）[0m
-      [31m✗ platform-service 的内容变了而清单没刷新（sha256:524bfa38197 → sha256:61f45a3c811）[0m
+      [31m✗ contracts 的内容变了而清单没刷新（sha256:847f46f9908 → sha256:2b27d398394）[0m
+      [31m✗ platform-service 的内容变了而清单没刷新（sha256:ef5f4675aa0 → sha256:d279bae897d）[0m
+      [31m✗ platform-service 的文件数从 93 变成 94[0m
+      [31m✗ agent-preset-builder 的内容变了而清单没刷新（sha256:cb91a4ba40b → sha256:0ab9fba013f）[0m
       [31m✗ 交付摘要与清单内容不一致（清单被改过，或组件变了）[0m

@@ -58,6 +58,15 @@
     },
     {
       "stage": "阶段一",
+      "name": "契约 schema 扩展（required_field）",
+      "command": "python3 工具/check_contract_schema.py",
+      "exitCode": 0,
+      "ok": true,
+      "evidence": "交付/证据/阶段一-契约-schema-扩展（required_field）.txt",
+      "digest": "sha256:4d3841b33f421d0a02fe51b9e243f5006057753c4ebc4ecbc57c948207523682"
+    },
+    {
+      "stage": "阶段一",
       "name": "G2 fork 改造点",
       "command": "python3 工具/g2_改造点.py --check",
       "exitCode": 0,
@@ -78,10 +87,10 @@
       "stage": "阶段一",
       "name": "构建配置",
       "command": "python3 工具/check_build.py",
-      "exitCode": 1,
-      "ok": false,
+      "exitCode": 0,
+      "ok": true,
       "evidence": "交付/证据/阶段一-构建配置.txt",
-      "digest": "sha256:75798323e1910a47cd0c13b14095c568a55fe585ae2abfcca7ca20b44529b434"
+      "digest": "sha256:213a483dcca001e38c8f282e54d136615a9fb2b91d996e96033e78ee5971a4e6"
     },
     {
       "stage": "阶段一",
@@ -108,7 +117,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-Skill-产出验收.txt",
-      "digest": "sha256:0aeb65fc4d3d508c6efc0ebfea1daef3d43b844269d3353f89669ccc0454b75c"
+      "digest": "sha256:e0fa0aeb45fe6abf2180984c4e810e2a6a22b805ad17949b46058fe8e4fbf421"
     },
     {
       "stage": "阶段三",
@@ -126,7 +135,7 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段三-去行业化自查（0A-14）.txt",
-      "digest": "sha256:2134eb8b5c5f47c9147fa906b60919132c3ccd01639c49699555a406521d7ae4"
+      "digest": "sha256:2fa3d8921f56174eed6caf5da58813e24ba72ff26d0ceb4ed12427638f0aea69"
     },
     {
       "stage": "阶段三",
@@ -144,7 +153,7 @@
       "exitCode": 2,
       "ok": false,
       "evidence": "交付/证据/阶段四-锚点①②③④⑥-全量.txt",
-      "digest": "sha256:7e4d6045416faac30f44d133db8199e7dd074e72a3845d1777fe306c34ce3210"
+      "digest": "sha256:bc638016faf8cd87234e43a3c42a9252a368ea95979aebea3ff28d7fbe6bec2a"
     },
     {
       "stage": "阶段五",
@@ -153,7 +162,7 @@
       "exitCode": 2,
       "ok": false,
       "evidence": "交付/证据/阶段五-锚点①②③④-全量.txt",
-      "digest": "sha256:8ab5405805a985fff4e094c2e71fe1298a987f20d14811e24569948937ff5ef3"
+      "digest": "sha256:26cf83bad63ae0809c9f38102636b7312557a170eac78d0c81acee707c3b8092"
     },
     {
       "stage": "阶段六",
@@ -162,7 +171,7 @@
       "exitCode": 2,
       "ok": false,
       "evidence": "交付/证据/阶段六-锚点①②③④-全量.txt",
-      "digest": "sha256:12e5df240ef23ba28b3fdcd7cd06731461dbcf00d54b3e39bfd71431929efe24"
+      "digest": "sha256:f4dd791b0fb0c4b45dc709eba65642e259b599aabd7f201320c95567166622e2"
     },
     {
       "stage": "贯穿",
@@ -171,7 +180,7 @@
       "exitCode": 1,
       "ok": false,
       "evidence": "交付/证据/贯穿-交付包清单_版本_指纹.txt",
-      "digest": "sha256:782caf8c79b705b2e081571acda5dfaebfbb3d2d22abc73b834a30115117a814"
+      "digest": "sha256:45d3a757c48a4316347323ff666c4f4fdcb854c79ed54857a5f8a8c74226bd18"
     },
     {
       "stage": "贯穿",
@@ -180,7 +189,7 @@
       "exitCode": 1,
       "ok": false,
       "evidence": "交付/证据/贯穿-干净环境部署.txt",
-      "digest": "sha256:9af91bb168f1e3ec0826b14cd64e264c5aa6a3e9117d54170ad52e997eaa369f"
+      "digest": "sha256:a38e93023409f38123a4b3b011afb3fa308af98ca71653d125ad553b4358adff"
     },
     {
       "stage": "贯穿",
@@ -198,8 +207,8 @@
       "exitCode": 1,
       "ok": false,
       "evidence": "交付/证据/阶段八-G6-身份与模式路由.txt",
-      "digest": "sha256:41eb8d71a5a543267e0e32cc52b4a3eab5ea26815927b43a54b120dacafd8fff",
-      "commit": "7b53c08fe8defda90fe94c1c184f161e6541c9cb",
+      "digest": "sha256:9cdec858e1703b27977981c82b367a1bd098a816da4ee6e4860a970c781afb18",
+      "commit": "5d9c3bf849664d499935a775c80a9c3cbb5dc60a",
       "evidenceClasses": [
         "role_policy",
         "login_api",
@@ -230,8 +239,8 @@
       "exitCode": 0,
       "ok": true,
       "evidence": "交付/证据/阶段九-G7-系统运行闭环.txt",
-      "digest": "sha256:5022f897b1244c444777e79b82ece5604c115be5ce91df3631294e17a29902df",
-      "commit": "7b53c08fe8defda90fe94c1c184f161e6541c9cb",
+      "digest": "sha256:17a8e5332947eff49965f0e4735d8dcf697249e77b126d0b861fa2a3c0ce7c7f",
+      "commit": "5d9c3bf849664d499935a775c80a9c3cbb5dc60a",
       "evidenceClasses": [
         "contracts",
         "runtime_api",
@@ -239,13 +248,13 @@
         "end_to_end"
       ],
       "sourceDigests": {
-        "services/platform/src/api-router.mjs": "sha256:d8edf2cac5277ca23283b697e042e68ddc2676d6e4b15e7d904238a69a28149f",
-        "services/platform/src/system-api.mjs": "sha256:7ff9295301be46b62a260e085f31e6e2424a6aee272a26dcca99e70d27ebd2f8",
-        "services/platform/src/runtime-projection.mjs": "sha256:026f628089fbb95027b8cb8ae24c01ae8f9b9400313e3e4d37ce94c45b412b06",
-        "services/platform/src/publish.mjs": "sha256:819589e5398f810feecf5376ffb2fd635d1ecb0cb9daa94da9a5a9a3095b6d6a",
-        "services/platform/src/refs.mjs": "sha256:4316691cd23d3c8d26a0776132e39bdead87932730868b20b0b4bd4ede8343ee",
+        "services/platform/src/api-router.mjs": "sha256:1a08b2c1f93271a714e1e301b8fce9c98bbf83091953fda2a9f7fff5a735134c",
+        "services/platform/src/system-api.mjs": "sha256:ee5caaf7e2b85cec3b0f2fce208979efc2dc35fb0d98e42cad3c19fc0995607b",
+        "services/platform/src/runtime-projection.mjs": "sha256:7eb7c41a1b94830f22638c60b7c2a105a9121c1efd42e9b4a37dd3e9f2d001ef",
+        "services/platform/src/publish.mjs": "sha256:174f23c89a16b9b54ba72806b75d32c80eec44e45fe072717928807112b75b38",
+        "services/platform/src/refs.mjs": "sha256:3df321ae4a34df231cbf50c9ade1018800aa6ca3ad3ab35e2044ae2a041c021f",
         "services/platform/src/record-no.mjs": "sha256:4942a4c6bbaac8ece3938e5a7dde6b64a89c4864e2d7dfc09dd700965995025e",
-        "services/platform/tests/publish-runtime-e2e.test.mjs": "sha256:c946fea7022e7556590a184670b95dcc0d6e2c6e535655afed6c99f51d0c9c97",
+        "services/platform/tests/publish-runtime-e2e.test.mjs": "sha256:709c468467af9aea7117b514255d59cc061f3059a6fe8846f570637b636d57dd",
         "services/platform/tests/system-api.test.mjs": "sha256:04d2f1f19c185991f23329e7c8723eaa365fc4170d342a7340e66ec57c750f74",
         "services/platform/tests/api-router.test.mjs": "sha256:a4a4716ba49a22db2a4144be61adddca4c132eb41186de718943c7073b21e309",
         "services/platform/tests/runtime-projection.test.mjs": "sha256:1a3b92134096aaa2549ec021fc2c85ac2010bbe844179298df5c9b3669e42d8f",
@@ -265,8 +274,8 @@
       "exitCode": 1,
       "ok": false,
       "evidence": "交付/证据/阶段十-G8-UI-与-Agent-差异等价.txt",
-      "digest": "sha256:17c5eebd9a837795008999a2b3276ecbd5f8d37ce8559ca4d5280fd5690fe605",
-      "commit": "7b53c08fe8defda90fe94c1c184f161e6541c9cb",
+      "digest": "sha256:040bb5c74d8250b762ebbb950ea29a80db01b1c9d3bc51b16376c8784a17d1ca",
+      "commit": "5d9c3bf849664d499935a775c80a9c3cbb5dc60a",
       "evidenceClasses": [
         "admin_api",
         "admin_ui",
@@ -276,13 +285,13 @@
         "worker_composition"
       ],
       "sourceDigests": {
-        "services/platform/src/admin-api.mjs": "sha256:64751cb850248cf35723b154575567e1fde09a8cfc1a3e4563771dfa87c2e579",
-        "services/platform/src/api-router.mjs": "sha256:d8edf2cac5277ca23283b697e042e68ddc2676d6e4b15e7d904238a69a28149f",
-        "services/platform/src/system-api.mjs": "sha256:7ff9295301be46b62a260e085f31e6e2424a6aee272a26dcca99e70d27ebd2f8",
-        "services/platform/src/runtime-projection.mjs": "sha256:026f628089fbb95027b8cb8ae24c01ae8f9b9400313e3e4d37ce94c45b412b06",
-        "services/platform/src/workflow.mjs": "sha256:c7256fb28bc5d68ea898e522ce12453d78a3f19921808495e87d1afc23ecb042",
+        "services/platform/src/admin-api.mjs": "sha256:fda829cd4df62e6bc14eb8260ec3b0438ca75eac654abfbaa97ca5493f659cf7",
+        "services/platform/src/api-router.mjs": "sha256:1a08b2c1f93271a714e1e301b8fce9c98bbf83091953fda2a9f7fff5a735134c",
+        "services/platform/src/system-api.mjs": "sha256:ee5caaf7e2b85cec3b0f2fce208979efc2dc35fb0d98e42cad3c19fc0995607b",
+        "services/platform/src/runtime-projection.mjs": "sha256:7eb7c41a1b94830f22638c60b7c2a105a9121c1efd42e9b4a37dd3e9f2d001ef",
+        "services/platform/src/workflow.mjs": "sha256:098acd756b62d63d68b0aaf9a3fdd7f1dd288e4de7d862abd901f4859542eaf2",
         "services/platform/tests/admin-api.test.mjs": "sha256:a4882700e7a16cb642523a731585d0b2e40e9a01437208de27b83edf4180908d",
-        "services/platform/tests/ui-agent-e2e.test.mjs": "sha256:301801e275a74c2d15ad7c1aa4249284bd29a6ae64047140c29ba1a7715ffc46",
+        "services/platform/tests/ui-agent-e2e.test.mjs": "sha256:2bf96ff9389d593b91847638765cf4aae37bf546c5c9b3b901687024066ea55c",
         "services/platform/tests/api-router.test.mjs": "sha256:a4a4716ba49a22db2a4144be61adddca4c132eb41186de718943c7073b21e309",
         "forks/dsh/变更/packages/tool/kvvi-business/src/client.ts": "sha256:5b396d7a6b773a8e38b9115788eeffaa91afdaf52b0e99068c516394bf76d974",
         "forks/dsh/变更/packages/tool/kvvi-business/src/index.ts": "sha256:b7018813df88a1863ec11533576da5d97390b988219a5360b8ed7e1bfbbef2ff",
@@ -303,8 +312,8 @@
       "exitCode": 1,
       "ok": false,
       "evidence": "交付/证据/阶段十一-G9-macOS-试点发行版.txt",
-      "digest": "sha256:3490f131495c8dbc37f96b8e562a04cdbef035e0d0ecd0622a138a35495b7e69",
-      "commit": "7b53c08fe8defda90fe94c1c184f161e6541c9cb",
+      "digest": "sha256:0e1d42d32823069de18b2560f03ffdd448fd205c684ca6e0427d8c5662cccab7",
+      "commit": "5d9c3bf849664d499935a775c80a9c3cbb5dc60a",
       "evidenceClasses": [
         "preflight",
         "install",
@@ -320,28 +329,27 @@
         "distribution/lib/preflight.py": "sha256:dc0e288e204a207e2d58f8968da6c48d70c9a85a582bc41f95f907934c744cd9",
         "distribution/lib/install.py": "sha256:9ea8d740665b7701699b1c1d4d0aa1de2bf55f7eb71f9bedc2721950418ee208",
         "distribution/lib/pg.py": "sha256:fa668b348e172115d4bf15a14e322285ca095750695c1d1255dc3709b9e4e5b3",
-        "distribution/lib/supervisor.py": "sha256:0d172c2db8901ae05de23a0eec7a3f5eb1f23af15331cde0ab1a3fd163da9fab",
+        "distribution/lib/supervisor.py": "sha256:f7110bb95c7ae2d2301a31d078816ad35ca764de530f8447d81d7c5196847d9d",
         "distribution/lib/backup.py": "sha256:a7607f1e5d349be0140678865ea7fab647e08f9afd9445a0796b4fb89288d63b",
         "distribution/lib/upgrade.py": "sha256:5f15494851bb56b9a14169d8e7137e6acd98982661df01cd1e5d53bc03716d1b",
         "distribution/skills/kvvi-install/SKILL.md": "sha256:8e41ea9b7c87514738c7d978a7c2d0dc3271a378a08c0a0501d797f00b716236",
         "distribution/skills/kvvi-install/scripts/_common.sh": "sha256:236e046a32af85d71b1ca70b9e90932d2581f5c6476728d82b9e6b6e3236d808",
         "distribution/tests/test_preflight.py": "sha256:39650df2e11f371bf910bc0f0b41d07ba31632f768079db804bc8fdaacd5b2c4",
         "distribution/tests/test_pg.py": "sha256:f12fcf33396e9d004b428a024a2658b1dee6ba9e2e4e95f82a737121eda9b2b3",
-        "distribution/tests/test_supervisor.py": "sha256:bb6427b0c87219ded41258cfe9f1cdea651ffb39ccf94da183c681f9e909bcd1",
+        "distribution/tests/test_supervisor.py": "sha256:7a750629c19b4d19cbd1f5dcb621f46812c94417f1c914674bf9dba07cf341de",
         "distribution/tests/test_backup_restore.py": "sha256:682a8a0d682a537d8dc5b8ae4467577477cc9af2dba35c83e03e0e74b7bfdbe2",
         "distribution/tests/test_install_skill.py": "sha256:6bc4be21b0b0dd79b5e4001af0273c1d7f5bec72f05bcb05eaae8922e050e687",
         "services/platform/src/bootstrap.mjs": "sha256:fa8b81bedf07724eb9f3a80ecc357480ff2557a5ff59f4180439180a928554ad",
         "services/platform/sql/19-instance-bootstrap.sql": "sha256:3ff73bf99519d7b2edc48e35afdd55ed6dfd5fb5af8252e10f3986047640e8af",
         "工具/发行包.py": "sha256:ed3d6d24e3866e4abe145c51dbeec74a58ff38646c8cdcae83c1404fdb1e2a5c",
         "工具/check_stage11.py": "sha256:a316df981b47651d76dd21e5e82abd46ee6add3d6d5c83d88fe2345aebdd0e2c",
-        "安装手册.md": "sha256:865b37981d9a4b2a7a1441b1bc0c94b9f5379300f593df1420f900210abd83de"
+        "安装手册.md": "sha256:7ff8eddfa6b6f55f26d97bc5756fee28bd6c9b4d5b22d4241da5e68b9102e3d3"
       }
     }
   ],
-  "deliveryDigest": "sha256:a399e1205aff4a0090341503f15ee34434837e5e88dbb048612bce8aada99059",
+  "deliveryDigest": "sha256:81286ef776a584627cd453c70248c31208e8d35d5d6c2852345c7c512e394e4e",
   "failed": [
     "阶段一/两进程骨架与 N3 拓扑",
-    "阶段一/构建配置",
     "阶段四/锚点①②③④⑥ 全量",
     "阶段五/锚点①②③④ 全量",
     "阶段六/锚点①②③④ 全量",
@@ -352,5 +360,5 @@
     "阶段十/G8 UI 与 Agent 差异等价",
     "阶段十一/G9 macOS 试点发行版"
   ],
-  "bundleDigest": "sha256:df73918ebfb10b65290e8e883a7d481d7cf3e8bf4eeace572a6731c58bc7f6e3"
+  "bundleDigest": "sha256:ef5ee835a0c9e0eeaff76afb7bac1ab232a5f881ce20683096f509411f1aceb8"
 }

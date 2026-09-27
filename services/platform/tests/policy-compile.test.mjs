@@ -148,6 +148,37 @@ describe('编译：有损的地方必须说出来', () => {
     assert.equal(rows[0].stateCode, null)
   })
 
+  test('★ `required_field` 落进行里；与不可写档位冲突时**拒编译**', () => {
+    // 「要求有值」与「不允许写」放在一起是自相矛盾的：那个角色永远满足不了它，
+    // 而表现是「怎么填都被拒」—— 看起来像权限配小了。
+    const { rows } = compilePermissionSpec(spec([
+      policy({ policy_code: 'req1', dimension: 'FIELD',
+        resource_ref: REF('BUSINESS_SCHEMA', 'customer'),
+        subresource: { type: 'FIELD', code: 'contact_phone' },
+        field_mode: 'EDITABLE', required_field: true }),
+    ]), { roleIds: ROLE_IDS })
+    assert.equal(rows[0].fieldRequired, true)
+    assert.equal(rows[0].stateCode, null, '字段策略现在不按状态收窄（契约里没地方放状态）')
+
+    // 不带 `required_field` 时是 false —— 「没写」不等于「要求必填」。
+    const { rows: plain } = compilePermissionSpec(spec([
+      policy({ policy_code: 'req2', dimension: 'FIELD',
+        resource_ref: REF('BUSINESS_SCHEMA', 'customer'),
+        subresource: { type: 'FIELD', code: 'note' }, field_mode: 'EDITABLE' }),
+    ]), { roleIds: ROLE_IDS })
+    assert.equal(plain[0].fieldRequired, false)
+
+    for (const mode of ['READ_ONLY', 'HIDDEN', 'DENY']) {
+      assert.throws(() => compilePermissionSpec(spec([
+        policy({ policy_code: 'bad', dimension: 'FIELD',
+          resource_ref: REF('BUSINESS_SCHEMA', 'customer'),
+          subresource: { type: 'FIELD', code: 'note' },
+          field_mode: mode, required_field: true }),
+      ]), { roleIds: ROLE_IDS }), (e) => e.code === 'KVVI_COMPILE_REQUIRED_NOT_WRITABLE',
+        `${mode} + 必填 竟然编译过了`)
+    }
+  })
+
   test('能力引用进 `notEnforced`', () => {
     const { notEnforced } = compilePermissionSpec(spec([
       policy({ dimension: 'FORM', resource_ref: REF('BUSINESS_SCHEMA', 'customer'),

@@ -171,6 +171,21 @@ export function compilePermissionSpec(spec, { roleIds } = {}) {
           { policyCode: code, fieldMode: mode ?? null,
             allowed: Object.keys(FIELD_MODE_TO_VISIBILITY) })
       }
+      // ⚠️ **必填必须配一个可写的档位。**「要求有值」与「不允许写」放在一起
+      //    是自相矛盾的：那个角色永远满足不了它，而表现是「怎么填都被拒」——
+      //    看起来像权限配小了。运行时拒绝写入的正是这两档（见 `recordUpdate`
+      //    的 blocked：HIDDEN 与 READONLY），所以判据取自运行时自己那一份。
+      if (policy.required_field === true && (visibility === 'HIDDEN' || visibility === 'READONLY')) {
+        throw new CompileError('KVVI_COMPILE_REQUIRED_NOT_WRITABLE',
+          { policyCode: code, fieldMode: mode, visibility })
+      }
+      // ⚠️ **字段策略目前不按状态收窄。**
+      //
+      // `FieldPolicy.subresource` 是 `{type: FIELD, code}` —— 它**没有地方放状态**
+      // （FLOW 策略才有 `{type: STATE, code}`）。所以「只在跟进中必填」这一类
+      // 现在表达不了，`stateCode` 一律为 null。要想表达它，得给 `FieldPolicy`
+      // 也加一个状态字段 —— 那是**第二次**契约改动，不与本次（加 `required_field`）
+      // 合并做。这里如实写下来，而不是先塞一个恒为 null 的键假装支持。
       const key = `${policy.role_code}|FIELD|${resourceCode}`
       // 同一 (角色, 字段) 出现多条时取**最严**的一条 ——
       // 与 `authorization.fieldVisibility` 的合成规则一致（那里也是取最严）。
@@ -179,7 +194,12 @@ export function compilePermissionSpec(spec, { roleIds } = {}) {
       const existing = byKey.get(key)
       if (existing === undefined || rank[visibility] > rank[existing.fieldVisibility]) {
         byKey.set(key, { roleCode: policy.role_code, dimension: 'FIELD',
-          resourceCode, stateCode: null, actions: [], dataScopes: [], fieldVisibility: visibility })
+          resourceCode, stateCode: null, actions: [], dataScopes: [],
+          fieldVisibility: visibility, fieldRequired: policy.required_field === true })
+      } else if (policy.required_field === true && existing.fieldRequired !== true) {
+        // 「取最严」在必填上只有一个方向：**只要有一条说要填，就得填**。
+        // 反过来（有一条说不用填就放过）会让「多写一条」变成放松要求。
+        existing.fieldRequired = true
       }
       continue
     }
@@ -234,6 +254,7 @@ export function compilePermissionSpec(spec, { roleIds } = {}) {
     dimension: row.dimension,
     resourceCode: row.resourceCode,
     stateCode: row.stateCode ?? null,
+    fieldRequired: row.fieldRequired === true,
     actions: row.actions,
     dataScopes: row.dataScopes,
     fieldVisibility: row.fieldVisibility,

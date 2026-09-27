@@ -86,10 +86,11 @@ function writable(field, operation) {
  * @param {object} input.model `business-schema` 的 Spec（`{fields: [...]}`）
  * @param {'create'|'update'} input.operation 这是新增还是修改
  * @param {object} input.data 这次要写的字段值
+ * @param {Set<string>} [input.requiredFields] **权限层**要求的必填字段（按角色）
  * @returns {Array<{field: string, reason: string, detail: object}>} 违规项，空数组表示可以写
  * @throws {TypeError} 入参形状不对（这是编程错误，不是数据错误）
  */
-export function checkFieldValues({ model, operation, data }) {
+export function checkFieldValues({ model, operation, data, requiredFields }) {
   if (!OPERATIONS.includes(operation)) {
     throw new TypeError(`未知的写入操作：${operation}`)
   }
@@ -124,9 +125,19 @@ export function checkFieldValues({ model, operation, data }) {
 
   if (operation === 'create') {
     for (const field of fields) {
-      if (field?.required !== true) continue
+      // 两道闸叠加：模型层（对所有人成立的**下限**）与权限层（按角色再收窄）。
+      const requiredByModel = field?.required === true
+      const requiredByRole = requiredFields instanceof Set
+        && requiredFields.has(field?.field_code)
+      if (!requiredByModel && !requiredByRole) continue
       if (blank((data ?? {})[field.field_code])) {
-        problems.push({ field: field.field_code, reason: 'KVVI_FIELD_REQUIRED', detail: {} })
+        // 来源分开报：调用方要能分清「模型说必填」与「你这一档必须填」——
+        // 前者谁都改不了，后者是配出来的。
+        problems.push({
+          field: field.field_code, reason: 'KVVI_FIELD_REQUIRED',
+          detail: requiredByModel && requiredByRole ? { by: 'both' }
+            : { by: requiredByModel ? 'model' : 'role' },
+        })
       }
     }
   }

@@ -58,6 +58,12 @@ C_OK, C_BAD, C_WARN, C_DIM, C_OFF = '\033[32m', '\033[31m', '\033[33m', '\033[90
 STAGES = [
     ('阶段一', '基座就位', [
         ('G1 契约资产指纹', ['python3', '工具/g1_指纹.py', '--verify']),
+        # 契约层被**有意扩展**过（`FieldPolicy.required_field`，按角色的字段必填）。
+        # `tools/meta-schema-full/.../verify.py` 才是它的正牌验证器，而它在
+        # 本仓库跑不起来（缺 Python 的 `jsonschema`）—— 这一条是补位：
+        # 核对每个 schema 与 manifest 的 sha256、且扩展是**向后兼容**的。
+        ('契约 schema 扩展（required_field）',
+         ['python3', '工具/check_contract_schema.py']),
         ('G2 fork 改造点', ['python3', '工具/g2_改造点.py', '--check']),
         ('两进程骨架与 N3 拓扑', ['python3', '工具/check_topology.py']),
         ('构建配置', ['python3', '工具/check_build.py']),

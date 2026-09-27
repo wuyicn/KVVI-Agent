@@ -6,16 +6,16 @@ $ python3 工具/check_stage6.py
 [1] 锚点① 家具「报货申请」样例（行业扩展包，不改地基）
   [32m✓[0m 包内文件与生成结果一致
   [31m✗ 行业包检查未通过[0m
-       [31m✗[0m agent-preset-builder       被改动了（3e4df51a332f → 440a6780da93）
+       [31m✗[0m agent-preset-builder       被改动了（3e4df51a332f → 0ab9fba013fe）
        [31m✗[0m agent-preset-worker        被改动了（cf7f98c0b0a6 → 1f5ebe181a7b）
        [31m✗[0m client-plugin-brand        被改动了（50f2de6233a0 → 27bf820108b1）
        [31m✗[0m bundle-kvvi-app            被改动了（60eec2d37600 → 8ab3cb6db285）
 
-     [31m✗ 行业包检查未通过：5 项[0m
+     [31m✗ 行业包检查未通过：6 项[0m
 
 [2] 锚点② 黄金样例（10 组标准需求）
   [32m✓[0m ✓ 黄金样例通过：10/10 组合法，且重复装配逐字节一致
      [33m⚠️ 「稳定」= 装配确定性（同一输入两次逐字节一致）；不主张「模型十次给出同一份蓝图」[0m
 
 [3] 起一次性 PostgreSQL（锚点③④）
-[31m✗ 起不了 PostgreSQL：docker: Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint kvvi-stage6-pg (8352768c5[0m
+[31m✗ 起不了 PostgreSQL：docker: Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint kvvi-stage6-pg (da4948e38[0m

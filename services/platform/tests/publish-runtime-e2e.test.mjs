@@ -505,6 +505,66 @@ describe('阶段九 · G7 端到端', () => {
     assert.equal(allowed.status, 200)
   })
 
+  test('⑫ ★ 按角色的必填：同一张表，这个角色必须填、那个角色不必填', async () => {
+    // 模型层 `required` 是**下限**（对所有人成立）；这一条测的是**权限层再收窄**：
+    // 「跟进状态全局可以不填，但主管必须填」。
+    //
+    // 契约层的链路由 `policy-compile.test.mjs` 盯着（`required_field` → 行），
+    // 这一条盯的是**运行时接没接上**：`requiredFields()` → `checkFieldValues()`。
+    // ⚠️ **先把模型发回夹具那一版。** ⑪ 发过一版字段不一样的模型，
+    //    而 `requiredFields` 只在**模型声明了的字段**上生效 ——
+    //    不重发的话这条用例测的是「那个字段根本不存在」，
+    //    表现是「必填没生效」，而真因是两个用例之间的耦合。
+    await publish(ASSET, ['business-schema', 'view-schema', 'workflow-spec',
+                          'permission-spec', 'tool-spec', 'app-model-command'],
+                  '通用事项登记（回到夹具模型）', { 'business-schema': model(ASSET) })
+
+    const { randomUUID } = await import('node:crypto')
+    const roleId = randomUUID()
+    await pool('platform').query(
+      `INSERT INTO roles (role_id, company_id, role_code, name) VALUES ($1,$2,$3,'must')`,
+      [roleId, A.company, `must_${roleId.slice(0, 8)}`])
+    await pool('platform').query(
+      `INSERT INTO role_members (company_id, role_id, user_id) VALUES ($1,$2,$3)`,
+      [A.company, roleId, A.bob])
+    await pool('platform').query(
+      `INSERT INTO policies (policy_id, company_id, role_id, dimension, resource_code,
+         actions, data_scopes, field_visibility, field_required)
+       VALUES ($1,$2,$3,'FORM','*','{read,create,update}','{}',NULL,false),
+              ($4,$2,$3,'DATA','*','{}','{SELF,COMPANY}','VISIBLE',false),
+              ($5,$2,$3,'FIELD','detail','{}','{}','VISIBLE',true)`,
+      [randomUUID(), A.company, roleId, randomUUID(), randomUUID()])
+
+    const must = await makeSession(A.bob, A.company, 'USER')
+    // ⚠️ 要**注册进 `KNOWN_SESSIONS`** —— 那个数组是这一组的 `loadSession` 实现。
+    //    漏了它每个请求都回 401；而 401 看起来像「令牌不对」，不像「夹具忘了登记」。
+    KNOWN_SESSIONS.push(must)
+    // ⚠️ 走同一个 `api()`，不另搭一套 `handleApi` 调用 ——
+    //    自己搭的那一版漏了 `loadSession`，于是每个请求都回 503
+    //    `KVVI_IDENTITY_UNAVAILABLE`，而 503 看起来像「身份服务坏了」。
+    const asMust = (method, path, body) => api(method, path, must, body)
+
+    // `detail` 在模型里是 `required: false`（见 `model()` 夹具）——
+    // 所以这里唯一的要求来源就是那条 FIELD 策略。
+    const refused = await asMust('POST', `/api/v1/systems/${ASSET}/records`,
+      { data: { title: '不带 detail' } })
+    assert.equal(refused.status, 400)
+    assert.equal(refused.body.error, 'KVVI_FIELD_REQUIRED')
+    assert.equal(refused.body.problems[0].field, 'detail')
+    assert.equal(refused.body.problems[0].detail.by, 'role',
+                 '来源该报「权限层要求的」，而不是「模型层说必填」')
+
+    const ok = await asMust('POST', `/api/v1/systems/${ASSET}/records`,
+      { data: { title: '带上 detail', detail: '填了' } })
+    assert.equal(ok.status, 201)
+
+    // 对比：没有这条策略的角色（employee）不必填 —— 否则上面那条「拒绝」
+    // 分不清是「按角色必填」还是「所有人都必填」。
+    const other = await api('POST', `/api/v1/systems/${ASSET}/records`, employee,
+      { data: { title: '别人不必填 detail' } })
+    assert.equal(other.status, 201)
+  })
+
   test('⑧ 没有会话就没有任何业务数据', async () => {
     const r = await api('GET', `/api/v1/systems/${ASSET}/records`, null)
     assert.equal(r.status, 401)

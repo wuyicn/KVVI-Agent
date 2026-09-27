@@ -4,4 +4,4 @@ $ python3 工具/check_stage4.py
 判据：锚点①②③④⑥ 逐项可执行；数据库起不来时报「无法执行」而不是「通过」
 
 [1] 起一次性 PostgreSQL
-[31m✗ 起不了 PostgreSQL：docker: Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint kvvi-stage4-pg (bbbfa6bf48ad444a50820ba5e145de14b25ead3b7d5c82a26[0m
+[31m✗ 起不了 PostgreSQL：docker: Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint kvvi-stage4-pg (7889c258b5403a1bea12b7302ad28e4f690b9566503caedf6[0m

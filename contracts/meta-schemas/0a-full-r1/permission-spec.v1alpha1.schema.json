@@ -179,6 +179,11 @@
             "READ_ONLY",
             "EDITABLE"
           ]
+        },
+        "required_field": {
+          "type": "boolean",
+          "default": false,
+          "description": "这一档是否要求该字段**有值**（按角色、可按状态收窄）"
         }
       },
       "required": [

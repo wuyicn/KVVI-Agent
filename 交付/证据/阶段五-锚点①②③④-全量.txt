@@ -4,4 +4,4 @@ $ python3 工具/check_stage5.py
 判据：①差分测试 ②契约授权负向测试 ③风险分级 ④交付包完整性
 
 [1] 起一次性 PostgreSQL
-[31m✗ 起不了 PostgreSQL：docker: Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint kvvi-stage5-pg (7a11b44357f037634f7fc3d52a6275c42ea595bcfa1e6097a[0m
+[31m✗ 起不了 PostgreSQL：docker: Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint kvvi-stage5-pg (54a4919c3cb385c3b710fc7208ee827c2042441443feaf94e[0m

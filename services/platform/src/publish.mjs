@@ -104,14 +104,16 @@ export async function writePolicies({ client, companyId, rows }) {
     //    ON CONFLICT specification」—— 那个报错不会告诉你是哪一列对不上。
     await client.query(
       `INSERT INTO policies (policy_id, company_id, role_id, dimension,
-         resource_code, state_code, actions, data_scopes, field_visibility)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8)
+         resource_code, state_code, actions, data_scopes, field_visibility, field_required)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (company_id, role_id, dimension, resource_code, state_code) DO UPDATE
          SET actions = EXCLUDED.actions,
              data_scopes = EXCLUDED.data_scopes,
-             field_visibility = EXCLUDED.field_visibility`,
+             field_visibility = EXCLUDED.field_visibility,
+             field_required = EXCLUDED.field_required`,
       [companyId, row.roleId, row.dimension, row.resourceCode,
-       row.stateCode ?? null, row.actions, row.dataScopes, row.fieldVisibility])
+       row.stateCode ?? null, row.actions, row.dataScopes, row.fieldVisibility,
+       row.fieldRequired === true])
   }
   return { policies: rows.length }
 }

@@ -2,23 +2,23 @@ $ python3 工具/check_stage9.py --run-only
 
 [contracts] $ node --test --test-concurrency=1 tests/contracts.test.mjs tests/runtime-projection.test.mjs
 ▶ 00 契约存储：已发布契约的内容有落点
-  ✔ 发布时带上契约 → 内容可读，且带上分配到的版本与指纹 (20.779ms)
-  ✔ ★ 版本单调递增，且**旧版本保留**（覆盖写入会让回滚失去依据） (16.605583ms)
-  ✔ ★ 内容指纹对不上就**拒绝**，不静默返回 (2.358458ms)
-  ✔ ★ 跨公司读不到（公司来自会话，不是请求参数） (0.558292ms)
-  ✔ 一个系统当前生效的全部契约，按类型取最新版 (0.689292ms)
-  ✔ 发布时**不带**契约 → 读不到，且不报错（正常路径必须给，但缺省不该炸） (8.991208ms)
-✔ 00 契约存储：已发布契约的内容有落点 (116.401042ms)
+  ✔ 发布时带上契约 → 内容可读，且带上分配到的版本与指纹 (17.827291ms)
+  ✔ ★ 版本单调递增，且**旧版本保留**（覆盖写入会让回滚失去依据） (13.651458ms)
+  ✔ ★ 内容指纹对不上就**拒绝**，不静默返回 (1.989708ms)
+  ✔ ★ 跨公司读不到（公司来自会话，不是请求参数） (0.516416ms)
+  ✔ 一个系统当前生效的全部契约，按类型取最新版 (0.619959ms)
+  ✔ 发布时**不带**契约 → 读不到，且不报错（正常路径必须给，但缺省不该炸） (6.168875ms)
+✔ 00 契约存储：已发布契约的内容有落点 (103.785292ms)
 ▶ 阶段九 · 运行时投影
-  ✔ 完整契约 → 产出投影，且模型/视图/流程都在里面 (21.698375ms)
-  ✔ ★ 缺任一必需契约 → **失败关闭**，不是跳过 (60.214834ms)
-  ✔ ★ 缺 permission-spec **不得回退成开放访问** (9.517875ms)
-  ✔ ★ 内容被改过 → 在产出任何东西之前就检出 (13.107459ms)
-  ✔ ★ 视图引用模型里没有的字段 → 渲染前拒绝 (11.406833ms)
-  ✔ ★ 流程状态必须属于该模型能识别的状态集 (11.902625ms)
-  ✔ ★ 别家公司读不到（公司来自会话，不是参数） (10.1055ms)
-  ✔ 系统不存在 → 明确的错误码，不是空投影 (0.462917ms)
-✔ 阶段九 · 运行时投影 (194.098ms)
+  ✔ 完整契约 → 产出投影，且模型/视图/流程都在里面 (21.38375ms)
+  ✔ ★ 缺任一必需契约 → **失败关闭**，不是跳过 (56.735542ms)
+  ✔ ★ 缺 permission-spec **不得回退成开放访问** (8.744042ms)
+  ✔ ★ 内容被改过 → 在产出任何东西之前就检出 (10.727834ms)
+  ✔ ★ 视图引用模型里没有的字段 → 渲染前拒绝 (9.212458ms)
+  ✔ ★ 流程状态必须属于该模型能识别的状态集 (10.042708ms)
+  ✔ ★ 别家公司读不到（公司来自会话，不是参数） (10.787042ms)
+  ✔ 系统不存在 → 明确的错误码，不是空投影 (0.512292ms)
+✔ 阶段九 · 运行时投影 (187.983042ms)
 ℹ tests 14
 ℹ suites 2
 ℹ pass 14
@@ -26,31 +26,31 @@ $ python3 工具/check_stage9.py --run-only
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 1426.043959
+ℹ duration_ms 1394.806
 [contracts] exit=0
 [runtime_api] $ node --test --test-concurrency=1 tests/api-router.test.mjs tests/system-api.test.mjs
 ▶ 阶段九 · 受鉴权的产品 API 路由
-  ✔ ★ `/api/v1` 由**平台**应答，不被转发给运行时 (37.397875ms)
-  ✔ ★ 无会话 → 401，且不泄露任何系统清单 (11.57375ms)
-  ✔ ★ 无效令牌 → 401（不降级成匿名） (11.674541ms)
-  ✔ ★ 调用方传的 companyId **无效** —— 公司只从会话来 (18.346667ms)
-  ✔ ★ 身份类字段在**入口处**被剥掉，包括嵌套的 (18.938959ms)
-  ✔ ★ 运行时会话上下文可作凭据 —— Worker 工具没有浏览器凭据 (15.219292ms)
-  ✔ ★ 头里换一个人 → 拒（身份以会话行为准，不以头为准） (12.380417ms)
-  ✔ ★ 网关不一致 → 拒（USER 会话不能被当成 BUILDER 用） (13.348292ms)
-  ✔ ★ 会话被结束后，运行时会话上下文立刻失效 (43.6995ms)
-  ✔ ★ 签名不对 → 拒（浏览器伪造同名头无效） (10.672083ms)
-✔ 阶段九 · 受鉴权的产品 API 路由 (388.866583ms)
+  ✔ ★ `/api/v1` 由**平台**应答，不被转发给运行时 (23.837334ms)
+  ✔ ★ 无会话 → 401，且不泄露任何系统清单 (12.1085ms)
+  ✔ ★ 无效令牌 → 401（不降级成匿名） (11.548458ms)
+  ✔ ★ 调用方传的 companyId **无效** —— 公司只从会话来 (17.872208ms)
+  ✔ ★ 身份类字段在**入口处**被剥掉，包括嵌套的 (17.37325ms)
+  ✔ ★ 运行时会话上下文可作凭据 —— Worker 工具没有浏览器凭据 (13.493292ms)
+  ✔ ★ 头里换一个人 → 拒（身份以会话行为准，不以头为准） (13.489542ms)
+  ✔ ★ 网关不一致 → 拒（USER 会话不能被当成 BUILDER 用） (13.0595ms)
+  ✔ ★ 会话被结束后，运行时会话上下文立刻失效 (44.301875ms)
+  ✔ ★ 签名不对 → 拒（浏览器伪造同名头无效） (9.736833ms)
+✔ 阶段九 · 受鉴权的产品 API 路由 (375.786625ms)
 ▶ 阶段九 · 系统与记录 API
-  ✔ GET /api/v1/systems 列出本公司已发布系统 (1.552541ms)
-  ✔ GET /api/v1/systems/:assetId/runtime 返回投影 (1.755542ms)
-  ✔ ★ 别家公司的系统 → 404（不是 403，避免泄露存在性） (6.196833ms)
-  ✔ ★ 只读员工的修改被拒（403），且记录**逐字段不变** (19.929791ms)
-  ✔ ★ 陈旧 rowVersion → 409，且不覆盖更新的记录 (35.127292ms)
-  ✔ ★ 记录不存在 → 404，与「无权看」区分开 (4.99875ms)
-  ✔ 未鉴权 → 401（不返回任何记录） (0.256709ms)
-  ✔ 未知路由 → 404 且带回显（便于调用方排错） (0.101292ms)
-✔ 阶段九 · 系统与记录 API (166.972375ms)
+  ✔ GET /api/v1/systems 列出本公司已发布系统 (1.564833ms)
+  ✔ GET /api/v1/systems/:assetId/runtime 返回投影 (1.729ms)
+  ✔ ★ 别家公司的系统 → 404（不是 403，避免泄露存在性） (5.113ms)
+  ✔ ★ 只读员工的修改被拒（403），且记录**逐字段不变** (18.305833ms)
+  ✔ ★ 陈旧 rowVersion → 409，且不覆盖更新的记录 (31.117583ms)
+  ✔ ★ 记录不存在 → 404，与「无权看」区分开 (4.517ms)
+  ✔ 未鉴权 → 401（不返回任何记录） (0.231708ms)
+  ✔ 未知路由 → 404 且带回显（便于调用方排错） (0.109084ms)
+✔ 阶段九 · 系统与记录 API (156.341083ms)
 ℹ tests 18
 ℹ suites 2
 ℹ pass 18
@@ -58,41 +58,45 @@ $ python3 工具/check_stage9.py --run-only
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 1745.451375
+ℹ duration_ms 1646.763041
 [runtime_api] exit=0
 [end_to_end] $ node --test --test-concurrency=1 tests/publish-runtime-e2e.test.mjs
 ▶ 阶段九 · G7 端到端
-  ✔ ① 契约不全的系统跑不起来，而且说得出缺哪一份 (2.658417ms)
-  ✔ ② 发布的系统出现在本公司的系统列表里 (1.269333ms)
-  ✔ ③ 员工拿到的投影能对上源契约 (2.670625ms)
-  ✔ ④ 员工按投影里的视图提交第一条记录 → 201 且有记录号 (15.71875ms)
-  ✔ ⑤ 员工从列表端点读得回同一条记录，字段与可见性一致 (13.976416ms)
-  ✔ ⑥ 写回一条记录后版本递增，列表里读到的是新值 (24.877458ms)
-  ✔ ⑦ 流程动作：可执行清单与执行一步 (41.756958ms)
-  ✔ ⑦b 流程动作不在契约里 → 稳定拒绝，且**状态不变** (22.710666ms)
-  ✔ ⑧ 没有会话就没有任何业务数据 (0.354041ms)
-✔ 阶段九 · G7 端到端 (227.934875ms)
-ℹ tests 9
+  ✔ ① 契约不全的系统跑不起来，而且说得出缺哪一份 (2.604375ms)
+  ✔ ② 发布的系统出现在本公司的系统列表里 (0.975708ms)
+  ✔ ③ 员工拿到的投影能对上源契约 (2.137833ms)
+  ✔ ④ 员工按投影里的视图提交第一条记录 → 201 且有记录号 (16.81575ms)
+  ✔ ⑤ 员工从列表端点读得回同一条记录，字段与可见性一致 (9.535792ms)
+  ✔ ⑥ 写回一条记录后版本递增，列表里读到的是新值 (21.918917ms)
+  ✔ ⑦ 流程动作：可执行清单与执行一步 (33.106167ms)
+  ✔ ⑦b 流程动作不在契约里 → 稳定拒绝，且**状态不变** (18.392625ms)
+  ✔ ⑨ ★ 新记录的出生状态来自**契约**，不是代码里的字面量 (26.030542ms)
+  ✔ ⑩ ★ 发布只对**新**记录生效：在途记录维持它开始时那一版流程 (53.901041ms)
+  ✔ ⑪ ★ 契约声明的字段约束真的执行：必填 / CREATE_ONLY / SYSTEM (35.310542ms)
+  ✔ ⑫ ★ 按角色的必填：同一张表，这个角色必须填、那个角色不必填 (28.407709ms)
+  ✔ ⑧ 没有会话就没有任何业务数据 (0.278083ms)
+✔ 阶段九 · G7 端到端 (344.417792ms)
+ℹ tests 13
 ℹ suites 1
-ℹ pass 9
+ℹ pass 13
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 807.808958
+ℹ duration_ms 915.299958
 [end_to_end] exit=0
 [client_ui] $ pnpm exec npx vitest run packages/client/kvvi-panel/tests/runtime-ui.spec.tsx packages/client/kvvi-panel/tests/record-views.spec.tsx packages/client/kvvi-panel/tests/system-shell.spec.tsx
 
  RUN  v4.1.8 /Users/wuyi-macs/Documents/KVVI-Agent/vendor/dsh
 
- ✓ |thread-safe| packages/client/kvvi-panel/tests/runtime-ui.spec.tsx (12 tests) 90ms
- ✓ |thread-safe| packages/client/kvvi-panel/tests/record-views.spec.tsx (19 tests) 111ms
- ✓ |thread-safe| packages/client/kvvi-panel/tests/system-shell.spec.tsx (8 tests) 208ms
+ ✓ |thread-safe| packages/client/kvvi-panel/tests/runtime-ui.spec.tsx (12 tests) 87ms
+ ✓ |thread-safe| packages/client/kvvi-panel/tests/record-views.spec.tsx (19 tests) 106ms
+ ✓ |thread-safe| packages/client/kvvi-panel/tests/system-shell.spec.tsx (8 tests) 199ms
 
  Test Files  3 passed (3)
       Tests  39 passed (39)
-   Start at  12:59:15
-   Duration  1.14s (transform 469ms, setup 456ms, import 422ms, tests 409ms, environment 1.65s)
+   Start at  16:30:17
+   Duration  1.15s (transform 452ms, setup 411ms, import 413ms, tests 392ms, environment 1.75s)
 
 npm warn Unknown env config "manage-package-manager-versions". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
 The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.

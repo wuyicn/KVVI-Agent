@@ -21,7 +21,7 @@
 import { pool, withTransaction } from './db.mjs'
 import { latestContract } from './contracts.mjs'
 import { assertFieldValues } from './field-rules.mjs'
-import { applyScopeGucs } from './authorization.mjs'
+import { applyScopeGucs, requiredFields } from './authorization.mjs'
 import { nextRecordNo } from './record-no.mjs'
 
 export class KvviRefError extends Error {
@@ -175,7 +175,12 @@ export async function createRecord(ctx, scope, input) {
   // 另外三个就是绕过口 —— 「换个调用方就能跳过」的东西不叫约束。
   const model = await modelOrNull(ctx.companyId, input.schemaCode)
   if (model !== null) {
-    assertFieldValues({ model, operation: 'create', data: input.data ?? {} })
+    assertFieldValues({
+      model, operation: 'create', data: input.data ?? {},
+      // 权限层的必填**只用在同一件事上**：建这条记录时你得把它填上。
+      // 取并集交给 `checkFieldValues`，这里不替模型层下结论。
+      requiredFields: await requiredFields(ctx.companyId, ctx.userId),
+    })
   }
   return withTransaction('business', async (client) => {
     await applyScopeGucs(client, scope)

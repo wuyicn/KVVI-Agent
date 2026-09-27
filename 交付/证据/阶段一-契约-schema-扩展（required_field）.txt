@@ -1,0 +1,5 @@
+$ python3 工具/check_contract_schema.py
+
+[32m=== 契约 schema 扩展判据 ===[0m
+  [90mpermission-spec.v1alpha1.schema.json（3 条用例）[0m
+  [32m✓ sha256 与 manifest 一致（14 个 schema）；`required_field` 可选且向后兼容[0m

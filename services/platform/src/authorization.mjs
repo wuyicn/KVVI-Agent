@@ -166,7 +166,7 @@ export async function applyScopeGucs(client, scope) {
 export async function effectivePolicies(companyId, userId, dimension) {
   const { rows } = await pool('platform').query(
     `SELECT p.dimension, p.resource_code, p.actions, p.data_scopes, p.field_visibility,
-            p.state_code
+            p.state_code, p.field_required
        FROM policies p
        JOIN role_members rm ON rm.role_id = p.role_id
       WHERE p.company_id = $1 AND rm.user_id = $2 AND p.dimension = $3`,
@@ -217,6 +217,29 @@ export async function canAct(companyId, userId, dimension, resourceCode, action,
     const scoped = r.state_code ?? null
     return scoped === null || scoped === state
   })
+}
+
+/**
+ * 这个账号**必须填**的字段集合（FIELD 维度，按角色）。
+ *
+ * 与 `business-schema` 的 `Field.required` 是**两道叠加的闸**，不是同一件事：
+ *   · 模型层的 `required` 是**下限**，对所有人成立（「这个字段业务上必须有值」）；
+ *   · 这一层是**按角色**再收窄（「跟进状态全局可以不填，但主管必须填」）。
+ *
+ * 取并集交给调用方（`field-rules.checkFieldValues` 的 `requiredFields`）——
+ * 这里只回答「权限层要求了哪些」，不替模型层下结论。
+ *
+ * @param {string} companyId 公司
+ * @param {string} userId 账号
+ * @returns {Promise<Set<string>>} 必须填的字段 code 集合
+ */
+export async function requiredFields(companyId, userId) {
+  const rows = await effectivePolicies(companyId, userId, 'FIELD')
+  const out = new Set()
+  for (const r of rows) {
+    if (r.field_required === true) out.add(r.resource_code)
+  }
+  return out
 }
 
 /**

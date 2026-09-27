@@ -127,6 +127,40 @@ describe('字段写入约束：纯判定', () => {
     }
   })
 
+  test('★ **按角色**的必填：模型层说可选，权限层说要填 → 仍然必填', () => {
+    // 两道叠加的闸：模型层是下限（对所有人成立），权限层按角色再收窄。
+    // 「跟进状态全局可以不填，但主管必须填」就是这个形状。
+    const model = { fields: [{ field_code: 'follow_status', required: false, nullable: true }] }
+    assert.deepEqual(checkFieldValues({
+      model, operation: 'create', data: {},
+    }), [], '模型层说可选，就不该有要求')
+    const problems = checkFieldValues({
+      model, operation: 'create', data: {}, requiredFields: new Set(['follow_status']),
+    })
+    assert.deepEqual(reasons(problems), ['follow_status:KVVI_FIELD_REQUIRED'])
+    // 来源分开报：调用方能分清「模型说必填」与「你这一档必须填」——
+    // 前者谁都改不了，后者是配出来的。
+    assert.equal(problems[0].detail.by, 'role')
+  })
+
+  test('模型层与权限层都说必填时，来源报 `both`', () => {
+    const problems = checkFieldValues({
+      model: MODEL, operation: 'create', data: {}, requiredFields: new Set(['customer_name']),
+    })
+    assert.equal(problems[0].detail.by, 'both')
+  })
+
+  test('权限层的必填**只管新增**（修改是补丁语义）', () => {
+    const model = { fields: [
+      { field_code: 'follow_status', required: false, nullable: true },
+      { field_code: 'note', required: false, nullable: true },
+    ] }
+    assert.deepEqual(checkFieldValues({
+      model, operation: 'update', data: { note: '只改备注' },
+      requiredFields: new Set(['follow_status']),
+    }), [], '按角色的必填在修改时又拦了一次 —— 那会把「只改一个字段」变成回传整条记录')
+  })
+
   test('合规时 `assertFieldValues` 不抛', () => {
     assert.doesNotThrow(() => assertFieldValues({
       model: MODEL, operation: 'create', data: { customer_name: '星河科技' },

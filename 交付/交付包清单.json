@@ -8,7 +8,7 @@
       "kind": "契约层（13 份 MetaSchema + common）",
       "version": null,
       "fileCount": 28,
-      "digest": "sha256:847f46f990895227bb07c16d00717735d85642fba9b2c978f0de6d5ab008151f"
+      "digest": "sha256:2b27d3983944abd96f6e82146be2b0a540d75a44a88c77c080a8b78070151702"
     },
     {
       "name": "protocol",
@@ -47,8 +47,8 @@
       "path": "services/platform",
       "kind": "平台服务进程（身份层 / 授权 / 签名 / 认证端点）",
       "version": "0.1.0",
-      "fileCount": 93,
-      "digest": "sha256:ef5f4675aa0449e9cc4f6221bb48b460e4e18ce73e4459d9f2b91c5faf97b356"
+      "fileCount": 94,
+      "digest": "sha256:d279bae897d48df0b086f315a4b588219b9c3ddab91f6d9109d79b6e687ed95d"
     },
     {
       "name": "runtime-service",
@@ -64,7 +64,7 @@
       "kind": "搭建引擎预设（五个 Skill）",
       "version": null,
       "fileCount": 8,
-      "digest": "sha256:cb91a4ba40bda88862a4879d574112f8f67e5abe96930f8ea0514b049248f506"
+      "digest": "sha256:0ab9fba013fe0165695b87f9e438c624d87d77622c771782704a6fce4ae7ea5a"
     },
     {
       "name": "agent-preset-worker",
@@ -99,5 +99,5 @@
       "digest": "sha256:c0c9fe33ba8f6aeef9135be6f2386101d7c7837b0f5edf30abfacc68166aa128"
     }
   ],
-  "deliveryDigest": "sha256:81286ef776a584627cd453c70248c31208e8d35d5d6c2852345c7c512e394e4e"
+  "deliveryDigest": "sha256:26ef8617599bacecfc3506f8f85c9542e06273264e8c65d9ad0ac0aebbb06bf4"
 }

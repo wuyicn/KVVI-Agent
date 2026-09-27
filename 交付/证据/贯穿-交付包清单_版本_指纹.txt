@@ -7,19 +7,21 @@ $ python3 工具/交付包.py --check
 PRD 指纹 : sha256:0d9206ae0b6e1f510f6a308bb886a726a1b01b8145beabc638fbae5c69b361ca
 组件数   : 12
 
-  [32m✓[0m contracts                  v—            28 个文件  sha256:847f46f990895227bb07c16
+  [31m✗[0m contracts                  v—            28 个文件  sha256:847f46f990895227bb07c16
   [32m✓[0m protocol                   v—             6 个文件  sha256:037deae300c2e148bb3e682
   [32m✓[0m meta-schema-validator      v—            46 个文件  sha256:7809b076937962f6f60c25e
   [32m✓[0m meta-schema-validator-full v—             2 个文件  sha256:205467323bf764da4ba3f37
-  [31m✗[0m distribution               v—            21 个文件  sha256:8676ef4267e89d5aac868e4
-  [31m✗[0m platform-service           v0.1.0        87 个文件  sha256:524bfa38197ea802c3de6c7
+  [32m✓[0m distribution               v—            21 个文件  sha256:5a9812251a92d9e8b02bed7
+  [31m✗[0m platform-service           v0.1.0        93 个文件  sha256:ef5f4675aa0449e9cc4f622
   [32m✓[0m runtime-service            v—             4 个文件  sha256:328459382433f5350e15599
-  [32m✓[0m agent-preset-builder       v—             8 个文件  sha256:440a6780da936eee7db3744
+  [31m✗[0m agent-preset-builder       v—             8 个文件  sha256:cb91a4ba40bda88862a4879
   [32m✓[0m agent-preset-worker        v—             2 个文件  sha256:1f5ebe181a7bf35be7cf11d
   [32m✓[0m client-plugin-brand        v—             7 个文件  sha256:27bf820108b1e313da62d3a
   [32m✓[0m bundle-kvvi-app            v—             5 个文件  sha256:8ab3cb6db2852f070399f29
   [32m✓[0m schema-samples             v—            94 个文件  sha256:c0c9fe33ba8f6aeef9135be
 
-  [31m✗ distribution 的内容变了而清单没刷新（sha256:8676ef4267e → sha256:22b0496c822）[0m
-  [31m✗ platform-service 的内容变了而清单没刷新（sha256:524bfa38197 → sha256:61f45a3c811）[0m
+  [31m✗ contracts 的内容变了而清单没刷新（sha256:847f46f9908 → sha256:2b27d398394）[0m
+  [31m✗ platform-service 的内容变了而清单没刷新（sha256:ef5f4675aa0 → sha256:d279bae897d）[0m
+  [31m✗ platform-service 的文件数从 93 变成 94[0m
+  [31m✗ agent-preset-builder 的内容变了而清单没刷新（sha256:cb91a4ba40b → sha256:0ab9fba013f）[0m
   [31m✗ 交付摘要与清单内容不一致（清单被改过，或组件变了）[0m

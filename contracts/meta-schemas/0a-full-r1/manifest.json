@@ -78,7 +78,7 @@
     },
     "permission-spec.v1alpha1.schema.json": {
       "id": "urn:kvvi:meta-schema:0a-full-r1:permission-spec-v1alpha1",
-      "sha256": "0e19b4f7fc3bc17fca3ec60b8ef564967d484ea4c22d5079427f4d16a6156d00"
+      "sha256": "eaf44b8f9eff9fec568db04199754daa453d424d37b813fa98aca76aa1715cf8"
     },
     "promotion-record.v1alpha1.schema.json": {
       "id": "urn:kvvi:meta-schema:0a-full-r1:promotion-record-v1alpha1",
