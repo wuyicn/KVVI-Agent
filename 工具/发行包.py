@@ -84,6 +84,28 @@ CONTENTS = [
     ('tools/meta-schema', 'tools/meta-schema'),
 ]
 
+#: 单独收录的**单个文件**：`(源相对路径, 包内相对路径)`。
+#:
+#: `CONTENTS` 收的是目录；这三份是文件，且都必须落在包根的**固定相对位置**上
+#: （`安装手册.md`、`README.md`、`package.json` 供安装器与客户直接读；
+#: 后两份是契约校验器的溯源文件，见下面的说明）。
+EXTRA_FILES = [
+    '安装手册.md',
+    'README.md',
+    'package.json',
+    # ⚠️ **校验器的两个溯源文件，按固定 sha256 校验，缺一个它就拒绝工作。**
+    #
+    # `tools/meta-schema/node/bundle-policy.mjs` 里写死了这两份文档的路径与摘要，
+    # 每次调用都要逐字节核对。只补 `tools/` 而不补它们，校验器**能加载、
+    # 但每次调用都返回 `EXECUTION_FAILED`** —— 而这一次是搭建者自己发现的：
+    # 它按 skill 跑了一遍、拿到失败，于是把校验器连同这两份文档一起复制进工作区，
+    # 才把校验做完，并在交付说明里写明了原因。
+    #
+    # 逐个列文件、不用整目录：`docs/` 下还有取证、计划、评审稿，那些不进包。
+    'docs/PRD-AI无代码平台设计-v1.11.md',
+    'docs/superpowers/specs/2026-09-08-0a-meta-schema-core-design.md',
+]
+
 #: 整树收录时排除的路径片段。缓存与 Git 元数据一律不进包。
 SKIP_ANYWHERE = ('/.git/', '/__pycache__/', '/.cache/',
                  '/.pytest_cache/', '/.venv/', '/.dsh-build/')
@@ -122,6 +144,8 @@ REQUIRED = [
     'tools/meta-schema/node/cli.mjs',
     'tools/meta-schema/node/node_modules/ajv/package.json',
     'protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/node/kvvi-json-c14n.mjs',
+    'docs/PRD-AI无代码平台设计-v1.11.md',
+    'docs/superpowers/specs/2026-09-08-0a-meta-schema-core-design.md',
     'services/platform/src/server.mjs',
     'services/platform/src/migrate.mjs',
     'services/platform/node_modules/pg/package.json',
@@ -192,7 +216,7 @@ def collect() -> list:
                 if should_skip(source_rel, rel):
                     continue
                 entries.append((absolute, os.path.join(into_rel, rel)))
-    for extra in ('安装手册.md', 'README.md', 'package.json'):
+    for extra in EXTRA_FILES:
         absolute = os.path.join(ROOT, extra)
         if os.path.isfile(absolute):
             entries.append((absolute, extra))
