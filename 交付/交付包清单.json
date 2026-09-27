@@ -47,8 +47,8 @@
       "path": "services/platform",
       "kind": "平台服务进程（身份层 / 授权 / 签名 / 认证端点）",
       "version": "0.1.0",
-      "fileCount": 91,
-      "digest": "sha256:f93448896f681d54eb93f710d4415721f645c2d26b999fb66e4690ca435ff0db"
+      "fileCount": 93,
+      "digest": "sha256:ef5f4675aa0449e9cc4f6221bb48b460e4e18ce73e4459d9f2b91c5faf97b356"
     },
     {
       "name": "runtime-service",
@@ -64,7 +64,7 @@
       "kind": "搭建引擎预设（五个 Skill）",
       "version": null,
       "fileCount": 8,
-      "digest": "sha256:f59c6b18fe5fff5288f0aa053470d5b18afc2a16219b5321ca720f29d29b2ce8"
+      "digest": "sha256:cb91a4ba40bda88862a4879d574112f8f67e5abe96930f8ea0514b049248f506"
     },
     {
       "name": "agent-preset-worker",
@@ -99,5 +99,5 @@
       "digest": "sha256:c0c9fe33ba8f6aeef9135be6f2386101d7c7837b0f5edf30abfacc68166aa128"
     }
   ],
-  "deliveryDigest": "sha256:266084bd2d3b2ca52210fdc65d3db1763c4f7bf40754e31698b6a264cbe6b5f5"
+  "deliveryDigest": "sha256:81286ef776a584627cd453c70248c31208e8d35d5d6c2852345c7c512e394e4e"
 }

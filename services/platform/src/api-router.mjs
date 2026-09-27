@@ -30,6 +30,7 @@ import { adminRoutes } from './admin-api.mjs'
 import { publishRoutes } from './publish-api.mjs'
 import { loadSession } from './identity.mjs'
 import { verifyRuntimeContextHeaders } from './runtime-auth.mjs'
+import { FieldRuleError } from './field-rules.mjs'
 
 /** 产品 API 的前缀。与运行时 RPC 的 `/api` 区分靠**更具体**的路径。 */
 const PREFIX = '/api/v1'
@@ -217,6 +218,31 @@ export async function handleApi({ method, path, query, body, headers, loadSessio
   //    放进请求体它就成了一条模型可见的参数，而「重发不产生第二次效果」
   //    这条判据不该由模型决定。
   const routes = { method, path: rest, payload, session, headers: headers ?? {} }
+  // ⚠️ **字段约束不满足 → 400，不是 500。**
+  //
+  // 校验发生在唯一的写入点（`refs.mjs`），所以它抛出来的错误会经过这里。
+  // 不映射的话它会一路穿到 `server.mjs` 的兜底 → 500，而调用方会去重试一个
+  // 永远不会成功的请求。方向与 `admin-api` 那处正好相反：那里是「服务端出错
+  // 报成了 400」，这里是「请求有问题报成了 500」。两边都是「码不说明问题」。
+  //
+  // 只映射**自己声明了状态码**的错误，且只认这一类；其余照旧上抛成 500 ——
+  // 让任意错误自称 400 会把上面那条教训原样还回来。
+  try {
+    return await dispatch(routes)
+  } catch (error) {
+    if (error instanceof FieldRuleError) {
+      return { status: error.status, body: { error: error.code, problems: error.problems } }
+    }
+    throw error
+  }
+}
+
+/** 分派：管理、发布、产品三类路由，各自的前缀与闸门见下面的注释。 */
+async function dispatch(routes) {
+  // ⚠️ `routes.path` **已经**是去掉 `/api/v1` 之后的相对路径（见上面的 ③）。
+  //    在这里再切一次前缀，会把 `/admin/members` 切成 `bers` ——
+  //    表现是每一个管理接口都回 404，而 404 看起来像「端点没写」。
+  const rest = routes.path || '/'
   // ⚠️ 交给 `adminRoutes` 的是**去掉 `/admin` 之后**的路径。传整条路径的话，
   //    它的 `parts[0]` 是 `'admin'`，于是每一个分支都落到兜底 404 ——
   //    而 404 看起来像「端点没写」，不像「前缀剥错了」。

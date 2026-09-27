@@ -103,13 +103,17 @@ function workflow(assetId) {
  * @param overrides 按契约类型覆盖正文（用来发「初始状态不叫 draft」的流程）
  */
 function contractsOf(assetId, include, overrides = {}) {
+  // ⚠️ **每一种契约都认覆盖。** 第一版只给 `workflow-spec` 开了这个口子，
+  //    于是传进来一个 `'business-schema'` 覆盖时它**被静静丢掉** ——
+  //    版本照样 +1、发布照样成功，而内容还是夹具里那份。
+  //    表现是「测试里改的模型根本没生效」，而没有任何一处报错。
   const all = {
-    'business-schema': model(assetId),
-    'view-schema': view(assetId),
+    'business-schema': overrides['business-schema'] ?? model(assetId),
+    'view-schema': overrides['view-schema'] ?? view(assetId),
     'workflow-spec': overrides['workflow-spec'] ?? workflow(assetId),
-    'permission-spec': { roles: [], policies: [] },
-    'tool-spec': { tools: [] },
-    'app-model-command': { commands: [] },
+    'permission-spec': overrides['permission-spec'] ?? { roles: [], policies: [] },
+    'tool-spec': overrides['tool-spec'] ?? { tools: [] },
+    'app-model-command': overrides['app-model-command'] ?? { commands: [] },
   }
   return include.map((t) => ({ contractType: t, assetId, content: all[t] }))
 }
@@ -447,6 +451,58 @@ describe('阶段九 · G7 端到端', () => {
         `/api/v1/systems/${ASSET}/records/${anOldOne.body.recordId}`, employee)).body.rowVersion })
     assert.equal(moved.status, 200)
     assert.equal(moved.body.state, 'following')
+  })
+
+  test('⑪ ★ 契约声明的字段约束真的执行：必填 / CREATE_ONLY / SYSTEM', async () => {
+    // 纯函数那一层由 `field-rules.test.mjs` 盯；**这一条盯的是接没接上** ——
+    // 校验放在唯一写入点（`refs.mjs`），从 HTTP 外面看它是否真的生效。
+    // 只测纯函数的话，「写了一个没人调的函数」也会全绿。
+    await publish(ASSET, ['business-schema', 'view-schema', 'workflow-spec',
+                          'permission-spec', 'tool-spec', 'app-model-command'],
+                  '通用事项登记（字段约束版）', {
+      'business-schema': {
+        schema_code: ASSET, name: '通用事项登记',
+        fields: [
+          { field_code: 'title', label: '标题', type: 'short_text',
+            required: true, nullable: false, write_policy: 'MUTABLE' },
+          { field_code: 'owner_note', label: '负责人备注', type: 'long_text',
+            required: false, nullable: true, write_policy: 'CREATE_ONLY' },
+          { field_code: 'created_by', label: '登记人', type: 'short_text',
+            required: false, nullable: false, write_policy: 'SYSTEM' },
+        ],
+      },
+    })
+
+    // ① 必填没带 → 400，且**说得出缺哪个字段**（不能只说「参数错误」）。
+    const missing = await api('POST', `/api/v1/systems/${ASSET}/records`, employee,
+      { data: { owner_note: '只有备注' } })
+    assert.equal(missing.status, 400)
+    assert.equal(missing.body.error, 'KVVI_FIELD_REQUIRED')
+    assert.deepEqual(missing.body.problems.map((p) => p.field), ['title'])
+
+    // ② 人写 `SYSTEM` 字段 → 400。
+    const sys = await api('POST', `/api/v1/systems/${ASSET}/records`, employee,
+      { data: { title: '合规', created_by: '假装是系统' } })
+    assert.equal(sys.status, 400)
+    assert.equal(sys.body.error, 'KVVI_FIELD_SYSTEM_ONLY')
+
+    // ③ 合规的一次新增 → 201（否则上面两条「拒绝」分不清是策略还是别的原因）。
+    const ok = await api('POST', `/api/v1/systems/${ASSET}/records`, employee,
+      { data: { title: '合规的一条', owner_note: '建时写一次' } })
+    assert.equal(ok.status, 201)
+
+    // ④ `CREATE_ONLY` 新增可写、**更新不可写** —— 这一档此前只活在契约里。
+    const denied = await api('PATCH',
+      `/api/v1/systems/${ASSET}/records/${ok.body.recordId}`, employee,
+      { data: { owner_note: '想改' }, rowVersion: ok.body.rowVersion })
+    assert.equal(denied.status, 400)
+    assert.equal(denied.body.error, 'KVVI_FIELD_CREATE_ONLY')
+
+    // ⑤ `MUTABLE` 的字段照常能改（正向对照）。
+    const allowed = await api('PATCH',
+      `/api/v1/systems/${ASSET}/records/${ok.body.recordId}`, employee,
+      { data: { title: '改过的标题' }, rowVersion: ok.body.rowVersion })
+    assert.equal(allowed.status, 200)
   })
 
   test('⑧ 没有会话就没有任何业务数据', async () => {

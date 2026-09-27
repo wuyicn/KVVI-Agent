@@ -19,6 +19,8 @@
  * 「有权就能跨」在权限配置出错时会真的生效。
  */
 import { pool, withTransaction } from './db.mjs'
+import { latestContract } from './contracts.mjs'
+import { assertFieldValues } from './field-rules.mjs'
 import { applyScopeGucs } from './authorization.mjs'
 import { nextRecordNo } from './record-no.mjs'
 
@@ -135,7 +137,46 @@ export async function listRecords(scope, schemaCode, options = {}) {
  * @param {object} input 写入内容
  * @returns {Promise<object>} 新记录
  */
+/**
+ * 这个业务对象的字段声明 —— **写入约束的唯一来源**。
+ *
+ * 读的是**已发布的** `business-schema`（当前版）：字段的 `required` /
+ * `write_policy` 是模型层的事，与「走哪一版流程」无关，所以不钉版本。
+ *
+ * ── ⚠️ 读不到时为什么**不拒绝写入** ────────────────────────────────────
+ *
+ * 「没有已发布模型」不等于「这次写入不合法」，它是**另一件事**：
+ * 这个业务对象根本还没成为一套可运行的系统。而那一件事**已经有判据**，
+ * 且在更早的地方 —— `runtimeProjection` 对缺契约的系统直接拒绝出投影，
+ * 发布通道也要求六份契约齐全。在这里再拒一次是同一个判据的第二份实现。
+ *
+ * 哪条路会走到这里：**只有直接调数据层的测试**。产品路径上四个写入点
+ * （产品 API、命令执行器、访客链路、流程迁移）背后都必须是已发布的系统，
+ * 所以模型一定在。
+ *
+ * 反过来说也成立：**有判据而不执行才是漏**（问题 28 就是那个形状）；
+ * 无判据时假装有判据，只会把一批与被测性质无关的用例全染红 ——
+ * 那是在用噪声换「看起来严格」。所以这里返回 `null`，由调用方跳过。
+ *
+ * @param {string} companyId 公司
+ * @param {string} schemaCode 业务对象代号
+ * @returns {Promise<object|null>} 模型 Spec；没有已发布模型时为 null
+ */
+async function modelOrNull(companyId, schemaCode) {
+  const contract = await latestContract(companyId, 'business-schema', schemaCode)
+  return contract === null ? null : contract.content
+}
+
 export async function createRecord(ctx, scope, input) {
+  // ★ **契约声明的字段约束在这里执行。**
+  //
+  // 为什么在这一层而不是 API 适配器里：记录有四个写入点
+  // （产品 API、命令执行器、访客链路、流程迁移）。只在一个适配器里检查，
+  // 另外三个就是绕过口 —— 「换个调用方就能跳过」的东西不叫约束。
+  const model = await modelOrNull(ctx.companyId, input.schemaCode)
+  if (model !== null) {
+    assertFieldValues({ model, operation: 'create', data: input.data ?? {} })
+  }
   return withTransaction('business', async (client) => {
     await applyScopeGucs(client, scope)
     // ★ 单号缺省时**由本函数生成**，不留给调用方。
@@ -179,6 +220,14 @@ export async function createRecord(ctx, scope, input) {
  * @returns {Promise<{recordId: string, rowVersion: number}|null>} 结果
  */
 export async function updateRecord(ctx, scope, logical, patch) {
+  // 补丁里带的**字段值**要过同一套约束（`CREATE_ONLY` / `SYSTEM` 的字段不能改）。
+  // `patch.state` 不走这里 —— 它不是模型字段，是流程迁移写的那一列。
+  if (patch?.data !== undefined && Object.keys(patch.data).length > 0) {
+    const model = await modelOrNull(ctx.companyId, logical.schemaCode)
+    if (model !== null) {
+      assertFieldValues({ model, operation: 'update', data: patch.data })
+    }
+  }
   const handle = buildHandle(ctx, logical)
   return withTransaction('business', async (client) => {
     await applyScopeGucs(client, scope)

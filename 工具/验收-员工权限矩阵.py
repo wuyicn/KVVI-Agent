@@ -50,6 +50,16 @@ ACCOUNTS = {
 PASSWORD = '<试点口令>'
 ASSET = 'customer'
 
+#: 建记录时要给的字段。**四个都是契约里的 `required: true`** ——
+#: 运行时现在真的执行它（`field-rules.mjs`），少一个就 400 `KVVI_FIELD_REQUIRED`。
+#: 在此之前「必填」只活在契约与表单的星号里。
+NEW_RECORD = {
+    'customer_name': '',            # 调用方按账号填
+    'contact_name': '张三',
+    'contact_phone': '13800000000',
+    'follow_status': '未跟进',
+}
+
 
 def scaffold():
     """复用发布脚手架的会话实现 —— 登录与 Cookie 的处理只该有一份。"""
@@ -81,7 +91,8 @@ def one(login, platform, witness=None):
                      'error': (body or {}).get('error') if isinstance(body, dict) else None}
 
     status, body = session.call('POST', '/api/v1/systems/%s/records' % ASSET,
-                                {'data': {'customer_name': '权限矩阵-由 %s 建' % login}})
+                                {'data': dict(NEW_RECORD,
+                                              customer_name='权限矩阵-由 %s 建' % login)})
     cells['create'] = {'status': status,
                        'error': (body or {}).get('error') if isinstance(body, dict) else None}
     made = None
