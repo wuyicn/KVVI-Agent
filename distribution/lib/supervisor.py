@@ -23,6 +23,7 @@ launchd 的 `KeepAlive` 能重启崩溃的进程，但它**不表达顺序**：�
 所以顺序由 `start_plan` 负责，launchd 只负责「起过一次之后别再让它死着」。
 """
 
+import json
 import os
 import plistlib
 import shutil
@@ -54,6 +55,29 @@ STOP_KILL_WAIT_SECONDS = 5.0
 
 #: 轮询间隔。
 STOP_POLL_SECONDS = 0.1
+
+
+def schema_step(release_root: Path, env_file: Dict[str, str]) -> dict:
+    """
+    跑迁移的那一步：`{argv, env}`。**只有这一处定义。**
+
+    环境变量**整份**来自 `kvvi.env`（五条 DSN、四个口令、端口都在里面）——
+    与平台进程同一个约定：逐键挑的失效模式是「下一个加进配置文件的键悄悄到不了」。
+    `LC_ALL` 必须给：macOS 上不给，postgres 客户端会因 locale 报错，
+    而报错里除了那行 HINT 一个字都不提 locale。
+
+    @param release_root 发行版根目录
+    @param env_file `kvvi.env` 解析出来的键值
+    @returns 一个可执行的步骤
+    """
+    # ⚠️ `env` 里**只放配置带来的那几项**，不铺满整个环境 ——
+    #    铺满会把调用方的环境（尤其 PATH）冻进步骤里，而启动计划是**纯函数**，
+    #    它不该把「此刻的 PATH」变成一个会随调用点变化的输出。
+    #    真正的合并发生在执行处（`_ensure_schema`），与 `_spawn` 同一约定。
+    return {
+        'argv': ['node', str(Path(release_root) / 'services' / 'platform' / 'src' / 'migrate.mjs')],
+        'env': dict(env_file, LC_ALL='en_US.UTF-8'),
+    }
 
 
 def _process_alive(pid: int) -> bool:
@@ -229,6 +253,19 @@ class ProcessPlan:
                     errors.append({'kind': step['kind'], 'stderr': outcome['detail']})
                     return {'ok': False, 'steps': done, 'errors': errors, 'pids': pids}
                 continue
+            if step['kind'] == 'ensure-schema':
+                # ⚠️ **迁移失败就中止启动，不往下走。**
+                #
+                # 让一个库落后的平台起来，比不让它起来坏得多：进程会一直在，
+                # 登录也正常，而某个具体功能在第一次被用到时抛错 ——
+                # 在没有兜底的时候（问题 27）那还会把进程整个带走。
+                # 起不来的话，原因就在这一行里。
+                outcome = self._ensure_schema(step)
+                done.append(outcome['detail'])
+                if not outcome['ok']:
+                    errors.append({'kind': step['kind'], 'stderr': outcome['detail']})
+                    return {'ok': False, 'steps': done, 'errors': errors, 'pids': pids}
+                continue
             if step['kind'] == 'prepare-dsh-profile':
                 profile_dir = self.home / 'profiles' / DSH_PROFILE
                 profile_dir.mkdir(parents=True, exist_ok=True)
@@ -286,6 +323,49 @@ class ProcessPlan:
             return {'ok': False,
                     'detail': f'数据库集群起不来：{reason}' + (f'｜{tail}' if tail else '')}
         return {'ok': True, 'detail': 'ensure-cluster: 已拉起'}
+
+    def _ensure_schema(self, step: dict) -> dict:
+        """
+        把库的迁移跑到最新。**幂等**：已在账本里的报 `already-applied`。
+
+        报告里带出**这次真跑了哪几个文件** —— 「跑过了」与「新迁移没生效」
+        是两件事，而它们在只报一个「成功」的时候长得一样。
+
+        @param step `ensure-schema` 那一步（含 `schema`）
+        @returns `{ok, detail}`
+        """
+        schema = step['schema']
+        # ⚠️ **必须叠在 `os.environ` 之上，不能直接拿 `schema['env']` 去跑。**
+        #
+        # 实测栽过一次：`schema['env']` 是从 `kvvi.env` 来的（五条 DSN、四个口令、端口），
+        # 里面**没有 PATH** —— 直接用它当环境，`subprocess` 找不到 `node`，
+        # 报的是 `FileNotFoundError: [Errno 2] No such file or directory: 'node'`。
+        # 那个报错看起来像「node 没装」，实际是我把环境整个换掉了。
+        # `_spawn` 一直是「先 `dict(os.environ)` 再 update」，这里照同一条约定。
+        env = dict(os.environ)
+        env.update(schema.get('env') or {})
+        try:
+            result = subprocess.run([str(a) for a in schema['argv']],
+                                    capture_output=True, text=True,
+                                    env=env, timeout=900)
+        except subprocess.TimeoutExpired:
+            return {'ok': False, 'detail': '迁移超时（900 秒）—— 库可能被别的连接锁住'}
+        if result.returncode != 0:
+            reason = (result.stderr.strip() or result.stdout.strip() or '未知原因')[-600:]
+            return {'ok': False, 'detail': '迁移失败：' + reason}
+        applied = []
+        for line in result.stdout.splitlines():
+            try:
+                payload = json.loads(line)
+            except ValueError:
+                continue
+            if payload.get('event') == 'kvvi-migrate-done':
+                for item in payload.get('migrations') or []:
+                    if item.get('state') == 'applied':
+                        applied.append(item.get('file'))
+        if applied:
+            return {'ok': True, 'detail': 'ensure-schema: 本次应用 %s' % '、'.join(applied)}
+        return {'ok': True, 'detail': 'ensure-schema: 已是最新'}
 
     def _await_alive(self, pid: int, seconds: int) -> Optional[str]:
         """
@@ -458,6 +538,17 @@ def start_plan(home: Path, release_root: Path, platform_port: int = DEFAULT_PLAT
         #    理由与后果见 `readiness_report` 里那一段。
         {'kind': 'ensure-cluster', 'writes': True, 'program': 'platform', 'argv': [],
          'cluster': dict(cluster_start_step(home, resolved_pg_bin), pgBin=str(resolved_pg_bin))},
+        # ⚠️ **`ensure-schema` 是「换了发行包」这件事唯一该跑迁移的地方。**
+        #
+        # `migrate` 此前只在 `install` 里跑，`upgrade` 是 `PLANNED`，平台启动也不跑 ——
+        # 于是「把新包覆盖上去」没有任何一步负责让库跟上代码。实测的后果是：
+        # 服务起来了、登录正常，而第一次提交发布抛「payload 字段不存在」，
+        # **进程当场退出**（见问题 26 / 27）。
+        #
+        # 它必须排在 `ensure-cluster` **之后**（要连库）与起进程**之前**（晚了就白起）。
+        # 迁移脚本是幂等的：已在账本里的报 `already-applied`，不会重复执行。
+        {'kind': 'ensure-schema', 'writes': True, 'program': 'platform', 'argv': [],
+         'schema': schema_step(root, env_file)},
     ]
     platform_step = {
         'kind': 'start-platform', 'writes': True, 'program': 'platform',

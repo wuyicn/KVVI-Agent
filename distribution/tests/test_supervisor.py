@@ -33,6 +33,7 @@ from distribution.lib.supervisor import (  # noqa: E402
     DEGRADATIONS,
     DSH_PROFILE_BUNDLES,
     PROGRAMS,
+    ProcessPlan,
     dsh_profile_document,
     launchd_plist,
     readiness_report,
@@ -105,6 +106,27 @@ class ProcessPlanTest(unittest.TestCase):
         self._plan()
         self.assertFalse(self.root.exists())
         self.assertFalse(self.home.exists())
+
+    def test_start_catches_the_schema_up_before_starting_anything(self):
+        """`ensure-schema` 必须夹在「起集群之后」与「起进程之前」。
+
+        ⚠️ 这一条测的是**换发行包之后能不能用**：迁移此前只在 `install` 里跑，
+        `upgrade` 是 PLANNED，平台启动也不跑 —— 于是覆盖上新包之后，
+        服务起来了、登录正常，而第一次提交发布抛「payload 字段不存在」，
+        进程当场退出（问题 26/27）。位置错了这条链就还是断的：
+        排在起集群之前会连不上库，排在起进程之后等于白起。
+        """
+        plan = self._plan()
+        kinds = [s['kind'] for s in plan.steps]
+        self.assertIn('ensure-schema', kinds)
+        self.assertLess(kinds.index('ensure-cluster'), kinds.index('ensure-schema'))
+        self.assertLess(kinds.index('ensure-schema'), kinds.index('start-platform'))
+        step = next(s for s in plan.steps if s['kind'] == 'ensure-schema')
+        self.assertTrue(step['writes'])
+        self.assertIn('migrate.mjs', ' '.join(step['schema']['argv']))
+        # 环境变量**整份**来自 kvvi.env：逐键挑的失效模式是
+        # 「下一个加进配置文件的键悄悄到不了」。
+        self.assertEqual(step['schema']['env']['LC_ALL'], 'en_US.UTF-8')
 
     def test_stop_is_idempotent_and_reverse_order(self):
         plan = stop_plan(home=self.home, release_root=self.root)
@@ -318,6 +340,79 @@ class ReadinessTest(unittest.TestCase):
             report = readiness_report(home=self.home, platform_port=port)
             codes = [i['code'] for i in report['issues']]
             self.assertIn('KVVI_PORT_IN_USE', codes)
+
+
+class EnsureSchemaTest(unittest.TestCase):
+    """`ensure-schema` 这一步真的会跑迁移，且**报告这次应用了什么**。
+
+    ⚠️ 报告是判据的一部分：「跑过了」与「新迁移没生效」在只报一个「成功」的时候
+    长得一样 —— 而问题 26 正是「以为升级了、其实库没跟上」。
+    这里用一个真的会打印那行 JSON 的 Node 进程，不 mock。
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self._tmp.name) / 'kvvi'
+        (self.home / 'run').mkdir(parents=True)
+        self.root = Path(self._tmp.name) / 'release'
+        self.addCleanup(self._tmp.cleanup)
+
+    def _run(self, script: str) -> dict:
+        """
+        跑一次 `ensure-schema`。
+        @param script 假迁移脚本的正文
+        @returns `apply()` 的结果
+
+        ⚠️ `schema['env']` **刻意只给一项配置**（不给 PATH）——
+        它模拟的正是 `kvvi.env` 解析出来的那份。执行处必须自己把它叠在
+        `os.environ` 之上；直接拿它当环境会找不到 `node`，
+        而报错是 `FileNotFoundError: 'node'`，看着像「node 没装」。
+        """
+        plan = ProcessPlan(home=self.home, release_root=self.root, platform_port=0,
+                           runtime_port=0, internal_token='', kind='start',
+                           steps=[{'kind': 'ensure-schema', 'writes': True, 'program': 'platform',
+                                   'argv': [], 'schema': {'argv': [sys.executable, '-c', script],
+                                                          'env': {'KVVI_DB_PASSWORD': 'x'}}}])
+        return plan.apply()
+
+    def test_the_process_environment_is_merged_under_the_config(self):
+        """配置里没有的键（尤其 PATH）必须来自当前环境，而不是被整份换掉。"""
+        result = self._run(
+            'import json, os\n'
+            'assert os.environ.get("PATH"), "PATH 没了 —— 环境被整份换掉了"\n'
+            'assert os.environ.get("KVVI_DB_PASSWORD") == "x", "配置没进去"\n'
+            'print(json.dumps({"event": "kvvi-migrate-done", "migrations": []}))\n')
+        self.assertTrue(result['ok'], result['errors'])
+
+    def test_reports_the_migrations_it_actually_applied(self):
+        result = self._run(
+            'import json\n'
+            'print(json.dumps({"event": "kvvi-migrate-done", "migrations": [\n'
+            '  {"file": "23-idempotency.sql", "state": "applied"},\n'
+            '  {"file": "10-platform.sql", "state": "already-applied"}]}))\n')
+        self.assertTrue(result['ok'], result['errors'])
+        self.assertIn('23-idempotency.sql', ' '.join(result['steps']))
+        # 「已应用过」的不算这次的功劳 —— 否则这句话每次启动都成立，等于没说。
+        self.assertNotIn('10-platform.sql', ' '.join(result['steps']))
+
+    def test_reports_up_to_date_when_nothing_was_applied(self):
+        result = self._run(
+            'import json\n'
+            'print(json.dumps({"event": "kvvi-migrate-done", "migrations": [\n'
+            '  {"file": "10-platform.sql", "state": "already-applied"}]}))\n')
+        self.assertTrue(result['ok'], result['errors'])
+        self.assertIn('已是最新', ' '.join(result['steps']))
+
+    def test_a_failing_migration_stops_the_start(self):
+        """迁移失败必须**中止启动**，并且把库里那句话带回来。
+
+        让一个库落后的平台起来，比不让它起来坏得多：进程会一直在、登录也正常，
+        而某个功能在第一次被用到时才抛错。
+        """
+        result = self._run('import sys\nsys.stderr.write("关系 \"x\" 的 \"y\" 字段不存在\\n")\nsys.exit(3)\n')
+        self.assertFalse(result['ok'])
+        self.assertIn('字段不存在', result['errors'][0]['stderr'])
+        self.assertIn('迁移失败', result['errors'][0]['stderr'])
 
 
 class StopReallyEndsTheProcessTest(unittest.TestCase):

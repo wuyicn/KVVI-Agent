@@ -96,9 +96,19 @@ function projectionFailure(error, assetId) {
   if (error?.message === 'KVVI_CONTRACT_CONTENT_TAMPERED') {
     return fail('KVVI_CONTRACT_CONTENT_TAMPERED', { assetId })
   }
+  // ⚠️ **认不出的错误是 500，不是 400。** 与 `admin-api.mjs` 的兜底同一约定：
+  //    把「服务端出错了」报成「你的请求不对」，调用方会去改请求（改不好），
+  //    而监控里 400 通常不算错误率 —— 「投影整个坏了」于是看起来一切正常。
+  //    真因只进日志。
+  if (error?.code === undefined) {
+    console.error(JSON.stringify({
+      event: 'projection-failed', assetId, error: String(error?.message ?? error),
+    }))
+    return { status: 500, body: { error: 'KVVI_INTERNAL_ERROR', assetId } }
+  }
   return {
-    status: STATUS_OF[error?.code] ?? 400,
-    body: { error: error?.code ?? 'KVVI_BAD_REQUEST', assetId, ...(error?.detail ?? {}) },
+    status: STATUS_OF[error.code] ?? 500,
+    body: { error: error.code, assetId, ...(error?.detail ?? {}) },
   }
 }
 

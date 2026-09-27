@@ -15,6 +15,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import pg from 'pg'
 import { provision } from './provision.mjs'
+import { MIGRATIONS } from './sql-manifest.mjs'
 
 const { Client } = pg
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -238,19 +239,15 @@ async function main() {
     try { pre[db] = await preexistingDatabase(client) } finally { await client.end() }
   }
 
+  // ⚠️ 名单从 `sql-manifest.mjs` 取，**不在这里另写一份**。
+  //    另一处读它的是平台启动期的自检（`schemaState()`）—— 名单写两处就会漂移，
+  //    而漂移的表现恰恰是「清单说都在了，实际少一个」，也就是这条自检存在的理由。
   const migrations = []
-  migrations.push(await applyFile('kvvi_platform', '10-platform.sql', pre.kvvi_platform))
-  migrations.push(await applyFile('kvvi_platform', '15-visitor.sql', pre.kvvi_platform))
-  migrations.push(await applyFile('kvvi_platform', '16-publish.sql', pre.kvvi_platform))
-  migrations.push(await applyFile('kvvi_platform', '17-rate.sql', pre.kvvi_platform))
-  migrations.push(await applyFile('kvvi_platform', '18-retention.sql', pre.kvvi_platform))
-  migrations.push(await applyFile('kvvi_platform', '19-instance-bootstrap.sql', pre.kvvi_platform))
-  migrations.push(await applyFile('kvvi_platform', '21-systems-and-contracts.sql', pre.kvvi_platform))
-  migrations.push(await applyFile('kvvi_platform', '22-platform-mode-grants.sql', pre.kvvi_platform))
-  migrations.push(await applyFile('kvvi_platform', '23-idempotency.sql', pre.kvvi_platform))
-  migrations.push(await applyFile('kvvi_platform', '24-draft-payload.sql', pre.kvvi_platform))
-  migrations.push(await applyFile('kvvi_business', '20-business.sql', pre.kvvi_business))
-  migrations.push(await applyFile('kvvi_audit', '30-audit.sql', pre.kvvi_audit))
+  for (const [database, files] of Object.entries(MIGRATIONS)) {
+    for (const file of files) {
+      migrations.push(await applyFile(database, file, pre[database]))
+    }
+  }
   await grantPlatform()
   await grantBusiness()
   await grantAudit()

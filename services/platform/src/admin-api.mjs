@@ -661,9 +661,22 @@ export async function adminRoutes({ method, path, payload, session }) {
     if (typeof error?.message === 'string' && error.message.startsWith('KVVI_')) {
       return failure(error.message.split(':')[0].trim())
     }
-    return { status: 400, body: {
-      error: 'KVVI_BAD_REQUEST',
-      detail: String(error?.message ?? error).slice(0, 200),
-    } }
+    // ⚠️ **没料到的错误不是 400。**
+    //
+    // 这里原来是 `status: 400, error: 'KVVI_BAD_REQUEST'` —— 也就是把
+    // 「服务端出错了」报成「你的请求不对」。两件事的后果完全不同：
+    //   · 调用方会去改请求，而改请求解决不了服务端的问题；
+    //   · **监控里 400 通常不算错误率**，于是「管理 API 全挂了」看起来一切正常。
+    // 实测路径：把一张真表改名，管理路由撞上「关系不存在」，
+    // 回的正是 400（这条由 `tests/schema-guard.test.mjs` 抓出来）。
+    //
+    // 真因只进日志，不进响应体 —— 与 `server.mjs` 的请求边界同一约定。
+    console.error(JSON.stringify({
+      event: 'admin-request-failed',
+      path, method,
+      error: String(error?.message ?? error),
+      code: error?.code ?? null,
+    }))
+    return { status: 500, body: { error: 'KVVI_INTERNAL_ERROR' } }
   }
 }

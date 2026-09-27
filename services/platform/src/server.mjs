@@ -26,6 +26,8 @@ import { handleAuth } from './auth.mjs'
 import { issueBrowserCredential, verifyBrowserCredential, verifyToken, signingKeys } from './identity.mjs'
 import { isApiPath, handleApi } from './api-router.mjs'
 import { bootstrapRoutes } from './bootstrap.mjs'
+import { pool } from './db.mjs'
+import { schemaDelta } from './sql-manifest.mjs'
 
 const PORT = Number(process.env.KVVI_PLATFORM_PORT ?? 7400)
 const HOST = process.env.KVVI_PLATFORM_HOST ?? '0.0.0.0'
@@ -225,7 +227,67 @@ async function readBody(req, limit = 64 * 1024) {
 /** 契约是文档：一份真实系统的六份契约实测 65 KB 起，上限必须比它高一个量级。 */
 const API_BODY_LIMIT = 4 * 1024 * 1024
 
-const server = createServer(async (req, res) => {
+/**
+ * 库的迁移账本与代码里的清单差多少。**每次问都现算。**
+ *
+ * ── 为什么平台自己要能回答这个问题 ──────────────────────────────────────
+ *
+ * 实测过一次「换发行包却没跑迁移」：平台起来了、登录正常、`/healthz` 回 200，
+ * 而第一次提交发布就抛 `关系 "publish_drafts" 的 "payload" 字段不存在`，
+ * 进程当场退出。**在那之前没有任何一处说过「库落后了」** ——
+ * 而这是可以提前判出来的：代码里有 `24-draft-payload.sql`，账本里没有。
+ *
+ * 所以：状态在 `/healthz` 里报出来（`schemaBehind` / `schemaExtra` 计数），
+ * 启动时若不为零则打一条结构化告警。
+ *
+ * ⚠️ **刻意不在这里 `exit(1)`。** 这一层只是**诊断**：
+ *   · 起服务的正路是 `kvvi-admin start`，它在起平台**之前**跑迁移（`ensure-schema`），
+ *     所以正常路径下这里永远是 0；
+ *   · 而直接 `node src/server.mjs` 的场景（测试夹具、排障）用的是可能只跑过部分
+ *     迁移的库 —— 在那种地方硬退，会把「能起来的服务」变成「起不来」，
+ *     而它要报的问题（库落后）本来也不该拦着人先把服务起起来看。
+ * 拦住它的责任在 `ensure-schema` 那一步：那里失败会**中止启动**。
+ *
+ * ⚠️ **不缓存。** 第一版在启动后算一次就存下来，于是「启动之后库被改动」
+ * 它一律看不见 —— 而 `/healthz` 要回答的正是「**此刻**能不能干活」。
+ * 一次 `SELECT` 的代价远小于一个会撒谎的健康检查。
+ *
+ * @returns {Promise<{behind: string[], extra: string[], error: string|null}>}
+ */
+async function schemaState() {
+  try {
+    const { rows } = await pool('platform').query('SELECT file FROM schema_migrations')
+    const delta = schemaDelta(rows.map((row) => row.file), 'kvvi_platform')
+    return { behind: delta.behind, extra: delta.extra, error: null }
+  } catch (error) {
+    // 连不上库、或账本表还不存在（全新实例、尚未迁移）—— 都如实报出来，
+    // 不当作「没问题」。`error` 字段让调用方分得清「落后」与「读不到」。
+    return { behind: [], extra: [], error: String(error?.message ?? error) }
+  }
+}
+
+/**
+ * 请求处理。**任何没料到的错误都必须在这里被接住，进程不许退出。**
+ *
+ * ── 为什么这一层不能省 ──────────────────────────────────────────────────
+ *
+ * 实测过一次：提交发布时 PostgreSQL 抛「`payload` 字段不存在」，
+ * 而这条错误从 `submitDraft` 一路穿出 async 处理器 —— 就是一个
+ * **unhandled rejection**，Node 的默认动作是打印后 `exit(1)`。
+ * 结果不是「这次发布失败」，而是 **`/healthz` 从 200 变成连不上**：
+ * 一个客户端能触发的数据库错误，把整个平台打挂了。
+ *
+ * 领域错误一直是接了的（`PublishError` 有专门的 catch）。缺的就是**这一条兜底**，
+ * 而它恰恰是生产上最需要的一条：**没料到的**错误才是常态。
+ *
+ * 回 500 而不是 4xx：这个请求本身没有问题，是服务端出错了。
+ * 调用方（界面、Agent 工具）据此重试或上报，与「你没权限」是两回事。
+ *
+ * @param {import('node:http').IncomingMessage} req 请求
+ * @param {import('node:http').ServerResponse} res 响应
+ * @returns {Promise<void>}
+ */
+async function handleRequest(req, res) {
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`)
   const path = url.pathname
   const method = req.method ?? 'GET'
@@ -250,6 +312,11 @@ const server = createServer(async (req, res) => {
       // 看不出缺的是本进程这里的挂载。
       runtimeCredentialInjected: runtimeCredentialAvailable(),
       uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
+      // 库的迁移账本与代码里的清单差多少。**必须能被无凭据地读到** ——
+      // 它要回答的正是「服务起来了，但它真的能干活吗」。
+      schemaBehind: (await schemaState()).behind.length,
+      schemaExtra: (await schemaState()).extra.length,
+      schemaReadable: (await schemaState()).error === null,
     })
   }
 
@@ -510,6 +577,35 @@ const server = createServer(async (req, res) => {
   }
 
   return send(res, 404, { ok: false, error: 'not_found', path })
+}
+
+/**
+ * 服务器。**这是唯一接住「没料到的错误」的地方。**
+ *
+ * `createServer` 的处理器是 async 的：`handleRequest` 里抛出去的错误
+ * 在调用方看来是一个 rejected promise，而 http 模块**不会**去接它 ——
+ * 那就成了 unhandled rejection（见 `handleRequest` 的注释）。
+ */
+const server = createServer((req, res) => {
+  handleRequest(req, res).catch((error) => {
+    // 日志里放**原始**错误与栈：这是唯一能查到真因的地方。
+    // 回给调用方的只有稳定的错误码，不带任何内部细节。
+    console.error(JSON.stringify({
+      event: 'platform-request-failed',
+      method: req.method ?? 'GET',
+      url: req.url ?? '',
+      error: String(error?.message ?? error),
+      code: error?.code ?? null,
+      stack: String(error?.stack ?? '').split('\n').slice(0, 12).join('\n'),
+    }))
+    if (res.headersSent) {
+      // 响应已经开始写了，改不回状态码 —— 断开连接，让调用方知道这次没结果。
+      // 静默截断更坏：调用方会把半份响应当成完整的。
+      res.destroy()
+      return
+    }
+    send(res, 500, { error: 'KVVI_INTERNAL_ERROR' })
+  })
 })
 
 server.on('upgrade', createUpgradeHandler(RUNTIME_TARGET, runtimeCookie, trustedRuntimeContext))
@@ -528,7 +624,30 @@ server.listen(PORT, HOST, () => {
     signingKeyMounted: existsSync(SIGNING_KEY_PATH),
     proxiesTo: RUNTIME_TARGET.host,
   }))
+  // ⚠️ **启动时就把「库跟没跟上代码」说出来。**
+  //
+  // 这件事此前没有任何一处会提 —— 平台起来了、登录正常、`/healthz` 回 200，
+  // 而第一次写请求才炸，症状是那条 SQL 报错，看不出「你换了包但没跑迁移」。
+  // 起服务的正路（`kvvi-admin start`）会在起平台**之前**跑迁移，
+  // 所以这里不为零就说明有人绕过了那条路，或者迁移失败了。
+  void schemaState().then((state) => {
+    if (state.error !== null) {
+      console.error(JSON.stringify({ event: 'platform-schema-unreadable', error: state.error }))
+      return
+    }
+    if (state.behind.length > 0 || state.extra.length > 0) {
+      console.error(JSON.stringify({
+        event: 'platform-schema-behind',
+        behind: state.behind,
+        extra: state.extra,
+        guidance: '库的迁移账本与代码里的清单不一致 —— 跑 `kvvi-admin start`（它会先跑迁移），'
+                  + '或直接跑 services/platform/src/migrate.mjs。带着落后的库跑，'
+                  + '第一次用到新列/新表的请求就会失败。',
+      }))
+    }
+  })
 })
+
 
 // 关停时必须**真的退出**，而不是「放掉监听然后一直活着」。
 //
