@@ -99,16 +99,19 @@ export function buildDiffReport(before, after) {
 export async function writePolicies({ client, companyId, rows }) {
   await client.query('DELETE FROM policies WHERE company_id = $1', [companyId])
   for (const row of rows) {
+    // ⚠️ 冲突目标必须与**表上的唯一约束逐列相同**（含 `state_code`），
+    //    否则 Postgres 报「no unique or exclusion constraint matching the
+    //    ON CONFLICT specification」—— 那个报错不会告诉你是哪一列对不上。
     await client.query(
       `INSERT INTO policies (policy_id, company_id, role_id, dimension,
-         resource_code, actions, data_scopes, field_visibility)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)
-       ON CONFLICT (company_id, role_id, dimension, resource_code) DO UPDATE
+         resource_code, state_code, actions, data_scopes, field_visibility)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (company_id, role_id, dimension, resource_code, state_code) DO UPDATE
          SET actions = EXCLUDED.actions,
              data_scopes = EXCLUDED.data_scopes,
              field_visibility = EXCLUDED.field_visibility`,
       [companyId, row.roleId, row.dimension, row.resourceCode,
-       row.actions, row.dataScopes, row.fieldVisibility])
+       row.stateCode ?? null, row.actions, row.dataScopes, row.fieldVisibility])
   }
   return { policies: rows.length }
 }

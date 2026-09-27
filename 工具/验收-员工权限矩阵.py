@@ -17,8 +17,11 @@
 | `sales`（staff-edit） | FORM=[read,create,update] + DATA=[SELF] | 读得到自己的、能建能改 |
 | 无角色（staff-none） | 契约里没有它 | 全拒 |
 
-矩阵是三格：**读 / 建 / 改**。流程不在这里 —— 它不是这三档的差别
-（三档拿到的可执行动作都是空的），是一条独立的缺陷（见问题 28），跑完单独报。
+四格：**读 / 建 / 改 / 流程**。
+
+⚠️ 流程那一格此前是**空的**：三档拿到的可执行动作都是 `[]`，因为运行时的
+三处词表各自取错（问题 28）。那时它被单独报成「一条独立缺陷」而不是矩阵的一格 ——
+现在它修好了，它就该回到矩阵里：**「只读」与「增改」的差别之一正是推不推得动流程**。
 
 用法：
     python3 工具/验收-员工权限矩阵.py            # 跑一遍并打印矩阵
@@ -37,11 +40,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 #: `role_members` 连起来，而这一层最容易出现「契约写好了、没人被分到这个角色」。
 ACCOUNTS = {
     'staff-view':  {'role': 'sales_viewer', 'expect_read': True,
-                    'expect_create': False, 'expect_update': False},
+                    'expect_create': False, 'expect_update': False, 'expect_flow': False},
     'staff-edit':  {'role': 'sales',        'expect_read': True,
-                    'expect_create': True,  'expect_update': True},
+                    'expect_create': True,  'expect_update': True,  'expect_flow': True},
     'staff-none':  {'role': None,           'expect_read': False,
-                    'expect_create': False, 'expect_update': False},
+                    'expect_create': False, 'expect_update': False, 'expect_flow': False},
 }
 
 PASSWORD = '<试点口令>'
@@ -136,6 +139,11 @@ def verdict(cells, expect):
         ('改', cells['update']['status'],
          '期望 200' if expect['expect_update'] else '期望 403',
          (cells['update']['status'] == 200) == expect['expect_update']),
+        # 流程：**看得到动作**就意味着推得动。只读那一档没有 FLOW 策略，
+        # 于是动作清单是空的 —— 这正是「只读」与「增改」在流程上的差别。
+        ('流程', cells['flow']['status'],
+         '期望看得到动作' if expect['expect_flow'] else '期望看不到动作',
+         bool(cells['flow']['actions']) == expect['expect_flow']),
     ]
 
 
@@ -180,16 +188,10 @@ def main():
             print('    %s %-4s HTTP %-5s  %s' % (mark, row['cell'], row['status'], row['expect']))
 
     print()
-    print('  ── 流程（单独报，不计入矩阵）──')
-    for login, data in report['accounts'].items():
-        flow = data['cells']['flow']
-        print('    %-12s 记录状态 %-14s 可执行动作 %s'
-              % (login, flow.get('state'), flow.get('actions')))
-    print()
     if bad:
         print('✗ %d 格不符' % bad)
         return 1
-    print('✓ 全部 %d 格成立' % (len(ACCOUNTS) * 3))
+    print('✓ 全部 %d 格成立' % (len(ACCOUNTS) * 4))
     return 0
 
 

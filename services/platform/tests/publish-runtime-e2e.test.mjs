@@ -96,12 +96,17 @@ function workflow(assetId) {
   }
 }
 
-/** 六份契约里，`include` 挑出要发的那几份 —— 用来制造「缺契约」的版本。 */
-function contractsOf(assetId, include) {
+/**
+ * 六份契约里，`include` 挑出要发的那几份 —— 用来制造「缺契约」的版本。
+ * @param assetId 业务对象代号
+ * @param include 要发的契约类型
+ * @param overrides 按契约类型覆盖正文（用来发「初始状态不叫 draft」的流程）
+ */
+function contractsOf(assetId, include, overrides = {}) {
   const all = {
     'business-schema': model(assetId),
     'view-schema': view(assetId),
-    'workflow-spec': workflow(assetId),
+    'workflow-spec': overrides['workflow-spec'] ?? workflow(assetId),
     'permission-spec': { roles: [], policies: [] },
     'tool-spec': { tools: [] },
     'app-model-command': { commands: [] },
@@ -115,7 +120,7 @@ function contractsOf(assetId, include) {
  * @param include 要发的契约类型
  * @param name 系统名
  */
-async function publish(assetId, include, name) {
+async function publish(assetId, include, name, overrides = {}) {
   const d = await submitDraft({
     ctx: builder.ctx,
     change: { ...CHANGE, assetId, n: randomUUID() },
@@ -127,7 +132,7 @@ async function publish(assetId, include, name) {
     ctx: owner.ctx, draftId: d.draftId,
     apply: async ({ diffDigest }) => ({ diffDigest }),
     system: { assetId, name, schemaCode: assetId },
-    contracts: contractsOf(assetId, include),
+    contracts: contractsOf(assetId, include, overrides),
   })
 }
 
@@ -173,14 +178,20 @@ async function grantOnSystem(userId, actions) {
        actions, data_scopes, field_visibility)
      VALUES ($1,$2,$3,'DATA','*','{}',$4,'VISIBLE')`,
     [randomUUID(), A.company, roleId, ['SELF', 'COMPANY']])
-  // ⚠️ 流程维度**必须单独授**：`nextActions` 会按 FLOW 权限过滤，
-  //    漏了它的表现是「契约里明明有 submit，可执行清单却是空的」——
-  //    看起来像流程引擎坏了，其实是夹具少了一条策略。
+  // 流程维度**必须单独授**：`nextActions` 会按 FLOW 权限过滤，
+  // 漏了它的表现是「契约里明明有 submit，可执行清单却是空的」。
+  //
+  // ⚠️ 但这条策略**同时把真问题盖住了**：它写的是 `resource_code='*'` 与
+  //    **业务名** `['submit','approve','reject']`，而真实契约写的是
+  //    **业务对象**与**类别**（`['SUBMIT','APPROVE','REJECT']`）。
+  //    夹具用通配 + 业务名，于是「运行时的两个参数都取错了」在测试里永远看不出来 ——
+  //    到了真试点上，契约自己那两条策略一条也匹配不上（问题 28）。
+  //    夹具现在按契约的词表写，与真实数据同形。
   await pool('platform').query(
     `INSERT INTO policies (policy_id, company_id, role_id, dimension, resource_code,
        actions, data_scopes, field_visibility)
-     VALUES ($1,$2,$3,'FLOW','*',$4,'{}',NULL)`,
-    [randomUUID(), A.company, roleId, ['submit', 'approve', 'reject']])
+     VALUES ($1,$2,$3,'FLOW',$5,$4,'{}',NULL)`,
+    [randomUUID(), A.company, roleId, ['SUBMIT', 'APPROVE', 'REJECT'], ASSET])
 }
 
 before(async () => {
@@ -334,6 +345,46 @@ describe('阶段九 · G7 端到端', () => {
     const after = await api('GET',
       `/api/v1/systems/${ASSET}/records/${created.body.recordId}`, employee)
     assert.equal(after.body.state, 'draft', '被拒的迁移改了状态')
+  })
+
+  test('⑨ ★ 新记录的出生状态来自**契约**，不是代码里的字面量', async () => {
+    // 建表时写死了 `state text NOT NULL DEFAULT 'draft'`，而搭建者的流程契约里
+    // 初始状态可以叫任何名字。这里把它改成 `not_followed` 再发一版 ——
+    // 如果运行时用的是写死的 `'draft'`，下面第一条断言就会读到 `draft`，
+    // 而**后果**是 `nextActions(spec, 'draft')` 找不到出边、可执行清单为空：
+    // 界面上一个流程按钮都没有（问题 28）。
+    await publish(ASSET, ['business-schema', 'view-schema', 'workflow-spec',
+                          'permission-spec', 'tool-spec', 'app-model-command'],
+                  '通用事项登记（初始状态改了名）', {
+      'workflow-spec': {
+        businessSchemaRef: { asset_type: 'BUSINESS_SCHEMA', asset_id: ASSET },
+        states: [
+          { state_code: 'not_followed', name: '未跟进', initial: true, terminal: false },
+          { state_code: 'following', name: '跟进中', initial: false, terminal: false },
+        ],
+        actions: [{ action_code: 'start_follow', kind: 'SUBMIT', capability_ref: {} }],
+        transitions: [{ transition_code: 'start_following', from_state: 'not_followed',
+                        to_state: 'following', action_code: 'start_follow' }],
+        approverRef: { kind: 'SINGLE', role_ref: {
+          permission_ref: { asset_type: 'PERMISSION', asset_id: 'role_directory' },
+          subresource: { type: 'ROLE', code: 'supervisor' } } },
+      },
+    })
+
+    const created = await api('POST', `/api/v1/systems/${ASSET}/records`, employee,
+      { data: { title: '看它出生在哪个状态' } })
+    assert.equal(created.status, 201)
+    const read = await api('GET', `/api/v1/systems/${ASSET}/records/${created.body.recordId}`,
+                           employee)
+    assert.equal(read.body.state, 'not_followed',
+                 '新记录出生在写死的状态里，而不是契约的 initial')
+
+    // 而且动作是从**它**出发的 —— 这条才是有用的那一半：
+    // 状态对了但动作清单空着，界面上还是一片按钮都没有。
+    const actions = await api('GET',
+      `/api/v1/systems/${ASSET}/records/${created.body.recordId}/actions`, employee)
+    assert.equal(actions.body.state, 'not_followed')
+    assert.deepEqual(actions.body.actions.map((a) => a.action), ['start_follow'])
   })
 
   test('⑧ 没有会话就没有任何业务数据', async () => {

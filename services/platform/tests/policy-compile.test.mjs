@@ -106,20 +106,46 @@ describe('编译：两套字段词表', () => {
 })
 
 describe('编译：有损的地方必须说出来', () => {
-  test('★ 流程的状态这一层进 `notEnforced`，不静默丢掉', () => {
+  test('★ 流程的状态**落进行里**，不再进 `notEnforced`', () => {
+    // ⚠️ 这条判据此前断言的是**反面**：状态这一层没有执行点，所以必须记进
+    // `notEnforced`（`KVVI_FLOW_STATE_NOT_ENFORCED`）。那在当时是**对的** ——
+    // 落不下去就得说出来，否则「已声明」会看起来像「已生效」。
+    //
+    // 迁移 25 给 `policies` 加了 `state_code` 之后它落得下去了，
+    // 于是那条注记**必须消失**：一条「缺执行点」的记录不是可以一直挂着的备注，
+    // 它挂着的每一天都在把一条已经生效的规则说成没生效。
     const { rows, notEnforced } = compilePermissionSpec(spec([
       policy({ policy_code: 'flow1', dimension: 'FLOW',
         resource_ref: REF('WORKFLOW', 'customer_follow'),
         subresource: { type: 'STATE', code: 'following' }, actions: ['SUBMIT'] }),
     ]), { roleIds: ROLE_IDS })
     assert.equal(rows.length, 1)
-    assert.equal(notEnforced.length, 1,
-      '状态这一层被丢掉了却没说 —— 「已声明」会看起来像「已生效」')
-    assert.equal(notEnforced[0].reason, 'KVVI_FLOW_STATE_NOT_ENFORCED')
-    assert.equal(notEnforced[0].state, 'following')
-    // 编译出来的权限**比契约宽**：动作升到流程级之后，别的状态下也可用。
-    // 这条差异必须写在记录里，而不是靠读代码的人自己发现。
-    assert.match(notEnforced[0].detail, /更宽|其它状态|同一动作/)
+    assert.equal(rows[0].stateCode, 'following', '状态没落进行里')
+    assert.equal(notEnforced.length, 0, '状态已经落得下去了，却还记着「执行不了」')
+  })
+
+  test('★ 同一角色在同一张流程的不同状态上各有一条策略，不许被合并', () => {
+    // 不含状态去合并的后果：只剩最后那条的状态，
+    // 于是「跟进中可成交」把「已流失可复活」吃掉，或者反过来。
+    const { rows } = compilePermissionSpec(spec([
+      policy({ policy_code: 'a', dimension: 'FLOW',
+        resource_ref: REF('WORKFLOW', 'customer_follow'),
+        subresource: { type: 'STATE', code: 'following' }, actions: ['CLOSE'] }),
+      policy({ policy_code: 'b', dimension: 'FLOW',
+        resource_ref: REF('WORKFLOW', 'customer_follow'),
+        subresource: { type: 'STATE', code: 'lost' }, actions: ['REOPEN'] }),
+    ]), { roleIds: ROLE_IDS })
+    assert.deepEqual(rows.map((r) => r.stateCode).sort(), ['following', 'lost'])
+    assert.deepEqual(rows.find((r) => r.stateCode === 'following').actions, ['CLOSE'])
+    assert.deepEqual(rows.find((r) => r.stateCode === 'lost').actions, ['REOPEN'])
+  })
+
+  test('不带状态的 FLOW 策略 → `stateCode` 为 null（不限状态）', () => {
+    const { rows } = compilePermissionSpec(spec([
+      policy({ policy_code: 'flow2', dimension: 'FLOW',
+        resource_ref: REF('WORKFLOW', 'customer_follow'), actions: ['SUBMIT'] }),
+    ]), { roleIds: ROLE_IDS })
+    assert.equal(rows[0].stateCode, null)
   })
 
   test('能力引用进 `notEnforced`', () => {

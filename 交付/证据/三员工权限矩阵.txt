@@ -5,20 +5,18 @@
     ✓ 读    HTTP 200    期望 200
     ✓ 建    HTTP 403    期望 403
     ✓ 改    HTTP 403    期望 403
+    ✓ 流程   HTTP 200    期望看不到动作
 
   staff-edit（角色 sales）
     ✓ 读    HTTP 200    期望 200
     ✓ 建    HTTP 201    期望 201
     ✓ 改    HTTP 200    期望 200
+    ✓ 流程   HTTP 200    期望看得到动作
 
   staff-none（角色 无）
     ✓ 读    HTTP 403    期望 403
     ✓ 建    HTTP 403    期望 403
     ✓ 改    HTTP 403    期望 403
+    ✓ 流程   HTTP 403    期望看不到动作
 
-  ── 流程（单独报，不计入矩阵）──
-    staff-view   记录状态 draft          可执行动作 []
-    staff-edit   记录状态 draft          可执行动作 []
-    staff-none   记录状态 None           可执行动作 None
-
-✓ 全部 9 格成立
+✓ 全部 12 格成立

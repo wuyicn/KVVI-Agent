@@ -10,10 +10,15 @@ import { randomUUID } from 'node:crypto'
 import { pool, closeAll } from '../src/db.mjs'
 import { A, RECORDS, resetDatabase, makeSession, grantBaseline, adminQuery } from './harness.mjs'
 import { judgeTransition, step, nextActions, WorkflowError } from '../src/workflow.mjs'
+import { canAct, fieldVisibility } from '../src/authorization.mjs'
 import { verifyChain } from '../src/audit.mjs'
 
+//: 流程契约。⚠️ **没有 `workflow_code`** —— 契约的 `Spec` 里没有这个字段
+//: （只有 `businessSchemaRef/states/transitions/actions/approverRef`），
+//: 而运行时曾经拿 `spec.workflow_code ?? '*'` 去问权限，于是恒为 `'*'`。
+//: 流程的身份就是**业务对象**：它没有独立身份。
+const ASSET = 'general_item'          // 业务对象代号，也是 FLOW 权限的资源
 const SPEC = {
-  workflow_code: 'general_item_flow',
   states: [
     { state_code: 'draft', name: '草稿', initial: true, terminal: false },
     { state_code: 'submitted', name: '待审批', initial: false, terminal: false },
@@ -39,14 +44,21 @@ before(async () => {
   await resetDatabase()
   await grantBaseline(A.alice)
   await grantBaseline(A.bob)
-  // 流程动作权限：`canAct('FLOW', workflow_code, action)`
+  // 流程动作权限：`canAct('FLOW', 业务对象, 动作类别, {state})`
+  //
+  // ⚠️ 这两行**曾经写错**，而且错法与运行时同源（两边一起错，于是测试全绿）：
+  //    资源写的是 `general_item_flow`（流程自造的名字，契约里根本没有），
+  //    动作写的是 `{submit,approve,reject}`（**业务名**），
+  //    而 `permission-spec` 的 FLOW `actions` 是**类别的闭枚举**。
+  //    真实契约按 schema 写 `SUBMIT` 这类类别，于是到了真实数据上一条都匹配不上。
   for (const userId of [A.alice, A.bob]) {
     await pool('platform').query(
       `INSERT INTO policies (policy_id, company_id, role_id, dimension, resource_code,
-         actions, data_scopes, field_visibility)
-       SELECT gen_random_uuid(), $1, rm.role_id, 'FLOW', 'general_item_flow',
-              '{submit,approve,reject}', '{}', NULL
-         FROM role_members rm WHERE rm.user_id = $2 LIMIT 1`, [A.company, userId])
+         state_code, actions, data_scopes, field_visibility)
+       SELECT gen_random_uuid(), $1, rm.role_id, 'FLOW', $3,
+              NULL, '{SUBMIT,APPROVE,REJECT}', '{}', NULL
+         FROM role_members rm WHERE rm.user_id = $2 LIMIT 1`,
+      [A.company, userId, ASSET])
   }
   alice = await makeSession(A.alice, A.company)
   bob = await makeSession(A.bob, A.company)
@@ -117,6 +129,71 @@ describe('N20 审批流运行时：判定（纯函数）', () => {
   })
 })
 
+describe('流程权限的三处词表（问题 28）', () => {
+  // 这三条各自独立，任何一条错了都表现为同一个症状：**员工点流程按钮被拒**。
+  // 它们的共同点是把「契约写的」和「运行时读的」放在一起对，而不是各测各的。
+
+  test('★ 判权限用的资源是**业务对象**，不是流程自造的名字', async () => {
+    const spec = { ...SPEC }
+    // 用流程名当资源**不该**放行 —— 契约里根本没有那个名字，
+    // 它只是一串字符串，而字符串相等曾经被当成「资源对上了」。
+    const wrong = await canAct(A.company, A.alice, 'FLOW', 'general_item_flow', 'SUBMIT',
+                               { state: 'draft' })
+    const right = await canAct(A.company, A.alice, 'FLOW', ASSET, 'SUBMIT', { state: 'draft' })
+    assert.equal(wrong, false, '流程名竟然也能匹配上')
+    assert.equal(right, true)
+    assert.ok(spec)
+  })
+
+  test('★ 判权限的动作是**类别**（kind），不是 action_code', async () => {
+    // 装置里给的是 `SUBMIT`（类别）。业务名 `submit` 不该匹配 ——
+    // 而它就是此前运行时传进来的那个值。
+    assert.equal(await canAct(A.company, A.alice, 'FLOW', ASSET, 'submit', { state: 'draft' }),
+                 false, '业务名竟然匹配上了类别')
+    assert.equal(await canAct(A.company, A.alice, 'FLOW', ASSET, 'SUBMIT', { state: 'draft' }),
+                 true)
+  })
+
+  test('★ 状态限定：策略写了状态就只在那个状态下成立', async () => {
+    // 给 alice 加一条**只在 following 状态**上的 CLOSE（不动原有那两条）。
+    await pool('platform').query(
+      `INSERT INTO policies (policy_id, company_id, role_id, dimension, resource_code,
+         state_code, actions, data_scopes, field_visibility)
+       SELECT gen_random_uuid(), $1, rm.role_id, 'FLOW', $3, 'following',
+              '{CLOSE}', '{}', NULL
+         FROM role_members rm WHERE rm.user_id = $2 LIMIT 1`, [A.company, A.alice, ASSET])
+    try {
+      assert.equal(await canAct(A.company, A.alice, 'FLOW', ASSET, 'CLOSE',
+                                { state: 'following' }), true)
+      assert.equal(await canAct(A.company, A.alice, 'FLOW', ASSET, 'CLOSE',
+                                { state: 'won' }), false,
+                   '状态限定的策略在别的状态下也放行了')
+      // 不写状态的策略（装置里那两条）在任何状态下都成立。
+      assert.equal(await canAct(A.company, A.alice, 'FLOW', ASSET, 'SUBMIT',
+                                { state: '随便什么状态' }), true)
+    } finally {
+      await pool('platform').query(
+        "DELETE FROM policies WHERE company_id = $1 AND state_code = 'following'", [A.company])
+    }
+  })
+
+  test('nextActions 同时给出**业务名**与**类别**', () => {
+    const [first] = nextActions(SPEC, 'draft')
+    assert.equal(first.action, 'submit')      // 回传给 /transitions 的是它
+    assert.equal(first.kind, 'SUBMIT')        // 判权限用的是它
+    assert.equal(first.to, 'submitted')
+  })
+
+  test('未知动作不报「没权限」，报「契约里没有它」', async () => {
+    // 这两种拒的处置完全不同：一个是「你配的权限不够」，一个是「这个动作不存在」。
+    await assert.rejects(
+      () => step({ ctx: alice.ctx, spec: SPEC, assetId: ASSET, recordId: RECORDS.aliceOwn,
+                   from: 'draft', action: 'nope',
+                   applyTransition: async () => ({ recordId: RECORDS.aliceOwn }) }),
+      (e) => e.code === 'KVVI_UNKNOWN_ACTION')
+  })
+})
+
 describe('N20 审批流运行时：执行（写状态 + 留痕）', () => {
   // ⚠️ 状态读写走**超级用户**：`pool('business')` 受 RLS 约束，
   // 不设作用域上下文时读到 0 行 —— 断言会拿到 undefined，
@@ -128,10 +205,10 @@ describe('N20 审批流运行时：执行（写状态 + 留痕）', () => {
   }
 
   test('发起 → 审批 全流程跑通，且每步都留痕', async () => {
-    const r = await step({ ctx: alice.ctx, spec: SPEC, recordId: RECORDS.aliceOwn,
+    const r = await step({ ctx: alice.ctx, spec: SPEC, assetId: ASSET, recordId: RECORDS.aliceOwn,
                            from: 'draft', action: 'submit', applyTransition: applyTransition(RECORDS.aliceOwn) })
     assert.equal(r.to, 'submitted')
-    const a = await step({ ctx: bob.ctx, spec: SPEC, recordId: RECORDS.aliceOwn,
+    const a = await step({ ctx: bob.ctx, spec: SPEC, assetId: ASSET, recordId: RECORDS.aliceOwn,
                            from: 'submitted', action: 'approve',
                            submitterUserId: A.alice, applyTransition: applyTransition(RECORDS.aliceOwn) })
     assert.equal(a.to, 'approved')
@@ -149,7 +226,7 @@ describe('N20 审批流运行时：执行（写状态 + 留痕）', () => {
     const before = (await adminQuery('kvvi_business',
       'SELECT state FROM business_records WHERE record_id = $1', [RECORDS.aliceOwn])).rows[0].state
     await assert.rejects(
-      () => step({ ctx: alice.ctx, spec: SPEC, recordId: RECORDS.aliceOwn,
+      () => step({ ctx: alice.ctx, spec: SPEC, assetId: ASSET, recordId: RECORDS.aliceOwn,
                    from: 'approved', action: 'submit', applyTransition: applyTransition(RECORDS.aliceOwn) }),
       (e) => e instanceof WorkflowError && e.code === 'KVVI_TERMINAL_STATE')
     const after1 = (await adminQuery('kvvi_business',
@@ -165,7 +242,7 @@ describe('N20 审批流运行时：执行（写状态 + 留痕）', () => {
     await adminQuery('kvvi_business',
       "UPDATE business_records SET state = 'submitted' WHERE record_id = $1", [RECORDS.bobOwn])
     await assert.rejects(
-      () => step({ ctx: alice.ctx, spec: SPEC, recordId: RECORDS.bobOwn,
+      () => step({ ctx: alice.ctx, spec: SPEC, assetId: ASSET, recordId: RECORDS.bobOwn,
                    from: 'submitted', action: 'approve',
                    submitterUserId: A.alice, applyTransition: applyTransition(RECORDS.bobOwn) }),
       (e) => e.code === 'KVVI_SELF_APPROVAL_FORBIDDEN')

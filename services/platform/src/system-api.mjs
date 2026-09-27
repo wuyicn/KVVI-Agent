@@ -232,6 +232,30 @@ async function recordUpdate(ctx, assetId, recordId, payload) {
  * @param assetId 系统代号
  * @returns `workflow-spec` 的内容
  */
+/**
+ * 一条新记录该出生在哪个状态。
+ *
+ * **契约是唯一来源**：取该系统流程契约里 `initial: true` 的那个状态。
+ * 没有已发布的流程（或流程没有状态）时回落到 `'draft'` ——
+ * 那是一个**没有流程**的系统的状态，而不是「流程的第一个状态」。
+ *
+ * @param {object} ctx 会话上下文
+ * @param {string} assetId 业务系统代号
+ * @returns {Promise<string>} 状态码
+ */
+async function initialStateOf(ctx, assetId) {
+  try {
+    const workflow = await workflowOf(ctx, assetId)
+    const initial = (workflow?.states ?? []).find((state) => state.initial === true)
+    return initial?.state_code ?? 'draft'
+  } catch (error) {
+    // 投影读不到（没有流程契约、投影坏了）不该让「建记录」失败 ——
+    // 那些系统本来就没有流程，`draft` 正是它们的常态。
+    // 真的投影故障会在流程端点上报出来，不在写入路径上拦人。
+    return 'draft'
+  }
+}
+
 async function workflowOf(ctx, assetId) {
   const projection = await runtimeProjection(ctx.companyId, assetId)
   return projection.workflows[assetId]
@@ -269,8 +293,16 @@ async function recordActions(ctx, assetId, recordId) {
   const granted = []
   for (const candidate of candidates) {
     // ⚠️ 逐条判权限（`canAct` 是唯一判据），不在本层另立规则。
-    if (await canAct(ctx.companyId, ctx.userId, 'FLOW', workflow.workflow_code ?? '*',
-      candidate.action)) granted.push(candidate)
+    //
+    // 三个参数分别对应三处曾经取错的地方：
+    //   · 资源 → **业务对象**（`assetId`）。流程没有独立身份，它就是这张表单的流程。
+    //     此前取 `workflow.workflow_code ?? '*'`，而契约里根本没有那个字段。
+    //   · 动作 → **类别**（`candidate.kind`）。策略里写的是 `SUBMIT`/`CLOSE` 这类类别，
+    //     不是 `start_follow` 这类业务名。此前取 `candidate.action` → 永远不匹配。
+    //   · 状态 → 当前状态。策略可以限定「只在某个状态下成立」。
+    if (candidate.kind === null) continue
+    if (await canAct(ctx.companyId, ctx.userId, 'FLOW', assetId, candidate.kind,
+      { state: record.state })) granted.push(candidate)
   }
   return { status: 200, body: { recordId, state: record.state, actions: granted } }
 }
@@ -315,7 +347,7 @@ async function recordTransition(ctx, assetId, recordId, payload) {
   const submitterUserId = await submitterOf(recordId)
   try {
     const result = await step({
-      ctx, spec: workflow, recordId, from: record.state, action, submitterUserId,
+      ctx, spec: workflow, assetId, recordId, from: record.state, action, submitterUserId,
       applyTransition: async ({ toState }) => {
         // 状态写回**带版本号**：迁移与并发写走同一条乐观并发，
         // 不这么做的话两条路径互相覆盖且都不报错。
@@ -402,6 +434,17 @@ export async function systemRoutes({ method, path, payload, session, headers = {
             const scope = await scopeContext(ctx)
             const created = await createRecord(ctx, scope, {
               schemaCode: assetId, data: payload?.data ?? {},
+              // ★ **记录的出生状态来自流程契约，不是代码里的字面量。**
+              //
+              // 建表时写死了 `state text NOT NULL DEFAULT 'draft'`，而搭建者的流程
+              // 契约里初始状态叫 `not_followed`（`initial: true`）——
+              // 于是**每条新记录都出生在一个工作流不认识的状态里**，
+              // `nextActions(spec, 'draft')` 找不到出边、返回空，
+              // 界面上一个流程按钮都没有（问题 28）。
+              //
+              // 「草稿」不是不能用：搭建者想要它就**在契约里声明一个 initial 的
+              // 草稿态**。契约是唯一来源，运行时不替它发明一个。
+              state: await initialStateOf(ctx, assetId),
             })
             return { status: 201, body: created }
           },

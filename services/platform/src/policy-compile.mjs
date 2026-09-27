@@ -87,10 +87,17 @@ const sortedUnique = (xs) => [...new Set(xs.filter((x) => typeof x === 'string' 
  * | FORM | `canAct('FORM', assetId, action)`，`assetId` 是业务系统代号 | `resource_ref.asset_id` |
  * | DATA | 同上（数据范围挂在业务对象上） | `resource_ref.asset_id` |
  * | FIELD | `fieldVisibility()` 按**字段 code** 匹配 `resource_code` | `subresource.code` |
- * | FLOW | `canAct('FLOW', workflow.workflow_code, action)` | `resource_ref.asset_id` |
+ * | FLOW | `canAct('FLOW', 业务对象, 动作类别, {state})` | `resource_ref.asset_id` |
  *
  * 取错不会有报错 —— 只会有一条**永远匹配不上**的策略，
  * 而它的表现是「员工被拒绝」，看起来像权限配小了。
+ *
+ * ⚠️ FLOW 那一行**曾经也是错的，但在运行时那一侧**：契约写 `asset_id`，
+ * 运行时却拿 `workflow.workflow_code ?? '*'` —— 而契约里根本没有
+ * `workflow_code` 这个字段，于是恒为 `'*'`，与任何策略都对不上。
+ * 另有两处同源：动作要用**类别**（`kind`）而不是 `action_code`；
+ * 状态要带上（`policies.state_code`，迁移 25）。三处一起错的结果是
+ * **任何流程动作都被拒**，而报的是 `KVVI_ACTION_NOT_PERMITTED`。
  * @param {object} policy 契约里的一条策略
  * @returns {string} 资源代号
  */
@@ -172,33 +179,28 @@ export function compilePermissionSpec(spec, { roleIds } = {}) {
       const existing = byKey.get(key)
       if (existing === undefined || rank[visibility] > rank[existing.fieldVisibility]) {
         byKey.set(key, { roleCode: policy.role_code, dimension: 'FIELD',
-          resourceCode, actions: [], dataScopes: [], fieldVisibility: visibility })
+          resourceCode, stateCode: null, actions: [], dataScopes: [], fieldVisibility: visibility })
       }
       continue
     }
 
     if (policy.dimension === 'FLOW') {
-      // ⚠️ **状态这一层被丢掉了**，而且必须被记下来。
+      // ── 状态这一层**曾经被丢掉**，现在被执行 ──────────────────────────────
       //
-      // 契约写的是「**在 following 这个状态下**可以做 SUBMIT 与 CLOSE」，
-      // 而运行时的判据是 `canAct('FLOW', workflow_code, action)` ——
-      // 它只有「哪张流程 + 哪个动作」，**没有状态**。
-      // 于是编译出来的是一份**更宽**的授权：同一个动作在别的状态下也可用了。
+      // 契约写的是「**在 following 这个状态下**可以做 SUBMIT 与 CLOSE」。
+      // 运行时的判据一度只有「哪张流程 + 哪个动作」—— 于是一条状态限定的策略
+      // 被编译成**更宽**的授权：同一个动作在别的状态下也可用了。
+      // 那时它被如实记进 `notEnforced`（`KVVI_FLOW_STATE_NOT_ENFORCED`）。
       //
-      // 这不是可以顺手抹平的细节。抹平之后，那些规则看起来已经生效了。
+      // 现在 `policies.state_code` 有了这一列，规则落得下去，那条注记随之消失 ——
+      // **它是「缺一个执行点」的记录，不是一条可以一直挂着的备注。**
       const state = policy.subresource?.type === 'STATE' ? policy.subresource.code : null
-      if (state !== null) {
-        notEnforced.push({
-          policyCode: code, dimension: 'FLOW', state,
-          reason: 'KVVI_FLOW_STATE_NOT_ENFORCED',
-          detail: '运行时按「流程 + 动作」判权限（canAct(\'FLOW\', workflow_code, action)），'
-                  + '没有状态这一层；这条规则被编译成流程级的动作授权，'
-                  + '即同一动作在其它状态下也可用。',
-        })
-      }
-      const key = `${policy.role_code}|FLOW|${resourceCode}`
+      // ⚠️ 键里**必须**含状态：同一个角色在同一张流程的不同状态上各有一条策略
+      //    是正常的（「跟进中可成交」「已流失可复活」），不含状态就会被合并成一条，
+      //    而合并的结果是**只剩最后那条的状态**。
+      const key = `${policy.role_code}|FLOW|${resourceCode}|${state ?? ''}`
       const existing = byKey.get(key) ?? { roleCode: policy.role_code, dimension: 'FLOW',
-        resourceCode, actions: [], dataScopes: [], fieldVisibility: null }
+        resourceCode, stateCode: state, actions: [], dataScopes: [], fieldVisibility: null }
       existing.actions = sortedUnique([...existing.actions, ...asArray(policy.actions)])
       byKey.set(key, existing)
       continue
@@ -206,7 +208,7 @@ export function compilePermissionSpec(spec, { roleIds } = {}) {
 
     const key = `${policy.role_code}|${policy.dimension}|${resourceCode}`
     const existing = byKey.get(key) ?? { roleCode: policy.role_code, dimension: policy.dimension,
-      resourceCode, actions: [], dataScopes: [], fieldVisibility: null }
+      resourceCode, stateCode: null, actions: [], dataScopes: [], fieldVisibility: null }
     existing.actions = sortedUnique([...existing.actions, ...asArray(policy.actions)])
     // 数据范围是**并集**（§2.5.1：档位取并集，不比较编号）。
     // 同一个角色对同一个对象写了两条 DATA，合起来才是「能看什么」。
@@ -231,14 +233,15 @@ export function compilePermissionSpec(spec, { roleIds } = {}) {
     roleId: roleIds[row.roleCode],
     dimension: row.dimension,
     resourceCode: row.resourceCode,
+    stateCode: row.stateCode ?? null,
     actions: row.actions,
     dataScopes: row.dataScopes,
     fieldVisibility: row.fieldVisibility,
   }))
   // 稳定排序：同一份契约编译两次必须得到同一顺序的行 ——
   // 否则「发布内容摘要」会在没有改动的情况下变来变去。
-  rows.sort((a, b) => (a.dimension + a.resourceCode + String(a.roleId))
-    .localeCompare(b.dimension + b.resourceCode + String(b.roleId)))
+  rows.sort((a, b) => (a.dimension + a.resourceCode + String(a.roleId) + String(a.stateCode ?? ''))
+    .localeCompare(b.dimension + b.resourceCode + String(b.roleId) + String(b.stateCode ?? '')))
   notEnforced.sort((a, b) => String(a.policyCode).localeCompare(String(b.policyCode)))
   return { rows, notEnforced }
 }

@@ -35,6 +35,7 @@ export const MIGRATIONS = Object.freeze({
     '22-platform-mode-grants.sql',
     '23-idempotency.sql',
     '24-draft-payload.sql',
+    '25-policy-flow-state.sql',
   ]),
   kvvi_business: Object.freeze(['20-business.sql']),
   kvvi_audit: Object.freeze(['30-audit.sql']),

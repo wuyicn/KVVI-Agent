@@ -165,7 +165,8 @@ export async function applyScopeGucs(client, scope) {
 /** 账号在某公司经角色得到的策略。 */
 export async function effectivePolicies(companyId, userId, dimension) {
   const { rows } = await pool('platform').query(
-    `SELECT p.dimension, p.resource_code, p.actions, p.data_scopes, p.field_visibility
+    `SELECT p.dimension, p.resource_code, p.actions, p.data_scopes, p.field_visibility,
+            p.state_code
        FROM policies p
        JOIN role_members rm ON rm.role_id = p.role_id
       WHERE p.company_id = $1 AND rm.user_id = $2 AND p.dimension = $3`,
@@ -175,18 +176,47 @@ export async function effectivePolicies(companyId, userId, dimension) {
 
 /**
  * 表单/流程维度的动作判定（0B-4、0B-7）。
+ *
+ * ── ⚠️ `action` 用**契约的动作类别（kind）**，不是 `action_code` ──────────
+ *
+ * `permission-spec` 的 `FlowPolicy.actions` 是一个**闭枚举**：`INITIATE / SUBMIT /
+ * WITHDRAW / APPROVE / REJECT / CLOSE / REOPEN`（见 meta-schema）。那是**类别**；
+ * 而流程契约里每个动作另有 `action_code`（`start_follow` / `close_won` …）是**业务名**。
+ *
+ * 这条区分此前被搞混过：运行时把 `action_code` 传进来比，于是
+ * 「策略里写着 `SUBMIT`、运行时拿 `start_follow` 去比」**永远不匹配** ——
+ * 表现是「员工被拒绝」，看起来像权限配小了。而搭建者写的是对的。
+ *
+ * 调用方负责把 `action_code` 翻成 `kind`：`nextActions()` 直接给出 `kind`，
+ * 而 `workflow.step()` 用 `loadSpec()` 的动作表翻一次。
+ *
+ * ── 状态维度 ────────────────────────────────────────────────────────────
+ *
+ * FLOW 策略可以限定「在哪个状态下才成立」。判据：
+ *   · 策略没写状态（`state_code IS NULL`）→ **不限状态**，任何状态下都成立；
+ *   · 策略写了状态 → 必须与当前状态**相等**。
+ * 不传 `state` 就等于「只认不限状态的那些策略」—— 那是**更严**的一侧，
+ * 而不是「跳过状态检查」。要按状态判就得把状态传进来。
+ *
  * @param {string} companyId 公司
  * @param {string} userId 账号
  * @param {'FORM'|'FLOW'} dimension 维度
  * @param {string} resourceCode 资源 code
- * @param {string} action 动作
+ * @param {string} action 动作**类别**（kind）
+ * @param {object} [options] 可选判据
+ * @param {string|null} [options.state] 当前状态；FLOW 维度才用
  * @returns {Promise<boolean>} 是否允许
  */
-export async function canAct(companyId, userId, dimension, resourceCode, action) {
+export async function canAct(companyId, userId, dimension, resourceCode, action, options = {}) {
   const rows = await effectivePolicies(companyId, userId, dimension)
-  return rows.some((r) =>
-    (r.resource_code === resourceCode || r.resource_code === '*') &&
-    (r.actions ?? []).includes(action))
+  const state = options.state ?? null
+  return rows.some((r) => {
+    if (r.resource_code !== resourceCode && r.resource_code !== '*') return false
+    if (!(r.actions ?? []).includes(action)) return false
+    // 没写状态 = 不限状态；写了就要对上。
+    const scoped = r.state_code ?? null
+    return scoped === null || scoped === state
+  })
 }
 
 /**

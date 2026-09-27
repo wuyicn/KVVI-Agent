@@ -289,7 +289,10 @@ before(async () => {
   worker = await makeSession(A.alice, A.company)
   await grant({
     formActions: ['read', 'create', 'update'],
-    flowActions: ['submit'],
+    // ⚠️ 这里是**类别**（kind），不是业务名 `submit` —— `permission-spec` 的
+    //    FLOW `actions` 是类别闭枚举。此前夹具写的是业务名，而资源写 `'*'`，
+    //    于是「运行时的两个参数都取错了」在测试里永远看不出来。
+    flowActions: ['SUBMIT'],
     scopes: ['SELF', 'COMPANY'],
     visibility: 'HIDDEN',
   })
