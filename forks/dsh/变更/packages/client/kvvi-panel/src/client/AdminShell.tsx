@@ -19,6 +19,7 @@ import type { ReactNode } from 'react'
 import { adminCapabilities, listDepartments, listMembers, listRoles } from './api.ts'
 import type { AdminCapabilities, Department, Member, Role } from './api.ts'
 import type { Copy } from './FormView.tsx'
+import { KvviPublishAdmin } from './PublishAdmin.tsx'
 import { MemberAdmin } from './MemberAdmin.tsx'
 import { RoleAdmin } from './RoleAdmin.tsx'
 
@@ -28,7 +29,7 @@ export interface KvviAdminShellProps {
 }
 
 /** Which half of the administration page is shown. */
-type Tab = 'members' | 'roles'
+type Tab = 'members' | 'roles' | 'publish'
 
 /**
  * 服务端的拒绝码 → 一句人话；未登记的码原样带 detail。
@@ -182,6 +183,14 @@ export function KvviAdminShell({ copy }: KvviAdminShellProps): ReactNode {
         <button type="button" aria-pressed={tab === 'roles'}
           style={{ fontSize: 12, fontWeight: tab === 'roles' ? 600 : 400 }}
           onClick={() => { setTab('roles') }}>{copy('admin.tab.roles')}</button>
+        {/* Publishing is owner-only on the server; showing the tab only to an
+            owner is clarity, not enforcement — the platform re-judges every
+            call, and this tab's approvals are the calls that matter most. */}
+        {capabilities?.role === 'owner' ? (
+          <button type="button" aria-pressed={tab === 'publish'}
+            style={{ fontSize: 12, fontWeight: tab === 'publish' ? 600 : 400 }}
+            onClick={() => { setTab('publish') }}>{copy('publish.tab')}</button>
+        ) : null}
       </div>
 
       {listError === undefined ? null : (
@@ -195,7 +204,9 @@ export function KvviAdminShell({ copy }: KvviAdminShellProps): ReactNode {
         </p>
       )}
 
-      {tab === 'members' ? <MemberAdmin state={state} /> : <RoleAdmin state={state} />}
+      {tab === 'members' ? <MemberAdmin state={state} />
+        : tab === 'roles' ? <RoleAdmin state={state} />
+          : <KvviPublishAdmin copy={copy} />}
     </div>
   )
 }

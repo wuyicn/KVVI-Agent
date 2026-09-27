@@ -452,3 +452,94 @@ export function replacePolicies(
 export function listDepartments(signal?: AbortSignal): Promise<ApiResult<{ items: Department[] }>> {
   return request('GET', '/admin/departments', undefined, signal)
 }
+
+
+/** One publish draft, as the platform lists it. */
+export interface PublishDraft {
+  /** The draft the approve and publish calls address. */
+  readonly draftId: string
+  /** `AWAITING_APPROVAL` / `APPROVED` / `REJECTED` / `PUBLISHED`. */
+  readonly status: string
+  /** Digest of the change; the approver has to state it back. */
+  readonly change_digest: string
+  /** Login of whoever submitted it. */
+  readonly proposer: string
+  readonly created_at: string
+  readonly approved_by: string | null
+  readonly published_at: string | null
+}
+
+/** One face of the diff report (PRD §9.6.6). */
+export interface PublishDiffCounts {
+  readonly added: number
+  readonly removed: number
+  readonly changed: number
+}
+
+/** A draft's detail: the diff an approver has to read before deciding. */
+export interface PublishDraftDetail {
+  readonly draft_id: string
+  readonly status: string
+  readonly change_digest: string
+  readonly diff_report: {
+    readonly counts: PublishDiffCounts
+    readonly faces: readonly string[]
+  }
+  readonly approval_opinion: string | null
+  readonly published_at: string | null
+}
+
+/**
+ * List this company's recent publish drafts.
+ *
+ * The panel can only ever **approve and publish**: submitting needs the
+ * contract files, which live in the builder's workspace and not in a browser.
+ * That split is the point — §9.6.1 forbids self-approval, so the person who
+ * built cannot be the person who approves, and the two do not share a surface.
+ * @param signal - aborts the request.
+ * @returns the drafts, newest first.
+ */
+export function listDrafts(signal?: AbortSignal): Promise<ApiResult<{ items: PublishDraft[] }>> {
+  return request('GET', '/publish/drafts', undefined, signal)
+}
+
+/**
+ * Read one draft's diff report. **An approver must see what they approve.**
+ * @param draftId - the draft.
+ * @param signal - aborts the request.
+ * @returns the draft detail.
+ */
+export function getDraft(draftId: string, signal?: AbortSignal): Promise<ApiResult<PublishDraftDetail>> {
+  return request('GET', `/publish/drafts/${encodeURIComponent(draftId)}`, undefined, signal)
+}
+
+/**
+ * Approve or reject a draft.
+ *
+ * `changeDigest` is required and must match: it is how the approver says
+ * *which* content they are approving, rather than "a draft that looked like
+ * this". A mismatch is refused by the platform.
+ * @param draftId - the draft.
+ * @param changeDigest - the digest the approver read.
+ * @param decision - `APPROVE` or `REJECT`.
+ * @returns the platform's verdict.
+ */
+export function decideDraft(
+  draftId: string, changeDigest: string, decision: 'APPROVE' | 'REJECT' = 'APPROVE',
+): Promise<ApiResult<{ ok: boolean; status: string }>> {
+  return request('POST', `/publish/drafts/${encodeURIComponent(draftId)}/approve`,
+    { decision, changeDigest })
+}
+
+/**
+ * Publish an approved draft.
+ *
+ * No content travels with this call: the platform publishes **what was stored
+ * when the draft was submitted**, so what is approved and what goes live are
+ * the same bytes by construction.
+ * @param draftId - the draft.
+ * @returns the publication result.
+ */
+export function publishDraft(draftId: string): Promise<ApiResult<{ status: string }>> {
+  return request('POST', `/publish/drafts/${encodeURIComponent(draftId)}/publish`, {})
+}
