@@ -40,15 +40,15 @@
       "kind": "macOS 试点发行版（安装向导 / 前置检查 / 备份恢复 / 升级）",
       "version": null,
       "fileCount": 21,
-      "digest": "sha256:22b0496c822630c0fa3f2c10c0c4e4ccf31e117f68e53b9a480e858d53045f20"
+      "digest": "sha256:5a9812251a92d9e8b02bed747aab76b781f4467024a9db4bb009a917a71eaa16"
     },
     {
       "name": "platform-service",
       "path": "services/platform",
       "kind": "平台服务进程（身份层 / 授权 / 签名 / 认证端点）",
       "version": "0.1.0",
-      "fileCount": 87,
-      "digest": "sha256:61f45a3c81189e41004b5c7f79925287be036fa89b252a66a924b6d62e3be18f"
+      "fileCount": 89,
+      "digest": "sha256:7d00d115f20cc77ec923fb88098176253b09458e31e91e06fb904c2e5c59bfa2"
     },
     {
       "name": "runtime-service",
@@ -99,5 +99,5 @@
       "digest": "sha256:c0c9fe33ba8f6aeef9135be6f2386101d7c7837b0f5edf30abfacc68166aa128"
     }
   ],
-  "deliveryDigest": "sha256:d6e5e865336bb7a7978a205d48df6fe0f6cb2c8447aceece4ea07bcea32b7c9f"
+  "deliveryDigest": "sha256:c982c0eecc905e5eefc1fb5fda86e5c824dc6d230445d2df3d2840c9f7c44724"
 }
