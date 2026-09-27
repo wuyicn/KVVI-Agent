@@ -27,6 +27,7 @@
 import { tokenFromCookie } from './gate.mjs'
 import { systemRoutes } from './system-api.mjs'
 import { adminRoutes } from './admin-api.mjs'
+import { publishRoutes } from './publish-api.mjs'
 import { loadSession } from './identity.mjs'
 import { verifyRuntimeContextHeaders } from './runtime-auth.mjs'
 
@@ -216,7 +217,16 @@ export async function handleApi({ method, path, query, body, headers, loadSessio
   // ⚠️ 交给 `adminRoutes` 的是**去掉 `/admin` 之后**的路径。传整条路径的话，
   //    它的 `parts[0]` 是 `'admin'`，于是每一个分支都落到兜底 404 ——
   //    而 404 看起来像「端点没写」，不像「前缀剥错了」。
-  return rest === '/admin' || rest.startsWith('/admin/')
-    ? adminRoutes({ ...routes, path: rest.slice('/admin'.length) || '/' })
-    : systemRoutes(routes)
+  if (rest === '/admin' || rest.startsWith('/admin/')) {
+    return adminRoutes({ ...routes, path: rest.slice('/admin'.length) || '/' })
+  }
+  // ⚠️ **发布通道单列，不挂进 `/admin`。**
+  //    `/admin` 的闸门是「管理员」，而发布的两半是**两个不同的人**：
+  //    搭建者提交（他不是管理员），所有者审批与发布（他是）。
+  //    挂进 `/admin` 只会让搭建者这一步先被 403 挡住 ——
+  //    而那条 403 看起来像「你没有权限」，不像「这个动作本来就不在管理面里」。
+  if (rest === '/publish' || rest.startsWith('/publish/')) {
+    return publishRoutes({ ...routes, path: rest.slice('/publish'.length) || '/' })
+  }
+  return systemRoutes(routes)
 }

@@ -187,16 +187,43 @@ function send(res, status, body, extraHeaders = {}) {
   res.end(payload)
 }
 
+/**
+ * 请求体超过上限时的标记。
+ *
+ * ⚠️ **它原来回的是 `null` —— 与「没有请求体」是同一个值。**
+ * 后果是调用方拿到 `null` 之后只能猜：`JSON.parse(null)` 走不到，
+ * 于是 `/api/v1/*` 把一次**超大的合法请求**当成一次**空的合法请求**，
+ * 报出来的是「缺少 assetId」—— 一句和真正原因（请求体太大）毫无关系的话。
+ *
+ * 实测就是它：发布会提交六份契约，实测 65 KB，而默认上限是 64 KB ——
+ * 「发布」这个动作**只要交真实契约就必然撞上**，而报错说缺少字段。
+ */
+const BODY_TOO_LARGE = Symbol('kvvi-body-too-large')
+
+/**
+ * 读请求体。
+ * @param req 请求
+ * @param limit 上限（字节）
+ * @returns 请求体字符串；没有体时为空串；超过上限时返回 `BODY_TOO_LARGE`
+ */
 async function readBody(req, limit = 64 * 1024) {
   const chunks = []
   let size = 0
   for await (const chunk of req) {
     size += chunk.length
-    if (size > limit) return null
+    if (size > limit) {
+      // 把剩下的读掉再返回：直接 return 会让连接停在半路，
+      // 客户端看到的是「连接被重置」，比一个明确的 413 难查得多。
+      for await (const _rest of req) { void _rest }
+      return BODY_TOO_LARGE
+    }
     chunks.push(chunk)
   }
   return Buffer.concat(chunks).toString('utf8')
 }
+
+/** 契约是文档：一份真实系统的六份契约实测 65 KB 起，上限必须比它高一个量级。 */
+const API_BODY_LIMIT = 4 * 1024 * 1024
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`)
@@ -247,6 +274,9 @@ const server = createServer(async (req, res) => {
   }
   if (path === '/bootstrap/owner' && method === 'POST') {
     const raw = await readBody(req)
+    if (raw === BODY_TOO_LARGE) {
+      return send(res, 413, { error: 'KVVI_BODY_TOO_LARGE' })
+    }
     let body = null
     try { body = raw ? JSON.parse(raw) : null } catch {
       return send(res, 400, { error: 'KVVI_BAD_JSON' })
@@ -287,8 +317,12 @@ const server = createServer(async (req, res) => {
   //     而 API 调用方要的是 **401**（它不会去跟一个重定向）。
   //     两者语义不同，不能共用一个「未鉴权」分支。
   if (isApiPath(path)) {
+    const rawBody = await readBody(req, API_BODY_LIMIT)
+    if (rawBody === BODY_TOO_LARGE) {
+      return send(res, 413, { error: 'KVVI_BODY_TOO_LARGE', limit: API_BODY_LIMIT })
+    }
     const out = await handleApi({
-      method, path, query: req.url ?? '', body: await readBody(req),
+      method, path, query: req.url ?? '', body: rawBody,
       headers: req.headers,
       // ★ 复用认证模块自己的会话端点，不另算一遍身份
       loadSession: (token) => handleAuth({
@@ -363,8 +397,10 @@ const server = createServer(async (req, res) => {
     //
     // 判据用 `isGatePath`：只有它认的路径（登录、登出）需要请求体，其余不读。
     const rawBody = isGatePath(path) ? await readBody(req) : null
+    // 登录表单只有几百字节；超了就是有人在打别的主意，按空体处理即可。
+    const formBody = rawBody === BODY_TOO_LARGE ? null : rawBody
     const out = await handleGate({
-      method, path, query: req.url ?? '', body: rawBody, headers: req.headers,
+      method, path, query: req.url ?? '', body: formBody, headers: req.headers,
       login: async (credentials) => handleAuth({
         method: 'POST', path: '/auth/login', body: credentials, headers: req.headers,
       }),
