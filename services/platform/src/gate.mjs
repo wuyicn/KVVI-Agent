@@ -27,6 +27,20 @@
 export const SESSION_COOKIE = 'kvvi-session'
 
 /**
+ * **会话凭据的到期时刻**，放在一张**脚本读得到**的同行 Cookie 里（epoch 秒）。
+ *
+ * ⚠️ 它不是秘密，也不能是秘密：`kvvi-session` 是 `HttpOnly` 的，
+ * 页面脚本读不到它，于是一旦它过期，前端**无从知道**——
+ * 只能等某个请求莫名失败，再猜。第一版就是这个形态：5 分钟一到，
+ * 界面显示「重新连接中」，面板显示 `KVVI_INVALID_TOKEN`，
+ * 而没有任何一处说得出「会话该续了」。
+ *
+ * 拆出这一张只写到期时刻的 Cookie，前端就能在到期**之前**续，
+ * 也能在续不上时**说清楚是哪一种失败**（会话结束？权限变了？）。
+ */
+export const SESSION_EXPIRES_COOKIE = 'kvvi-session-exp'
+
+/**
  * 登录前后端就要拿到的东西。
  *
  * ⚠️ **这份名单要尽量短。** 每多放行一条，就是多一条不经验证的通道。
@@ -62,10 +76,21 @@ export function gated(pathname) {
   return true
 }
 
-/** 从 `Cookie` 头里取出会话令牌。**只认这一个名字**，不做通用 Cookie 解析。 */
+/**
+ * 从 `Cookie` 头里取出会话凭据。**只认这一个名字**，不做通用 Cookie 解析。
+ *
+ * ⚠️ 收**字符串或字符串数组**：`Set-Cookie` 天生可以有多个值，
+ * 而本模块现在一次发两张（凭据 + 到期时刻），`res` 那一侧就是数组。
+ * 只按字符串处理的话，读回来的会是 `undefined` ——
+ * 而 `undefined` 与「没有 Cookie」在这条路上是同一件事，于是失败表现为
+ * 「登录成功了但立刻又是未登录」，看不出是**解析**错了。
+ * @param {string|string[]|undefined} headerValue `Cookie` 头的值
+ * @returns {string|undefined} 会话凭据
+ */
 export function tokenFromCookie(headerValue) {
-  if (typeof headerValue !== 'string') return undefined
-  for (const segment of headerValue.split(';')) {
+  const raw = Array.isArray(headerValue) ? headerValue.join(';') : headerValue
+  if (typeof raw !== 'string') return undefined
+  for (const segment of raw.split(';')) {
     const at = segment.indexOf('=')
     if (at === -1 || segment.slice(0, at).trim() !== SESSION_COOKIE) continue
     const value = segment.slice(at + 1).trim()
@@ -75,13 +100,23 @@ export function tokenFromCookie(headerValue) {
 }
 
 /** 组装会话 Cookie。`HttpOnly` 让脚本读不到它，`SameSite=Strict` 挡住跨站发起的请求。 */
-export function sessionCookie(value, maxAgeSeconds) {
-  return `${SESSION_COOKIE}=${value}; Max-Age=${String(maxAgeSeconds)}; Path=/; HttpOnly; SameSite=Strict`
+export function sessionCookie(value, maxAgeSeconds, expiresAt) {
+  const pairs = [`${SESSION_COOKIE}=${value}; Max-Age=${String(maxAgeSeconds)}; Path=/; HttpOnly; SameSite=Strict`]
+  // 到期时刻另发一张**非 HttpOnly** 的 —— 理由见 `SESSION_EXPIRES_COOKIE`。
+  // 值只是 epoch 秒，抄走它换不出任何东西。
+  if (typeof expiresAt === 'number') {
+    pairs.push(`${SESSION_EXPIRES_COOKIE}=${String(expiresAt)}; Max-Age=${String(maxAgeSeconds)}`
+      + '; Path=/; SameSite=Strict')
+  }
+  return pairs
 }
 
-/** 清空会话 Cookie。登出与失效时用同一个形状，避免留半截状态。 */
+/** 清空会话 Cookie（两张一起清，免得留一张过期的到期时刻骗前端）。 */
 export function clearedCookie() {
-  return `${SESSION_COOKIE}=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict`
+  return [
+    `${SESSION_COOKIE}=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict`,
+    `${SESSION_EXPIRES_COOKIE}=; Max-Age=0; Path=/; SameSite=Strict`,
+  ]
 }
 
 /* ── 登录页 ──────────────────────────────────────────────────────────── */
@@ -104,7 +139,18 @@ const MESSAGES = {
   KVVI_BOOTSTRAP_BAD_REQUEST: '企业名称与所有者账号都不能为空。',
   KVVI_BOOTSTRAP_WEAK_PASSWORD: '口令至少 8 位。',
   KVVI_LOGIN_EXISTS: '这个账号名已经有人用了，换一个。',
+  // 会话类的码。**每一个都要有人话**：它们会带着 `?error=` 出现在登录页上，
+  // 而第一版这些情形一律表现为「界面莫名不工作」。
+  KVVI_SESSION_REQUIRED: '请先登录。',
+  KVVI_SESSION_EXPIRED: '登录状态已过期，请重新登录。',
+  KVVI_SESSION_ENDED: '这次会话已经结束了（登出、超时，或被管理员吊销），请重新登录。',
+  KVVI_SESSION_UNKNOWN: '登录状态不认识，请重新登录。',
+  KVVI_AUTHORIZATION_CHANGED: '你的权限刚刚被改动过，为了安全请重新登录。',
+  KVVI_ACCOUNT_NOT_ACTIVE: '账号已停用，请联系管理员。',
 }
+
+/** Cookie 相对凭据到期时刻多给的几秒，避免边界上「刚拿到就过期」。 */
+export const SESSION_COOKIE_SKEW_SECONDS = 5
 
 /* ── 首次初始化页面 ──────────────────────────────────────────────────── */
 
@@ -347,16 +393,24 @@ export async function handleGate({ method, path, query, body, headers, login, ve
         detail: String(error && error.message ? error.message : error).slice(0, 200),
       } }
     }
-    if (out?.status === 201 && typeof out.body?.token === 'string') {
-      // ⚠️ 令牌**只进 Cookie**，不回显进 body 也不进 URL。
+    if (out?.status === 201 && typeof out.body?.credential === 'string') {
+      // ⚠️ 凭据**只进 Cookie**，不回显进 body 也不进 URL。
       //    进 URL 会留在浏览器历史、日志与 Referer 里。
+      //
+      // ⚠️ **Cookie 的存活期跟着凭据走，不另设一个数字。**
+      //    第一版写的是 `sessionCookie(token, 60 * 60)`，而 `token` 只有 5 分钟寿命 ——
+      //    两个数字各自都「有理由」，合起来是一个最坏的状态：
+      //    浏览器以为还有 55 分钟、服务端已经全部拒收，
+      //    而界面在中间这 55 分钟里一句话都不说。
+      const expiresAt = Number(out.body.expiresAt)
+      const maxAge = Number.isFinite(expiresAt)
+        ? Math.max(0, expiresAt - Math.floor(Date.now() / 1000) + SESSION_COOKIE_SKEW_SECONDS)
+        : 60 * 60
       return {
         status: 303,
         headers: {
           location: '/',
-          // 一小时的会话窗口。到期后下一次请求会被门拦回登录页 ——
-          // 界面上表现为「跳回登录」，而不是「点了没反应」。
-          'set-cookie': sessionCookie(out.body.token, 60 * 60),
+          'set-cookie': sessionCookie(out.body.credential, maxAge, expiresAt),
           'cache-control': 'no-store',
         },
       }
@@ -386,11 +440,21 @@ export async function handleGate({ method, path, query, body, headers, login, ve
   // ④ 门：不在放行名单里的路径都要先证明有有效会话
   if (!gated(path)) return null
   const token = tokenFromCookie(headers?.cookie)
-  if (token !== undefined && await verify(token)) return null
+  // `verify` 可以只回一个布尔（既有调用方都是这样），也可以回
+  // `{ok:false, code}` —— 后者让**为什么被拦**能一路带到登录页，
+  // 而不是让客户对着一个没有任何说明的登录页自己猜。
+  let denial = null
+  if (token !== undefined) {
+    const verdict = await verify(token)
+    if (verdict === true || verdict?.ok === true) return null
+    denial = typeof verdict === 'object' ? verdict?.code ?? null : null
+  }
   // 没有有效会话 —— 带 Cookie 的先清掉，免得留一个坏 cookie 反复失败。
   // ⚠️ 未初始化时**跳初始化页**，不跳登录页：这个实例上还没有任何账号，
   //    跳到登录页就是死胡同，而界面上看不出「其实该先初始化」。
-  const location = await pending() ? BOOTSTRAP_PATH : '/kvvi/login'
+  const loginTarget = await pending() ? BOOTSTRAP_PATH : '/kvvi/login'
+  const location = denial === null ? loginTarget
+    : `${loginTarget}?error=${encodeURIComponent(denial)}`
   return {
     status: 303,
     headers: {

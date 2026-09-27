@@ -21,7 +21,8 @@ import { pool, withTransaction } from './db.mjs'
 import { ACTIVE_CONTRACT_VERSION } from './business.mjs'
 import { allowedGateways } from './mode-policy.mjs'
 import {
-  loadKeys, rotate, publicKeysOf, signToken, verifyExpiry, verifySignature,
+  TOKEN_TYPES,
+  loadKeys, rotate, publicKeysOf, signToken, tokenTypeOf, verifyExpiry, verifySignature,
 } from './signing.mjs'
 
 /**
@@ -43,7 +44,11 @@ export function rotateSigningKeys() {
 
 /** 会话工具有效期。超时是五类生命周期事件之一（§4.6.5）。 */
 const SESSION_TTL_MS = Number(process.env.KVVI_SESSION_TTL_MS ?? 8 * 60 * 60 * 1000)
-const TOKEN_TTL_MS = Number(process.env.KVVI_TOKEN_TTL_MS ?? 15 * 60 * 1000)
+
+// ⚠️ 这里原来还有一行 `const TOKEN_TTL_MS = … 15 * 60 * 1000`，**没有人用它**，
+//    而 `signing.mjs` 里那个同名常量是 5 分钟并且**超过就抛**。
+//    两个同名、不同值的常量摆在两个模块里，读代码的人会在错的那一个上做算术 ——
+//    而正确的那个在签名模块里，且只有一处。删掉这个死值。
 
 /** 口令散列：scrypt + 每账号独立盐。**只存散列**，不存可逆值。 */
 export function hashPassword(password, salt = randomUUID()) {
@@ -235,10 +240,13 @@ export async function bumpAuthzVersion(userId) {
 }
 
 /**
- * 签发委派令牌。
+ * 签发委派令牌（**业务令牌**）。
  *
  * ⚠️ 令牌**绑定会话所属公司**（§9.9.4）。因为会话内的公司不可变更，
  * 这里不需要「切换时废止」的逻辑 —— 不可能发生的事不必防守。
+ *
+ * ⚠️ 有效期限死在 `signing.TOKEN_TTL_MS`（≤5 分钟，§9.4.2），
+ * **调用方不能指定**。浏览器不该出现在这条路径上 —— 见 `issueBrowserCredential`。
  * @param {string} sessionId 会话
  * @returns {Promise<string>} 原始令牌（**只此一次**，服务端只留摘要）
  */
@@ -251,7 +259,7 @@ export async function issueToken(sessionId) {
   const token = signToken({
     sub: session.userId, sid: session.sessionId, ten: session.companyId,
     gw: session.gateway, av: session.authzVersion, cv: ACTIVE_CONTRACT_VERSION,
-  }, keys)
+  }, keys, { typ: TOKEN_TYPES.DELEGATED })
   const header = JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString('utf8'))
   const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'))
   await pool('platform').query(
@@ -265,6 +273,116 @@ export async function issueToken(sessionId) {
 }
 
 /**
+ * 签发**浏览器会话凭据**。
+ *
+ * ── 它和业务令牌的三点不同 ──────────────────────────────────────────────
+ *
+ * 1. **不写 `delegation_tokens`。** 会话凭据的撤销权威是 `sessions` 那一行：
+ *    登出、停用、管理员吊销都会把它置成 `ENDED`，授权版本一变就对不上。
+ *    另开一张表反而多一个可能不同步的地方。
+ * 2. **有效期长**（`BROWSER_TTL_MS`，默认 30 分钟）且可以续。
+ *    它的短只为了让「被抄走的那一份」有界，不是为了限制会话。
+ * 3. **换不出业务能力。** `typ` 是 `browser`，`verifyToken` 见它就拒，
+ *    `/sign/*` 一律不认 —— 这是「浏览器会话」与「业务令牌」分离的那条判据。
+ *
+ * @param {string} sessionId 会话
+ * @returns {Promise<{credential: string, expiresAt: number}>} 凭据与到期的 epoch 秒
+ */
+export async function issueBrowserCredential(sessionId) {
+  const session = await loadSession(sessionId)
+  if (!session) throw new Error('KVVI_NO_SUCH_SESSION')
+  if (session.state !== 'ACTIVE') throw new Error('KVVI_SESSION_ENDED')
+  if (session.userStatus !== 'ACTIVE') throw new Error('KVVI_ACCOUNT_NOT_ACTIVE')
+  const credential = signToken({
+    sub: session.userId, sid: session.sessionId, ten: session.companyId,
+    gw: session.gateway, av: session.authzVersion, cv: ACTIVE_CONTRACT_VERSION,
+  }, signingKeys(), { typ: TOKEN_TYPES.BROWSER })
+  const payload = JSON.parse(Buffer.from(credential.split('.')[1], 'base64url').toString('utf8'))
+  return { credential, expiresAt: payload.exp }
+}
+
+/**
+ * 一次凭据校验的判定结果。
+ * @typedef {object} CredentialOutcome
+ * @property {object|null} ctx 通过时的上下文；否则 null
+ * @property {string|null} code 拒绝原因（稳定错误码）
+ * @property {boolean} expired 是不是只是「过期了」（会话可能还有效）
+ */
+
+/**
+ * 校验**浏览器会话凭据**。
+ *
+ * 判据与 `verifyToken` 同源（会话 ACTIVE、账号 ACTIVE、租户一致、授权版本一致），
+ * 但**撤销权威是会话行**，不是 `delegation_tokens`，而且要显式拒掉 `typ` 不对的凭据。
+ *
+ * ⚠️ `graceMs` 只给**续发**用。判据从来不是「凭据没过期」，
+ * 而是「**会话还有效**」—— 所以过期的凭据在这里仍然是「可以去问会话」的凭据，
+ * 只是要让调用方知道它是过期的（`expired: true`），好让调用方**顺手换一张新的**。
+ *
+ * @param {string} raw 原始凭据
+ * @param {{graceMs?: number, touch?: boolean}} [options] 宽限期与是否刷新 `last_seen_at`
+ * @returns {Promise<CredentialOutcome>} 判定结果
+ */
+export async function verifyBrowserCredential(raw, options = {}) {
+  const reject = (code) => ({ ctx: null, code, expired: false })
+  if (typeof raw !== 'string' || raw.length === 0) return reject('KVVI_SESSION_REQUIRED')
+
+  const sig = verifySignature(raw, publicKeysOf(signingKeys()))
+  if (!sig.ok) return reject('KVVI_SESSION_UNKNOWN')
+  const claims = sig.claims
+  // ★ 分离的那条判据：业务令牌**不能**当会话凭据用。
+  //   少了这一条，「把 5 分钟令牌塞进 Cookie」这件事在代码上仍然是允许的，
+  //   而它正是我们要消灭的那个形态。
+  if (tokenTypeOf(claims) !== TOKEN_TYPES.BROWSER) return reject('KVVI_SESSION_UNKNOWN')
+
+  const expiry = verifyExpiry(claims, Date.now(), options.graceMs ?? 0)
+  if (!expiry.ok) {
+    return { ctx: null, code: 'KVVI_SESSION_EXPIRED', expired: true }
+  }
+
+  const { rows } = await pool('platform').query(
+    `SELECT s.state, s.company_id, s.authz_version AS session_av, s.gateway,
+            u.status, u.authz_version AS current_authz,
+            m.dept_id, m.shop_id
+       FROM sessions s
+       JOIN users u ON u.user_id = s.user_id
+       JOIN memberships m ON m.company_id = s.company_id AND m.user_id = s.user_id
+      WHERE s.session_id = $1 AND s.user_id = $2`, [claims.sid, claims.sub])
+  if (rows.length !== 1) return reject('KVVI_SESSION_UNKNOWN')
+  const r = rows[0]
+  // ⚠️ 顺序有意义：**会话先死，再谈权限**。反过来的话，
+  //    「被管理员吊销」会以「权限变了」的名义报出来，运维会去查错的地方。
+  if (r.state !== 'ACTIVE') return reject('KVVI_SESSION_ENDED')
+  if (r.status !== 'ACTIVE') return reject('KVVI_ACCOUNT_NOT_ACTIVE')
+  if (claims.ten !== r.company_id) return reject('KVVI_SESSION_UNKNOWN')
+  if (claims.av !== r.session_av || claims.av !== r.current_authz) {
+    return reject('KVVI_AUTHORIZATION_CHANGED')
+  }
+
+  if (options.touch !== false) {
+    // ⚠️ `last_seen_at` 此前**只在建会话时写过一次**，而 `reapIdleSessions`
+    //    拿它当空闲判据 —— 于是「空闲 8 小时」实际是「建会话后 8 小时」，
+    //    一个一直在用的人的会话照样会被判超时。活动的定义要跟着活动走。
+    //    `GREATEST` 让它单调，并发请求不会把它推回去。
+    await pool('platform').query(
+      `UPDATE sessions SET last_seen_at = GREATEST(last_seen_at, now())
+        WHERE session_id = $1`, [claims.sid]).catch(() => undefined)
+  }
+
+  return {
+    ctx: {
+      sessionId: claims.sid, userId: claims.sub, companyId: claims.ten,
+      gateway: claims.gw, deptId: r.dept_id, shopId: r.shop_id,
+      expiresAt: claims.exp,
+    },
+    code: null,
+    // ★ 过期但宽限期内：调用方**可以**用它，但必须知道它过期了 ——
+    //   续发端点据此换一张新的，其它端点据此拒绝。
+    expired: expiry.expired === true,
+  }
+}
+
+/**
  * 校验令牌并取回**服务端决定的**上下文。
  *
  * 四次判定缺一不可，且**都不看调用方传了什么**：
@@ -272,6 +390,9 @@ export async function issueToken(sessionId) {
  *   2. 会话仍为 ACTIVE（登出/超时/停用/吊销后立即失效）；
  *   3. **公司一致**：令牌的公司 = 会话的公司（§9.9.4）；
  *   4. **授权版本一致**：与账号当前版本相同（§9.4.2）。
+ *
+ * ★ 另外：**只认业务令牌**。浏览器会话凭据（`typ: 'browser'`）在这里一律拒 ——
+ * 一张 Cookie 换不出业务能力，这条是「分离」在代码里的落点。
  * @param {string} raw 原始令牌
  * @returns {Promise<object|null>} 上下文，或 null
  */
@@ -282,6 +403,7 @@ export async function verifyToken(raw) {
   //    但本进程就是平台，所以这里的"本地"是同一进程内。
   const sig = verifySignature(raw, publicKeysOf(signingKeys()))
   if (!sig.ok) return null
+  if (tokenTypeOf(sig.claims) !== TOKEN_TYPES.DELEGATED) return null
   if (!verifyExpiry(sig.claims).ok) return null
   const claims = sig.claims
 

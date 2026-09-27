@@ -27,10 +27,12 @@
 import { append, appendDenial, digestOf } from './audit.mjs'
 import {
   authenticate, createSession, endSession, issueToken, verifyToken,
+  issueBrowserCredential, verifyBrowserCredential,
   loadSession, reapIdleSessions, suspendAccount, revokeSession, gatewaysFor,
   signingKeys, rotateSigningKeys,
 } from './identity.mjs'
-import { publicKeysOf, CLAIM_FIELDS } from './signing.mjs'
+import { BROWSER_CREDENTIAL_GRACE_MS, publicKeysOf, CLAIM_FIELDS } from './signing.mjs'
+import { SESSION_COOKIE } from './gate.mjs'
 import { pool } from './db.mjs'
 import {
   TOOL_GATEWAY, toolsForGateway, isPlatformAdmin, checkSelfGrant,
@@ -48,6 +50,58 @@ async function companiesOf(userId) {
 /** 从 Authorization 头取原始令牌。 */
 function bearer(req) {
   return (req.headers.authorization ?? '').replace(/^Bearer\s+/iu, '')
+}
+
+/**
+ * 取**浏览器带来的那一份凭据**：优先 Cookie，其次 `Authorization`。
+ *
+ * 两条路都收是因为调用方有两类：浏览器只会带 Cookie（`HttpOnly`，脚本碰不到），
+ * 而脚本与测试直接给 Bearer。**但收到的令牌是什么种类，由校验那一步说了算** ——
+ * 这里只负责把「调用方到底递了什么」取出来，不做任何判断。
+ * @param {object} req 带 `headers` 的请求
+ * @returns {string} 原始凭据（可能为空串）
+ */
+function presentedCredential(req) {
+  const cookie = req.headers?.cookie ?? ''
+  for (const segment of String(cookie).split(';')) {
+    const at = segment.indexOf('=')
+    if (at === -1) continue
+    if (segment.slice(0, at).trim() !== SESSION_COOKIE) continue
+    const value = segment.slice(at + 1).trim()
+    if (value !== '') return value
+  }
+  return bearer(req)
+}
+
+/** 续发的最小间隔。**「受控」包括「别无限续」**：这是自动化友好的端点，也正因如此容易被循环调用。 */
+const RENEW_MIN_INTERVAL_MS = Number(process.env.KVVI_RENEW_MIN_INTERVAL_MS ?? 30 * 1000)
+const lastRenewal = new Map()
+
+/**
+ * 续发限速。
+ * @param {string} sessionId 会话
+ * @throws {Error} 距上次续发太近时
+ */
+function rateLimitRenewal(sessionId) {
+  const now = Date.now()
+  const previous = lastRenewal.get(sessionId)
+  if (previous !== undefined && now - previous < RENEW_MIN_INTERVAL_MS) {
+    const error = new Error('KVVI_RENEW_TOO_SOON')
+    error.retryAfterMs = RENEW_MIN_INTERVAL_MS - (now - previous)
+    throw error
+  }
+  lastRenewal.set(sessionId, now)
+  // 表本身不该无限长大：只留最近活跃的一小撮。
+  if (lastRenewal.size > 4096) {
+    for (const [key, at] of lastRenewal) {
+      if (now - at > RENEW_MIN_INTERVAL_MS * 4) lastRenewal.delete(key)
+    }
+  }
+}
+
+/** 测试用：清掉续发限速表，免得用例之间互相影响。 */
+export function resetRenewalThrottle() {
+  lastRenewal.clear()
 }
 
 /**
@@ -130,6 +184,12 @@ export async function handleAuth({ method, path, body, headers }) {
     const gateway = requestedGateway
     const session = await createSession({ userId: account.userId,
                                           companyId: chosen, gateway })
+    // ★ 两样东西，两个用途，**不共用**：
+    //   `credential` —— 浏览器会话凭据，进 Cookie，寿命 `BROWSER_TTL_MS`，可续；
+    //   `token`      —— 业务令牌，给脚本与业务系统，≤5 分钟（§9.4.2），不续。
+    //   第一版只发了后者、并且把它当 Cookie 用 —— 于是每个浏览器会话
+    //   都在 5 分钟后静默失效。
+    const { credential, expiresAt } = await issueBrowserCredential(session.sessionId)
     const token = await issueToken(session.sessionId)
     await append({
       companyId: chosen, actorKind: 'USER', actorId: account.userId, gateway,
@@ -137,15 +197,74 @@ export async function handleAuth({ method, path, body, headers }) {
       paramsDigest: digestOf({ login, companyId: chosen }),
     })
     return { status: 201, body: {
-      sessionId: session.sessionId, token, companyId: chosen, gateway,
+      sessionId: session.sessionId, credential, expiresAt, token,
+      companyId: chosen, gateway,
       companies, // 「切换公司」= 用另一个 companyId 新建会话，不是改当前会话
     } }
   }
 
+  // ── ①b 续发会话凭据（**受控**）──────────────────────────────────
+  //
+  // ⚠️ 判据不是「凭据还没过期」，而是「**会话还有效**」：
+  //     - `verifyBrowserCredential` 每次都重查 `sessions.state`、`users.status`
+  //       与两个 `authz_version`；
+  //     - 过期的凭据在**宽限期内**仍可用于续发（睡了两个小时回来能无感恢复），
+  //       但**只有这一个端点**接受过期凭据；
+  //     - 会话被结束、账号被停用、授权版本变了 —— 一律拒，并给出**具体是哪一种**。
+  //
+  // 这是「管理员撤权后立即停止访问」那条验收的实现点：撤权改的是
+  // `users.authz_version` 或 `sessions.state`，而这两样正是这里每一步都要比对的。
+  if (path === '/auth/renew' && method === 'POST') {
+    const outcome = await verifyBrowserCredential(presentedCredential({ headers }),
+      { graceMs: BROWSER_CREDENTIAL_GRACE_MS })
+    if (outcome.ctx === null) {
+      return { status: 401, body: {
+        error: outcome.code ?? 'KVVI_SESSION_UNKNOWN',
+        // 前端据此分流：回登录页 / 提示重新登录 / 什么都不做
+        relogin: true,
+      } }
+    }
+    const session = await loadSession(outcome.ctx.sessionId)
+    if (!session || session.state !== 'ACTIVE') {
+      return { status: 401, body: { error: 'KVVI_SESSION_ENDED', relogin: true } }
+    }
+    const renewed = await issueBrowserCredential(outcome.ctx.sessionId)
+    try {
+      rateLimitRenewal(outcome.ctx.sessionId)
+    } catch (error) {
+      // 限速**不改判据**：会话是好的，只是「别问这么勤」。
+      // 所以回 429 + `retryAfterMs`，**不是 401** —— 401 会让前端以为要重新登录。
+      // 新凭据照样发出去：限速拦的是「再签发一次」，不是「这一张不作数」。
+      return { status: 429, body: {
+        error: 'KVVI_RENEW_TOO_SOON',
+        retryAfterMs: error?.retryAfterMs ?? 0,
+        credential: renewed.credential, expiresAt: renewed.expiresAt,
+        relogin: false,
+      } }
+    }
+    return { status: 200, body: {
+      credential: renewed.credential, expiresAt: renewed.expiresAt,
+      renewedFrom: outcome.expired ? 'EXPIRED' : 'LIVE',
+      companyId: outcome.ctx.companyId, gateway: outcome.ctx.gateway,
+    } }
+  }
+
   // ── ② 登出 ──────────────────────────────────────────────────────
+  //
+  // ⚠️ 收**浏览器会话凭据**（第一版收的是业务令牌，而它只有 5 分钟寿命 ——
+  //    于是「登录 5 分钟后再点登出」得到 `KVVI_INVALID_TOKEN`，
+  //    会话还活着，人却退不出去）。**也仍然收业务令牌**：
+  //    登出是**会话**操作，不是业务能力；一张委派令牌当然可以结束它自己那次会话。
+  //    分离要分离的是「能换出什么」，不是「谁能结束自己的会话」。
   if (path === '/auth/logout' && method === 'POST') {
-    const ctx = await verifyToken(bearer({ headers }))
-    if (!ctx) return { status: 401, body: { error: 'KVVI_INVALID_TOKEN' } }
+    const presented = presentedCredential({ headers })
+    const outcome = await verifyBrowserCredential(presented,
+      { graceMs: BROWSER_CREDENTIAL_GRACE_MS })
+    let ctx = outcome.ctx
+    if (ctx === null) ctx = await verifyToken(presented)
+    if (ctx === null) {
+      return { status: 401, body: { error: outcome.code ?? 'KVVI_INVALID_TOKEN' } }
+    }
     const ok = await endSession(ctx.sessionId, 'LOGOUT')
     await append({
       companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
@@ -156,8 +275,17 @@ export async function handleAuth({ method, path, body, headers }) {
   }
 
   // ── 读会话（含可用工具集）──────────────────────────────────────
+  //
+  // ⚠️ 它由**两条路**调用，两张凭据都得认：
+  //    - 浏览器（登录门、面板、产品 API）带着会话凭据；
+  //    - 脚本带着业务令牌。
+  //    先按会话凭据验，不成再按业务令牌验 —— 两条路的判据各自独立，
+  //    **不是「哪一种先撞上算哪一种」**：`verifyBrowserCredential` 显式拒业务令牌，
+  //    `verifyToken` 显式拒会话凭据，所以顺序不改变判定结果。
   if (path === '/auth/session' && method === 'GET') {
-    const ctx = await verifyToken(bearer({ headers }))
+    const presented = presentedCredential({ headers })
+    let ctx = (await verifyBrowserCredential(presented, { touch: false })).ctx
+    if (ctx === null) ctx = await verifyToken(presented)
     if (!ctx) return { status: 401, body: { error: 'KVVI_INVALID_TOKEN' } }
     const session = await loadSession(ctx.sessionId)
     // ★ 锚点① 的机器可检证据就在这里：员工会话拿到的工具集里

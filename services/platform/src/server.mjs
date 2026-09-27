@@ -19,10 +19,11 @@ import { timingSafeEqual } from 'node:crypto'
 import { topologySnapshot, SERVICE_ROOT } from './topology.mjs'
 import { isOwnedPath, resolveTarget, createProxyHandler, createUpgradeHandler } from './proxy.mjs'
 import { isPanelPath, handlePanel } from './panel.mjs'
-import { handleGate, gated, isGatePath, tokenFromCookie } from './gate.mjs'
+import { BROWSER_CREDENTIAL_GRACE_MS } from './signing.mjs'
+import { GATE_MESSAGES as MESSAGES, SESSION_COOKIE_SKEW_SECONDS, handleGate, gated, isGatePath, sessionCookie, tokenFromCookie } from './gate.mjs'
 import { runtimeCookie, runtimeCredentialAvailable, runtimeContextHeaders } from './runtime-auth.mjs'
 import { handleAuth } from './auth.mjs'
-import { verifyToken, signingKeys } from './identity.mjs'
+import { issueBrowserCredential, verifyBrowserCredential, verifyToken, signingKeys } from './identity.mjs'
 import { isApiPath, handleApi } from './api-router.mjs'
 import { bootstrapRoutes } from './bootstrap.mjs'
 
@@ -116,11 +117,32 @@ const RUNTIME_TARGET = resolveTarget(process.env.KVVI_RUNTIME_URL)
 /** 非本进程路径一律转发给运行时进程。 */
 // 运行时栅栏要的 Cookie 由本进程按运行时的格式注入 —— 见 runtime-auth.mjs
 // 对「这不是绕过检查」的说明。
+/**
+ * 同一个请求上一次校验的结果。
+ *
+ * `/api/*` 在进门前已经验过一次凭据（为了在没通过时能回**带具体错误码的
+ * 401 JSON**，而不是让门把它 303 到登录页 HTML）；转发那一步要用同一个结论。
+ * 用 `WeakMap` 而不是往 `req` 上挂字段：请求对象是别人传进来的，
+ * 往上写自己的字段会让「谁动了这个对象」变成一个查不清的问题。
+ */
+const VALIDATED = new WeakMap()
+
 async function trustedRuntimeContext(req) {
+  const cached = VALIDATED.get(req)
+  if (cached !== undefined) {
+    return cached.ctx === null ? undefined : runtimeContextHeaders(cached.ctx)
+  }
   const raw = tokenFromCookie(req.headers.cookie)
   if (raw === undefined) return undefined
-  const ctx = await verifyToken(raw)
-  return ctx === null ? undefined : runtimeContextHeaders(ctx)
+  // ⚠️ **这里曾经验的是业务令牌**（`verifyToken`）—— 于是整个界面
+  //    在登录 5 分钟后一起失效：`/api/*` 拿不到上下文，代理回 401，
+  //    浏览器显示「重新连接中…」，而面板把原始错误码当文案显示出来。
+  //
+  //    浏览器带来的那张 Cookie 是**会话凭据**，不是业务令牌：
+  //    它证明「这是哪一次会话」，业务令牌是平台按需从会话签出来的。
+  //    两者的寿命、撤销权威、能换出什么都不同 —— 见 signing.mjs 的说明。
+  const outcome = await verifyBrowserCredential(raw)
+  return outcome.ctx === null ? undefined : runtimeContextHeaders(outcome.ctx)
 }
 
 const proxyHandler = createProxyHandler(RUNTIME_TARGET, runtimeCookie, trustedRuntimeContext)
@@ -280,6 +302,44 @@ const server = createServer(async (req, res) => {
   //
   // 认证逻辑一行都不在这里：登录提交转发给身份层的 `/auth/login`，
   // 令牌校验转发给 `/auth/session`。这里只做「放行 / 打回登录页」。
+  // ── `/api/*` 未通过时回 401 JSON，**不回登录页** ──────────────────────
+  //
+  // `gated()` 把 `/api/*` 判成要过门，而门在没会话时回 **303 到 `/kvvi/login`**。
+  // 那条重定向对「人打开一个页面」是对的，对「运行时的 RPC」是灾难：
+  // `fetch` 会默默跟随，客户端拿到的是**登录页的 HTML**，
+  // `JSON.parse` 当场炸，报出来的是 `Unexpected token '<', "<!DOCTYPE "…` ——
+  // 一句和真正原因（会话没了）毫无关系的话。
+  //
+  // 仓库里其实早就写下了正确的判据（`gate.mjs` 的 `ALLOW_BEFORE_LOGIN` 注释：
+  // 「面板数据端点自己会判令牌，返回 **401** 而不是重定向」；
+  // `server.mjs` 那句「API 调用方要的是 401，它不会去跟一个重定向」）——
+  // 只是 `/api/*` 这条最主要的 RPC 通道漏在外面。
+  if (path.startsWith('/api/')) {
+    const outcome = await verifyBrowserCredential(tokenFromCookie(req.headers.cookie) ?? '',
+      { graceMs: BROWSER_CREDENTIAL_GRACE_MS })
+    if (outcome.ctx === null) {
+      return send(res, 401, {
+        type: 'server-response', rpcId: null,
+        result: { ok: false, error: { code: outcome.code,
+          message: MESSAGES[outcome.code] ?? outcome.code, relogin: true } },
+      })
+    }
+    // ⚠️ **过期的会话凭据在宽限期内被接受时，顺手换一张新的。**
+    //
+    // 这就是「受控自动续发」在浏览器这条路里的实现：用户睡了两个小时回来，
+    // 凭据早过期了、会话还在 —— 第一个请求就把它换新，界面**不会闪断**，
+    // 也不需要客户端知道「过期」这件事。而宽限期一过、或者会话被结束、
+    // 授权版本变了，上面那行 401 立刻接管。
+    if (outcome.expired === true) {
+      const renewed = await issueBrowserCredential(outcome.ctx.sessionId)
+      res.setHeader('set-cookie', sessionCookie(renewed.credential,
+        Math.max(0, renewed.expiresAt - Math.floor(Date.now() / 1000) + SESSION_COOKIE_SKEW_SECONDS),
+        renewed.expiresAt))
+    }
+    // 一次请求只验一次：转发那一步复用这个结果，不再查一遍库。
+    VALIDATED.set(req, outcome)
+  }
+
   if (gated(path) || path.startsWith('/kvvi/')) {
     // ⚠️ **只有登录门自己要看体的那几个路径才读体。**
     //
@@ -308,6 +368,16 @@ const server = createServer(async (req, res) => {
           headers: { ...req.headers, authorization: 'Bearer ' + token },
         })
         return r?.status === 200
+      },
+      verify: async (token) => {
+        const r = await handleAuth({
+          method: 'GET', path: '/auth/session', body: null,
+          headers: { ...req.headers, authorization: 'Bearer ' + token },
+        })
+        if (r?.status === 200) return { ok: true }
+        // 把**为什么**带出去：门据此在登录页地址上带 `?error=`，
+        // 客户看到的是一句人话，而不是一个没有任何说明的登录页。
+        return { ok: false, code: r?.body?.error ?? 'KVVI_SESSION_UNKNOWN' }
       },
       // 未初始化时，门把客户送到 `/kvvi/bootstrap` —— 那里才有他能做的那件事。
       // 判据只有一处：`bootstrapState()`（`instance_bootstrap` 那行在不在）。

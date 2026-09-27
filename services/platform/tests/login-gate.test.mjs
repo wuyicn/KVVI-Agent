@@ -2,7 +2,7 @@ import { test, before, after, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import { handleAuth } from '../src/auth.mjs'
 import { BOOTSTRAP_PATH, handleGate, isGatePath, tokenFromCookie } from '../src/gate.mjs'
-import { verifyToken } from '../src/identity.mjs'
+import { verifyBrowserCredential, verifyToken } from '../src/identity.mjs'
 import { A, PASSWORD, resetDatabase, grantPlatformRole, closeAll } from './harness.mjs'
 
 before(async () => {
@@ -42,10 +42,25 @@ describe('Stage 8：工作台与搭建台使用独立登录入口', () => {
     const out = await submit('/kvvi/builder/login')
     assert.equal(out.status, 303)
     assert.equal(out.headers.location, '/')
-    const token = tokenFromCookie(out.headers['set-cookie'])
-    const ctx = await verifyToken(token)
+    // ⚠️ Cookie 里装的是**会话凭据**，不是业务令牌 —— 见下面那条「两张凭据互换必须失败」。
+    const credential = tokenFromCookie(out.headers['set-cookie'])
+    const { ctx } = await verifyBrowserCredential(credential)
     assert.equal(ctx.gateway, 'BUILDER')
     assert.equal(ctx.companyId, A.company)
+  })
+
+  test('★ 两张凭据互换必须失败（这就是「分离」的可检判据）', async () => {
+    const out = await submit('/kvvi/builder/login')
+    const credential = tokenFromCookie(out.headers['set-cookie'])
+    // ① 会话凭据 **换不出业务能力** —— 拿它当业务令牌用，一律拒。
+    assert.equal(await verifyToken(credential), null,
+      '会话凭据被当成了业务令牌 —— 「分离」在代码里不成立')
+    // ② 业务令牌 **不能** 当会话凭据用（同一张 Cookie 里塞 5 分钟令牌，
+    //    正是第一版那个让界面每 5 分钟死一次的做法）。
+    const login = await handleAuth({ method: 'POST', path: '/auth/login',
+      body: { login: 'alice', password: PASSWORD, requestedGateway: 'USER' }, headers: {} })
+    const { ctx } = await verifyBrowserCredential(login.body.token)
+    assert.equal(ctx, null, '业务令牌被当成了会话凭据 —— 5 分钟到期会再次杀死界面')
   })
 
   test('普通员工从搭建者入口登录会被拒绝', async () => {
@@ -57,7 +72,7 @@ describe('Stage 8：工作台与搭建台使用独立登录入口', () => {
 
   test('员工入口始终创建 USER 会话', async () => {
     const out = await submit('/kvvi/login', 'bob')
-    const ctx = await verifyToken(tokenFromCookie(out.headers['set-cookie']))
+    const { ctx } = await verifyBrowserCredential(tokenFromCookie(out.headers['set-cookie']))
     assert.equal(ctx.gateway, 'USER')
   })
 })
