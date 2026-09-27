@@ -335,6 +335,49 @@ def source_runtime_js_count() -> int:
     return count
 
 
+def packages_missing_main(root_rel: str = 'vendor/dsh') -> list:
+    """
+    源树里 `main` 指向的文件**不存在**的 workspace 包。
+
+    ⚠️ **这一类缺陷的形态是「新加的包没跑构建」。**
+    `@deepseek-ai/dsh-tool-kvvi-business` 就是这样：`package.json` 写着
+    `main: lib/index.js`，源码在、`lib/types/` 也在（tsc 产出的），
+    **只有 tsdown 那一步的 `lib/index.js` 没有** —— 因为它是在某次构建之后才加进来的包，
+    而没有人再跑一遍 `build:lib:host`。
+
+    后果不是「少个文件」，是**整个工作模式起不来**：
+    `kvvi-worker` preset 里那一行 `tool-kvvi-business` 解析不到，
+    会话创建直接失败 —— 而搭建模式（`kvvi-builder`）一切正常，
+    于是「搭建者能搭、员工用不了」，排查方向天然会偏。
+
+    逐个 `REQUIRED` 抓不住它：名单是人手写的，而这是「新增了一个包」这件事本身。
+
+    @param root_rel 要扫的子树（相对仓库根）
+    @returns `['dsh-xxx → path/lib/index.js', …]`
+    """
+    import json
+    root = os.path.join(ROOT, root_rel)
+    out = []
+    for pattern in ('packages/*/*/package.json', 'apps/*/package.json'):
+        import glob
+        for manifest in glob.glob(os.path.join(root, pattern)):
+            if 'node_modules' in manifest:
+                continue
+            try:
+                with open(manifest, encoding='utf-8') as handle:
+                    payload = json.load(handle)
+            except (OSError, ValueError):
+                continue
+            main = payload.get('main')
+            if not isinstance(main, str) or not main.endswith('.js'):
+                continue
+            package_dir = os.path.dirname(manifest)
+            if not os.path.isfile(os.path.join(package_dir, main)):
+                rel = os.path.relpath(package_dir, ROOT)
+                out.append(f"{payload.get('name')} → {rel}/{main}")
+    return sorted(out)
+
+
 def check() -> int:
     """
     校验已有发行包。
@@ -357,6 +400,12 @@ def check() -> int:
     for path in REQUIRED:
         if path not in names:
             problems.append(f'缺必需文件：{path}')
+    # ⚠️ **每个包的 `main` 都要真的存在。** 见 `packages_missing_main()`：
+    #    新加的包没跑构建，症状是「整个 preset 解析不到」，而报错只说
+    #    「could not be resolved: @deepseek-ai/…」，看不出缺的是构建产物。
+    for broken in packages_missing_main():
+        problems.append(f'包声明了 main 但文件不存在（多半是没跑构建）：{broken}')
+
     for name in names:
         # ⚠️ 判据从 `PORTABLE_DEPENDENCIES` **取**，不在这里另写一份名单。
         #    第一版把 `services/platform/` 写死在条件里，于是第二个可移植依赖
