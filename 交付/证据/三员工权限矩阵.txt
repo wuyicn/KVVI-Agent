@@ -1,0 +1,24 @@
+=== 三员工权限矩阵 ===
+  系统 customer   平台 http://127.0.0.1:7500
+
+  staff-view（角色 sales_viewer）
+    ✓ 读    HTTP 200    期望 200
+    ✓ 建    HTTP 403    期望 403
+    ✓ 改    HTTP 403    期望 403
+
+  staff-edit（角色 sales）
+    ✓ 读    HTTP 200    期望 200
+    ✓ 建    HTTP 201    期望 201
+    ✓ 改    HTTP 200    期望 200
+
+  staff-none（角色 无）
+    ✓ 读    HTTP 403    期望 403
+    ✓ 建    HTTP 403    期望 403
+    ✓ 改    HTTP 403    期望 403
+
+  ── 流程（单独报，不计入矩阵）──
+    staff-view   记录状态 draft          可执行动作 []
+    staff-edit   记录状态 draft          可执行动作 []
+    staff-none   记录状态 None           可执行动作 None
+
+✓ 全部 9 格成立
