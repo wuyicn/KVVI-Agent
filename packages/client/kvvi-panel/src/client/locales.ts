@@ -25,6 +25,12 @@ export const zh = {
   'panel.loading': '读取中…',
   'panel.detail': '面板是附加信息。取不到时只会少显示内容，不影响对话与其他操作。',
 
+  // Session banner. The code next to these sentences is shown verbatim so an
+  // operator can search for it; the sentences are what the person reads.
+  'session.ended.title': '登录状态已结束',
+  'session.ended.body': '原因：{reason}。重新登录后可以继续。',
+  'session.ended.relogin': '重新登录',
+
   'systems.title': '我的系统',
   'systems.hint': '本公司已发布的业务系统',
   'systems.empty': '本公司还没有已发布的业务系统',
@@ -153,6 +159,11 @@ export const en: Record<KvviKey, string> = {
   'panel.aria': 'KVVI business panel',
   'panel.loading': 'Loading…',
   'panel.detail': 'This panel is supplementary. When it cannot load, only its content is missing; the conversation is unaffected.',
+
+  // Session banner; mirrors the Chinese key set.
+  'session.ended.title': 'Sign-in ended',
+  'session.ended.body': 'Reason: {reason}. Sign in again to continue.',
+  'session.ended.relogin': 'Sign in again',
 
   'systems.title': 'My systems',
   'systems.hint': 'Business systems published by this company',

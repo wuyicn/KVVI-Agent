@@ -29,6 +29,8 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import { createKvviEntry, createKvviOverlay } from './Panel.tsx'
+import { SessionBanner, type SessionBannerInjected } from './SessionBanner.tsx'
+import { SessionNoticeController } from './session-notice.ts'
 import { en, NS, zh, type KvviKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -40,6 +42,9 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
 /** Key distinguishing this package's occupants inside both `list` slots. */
 const KVVI_PANEL_ID = '@deepseek-ai/dsh-client-kvvi-panel'
+
+/** A distinct key: the banner and the panel are independent occupants. */
+const KVVI_SESSION_ID = '@deepseek-ai/dsh-client-kvvi-panel/session-banner'
 
 /** Services this browser half requires: the slot registry and the dictionary. */
 export const inject = ['slots', 'locale']
@@ -54,6 +59,26 @@ export const inject = ['slots', 'locale']
  */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'kvvi-panel: dictionaries')
+
+  // The sign-in-end notice. The wrapper sees every response the page makes —
+  // the runtime RPC, the platform's own endpoints, and the product API — which
+  // is the only layer that covers all three sources. `ctx.effect` owns its
+  // disposer so a plugin reload cannot stack wrappers.
+  const notice = new SessionNoticeController()
+  ctx.effect(() => notice.install(), 'kvvi-panel: session notice watcher')
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay',
+    id: KVVI_SESSION_ID,
+    locale: NS,
+    inject: (): SessionBannerInjected => ({
+      hooks: { sessionNotice: notice.state },
+      relogin: (code: string) => {
+        // The reason travels in the query so the login page can say which kind
+        // of ending this was; an unexplained login page is what we are fixing.
+        globalThis.location.assign('/kvvi/login?error=' + encodeURIComponent(code))
+      },
+    }),
+  }, SessionBanner))
 
   ctx.effect(
     () => ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register(
