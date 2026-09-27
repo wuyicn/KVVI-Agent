@@ -222,6 +222,45 @@ description: 审批流编排——状态、动作、迁移、审批人链，产�
 「界面上一个流程按钮都没有」—— 那时它看起来像流程引擎坏了，
 实际是策略里两个字段各写了一套自己的名字。
 
+### 5.2 FIELD（字段）策略怎么写
+
+| 写什么 | 取值 | 含义 |
+|---|---|---|
+| `subresource` | `{type: "FIELD", code: "<字段 code>"}` | 说的是**哪个字段** |
+| `field_mode` | `EDITABLE` | 可见、可写 |
+| | `READ_ONLY` | 可见、**不可写** |
+| | `MASKED` | 可见但脱敏 |
+| | `HIDDEN` / `DENY` | 不可见 |
+| `required_field` | `true` | **这一档要求这个字段有值**（按角色；可选，不写就是不用填） |
+
+⚠️ **两套词表，别写混**（v1 试点在这里栽过一次）：
+
+| 契约的 `field_mode` | 运行时的档位 |
+|---|---|
+| `DENY` / `HIDDEN` | `HIDDEN` |
+| `MASKED` | `MASKED` |
+| **`READ_ONLY`** | **`READONLY`** |
+| `EDITABLE` | `VISIBLE` |
+
+只差一个下划线，而写错的表现是**结构校验报一句跟字段名无关的话**
+（`must NOT have additional properties`）—— 因为校验器是照着
+**运行时的**表在报错。**契约写带下划线的那个。**
+
+**`required_field` 与 `business-schema` 的 `required` 是两件事**：
+
+| | 谁写的 | 管谁 | 用在哪 |
+|---|---|---|---|
+| `Field.required`（模型层） | `data-model` skill | **所有人** | 「这个字段业务上必须有值」——**下限** |
+| `required_field`（权限层） | 这里的 FIELD 策略 | **这一个角色** | 「你可以不填，但**他这一档必须填**」——再收窄 |
+
+⚠️ **`required_field: true` 必须配一个可写的档位**（`EDITABLE` 或 `MASKED`）。
+配 `READ_ONLY`/`HIDDEN` 会被**拒绝编译**：要求有值又禁止写，那个角色永远满足不了它，
+表现是「怎么填都被拒」，看起来像权限配小了。
+
+⚠️ **FIELD 策略目前不能按状态收窄**（`FieldPolicy.subresource` 是
+`{type: FIELD, code}`，没有地方放状态）。「某个状态下必填」现在表达不了 ——
+不要塞一个假的进去。
+
 ---
 
 # 四、一份完整的、已验证的示例

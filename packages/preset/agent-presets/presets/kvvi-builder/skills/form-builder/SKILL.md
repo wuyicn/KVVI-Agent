@@ -23,6 +23,7 @@ description: 表单生成——字段控件、分组布局、条件显隐，产�
 | 你想做的事 | 该去哪 |
 |---|---|
 | 字段的必填、长度、范围、格式 | **`business-schema`**（模型的字段约束） |
+| 「这个角色在这一档必须填」 | **`permission-spec`** 的 FIELD 策略（`required_field`）—— 与模型层的 `required` 是**两道叠加的闸**，见 `workflow-builder` §5.2 |
 | 跨字段与跨记录的不变量 | **`business-schema`**（模型的 record_rules） |
 | 唯一性 | **`business-schema`**（索引） |
 | 字段出现在哪、什么顺序、什么条件显示 | **`view-schema`**（本 Skill） |
