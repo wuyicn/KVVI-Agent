@@ -342,6 +342,9 @@ importers:
       '@deepseek-ai/dsh-tool-jobs':
         specifier: workspace:^
         version: link:../../packages/jobs/tool-jobs
+      '@deepseek-ai/dsh-tool-kvvi-business':
+        specifier: workspace:^
+        version: link:../../packages/tool/kvvi-business
       '@deepseek-ai/dsh-tool-present':
         specifier: workspace:^
         version: link:../../packages/deliverables/tool-present
