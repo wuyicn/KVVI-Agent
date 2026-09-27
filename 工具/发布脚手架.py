@@ -177,24 +177,68 @@ def _json_of(body):
 
 # ── 契约目录 ──────────────────────────────────────────────────────────────────
 
-def contract_files(tree):
+def _skip_reason(name):
     """
-    从目录里认出六份契约分别对应哪个文件。
+    整个目录跳过的判据 —— **与工具同源，全仓唯一一份**。
+
+    它由两个读者共用：真正决定读哪些文件的 `_scan_contract_tree`，以及把
+    「跳过了什么」写成注记的那一处。两处各写一份判断的话，改了一边另一边
+    不跟着改，表现就是**注记说跳过了、实际却读进去了**（或反过来）—— 而两种
+    方向都只报「缺某一份契约」，看不出是判据漂移。
+    @param name 一个目录项的名字（不是路径）
+    @returns 跳过它的理由；不跳过返回 None
+    """
+    if name in ('_校验', '_校验环境', 'fixture'):
+        # 校验环境不是交付物：它装着套件自己的夹具与结果，混进契约里会
+        # 让「六份」变成「六份加一堆」。
+        return '校验环境（夹具与结果），不是交付物'
+    if name == 'schemas':
+        # `06-工具/schemas/` 放的是请求/响应体的 JSON Schema 片段，
+        # 它们的摘要被工具契约引用，但**它们本身不是契约**。
+        # 不排除的话，装订出来的 `{tools: [...]}` 里会混进 8 份
+        # 长得像工具、其实没有 `tool_code` 的东西。
+        return '工具契约引用的请求/响应体片段，它们本身不是契约'
+    if name.startswith('.'):
+        return '隐藏目录'
+    return None
+
+
+def _count_json(directory):
+    """数一个子树里有多少 `.json`。注记要能说出丢了几份，才让人判断得出要不要在意。"""
+    count = 0
+    for base, _dirs, files in os.walk(directory):
+        count += sum(1 for name in files if name.endswith('.json'))
+    return count
+
+
+def _scan_contract_tree(tree):
+    """
+    走一遍契约目录：认出六份契约，并记下整目录跳过了什么。
+
+    一次遍历同时产出两者 —— 跳过的记法必须来自**正在读的那一遍**，
+    不能另写一遍「顺便看看跳过了谁」。
     @param tree 契约目录
-    @returns `{contractType: path}`，以及 `{contractType: [候选…]}` 的歧义表
+    @returns `(found, skipped)` —— 每类的候选文件表，与被跳过的子树
     """
     found = {t: [] for t in CONTRACT_TYPES}
-    for base, _dirs, files in os.walk(tree):
+    skipped = []
+    for base, dirs, files in os.walk(tree):
+        # 就地剪枝：不剪的话 os.walk 会继续往里走，`skipped` 与「读到的」就对不上了。
+        # 按 `dirs` 原有顺序处理，只做移除 —— 排序会改变 `found` 里同级候选的先后，
+        # 而 `paths[0]` 是要被采用的那一份。
+        for name in list(dirs):
+            reason = _skip_reason(name)
+            if reason is None:
+                continue
+            dirs.remove(name)
+            full = os.path.join(base, name)
+            skipped.append({
+                'path': os.path.relpath(full, tree),
+                'reason': reason,
+                'files': _count_json(full),
+            })
         for name in sorted(files):
             if not name.endswith('.json'):
-                continue
-            if '_校验' in base or '/fixture' in base:
-                continue  # 校验环境与固定装置不是交付物
-            if os.path.basename(base) == 'schemas':
-                # `06-工具/schemas/` 放的是请求/响应体的 JSON Schema 片段，
-                # 它们的摘要被工具契约引用，但**它们本身不是契约**。
-                # 不排除的话，装订出来的 `{tools: [...]}` 里会混进 8 份
-                # 长得像工具、其实没有 `tool_code` 的东西。
                 continue
             # ⚠️ 判据是**相对路径**，不只是文件名。
             # 工具契约在 `06-工具/` 目录下，文件名本身（`customer_assign.json`）
@@ -205,7 +249,20 @@ def contract_files(tree):
                 if hint in relative:
                     found[contract_type].append(os.path.join(base, name))
                     break
-    return found
+    # 按路径排序再交出去：`os.walk` 的目录顺序是文件系统给的，工具那边是
+    # `readdirSync(...).sort()`。不排序的话同一棵树在两处会得到**同样内容、
+    # 不同顺序**的注记，对拍时就分不清「不一致」和「只是顺序不同」。
+    skipped.sort(key=lambda item: item['path'])
+    return found, skipped
+
+
+def contract_files(tree):
+    """
+    从目录里认出六份契约分别对应哪个文件。
+    @param tree 契约目录
+    @returns `{contractType: [候选…]}` 的候选表
+    """
+    return _scan_contract_tree(tree)[0]
 
 
 def _load(path):
@@ -238,7 +295,7 @@ def read_contracts(tree):
     @param tree 契约目录
     @returns `(contracts, notes)` —— 内容表，与「装订约定」和「丢掉了什么」的说明
     """
-    found = contract_files(tree)
+    found, skipped = _scan_contract_tree(tree)
     contracts, notes = {}, []
     for contract_type in CONTRACT_TYPES:
         paths = found[contract_type]
@@ -266,6 +323,11 @@ def read_contracts(tree):
                      % (contract_type, len(paths), os.path.basename(paths[0]), len(paths) - 1))
         for extra in paths[1:]:
             notes.append('      丢下的：%s' % os.path.relpath(extra, tree))
+    # ⚠️ 整目录跳过也逐条说。它们和上面「丢下的」是同一件事 —— 目录里**有什么没发上去** ——
+    #    只是粒度是目录而不是文件。分开报的理由是粒度和理由都不同，不是因为它更次要。
+    for item in skipped:
+        notes.append('⚠ 整目录跳过：%s（%d 个 .json） —— %s'
+                     % (item['path'], item['files'], item['reason']))
     return contracts, notes
 
 
