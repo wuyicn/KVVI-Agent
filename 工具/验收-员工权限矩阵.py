@@ -36,6 +36,11 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+# 试点口令**只从仓库外面读**（环境变量或 ~/KVVI-Pilot/kvvi-pilot.secret）——
+# 它一度硬编码在这里，而推进远端历史的东西撤不回来。见 `lib/pilot_secret.py`。
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib'))
+from pilot_secret import pilot_password  # noqa: E402
+
 #: 契约里的角色 → 试点的账号。**角色在契约里，账号在企业管理里** —— 两者靠
 #: `role_members` 连起来，而这一层最容易出现「契约写好了、没人被分到这个角色」。
 ACCOUNTS = {
@@ -47,7 +52,6 @@ ACCOUNTS = {
                     'expect_create': False, 'expect_update': False, 'expect_flow': False},
 }
 
-PASSWORD = '<试点口令>'
 ASSET = 'customer'
 
 #: 建记录时要给的字段。**四个都是契约里的 `required: true`** ——
@@ -82,7 +86,7 @@ def one(login, platform, witness=None):
     @returns `{read, create, update, flow}`
     """
     mod = scaffold()
-    session = mod.Session(platform, login, PASSWORD).sign_in()
+    session = mod.Session(platform, login, pilot_password()).sign_in()
     cells = {}
 
     status, body = session.call('GET', '/api/v1/systems/%s/records' % ASSET)
@@ -171,7 +175,7 @@ def main():
         cells = one(login, args.platform, witness)
         # 谁读得到，谁就提供一条真记录给后面读不到的人去试写。
         if witness is None and cells['read']['n']:
-            status, body = scaffold().Session(args.platform, login, PASSWORD).sign_in().call(
+            status, body = scaffold().Session(args.platform, login, pilot_password()).sign_in().call(
                 'GET', '/api/v1/systems/%s/records' % ASSET)
             items = (body.get('items') or []) if isinstance(body, dict) else []
             if items:

@@ -95,7 +95,16 @@ if [[ "$REBUILD" == "1" || ! -f "$BUILD_MARK" ]]; then
   #   ui-brand-official 读到的就是 undefined，于是让位给 kvvi-brand。
   #
   #   上游的 `build:official` 才是给官方发布用的（那时没有 kvvi-brand 竞争）。
-  ( cd "$DSH_SRC" && DSH_CLIENT_TITLE="KVVI 搭建引擎" pnpm build )
+  #
+  # ★ 产品名是「KVVI 工作台」，与平台登录页的标题一致。
+  #
+  #   这里曾经写的是「KVVI 搭建引擎」——那是 **builder 那个 preset 的名字**，
+  #   被当成了整个产品的名字。DSH_CLIENT_TITLE 同时决定浏览器标题、产品抬头
+  #   与侧栏品牌名（kvvi-brand 读它，不写死），所以一个错的名字会同时出现在
+  #   这三处；员工入口的登录页写着「KVVI 工作台」，进来却换了牌子。
+  #
+  #   kvvi-brand 不持有产品名字面量：产品名只有一个来源，就是这一行。
+  ( cd "$DSH_SRC" && DSH_CLIENT_TITLE="KVVI 工作台" pnpm build )
   say "构建完成"
 fi
 

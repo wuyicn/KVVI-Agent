@@ -47,7 +47,7 @@ UPSTREAM_NAME = 'DeepSeek Harness'
 UPSTREAM_SHORT = 'DSH'
 
 # 预期产品名（构建期由 DSH_CLIENT_TITLE 注入）。
-KVVI_NAME = 'KVVI 搭建引擎'
+KVVI_NAME = 'KVVI 工作台'
 
 
 def locale_files() -> List[str]:

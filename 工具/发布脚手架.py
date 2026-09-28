@@ -39,6 +39,9 @@
     --asset-id   业务系统代号（默认 customer）
     --builder    builder / <试点口令>
     --owner      owner / <试点口令>
+
+`<试点口令>` 不在本文件里，也不在仓库里 —— 只从环境变量 `KVVI_PILOT_PASSWORD`
+或 `~/KVVI-Pilot/kvvi-pilot.secret` 读（见 `lib/pilot_secret.py`）。
 """
 
 import argparse
@@ -50,6 +53,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from http.cookiejar import CookieJar
+
+# 试点口令**只从仓库外面读** —— 它一度硬编码在这里，而推进远端历史的东西撤不回来。
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib'))
+from pilot_secret import pilot_password  # noqa: E402
 
 #: 六份契约。与 `runtime-projection.REQUIRED_CONTRACTS` 同源 —— 少一份就不是可运行系统。
 CONTRACT_TYPES = ('business-schema', 'view-schema', 'workflow-spec',
@@ -340,8 +347,11 @@ def build_parser():
                         help='契约目录（默认 ~/KVVI-Pilot/工作区/客户登记系统/契约）')
     parser.add_argument('--platform', default='http://127.0.0.1:7500')
     parser.add_argument('--asset-id', default='customer')
-    parser.add_argument('--builder', default='builder/<试点口令>')
-    parser.add_argument('--owner', default='owner/<试点口令>')
+    # 口令在 `--help` 之后才解析：默认值写成 None，值在下面补。
+    # 直接在 `default=` 里取口令的话，口令没配时**连帮助都打不出来** ——
+    # 而那正是最需要看到「口令该配在哪」的时候。
+    parser.add_argument('--builder', default=None, help='账号/口令（默认 builder/<试点口令>）')
+    parser.add_argument('--owner', default=None, help='账号/口令（默认 owner/<试点口令>）')
     parser.add_argument('--plan', action='store_true', help='只打印将要发什么')
     parser.add_argument('--create-roles', action='store_true',
                         help='契约里的角色在平台上不存在时，先用所有者把它们建出来')
@@ -390,8 +400,11 @@ def main():
         print('\n✗ 缺 %d 份契约，不发。' % len(missing), file=sys.stderr)
         return 2
 
-    builder_login, builder_password = split_login(args.builder, 'builder')
-    owner_login, owner_password = split_login(args.owner, 'owner')
+    password = pilot_password()
+    builder_login, builder_password = split_login(
+        args.builder if args.builder is not None else 'builder/' + password, 'builder')
+    owner_login, owner_password = split_login(
+        args.owner if args.owner is not None else 'owner/' + password, 'owner')
 
     if args.plan:
         print('\n=== ② 将要提交（搭建者 %s）===' % builder_login)

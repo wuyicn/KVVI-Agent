@@ -30,7 +30,7 @@ BRAND_BUNDLE = os.path.join(DSH, 'packages', 'client', 'ui-brand-official', 'lib
 C_OK, C_BAD, C_WARN, C_DIM, C_OFF = '\033[32m', '\033[31m', '\033[33m', '\033[90m', '\033[0m'
 PROFILE_VAR = 'DSH_CLIENT_BUILD_PROFILE'
 TITLE_VAR = 'DSH_CLIENT_TITLE'
-KVVI_TITLE = 'KVVI 搭建引擎'
+KVVI_TITLE = 'KVVI 工作台'
 
 
 def code_lines(path: str):

@@ -42,10 +42,14 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+# 试点口令**只从仓库外面读**（环境变量或 ~/KVVI-Pilot/kvvi-pilot.secret）——
+# 它一度硬编码在这里，而推进远端历史的东西撤不回来。见 `lib/pilot_secret.py`。
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib'))
+from pilot_secret import pilot_password  # noqa: E402
+
 DEFAULT_PLATFORM = 'http://127.0.0.1:7500'
 DEFAULT_HOME = os.path.expanduser('~/Library/Application Support/KVVI-Agent-Pilot')
 DEFAULT_PG_BIN = '/opt/homebrew/opt/postgresql@17/bin'
-CORPUS_PASSWORD = '<试点口令>'
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -418,7 +422,7 @@ def check_no_replay(platform, db, report, staff):
     print('\n⑤ 重复重连不重复提交')
     # 这一条自己重新登录一次：不能沿用前面几条用过的凭据，否则一个无关的
     # 副作用（比如 ④ 把授权版本改过）会以「创建失败」的形式出现在这里。
-    staff = Client(platform, 'staff-edit', CORPUS_PASSWORD).sign_in()
+    staff = Client(platform, 'staff-edit', pilot_password()).sign_in()
     count = lambda: int(db.query('kvvi_business',
                                  'SELECT count(*) FROM business_records')[0])
     audit = lambda: int(db.query('kvvi_audit',
@@ -574,8 +578,8 @@ def main():
 
     db = Database(args.home, args.pg_bin, args.pg_port)
     report = Report()
-    staff = Client(args.platform, 'staff-edit', CORPUS_PASSWORD).sign_in()
-    builder = Client(args.platform, 'builder', CORPUS_PASSWORD, gateway='BUILDER').sign_in()
+    staff = Client(args.platform, 'staff-edit', pilot_password()).sign_in()
+    builder = Client(args.platform, 'builder', pilot_password(), gateway='BUILDER').sign_in()
     print('  已登录：staff-edit（员工）、builder（搭建者）')
     if os.environ.get('KVVI_DEBUG'):
         print('    staff 凭据 %s… 到期 %s' % (staff.credential[:16], staff.expires_at))
