@@ -20,6 +20,7 @@ import { adminCapabilities, listDepartments, listMembers, listRoles } from './ap
 import type { AdminCapabilities, Department, Member, Role } from './api.ts'
 import type { Copy } from './FormView.tsx'
 import { KvviPublishAdmin } from './PublishAdmin.tsx'
+import { KvviBrandAdmin } from './BrandAdmin.tsx'
 import { MemberAdmin } from './MemberAdmin.tsx'
 import { RoleAdmin } from './RoleAdmin.tsx'
 
@@ -29,7 +30,7 @@ export interface KvviAdminShellProps {
 }
 
 /** Which half of the administration page is shown. */
-type Tab = 'members' | 'roles' | 'publish'
+type Tab = 'members' | 'roles' | 'brand' | 'publish'
 
 /**
  * 服务端的拒绝码 → 一句人话；未登记的码原样带 detail。
@@ -183,13 +184,20 @@ export function KvviAdminShell({ copy }: KvviAdminShellProps): ReactNode {
         <button type="button" aria-pressed={tab === 'roles'}
           style={{ fontSize: 12, fontWeight: tab === 'roles' ? 600 : 400 }}
           onClick={() => { setTab('roles') }}>{copy('admin.tab.roles')}</button>
-        {/* Publishing is owner-only on the server; showing the tab only to an
-            owner is clarity, not enforcement — the platform re-judges every
-            call, and this tab's approvals are the calls that matter most. */}
+        {/* Publishing and the company brand are owner-only on the server;
+            showing these tabs only to an owner is clarity, not enforcement —
+            the platform re-judges every call, and these are the calls whose
+            effect reaches the whole company. Reading the brand is open to any
+            session (employees see it), writing is not. */}
         {capabilities?.role === 'owner' ? (
-          <button type="button" aria-pressed={tab === 'publish'}
-            style={{ fontSize: 12, fontWeight: tab === 'publish' ? 600 : 400 }}
-            onClick={() => { setTab('publish') }}>{copy('publish.tab')}</button>
+          <>
+            <button type="button" aria-pressed={tab === 'brand'}
+              style={{ fontSize: 12, fontWeight: tab === 'brand' ? 600 : 400 }}
+              onClick={() => { setTab('brand') }}>{copy('brand.tab')}</button>
+            <button type="button" aria-pressed={tab === 'publish'}
+              style={{ fontSize: 12, fontWeight: tab === 'publish' ? 600 : 400 }}
+              onClick={() => { setTab('publish') }}>{copy('publish.tab')}</button>
+          </>
         ) : null}
       </div>
 
@@ -206,7 +214,8 @@ export function KvviAdminShell({ copy }: KvviAdminShellProps): ReactNode {
 
       {tab === 'members' ? <MemberAdmin state={state} />
         : tab === 'roles' ? <RoleAdmin state={state} />
-          : <KvviPublishAdmin copy={copy} />}
+          : tab === 'brand' ? <KvviBrandAdmin copy={copy} />
+            : <KvviPublishAdmin copy={copy} />}
     </div>
   )
 }

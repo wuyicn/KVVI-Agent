@@ -100,6 +100,23 @@ export const zh = {
   'admin.failed': '读取失败：{detail}',
   'admin.readonly': '你可以查看，但不能修改（只有所有者能改动搭建模式与平台角色）',
 
+  // Brand half. "The platform refused" and "the network failed" are two
+  // sentences because they need two different people to look into them.
+  'brand.tab': '品牌',
+  'brand.hint': '公司名称、标志与标语会显示在员工界面的侧栏与新建会话页；留空表示不设置。',
+  'brand.name': '公司名称',
+  'brand.logoUrl': '标志地址',
+  'brand.tagline': '标语',
+  'brand.save': '保存',
+  'brand.saving': '保存中…',
+  'brand.saved': '品牌已保存',
+  'brand.unchanged': '没有改动，没有发出请求',
+  'brand.retry': '重试',
+  'brand.read.refused': '平台拒绝了这次读取：{detail}',
+  'brand.read.unreachable': '连不上平台，没读到品牌 —— 这不等于「公司没设置品牌」',
+  'brand.write.refused': '平台拒绝了这次改动：{detail}',
+  'brand.write.unreachable': '连不上平台，改动没有发生',
+
   'member.title': '员工',
   'member.empty': '本公司还没有成员',
   'member.login': '登录名',
@@ -254,6 +271,22 @@ export const en: Record<KvviKey, string> = {
   'admin.noPermission': 'You are not an administrator of this company, so this page is not available',
   'admin.failed': 'Could not load: {detail}',
   'admin.readonly': 'You can view but not change this (only the owner may change Builder access and platform roles)',
+
+  // Brand half; mirrors the Chinese key set.
+  'brand.tab': 'Brand',
+  'brand.hint': 'The company name, logo, and tagline appear in the employee sidebar and on the new-session page; empty means not set.',
+  'brand.name': 'Company name',
+  'brand.logoUrl': 'Logo URL',
+  'brand.tagline': 'Tagline',
+  'brand.save': 'Save',
+  'brand.saving': 'Saving…',
+  'brand.saved': 'Branding saved',
+  'brand.unchanged': 'Nothing changed, so no request was sent',
+  'brand.retry': 'Try again',
+  'brand.read.refused': 'The platform refused this read: {detail}',
+  'brand.read.unreachable': 'Could not reach the platform, so no branding was read — which is not the same as the company having none',
+  'brand.write.refused': 'The platform refused this change: {detail}',
+  'brand.write.unreachable': 'Could not reach the platform; the change did not happen',
 
   'member.title': 'People',
   'member.empty': 'This company has no members yet',

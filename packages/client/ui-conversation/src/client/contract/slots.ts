@@ -182,6 +182,23 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'conversation.hero.workspace': { kind: 'single'; scope: 'root'; owner: EmptyWorkspaceOwnerProps }
     /** Brand mark shown before the blank-session headline. */
     'conversation.hero.brand.mark': { kind: 'single'; scope: 'root'; owner: HeroBrandMarkOwnerProps }
+    /**
+     * Headline text of the blank-session hero. Declared so a deployment can
+     * state its own product line: the locale dictionary is namespace-owned and
+     * `ctx.locale.register` refuses a duplicate (ns, locale), so a second
+     * package cannot retranslate `hero.headline` — a slot is the only way to
+     * replace it. With no occupant the owner's own copy renders.
+     */
+    'conversation.hero.title': { kind: 'single'; scope: 'root' }
+    /**
+     * Badge riding the hero headline's top-right. Declared because the badge is
+     * product identity rather than architecture: an occupant states one, or
+     * announces nothing and removes the pill. The hero hands over its own pill
+     * class — the same reason `conversation.hero.brand.mark` hands over its
+     * mark's — so an occupant that keeps the owner's copy keeps the owner's
+     * chrome instead of restating it.
+     */
+    'conversation.hero.badge': { kind: 'single'; scope: 'root'; owner: HeroBadgeOwnerProps }
     /** Agent-preset control staged for a New Session. */
     'conversation.hero.agentPreset': { kind: 'single'; scope: 'session-maybe'; owner: HeroAgentPresetOwnerProps }
     /** Full-width entries above the composer card. */
@@ -221,6 +238,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
         'conversation.composer.bar': { kind: 'single'; scope: 'session-maybe' }
         'conversation.input.dock': { kind: 'list'; scope: 'session' }
         'conversation.hero.brand.mark': { kind: 'single'; scope: 'root' }
+        'conversation.hero.title': { kind: 'single'; scope: 'root' }
+        'conversation.hero.badge': { kind: 'single'; scope: 'root' }
         'conversation.hero.workspace': { kind: 'single'; scope: 'root' }
         'conversation.hero.agentPreset': { kind: 'single'; scope: 'session-maybe' }
       }
@@ -413,6 +432,17 @@ export interface HeroBrandMarkOwnerProps {
   /** Requested square edge in pixels. */
   size: number
   /** Host class preserving the surrounding mark geometry. */
+  className?: string | undefined
+}
+
+/** Presentation props supplied to the blank-session headline badge. */
+export interface HeroBadgeOwnerProps {
+  /**
+   * Host pill class. An occupant that announces something keeps the hero's
+   * chrome by applying it; one that announces nothing renders null and the
+   * pill leaves no empty box behind. Optional for the same reason the mark's
+   * is: a CSS-module lookup is typed as possibly absent.
+   */
   className?: string | undefined
 }
 

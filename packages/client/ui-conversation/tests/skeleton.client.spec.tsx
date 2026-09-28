@@ -193,6 +193,12 @@ function mount(
       seatOwners.push({ key, owner })
     }
     if (key === 'conversation.hero.workspace') { pickerOwner = owner; return null }
+    // Keys whose visible copy belongs to the owner: with no occupant the real
+    // renderer renders the owner's fallback, and the placeholder below would
+    // hide the very text these cases read.
+    if (key === 'conversation.hero.title' || key === 'conversation.hero.badge') {
+      return opts?.fallback ?? null
+    }
     if (key === 'conversation.session.header.lineage') {
       lineageOwners.push(owner as ConversationHeaderLineageOwnerProps)
       return opts?.fallback ?? null
@@ -369,21 +375,83 @@ function mount(
   }
 }
 
+/**
+ * What the real renderer does for a slot with no occupant: render the owner's
+ * fallback. Spelling that out here (rather than stubbing `() => null`) is what
+ * makes the fallback cases below exercise the no-occupant path.
+ */
+const noOccupant: HeroShellProps['renderSlot'] =
+  (_key, _owner, opts) => (opts?.fallback ?? null) as ReactNode
+
+/**
+ * Drop the two things this file is not pinning: CSS-module hashes (owned by the
+ * build) and the fish's path geometry (unchanged upstream artwork, and long
+ * enough to bury the structure the pin is about). Element structure, order, and
+ * copy stay.
+ */
+const stabilize = (html: string): string =>
+  html.replace(/ class="[^"]*"/gu, '').replace(/ d="[^"]*"/gu, ' d="…"')
+
 describe('Hero chrome', () => {
-  it('renders the English preview badge through the hero locale seat', () => {
-    const renderSlot = vi.fn<HeroShellProps['renderSlot']>(() => null)
+  it('renders the English headline and badge through the hero locale seat', () => {
+    const renderSlot = vi.fn<HeroShellProps['renderSlot']>(noOccupant)
     const view = render(<HeroShell t={makeTranslate(en, commonEn)} renderSlot={renderSlot} />)
     expect(view.getByText('Into the Unknown')).toBeTruthy()
     expect(view.getByText('Preview')).toBeTruthy()
-    expect(renderSlot).toHaveBeenCalledOnce()
-    expect(renderSlot.mock.calls[0]?.[0]).toBe('conversation.hero.brand.mark')
+    expect(renderSlot.mock.calls.map(call => call[0])).toEqual([
+      'conversation.hero.brand.mark', 'conversation.hero.title', 'conversation.hero.badge',
+    ])
     const brandMarkOwner = renderSlot.mock.calls[0]?.[1]
     if (brandMarkOwner === undefined || !('size' in brandMarkOwner) || !('className' in brandMarkOwner)) {
       throw new Error('hero brand-mark owner must provide size and className')
     }
     expect(brandMarkOwner.size).toBe(34)
     expect(brandMarkOwner.className).toBeTypeOf('string')
-    expect(renderSlot.mock.calls[0]?.[2]?.fallback).toBeTruthy()
+    // The hero hands its pill class to the badge occupant too, so an occupant
+    // that keeps the owner's copy keeps the owner's chrome, not a restatement.
+    expect(renderSlot.mock.calls[2]?.[0]).toBe('conversation.hero.badge')
+    expect(renderSlot.mock.calls[2]?.[1]).toEqual({ className: expect.any(String) })
+    for (const call of renderSlot.mock.calls) expect(call[2]?.fallback).toBeTruthy()
+  })
+
+  /**
+   * The two text slots were added to an existing hard-coded title block, so the
+   * no-occupant arm must still be the pre-slot tree, element for element. This
+   * is the whole reason the fallbacks exist: a deployment that occupies nothing
+   * must not be able to tell the slots were added.
+   */
+  it('renders the pre-slot headline markup when no occupant takes the text slots', () => {
+    const view = render(
+      <HeroShell t={makeTranslate(zh, commonZh)} renderSlot={noOccupant} />,
+    )
+    expect(stabilize(view.container.innerHTML)).toBe(
+      '<div><div><div>'
+      + '<span><svg width="34" height="25.015544041450777" viewBox="0 0 23.16 17.04" fill="none" aria-hidden="true">'
+      + '<path d="…" fill="currentColor"></path></svg></span>'
+      + '<span><span>探索未至之境</span><span>预览版</span></span>'
+      + '</div><div></div></div></div>',
+    )
+  })
+
+  it('lets an occupant replace the headline copy and remove the badge pill', () => {
+    const renderSlot: HeroShellProps['renderSlot'] = (key, _owner, opts) => {
+      if (key === 'conversation.hero.title') return '本公司的一行标语'
+      if (key === 'conversation.hero.badge') return null
+      return (opts?.fallback ?? null) as ReactNode
+    }
+    const view = render(<HeroShell t={makeTranslate(zh, commonZh)} renderSlot={renderSlot} />)
+    expect(view.getByText('本公司的一行标语')).toBeTruthy()
+    expect(view.queryByText('探索未至之境')).toBeNull()
+    expect(view.queryByText('预览版')).toBeNull()
+    // An occupant that announces nothing leaves no pill behind — the badge's
+    // own box (border, padding, gap) is inside the slot, not around it.
+    expect(stabilize(view.container.innerHTML)).toBe(
+      '<div><div><div>'
+      + '<span><svg width="34" height="25.015544041450777" viewBox="0 0 23.16 17.04" fill="none" aria-hidden="true">'
+      + '<path d="…" fill="currentColor"></path></svg></span>'
+      + '<span><span>本公司的一行标语</span></span>'
+      + '</div><div></div></div></div>',
+    )
   })
 })
 

@@ -151,8 +151,20 @@ export function HeroShell({ t, renderSlot, children }: HeroShellProps) {
           </span>
           <span className={css.titleGroup}>
             {/* Own element: keeps the headline text addressable apart from the badge. */}
-            <span>{t('hero.headline')}</span>
-            <span className={css.previewBadge}>{t('hero.preview')}</span>
+            <span>
+              {/* Only the copy is slotted, so the headline keeps its inline box
+                  and layout whatever an occupant renders. Empty fallback is the
+                  owner's own copy — the pre-slot rendering, element for element. */}
+              {renderSlot('conversation.hero.title', {}, { fallback: t('hero.headline') })}
+            </span>
+            {/* The whole pill is slotted, class and all: an occupant with nothing
+                to announce must be able to remove it rather than leave an empty
+                box behind with its border, padding, and 7px gap still laid out.
+                The class travels as an owner prop so an occupant that keeps the
+                owner's copy also keeps the owner's chrome. */}
+            {renderSlot('conversation.hero.badge', { className: css.previewBadge }, {
+              fallback: <span className={css.previewBadge}>{t('hero.preview')}</span>,
+            })}
           </span>
         </div>
         <div className={css.body}>

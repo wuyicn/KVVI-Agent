@@ -41,8 +41,26 @@ The tree is validated **completely** before anything is drawn, so a contract eit
 | 记录 | `GET /api/v1/systems/:assetId/records` |
 | one record | `GET`/`PATCH /api/v1/systems/:assetId/records/:recordId` |
 | 填单 submit | `POST /api/v1/systems/:assetId/records` |
+| 企业管理的品牌页签 | `GET`/`PUT /api/v1/company/branding` |
 
 Failures stay distinguishable: the platform's stable code, a network failure, and "there is nothing" are three separate states, because one shared empty state would report them as the same fact. An update always sends the `rowVersion` it was rendered from, and `KVVI_ROW_VERSION_CONFLICT` is reported as its own state — a conflict needs a reload, a failure needs a retry.
+
+## The brand tab
+
+企业管理 gains a 品牌 half, shown only to an owner (reading the brand is open to
+any session — employees see it — while writing is owner-only, and the platform
+re-judges both).
+
+`PUT /api/v1/company/branding` leaves any key it is not given **untouched**, so a
+save sends only the fields the owner actually changed: sending all three would
+clear the two that were not edited, and the platform would report success because
+the request itself is well formed. `brandingPatch` is the function that decides
+which keys travel, and its spec is the one that keeps a rename from wiping the
+logo and the tagline.
+
+A failed read draws the reason and a retry, and no form at all: with no current
+values there is no way to compute which keys changed, and a save from that state
+could clear all three.
 
 ## Known Limitations and Deferred Work
 
