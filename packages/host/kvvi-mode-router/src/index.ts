@@ -44,8 +44,21 @@ interface SessionControllerLike {
   control(signal: AbortSignal): AsyncIterable<unknown>
 }
 
+/**
+ * 一次会话能看见的预置清单 —— 只取路由器要收窄的那三个字段。
+ *
+ * 故意不 import `@deepseek-ai/dsh-agent-presets` 的类型：这个包与它的关系是
+ * 「结构上对得上」，与 {@link SessionControllerLike} 同一路数，不为一次收窄多一条依赖。
+ */
+interface AgentPresetRosterLike {
+  readonly presets: readonly { readonly id: string }[]
+  readonly authorable: boolean
+  readonly modeSelectionEnabled: boolean
+}
+
 interface AgentPresetsLike {
   select(agent: unknown, requested: string): Promise<string>
+  remoteExportList(): Promise<AgentPresetRosterLike>
 }
 
 const VERSION = 'v1'
@@ -472,12 +485,39 @@ export class KvviModeRouter extends Service {
       return originalSelect(agent, requested)
     }) as typeof agentPresets.select
 
+    // ── 预置清单也要按会话收窄（问题 12）────────────────────────────────────
+    //
+    // 上面那个 `select` 只在**点下去之后**拦：界面照样把五个模式摆出来，
+    // 员工能点开、能选中，只是建会话时才失败。§2.6 说的是「员工不应看到『模式』」，
+    // 而不是「员工看到之后会被拒」—— 看得见就已经不成立了。
+    //
+    // 菜单里的模式清单、设置页的「允许切换 agent 模式」开关与六个预置的完整列表、
+    // 以及「KVVI 搭建引擎」被标成「新任务默认」，全都来自这一次 `remoteExportList`。
+    // 模式是登录门绑定的，工位上的会话只有一个可能的取值，所以这里收窄成：
+    //   · 只剩本会话被绑定的那一个预置；
+    //   · 模式选择关闭 —— 选择器与那个开关都必须消失，否则界面会
+    //     把一个不存在的能力摆出来。
+    //
+    // **收窄的是「看见什么」，不是「能做什么」。** 能做什么由上面那些包装
+    // 在真正的操作上判，两件事都要有，缺一个就成了「藏起来当权限」。
+    const originalRoster = agentPresets.remoteExportList.bind(agentPresets)
+    agentPresets.remoteExportList = (async () => {
+      const preset = this.requireMode().preset
+      const roster = await originalRoster()
+      return {
+        ...roster,
+        presets: roster.presets.filter(row => row.id === preset),
+        modeSelectionEnabled: false,
+      }
+    }) as typeof agentPresets.remoteExportList
+
     ctx.effect(() => () => {
       sessionController.create = originalCreate
       sessionController.list = originalList
       sessionController.search = originalSearch
       sessionController.control = originalControl
       agentPresets.select = originalSelect
+      agentPresets.remoteExportList = originalRoster
     }, 'kvvi-mode-router: restore wrapped identity and mode surfaces')
   }
 
