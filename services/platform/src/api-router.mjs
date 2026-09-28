@@ -28,6 +28,7 @@ import { tokenFromCookie } from './gate.mjs'
 import { systemRoutes } from './system-api.mjs'
 import { adminRoutes } from './admin-api.mjs'
 import { publishRoutes } from './publish-api.mjs'
+import { brandingRoutes } from './branding-api.mjs'
 import { loadSession } from './identity.mjs'
 import { verifyRuntimeContextHeaders } from './runtime-auth.mjs'
 import { FieldRuleError } from './field-rules.mjs'
@@ -256,6 +257,15 @@ async function dispatch(routes) {
   //    而那条 403 看起来像「你没有权限」，不像「这个动作本来就不在管理面里」。
   if (rest === '/publish' || rest.startsWith('/publish/')) {
     return publishRoutes({ ...routes, path: rest.slice('/publish'.length) || '/' })
+  }
+  // ⚠️ **公司品牌也单列，不挂进 `/admin`。**
+  //    `/admin/*` 的两道闸都是「所有者或管理员」，而品牌这一处的两半是
+  //    **两个不同的人**：写是所有者（公司对外的身份，被委托者也不行），
+  //    读是**任何有效会话** —— 牌子要显示在每一个员工的界面上。
+  //    挂进 `/admin` 的话，员工这一读会先被 403 挡住，而那条 403 看起来
+  //    像「这个界面没权限」，不像「它本来就不该在管理面里」。
+  if (rest === '/company' || rest.startsWith('/company/')) {
+    return brandingRoutes(routes)
   }
   return systemRoutes(routes)
 }

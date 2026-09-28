@@ -123,11 +123,15 @@ async function requireAdmin(actor, action, params = {}) {
  *
  * 授予搭建模式与平台角色都是「谁能管理」这件事本身，被委托者不能自己扩大
  * 委托面 —— 否则一次委托就等于把委托权交出去了。
+ *
+ * ⚠️ 导出是给 `branding-api.mjs` 用的（公司品牌同样「仅所有者」，理由不同：
+ * 对外身份不是管理权）。判据函数只有 `holdsPlatformRole` 一份，两处共用 ——
+ * 复制一个 owner 闸门出来，两处迟早会在「谁能改所有者」上分叉。
  * @param actor 操作人
  * @param action 审计动作名
  * @returns 被拒时为 `{status, body}`，放行时为 `null`
  */
-async function requireOwner(actor, action, params = {}) {
+export async function requireOwner(actor, action, params = {}) {
   if (await holdsPlatformRole(actor.companyId, actor.userId, 'owner')) return null
   await appendDenial({
     companyId: actor.companyId, actorKind: 'USER', actorId: actor.userId,
