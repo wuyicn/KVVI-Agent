@@ -31,6 +31,9 @@ import type { Copy } from './FormView.tsx'
 import { KvviFormView, fieldContextOf } from './FormView.tsx'
 import { KvviListView } from './ListView.tsx'
 import { KvviRecordDetail } from './RecordDetail.tsx'
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import { ReadFailure } from './ReadFailure.tsx'
+import css from './business.module.css'
 
 /** Props the shell accepts. */
 export interface KvviSystemShellProps {
@@ -63,6 +66,8 @@ export function KvviSystemShell({ copy }: KvviSystemShellProps): ReactNode {
   const [systems, setSystems] = useState<readonly PublishedSystem[] | null>(null)
   const [systemsError, setSystemsError] = useState<string | undefined>(undefined)
   const [open, setOpen] = useState<PublishedSystem | null>(null)
+  const [systemsAttempt, setSystemsAttempt] = useState(0)
+  const [runtimeAttempt, setRuntimeAttempt] = useState(0)
 
   const [projection, setProjection] = useState<RuntimeProjection | null>(null)
   const [projectionError, setProjectionError] = useState<string | undefined>(undefined)
@@ -82,12 +87,15 @@ export function KvviSystemShell({ copy }: KvviSystemShellProps): ReactNode {
 
   useEffect(() => {
     const controller = new AbortController()
+    setSystemsError(undefined)
+    setSystems(null)
     void listSystems(controller.signal).then((result) => {
+      if (controller.signal.aborted) return
       if (result.ok) setSystems(result.value.items)
       else if (result.code !== 'KVVI_ABORTED') setSystemsError(describeFailure(result.code, result.detail))
     })
     return () => { controller.abort() }
-  }, [])
+  }, [systemsAttempt])
 
   useEffect(() => {
     if (open === null) return undefined
@@ -95,11 +103,12 @@ export function KvviSystemShell({ copy }: KvviSystemShellProps): ReactNode {
     setProjection(null)
     setProjectionError(undefined)
     void loadRuntime(open.assetId, controller.signal).then((result) => {
+      if (controller.signal.aborted) return
       if (result.ok) setProjection(result.value)
       else if (result.code !== 'KVVI_ABORTED') setProjectionError(describeFailure(result.code, result.detail))
     })
     return () => { controller.abort() }
-  }, [open])
+  }, [open, runtimeAttempt])
 
   const refreshRows = useCallback((): void => {
     if (open === null) return
@@ -146,33 +155,32 @@ export function KvviSystemShell({ copy }: KvviSystemShellProps): ReactNode {
   if (open === null) {
     return (
       <div>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>{copy('systems.title')}</div>
-        <div style={{ fontSize: 12, opacity: .6, marginBottom: 8 }}>{copy('systems.hint')}</div>
+        <h3 className={css.sectionTitle}>{copy('systems.title')}</h3>
+        <p className={css.hint}>{copy('systems.hint')}</p>
         {systemsError === undefined ? null : (
-          <p role="alert" style={{ fontSize: 12.5 }}>{copy('systems.failed', { detail: systemsError })}</p>
+          <ReadFailure error={systemsError} copy={copy} onRetry={() => { setSystemsAttempt(value => value + 1) }} />
         )}
+        {systems === null && systemsError === undefined ? <p role="status" className={css.empty}>{copy('panel.loading')}</p> : null}
         {systems !== null && systems.length === 0 ? (
-          <p style={{ fontSize: 12.5, opacity: .7 }}>{copy('systems.empty')}</p>
+          <p className={css.empty}>{copy('systems.empty')}</p>
         ) : (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          <ul className={css.systemList}>
             {(systems ?? []).map(system => (
               <li
                 key={system.systemId}
-                style={{
-                  display: 'flex', alignItems: 'baseline', gap: 8, padding: '8px 0',
-                  borderTop: '1px solid var(--dsw-border, #f1f2f4)',
-                }}
+                className={css.systemRow}
               >
-                <span style={{ fontSize: 12.5 }}>{system.name}</span>
-                <span style={{ fontSize: 12, opacity: .55 }}>{system.assetId}</span>
-                <span style={{ flex: 1 }} />
-                <button
+                <div>
+                  <div className={css.systemName}>{system.name}</div>
+                  {system.name === system.assetId ? null : <div className={css.hint}>{system.assetId}</div>}
+                </div>
+                <Button
                   type="button"
-                  style={{ fontSize: 12 }}
+                  variant="outline"
                   onClick={() => { setOpen(system); setTab('form'); setRows([]); setDetail(null) }}
                 >
                   {copy('systems.open')}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -230,31 +238,30 @@ export function KvviSystemShell({ copy }: KvviSystemShellProps): ReactNode {
   // ── The open system's two halves ──────────────────────────────────────────
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
-        <button type="button" style={{ fontSize: 12 }} onClick={() => { setOpen(null) }}>
+      <div className={css.systemHeading}>
+        <Button variant="outline" onClick={() => { setOpen(null) }}>
           {copy('system.back')}
-        </button>
-        <strong style={{ fontSize: 13 }}>{open.name}</strong>
-        <span style={{ flex: 1 }} />
+        </Button>
+        <h3 className={css.sectionTitle}>{open.name}</h3>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        <button
+      <div className={css.viewTabs}>
+        <Button
           type="button"
           aria-pressed={tab === 'form'}
-          style={{ fontSize: 12, fontWeight: tab === 'form' ? 600 : 400 }}
+          variant={tab === 'form' ? 'primary' : 'ghost'}
           onClick={() => { setTab('form') }}
         >
           {copy('system.tab.form')}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           aria-pressed={tab === 'records'}
-          style={{ fontSize: 12, fontWeight: tab === 'records' ? 600 : 400 }}
+          variant={tab === 'records' ? 'primary' : 'ghost'}
           onClick={() => { setTab('records') }}
         >
           {copy('system.tab.records')}
-        </button>
+        </Button>
       </div>
 
       {notice === null ? null : (
@@ -262,9 +269,7 @@ export function KvviSystemShell({ copy }: KvviSystemShellProps): ReactNode {
       )}
 
       {projectionError !== undefined ? (
-        <p role="alert" style={{ fontSize: 12.5 }}>
-          {copy('system.unrunnable', { detail: projectionError })}
-        </p>
+        <ReadFailure error={projectionError} copy={copy} onRetry={() => { setRuntimeAttempt(value => value + 1) }} />
       ) : projection === null ? (
         <p style={{ fontSize: 12.5, opacity: .7 }}>{copy('panel.loading')}</p>
       ) : tab === 'form' ? (

@@ -29,6 +29,8 @@ import {
 import type { FieldRenderProps, RegistryEntry, ViewType } from './registry.tsx'
 import type { ModelField, ViewNode, ViewSpec } from './api.ts'
 import type { KvviKey } from './locales.ts'
+import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import css from './business.module.css'
 
 /**
  * The translate function a renderer receives.
@@ -310,10 +312,10 @@ export function KvviFormView({
   }
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); submit() }}>
+    <form className={css.form} onSubmit={(e) => { e.preventDefault(); submit() }}>
       {draw(tree)}
       {onSubmit === undefined ? null : (
-        <button type="submit" style={{ marginTop: 8 }}>{copy('form.submit')}</button>
+        <div className={css.formActions}><Button type="submit" variant="primary">{copy('form.submit')}</Button></div>
       )}
     </form>
   )

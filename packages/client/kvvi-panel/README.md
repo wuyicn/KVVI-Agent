@@ -17,6 +17,8 @@ Two upstream-declared `list` slots are filled, so both registrations append rath
 
 The two occupy different slots, so neither can render the other. They communicate through one namespaced DOM event (`kvvi-panel:open`) rather than a module-level mutable shared by every consumer.
 
+The business panel uses the shared modal and button components, with a fixed header and a separately scrolling content area. The administration tab appears only after `/api/v1/admin/capabilities` identifies an owner or administrator; a failed capabilities read leaves business content available and offers a separate retry. The server remains responsible for authorization on every request. Failed system-list and runtime reads retain their diagnostic codes alongside a localized explanation and retry action; retrying a read never resubmits a business record.
+
 ## The closed renderer
 
 A published system carries one `view-schema`, whose `componentsTree` is **data**. The renderer draws it through one explicit table (`src/client/registry.tsx`) whose 23 keys are the names the platform's `COMPONENT_REGISTRY` declares, each with the same `viewTypes`. Everything else about a tree is refused:
