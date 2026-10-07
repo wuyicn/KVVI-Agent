@@ -1,0 +1,369 @@
+{
+  "date": "2026-10-07",
+  "baseline": "e6a559b1550f5bee359cffc514f6a498710d0697",
+  "fork_before": "0e52dcc3b24527e13aefba3c5e9e9c6a715e91b8",
+  "root_start": "0ae8e21ba3aed1f183c839423e7b4ea02936957b",
+  "environment": {
+    "node": "24.20.0",
+    "pnpm": "11.7.0",
+    "DSH_CLIENT_TITLE": "KVVI 工作台",
+    "DSH_SNAPSHOT": "replay"
+  },
+  "raw_logs_directory": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9",
+  "runs": {
+    "fork-before": {
+      "success": false,
+      "cases": {
+        "numTotalTests": 445,
+        "numPassedTests": 410,
+        "numFailedTests": 20,
+        "numPendingTests": 15
+      },
+      "files": 121,
+      "failed_files": 13,
+      "json_sha256": "e511c847f669ec5f8bb7f32082cae2ea2554eee5fe7f48d515ac61189db863d7",
+      "log_sha256": "d7c762a04692af9af490cdeac346f4e7fb16eb53c29e16743696006c55e1b9aa",
+      "failures": [
+        {
+          "file": "apps/web/tests/built-boot.expected.e2e.ts",
+          "case": "boots the built plugin graph and renders a fixture session end to end",
+          "error_kind": "unmatched-provider-requests"
+        },
+        {
+          "file": "apps/web/tests/built-boot.expected.e2e.ts",
+          "case": "boots without ui-chat and does not select another conversation view implicitly",
+          "error_kind": "unmatched-provider-requests"
+        },
+        {
+          "file": "apps/web/tests/command-image-envelope.expected.e2e.ts",
+          "case": "refuses an image-carrying submit to a non-declaring command and keeps draft and images",
+          "error_kind": "unmatched-provider-requests"
+        },
+        {
+          "file": "apps/web/tests/command-image-envelope.expected.e2e.ts",
+          "case": "consumes images through a declaring command and clears the composer on success",
+          "error_kind": "unmatched-provider-requests"
+        },
+        {
+          "file": "apps/web/tests/command-image-envelope.expected.e2e.ts",
+          "case": "submits a bare /plan with an image as an image-only plan request",
+          "error_kind": "unmatched-provider-requests"
+        },
+        {
+          "file": "apps/web/tests/document-preview.e2e.ts",
+          "case": "web e2e: document preview through Files opens text, isolated HTML, width-fitted images, and rendered PDF from the Session workspace",
+          "error_kind": "selector-or-brand-expectation"
+        },
+        {
+          "file": "apps/web/tests/home-path-tilde.expected.e2e.ts",
+          "case": "assembled POSIX home-path display shows the home-descendant Workspace path as ~ and copies the full path",
+          "error_kind": "unmatched-provider-requests"
+        },
+        {
+          "file": "apps/web/tests/image-display.expected.e2e.ts",
+          "case": "renders the history image pair through the authorized attachment route and opens the lightbox",
+          "error_kind": "unmatched-provider-requests"
+        },
+        {
+          "file": "apps/web/tests/image-display.expected.e2e.ts",
+          "case": "accepts pasted images into the composer rail in order and removes them",
+          "error_kind": "unmatched-provider-requests"
+        },
+        {
+          "file": "apps/web/tests/image-display.expected.e2e.ts",
+          "case": "accepts a whole-page drop under the limits-labeled overlay and refuses an over-limit batch at intake",
+          "error_kind": "unmatched-provider-requests"
+        },
+        {
+          "file": "apps/web/tests/image-display.expected.e2e.ts",
+          "case": "renders a host dimension rejection with the projected 2000px limit",
+          "error_kind": "unmatched-provider-requests"
+        },
+        {
+          "file": "apps/web/tests/max-tokens-notice.expected.e2e.ts",
+          "case": "assembled max-tokens turn-end notice renders the localized truncation notice after the cut-off answer instead of ending silently",
+          "error_kind": "unmatched-provider-requests"
+        },
+        {
+          "file": "apps/web/tests/preview-boot.e2e.ts",
+          "case": "boots the packed worker deployment to an interactive page",
+          "error_kind": "selector-or-brand-expectation"
+        },
+        {
+          "file": "apps/web/tests/pwa-manifest.e2e.ts",
+          "case": "ships install metadata with the built web application",
+          "error_kind": "selector-or-brand-expectation"
+        },
+        {
+          "file": "apps/web/tests/search-card.expected.e2e.ts",
+          "case": "assembled search card renders the grep card, its truncation summary, and its capped head/tail slice from the built bundles",
+          "error_kind": "unmatched-provider-requests"
+        },
+        {
+          "file": "apps/web/tests/startup-auto-selection.e2e.ts",
+          "case": "web e2e: startup auto-selection keeps the resident Hero and composer nodes when the first Workspace session appears",
+          "error_kind": "selector-or-brand-expectation"
+        },
+        {
+          "file": "apps/web/tests/startup-auto-selection.e2e.ts",
+          "case": "web e2e: startup auto-selection keeps the hero and composer visible while the opening follow snapshot is pending",
+          "error_kind": "selector-or-brand-expectation"
+        },
+        {
+          "file": "apps/web/tests/submission-echo.e2e.ts",
+          "case": "paints the submission echo on the send keystroke and swaps it for the durable node",
+          "error_kind": "unmatched-provider-requests"
+        },
+        {
+          "file": "apps/web/tests/todo-row.expected.e2e.ts",
+          "case": "assembled todo surfaces renders the parallel plan as a row summary, a separate active count, and the dock plan strip",
+          "error_kind": "unmatched-provider-requests"
+        },
+        {
+          "file": "apps/web/tests/trajectory-image-display.expected.e2e.ts",
+          "case": "renders durable record images in the Trajectory details panel from the shared cache",
+          "error_kind": "unmatched-provider-requests"
+        }
+      ],
+      "passed_files": 107,
+      "skipped_files": 1
+    },
+    "baseline-all": {
+      "success": false,
+      "cases": {
+        "numTotalTests": 446,
+        "numPassedTests": 430,
+        "numFailedTests": 1,
+        "numPendingTests": 15
+      },
+      "files": 122,
+      "failed_files": 1,
+      "json_sha256": "d9001afe8835b66564b2aa6268fa978ce2c01cb164d6c7fafbada71b97c374e7",
+      "log_sha256": "c6325b8d4fc0ba0fdbf140d9444ebcbeef41599d604af0f1144eea686bf3e6c6",
+      "failures": [
+        {
+          "file": "apps/web/tests/queue-actions.e2e.ts",
+          "case": "web e2e: queue row actions edits and removes exact occurrences and preserves Queue across stop",
+          "error_kind": "snapshot-mismatch"
+        }
+      ],
+      "passed_files": 120,
+      "skipped_files": 1
+    },
+    "baseline-focused": {
+      "success": true,
+      "cases": {
+        "numTotalTests": 18,
+        "numPassedTests": 18,
+        "numFailedTests": 0,
+        "numPendingTests": 0
+      },
+      "files": 10,
+      "failed_files": 0,
+      "json_sha256": "01b0f1582dfebaf43907b242ca2960404e1b6ae61ba847cd21bd3e01f66fc211",
+      "log_sha256": "cd07164fc7e6320d5a73068f49af3b7fd3154a054c18a144c7fb397cce91fff3",
+      "passed_files": 10,
+      "skipped_files": 0
+    },
+    "fork-focused": {
+      "success": false,
+      "cases": {
+        "numTotalTests": 18,
+        "numPassedTests": 3,
+        "numFailedTests": 15,
+        "numPendingTests": 0
+      },
+      "files": 10,
+      "failed_files": 9,
+      "json_sha256": "3f9a2f0bff92e9565090af16a189d77b98f3af67048fa00f4da24376c01812e9",
+      "log_sha256": "e573a4630097adedeb440d787cc337b778f8c51b610b4da334c9d291832fd1ef",
+      "passed_files": 1,
+      "skipped_files": 0
+    },
+    "counterfactual": {
+      "success": false,
+      "cases": {
+        "numTotalTests": 5,
+        "numPassedTests": 0,
+        "numFailedTests": 5,
+        "numPendingTests": 0
+      },
+      "files": 2,
+      "failed_files": 2,
+      "json_sha256": "bc7be48a5a38a170331c6004023dffe23032caa27de34eb90c94fae61adb278d",
+      "log_sha256": "86ab663ac503f44b79e03f3e6229a52ca0dc1aff5d17ffc399e2dbd96a556f1b",
+      "passed_files": 0,
+      "skipped_files": 0
+    },
+    "brand-green": {
+      "success": true,
+      "cases": {
+        "numTotalTests": 6,
+        "numPassedTests": 6,
+        "numFailedTests": 0,
+        "numPendingTests": 0
+      },
+      "files": 3,
+      "failed_files": 0,
+      "json_sha256": "2b430d9c3972fd10c45c337f3353455161b0ed77fce46ea87531d8d5ab360853",
+      "log_sha256": "1a4b96df98a6bb8cb60e1fc3a4851ab214a749c6dd8cde1a277c5e8739afda18",
+      "passed_files": 3,
+      "skipped_files": 0
+    },
+    "preview-green": {
+      "success": true,
+      "cases": {
+        "numTotalTests": 1,
+        "numPassedTests": 1,
+        "numFailedTests": 0,
+        "numPendingTests": 0
+      },
+      "files": 1,
+      "failed_files": 0,
+      "json_sha256": "a03536ee5de1130c57a4af42f67901a2fcb1598a32047c6e7eeea9a9442ac305",
+      "log_sha256": "2945392de4f27478313a9cd70158adf4aea3e0f7087efb4155995082091c9674",
+      "passed_files": 1,
+      "skipped_files": 0
+    },
+    "presets-before": {
+      "success": true,
+      "cases": {
+        "numTotalTests": 15,
+        "numPassedTests": 15,
+        "numFailedTests": 0,
+        "numPendingTests": 0
+      },
+      "files": 2,
+      "failed_files": 0,
+      "json_sha256": "e7d6ed3159d691662da07293ee319d2bac2b951de90718307cf06400cdf2fa55",
+      "log_sha256": "750df44d2508df139f27912799c8422e21d684925f517e58edc99108b788bd8b",
+      "passed_files": 2,
+      "skipped_files": 0
+    },
+    "baseline-queue-rerun": {
+      "success": true,
+      "cases": {
+        "numTotalTests": 3,
+        "numPassedTests": 3,
+        "numFailedTests": 0,
+        "numPendingTests": 0
+      },
+      "files": 1,
+      "failed_files": 0,
+      "json_sha256": "9f325e6f2187ec9431b771f192e75fd06e5e6b53e8659e2f20995461cf3c9298",
+      "log_sha256": "f2a4d427c1beb34447cdadda9d3811afbb8909efdb01647fe60d61fd7b02d738",
+      "passed_files": 1,
+      "skipped_files": 0
+    },
+    "manifest-mutation": {
+      "success": false,
+      "cases": {
+        "numTotalTests": 2,
+        "numPassedTests": 1,
+        "numFailedTests": 1,
+        "numPendingTests": 0
+      },
+      "files": 1,
+      "failed_files": 1,
+      "json_sha256": "cf206737bc2a6a2f5457d73531fb0ea81b0987ede7b183c7c7fc903d8174a48a",
+      "log_sha256": "48022481e901a93467a76d45be8f98ae76f77255f8d5a4a0be02f2aece665f1d",
+      "passed_files": 0,
+      "skipped_files": 0
+    },
+    "models-mutation": {
+      "success": false,
+      "cases": {
+        "numTotalTests": 3,
+        "numPassedTests": 0,
+        "numFailedTests": 1,
+        "numPendingTests": 2
+      },
+      "files": 1,
+      "failed_files": 1,
+      "json_sha256": "ccbbc82a8b36153387e90e31e8c2e5bf6d2eb9e9c92b82824867e25c2aad85e5",
+      "log_sha256": "7dfa149574568d3330a875e973e6d009f6846c646b0a05e0070cd0791922119d",
+      "passed_files": 0,
+      "skipped_files": 0
+    }
+  },
+  "gui": {
+    "command": "pnpm run test:gui --maxWorkers=2",
+    "exit_code": 0,
+    "files_passed": 444,
+    "cases_passed": 6326,
+    "cases_skipped": 1,
+    "log_sha256": "27875b139110486f2017003d5e206e7519a66a3baf0bacbbbd43b2fb7e7c89e8"
+  },
+  "fork_after": {
+    "status": "complete",
+    "success": true,
+    "exit_code": 0,
+    "cases": {
+      "numTotalTests": 446,
+      "numPassedTests": 431,
+      "numFailedTests": 0,
+      "numPendingTests": 15
+    },
+    "files": 121,
+    "passed_files": 120,
+    "failed_files": 0,
+    "duration_seconds": 604.89,
+    "json_sha256": "00d01308069606a01adde8f1a6112ee2fcba81760fbe7706012ac501f2e8a29a",
+    "log_sha256": "7c03598c4f539bbd68db6a4fdc7c268d117af53f807e99aaa65a5ddf099c519a",
+    "source_commit": "22407d2aa4a9fb436861a6158ec4d15d41e09397",
+    "source_tree": "abc0bfe1052e2653cb5165fca9736076cf749d0b",
+    "build_metadata": "built at 0e52dcc with dirty working tree; identical staged tree saved unchanged to this commit after tests",
+    "skipped_files": 1
+  },
+  "delivery": {
+    "fork_commit": "22407d2aa4a9fb436861a6158ec4d15d41e09397",
+    "registered_paths": 137,
+    "registered_entries": 34,
+    "present_files": 129,
+    "deleted_paths": 8,
+    "rebuild_directory": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/rebuild-verified",
+    "checks": {
+      "g2-check": {
+        "command": [
+          "python3",
+          "工具/g2_改造点.py",
+          "--check"
+        ],
+        "exit_code": 0,
+        "log_sha256": "f8a256e733da5004c3c7a1e8844ad77c27b767dfed75078a398990eb33780fc7"
+      },
+      "g2-verify": {
+        "command": [
+          "python3",
+          "工具/g2_改造点.py",
+          "--verify-manifest"
+        ],
+        "exit_code": 0,
+        "log_sha256": "5523b85c88eba09bde815ce80d29f0619a19ef41566ed4abac83df537ec54864"
+      },
+      "g2-fingerprint-tests": {
+        "command": [
+          "python3",
+          "工具/g2_指纹自测.py"
+        ],
+        "exit_code": 0,
+        "log_sha256": "13deaa85bcf26a5aec3c9c33c5601923f51e908d59cd7ddac3e51a39fcc8cabd"
+      },
+      "fork-verify": {
+        "command": [
+          "python3",
+          "工具/fork.py",
+          "--verify",
+          "--into",
+          "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/rebuild-verified"
+        ],
+        "exit_code": 0,
+        "log_sha256": "1c23425cd09622d294b58c32a8fb4c59b068b027231d3ec8ce07c14f22901a61"
+      }
+    },
+    "fingerprint_regression": {
+      "before": "7 cases: absent registered deletion failed, deleted path restored as directory raised error",
+      "after": "7 passed; rejects revived regular file, directory or dangling link, missing/tampered live file, changed HEAD"
+    }
+  }
+}

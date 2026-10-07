@@ -255,7 +255,8 @@ def verify_fingerprint() -> int:
     if not os.path.exists(FINGERPRINT):
         print('%s✗ 指纹文件不存在，先跑 --manifest%s' % (C_BAD, C_OFF))
         return 1
-    doc = json.load(open(FINGERPRINT, encoding='utf-8'))
+    with open(FINGERPRINT, encoding='utf-8') as f:
+        doc = json.load(f)
 
     head_now = git('rev-parse', 'HEAD').strip()
     bad = []
@@ -264,6 +265,11 @@ def verify_fingerprint() -> int:
         bad.append(('fork HEAD 变了', doc['fork_head'], head_now))
 
     for path, entry in sorted(doc['files'].items()):
+        if entry.get('status') == 'D':
+            # 删除记录验证路径确实不在；断链也算残留，不能当成已删除。
+            if os.path.lexists(os.path.join(DSH, path)):
+                bad.append((path, '已删除', '路径仍存在'))
+            continue
         now = sha256_of(None, path)
         if not now:
             bad.append((path, entry['sha256'][:12], '文件不存在'))
@@ -277,7 +283,7 @@ def verify_fingerprint() -> int:
         print('  %s→ 若是有意改动，重新生成指纹并登记进改造点清单%s' % (C_DIM, C_OFF))
         return 1
 
-    print('%s✓ 指纹相符：%d 个文件与登记一致（fork HEAD %s）%s'
+    print('%s✓ 指纹相符：%d 个路径与登记一致（fork HEAD %s）%s'
           % (C_OK, len(doc['files']), doc['fork_head'][:8], C_OFF))
     return 0
 
