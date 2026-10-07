@@ -1106,6 +1106,19 @@ describe('headless recorded-session snapshots', () => {
           },
           inspect: async (cwd) => {
             actualLogs = await persistedSessions(cwd)
+            if (scenario.name === 'kvvi-record-read') {
+              const log = actualLogs[0]?.content ?? ''
+              const result = records(log).find(event => event.type === 'tool/result')
+              const payload = result?.data as JsonObject | undefined
+              const message = payload?.message as { content?: { isError?: boolean; content?: unknown }[] } | undefined
+              expect(message?.content?.[0]?.isError).toBe(false)
+              expect(message?.content?.[0]?.content).toEqual([{ type: 'text', text: JSON.stringify({
+                recordId: 'record-one', recordNo: 'R-20261006-000001', state: 'not_followed', rowVersion: 7,
+                data: { customer_name: '测试客户', follow_status: '未跟进' },
+                fieldVisibility: { customer_name: true, follow_status: true },
+              }) }])
+              expect(records(log).filter(event => event.type === 'tool/call')).toHaveLength(1)
+            }
             if (mcpDemo !== undefined) {
               const log = actualLogs[0]!.content
               expect(log).toContain('mcp__demo__ping')

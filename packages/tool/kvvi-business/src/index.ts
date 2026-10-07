@@ -19,7 +19,7 @@
  *
  * ── The registered set, and the ones deliberately missing ───────────────────
  *
- * Registered: `record_schema`, `record_list`, `record_get`, `record_create`,
+ * Registered: `system_list`, `record_schema`, `record_list`, `record_get`, `record_create`,
  * `record_update`, `workflow_available_actions`, `workflow_act`.
  *
  * `record_schema` is the one that answers a question about the *system* rather
@@ -193,6 +193,37 @@ export function apply(ctx: Context, config: Config): void {
   }
 
   ctx.tools.register(defineTool({
+    name: 'system_list',
+    description: 'List this company\'s published system names and their exact codes (assetId). '
+      + 'Use this to resolve a business name when the system code is unknown; do not guess codes. '
+      + 'This is the company catalogue, not a grant to read or write records. Each subsequent '
+      + 'record or field request still checks the employee\'s permissions.',
+    parameters: {},
+    output: {
+      schema: {
+        type: 'object', additionalProperties: false,
+        properties: {
+          items: { type: 'array', required: true, items: {
+            type: 'object', additionalProperties: false,
+            properties: {
+              assetId: { type: 'string', required: true },
+              name: { type: 'string', required: true },
+            },
+          } },
+        },
+      },
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+    },
+    execute: async () => {
+      const catalogue = await call(async c => request<{
+        items: { assetId: string; name: string }[]
+      }>(c, 'GET', '/systems'))
+      return { items: catalogue.items.map(({ assetId, name }) => ({ assetId, name })) }
+    },
+    presentCall: () => ({ card: 'generic', title: '查找业务系统', kind: 'read' }),
+  }))
+
+  ctx.tools.register(defineTool({
     name: 'record_schema',
     description: 'List the fields one published KVVI system declares — the field codes you must use '
       + 'as the keys of `data` in `record_create` and `record_update`. Each entry carries the label, '
@@ -241,21 +272,11 @@ export function apply(ctx: Context, config: Config): void {
           hiddenFieldCount: { type: 'integer', required: true },
         },
       },
-      render: (_args, value) => {
-        const names = value.fields
-          .map(field => (field.required === true ? `${field.field_code} (required)` : field.field_code))
-        const lines = [`${String(value.fields.length)} field(s): ${names.join(', ')}.`]
-        // 有字段被挡掉时说出来。不说的话，「这个角色看不见任何字段」与
-        // 「这个系统没有字段」对模型是同一件事 —— 而前者要去找管理员，后者不用。
-        if (value.hiddenFieldCount > 0) {
-          lines.push(`${String(value.hiddenFieldCount)} further field(s) are not visible to this session.`)
-        }
-        return [{ type: 'text', text: lines.join(' ') }]
-      },
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
     execute: args => call(async c => request<FieldCatalogue>(c, 'GET',
       `/systems/${encodeURIComponent(args.system)}/fields`)),
-    presentCall: args => ({ card: 'generic', title: `Fields of ${args.system}`, kind: 'read' }),
+    presentCall: () => ({ card: 'generic', title: '查看字段', kind: 'read' }),
   }))
 
   ctx.tools.register(defineTool({
@@ -263,7 +284,7 @@ export function apply(ctx: Context, config: Config): void {
     description: 'List the records of one published KVVI system that this session may read. '
       + 'Rows and fields are already filtered by the platform: a field you cannot see is '
       + 'absent from the response rather than empty, and an out-of-scope row is not returned. '
-      + 'Call this before answering any question about existing business data.',
+      + 'Use this for list requests or when the record reference is unknown. If a record id or number is known, call record_get directly instead.',
     parameters: {
       system: {
         type: 'string', required: true,
@@ -293,14 +314,11 @@ export function apply(ctx: Context, config: Config): void {
           fieldVisibility: { type: 'object', required: true, additionalProperties: true },
         },
       },
-      render: (_args, value) => [{
-        type: 'text',
-        text: `${String(value.items.length)} record(s) visible to this session.`,
-      }],
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
     execute: args => call(async c => request<RecordPage>(c, 'GET',
       `/systems/${encodeURIComponent(args.system)}/records`)),
-    presentCall: args => ({ card: 'generic', title: `List records of ${args.system}`, kind: 'read' }),
+    presentCall: () => ({ card: 'generic', title: '查看记录列表', kind: 'read' }),
   }))
 
   ctx.tools.register(defineTool({
@@ -324,14 +342,11 @@ export function apply(ctx: Context, config: Config): void {
           fieldVisibility: { type: 'object', required: true, additionalProperties: true },
         },
       },
-      render: (_args, value) => [{
-        type: 'text',
-        text: `Record ${value.recordId} (state ${value.state ?? '?'}).`,
-      }],
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
     execute: args => call(async c => request<RecordView>(c, 'GET',
       `/systems/${encodeURIComponent(args.system)}/records/${encodeURIComponent(args.id)}`)),
-    presentCall: args => ({ card: 'generic', title: `Read record ${args.id}`, kind: 'read' }),
+    presentCall: () => ({ card: 'generic', title: '查看记录', kind: 'read' }),
   }))
 
   ctx.tools.register(defineTool({
@@ -357,17 +372,14 @@ export function apply(ctx: Context, config: Config): void {
           rowVersion: { type: 'integer', required: true },
         },
       },
-      render: (_args, value) => [{
-        type: 'text',
-        text: `Created record ${value.recordNo ?? value.recordId}.`,
-      }],
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
     execute: async (args) => {
       assertNoIdentityFields(args.data)
       return await call(async c => request<{ recordId: string; recordNo?: string; rowVersion: number }>(
         c, 'POST', `/systems/${encodeURIComponent(args.system)}/records`, { data: args.data }))
     },
-    presentCall: args => ({ card: 'generic', title: `Create a record in ${args.system}`, kind: 'edit' }),
+    presentCall: () => ({ card: 'generic', title: '新增记录', kind: 'edit' }),
   }))
 
   ctx.tools.register(defineTool({
@@ -397,10 +409,7 @@ export function apply(ctx: Context, config: Config): void {
           rowVersion: { type: 'integer', required: true },
         },
       },
-      render: (_args, value) => [{
-        type: 'text',
-        text: `Updated ${value.recordId} to version ${String(value.rowVersion)}.`,
-      }],
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
     execute: async (args) => {
       assertNoIdentityFields(args.data)
@@ -409,7 +418,7 @@ export function apply(ctx: Context, config: Config): void {
         `/systems/${encodeURIComponent(args.system)}/records/${encodeURIComponent(args.id)}`,
         { data: args.data, rowVersion: args.rowVersion }))
     },
-    presentCall: args => ({ card: 'generic', title: `Update record ${args.id}`, kind: 'edit' }),
+    presentCall: () => ({ card: 'generic', title: '修改记录', kind: 'edit' }),
   }))
 
   ctx.tools.register(defineTool({
@@ -441,16 +450,11 @@ export function apply(ctx: Context, config: Config): void {
           },
         },
       },
-      render: (_args, value) => [{
-        type: 'text',
-        text: value.actions.length === 0
-          ? `No legal workflow action from state ${value.state}.`
-          : `Available: ${value.actions.map(a => a.action).join(', ')}.`,
-      }],
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
     execute: args => call(async c => request<ActionList>(c, 'GET',
       `/systems/${encodeURIComponent(args.system)}/records/${encodeURIComponent(args.id)}/actions`)),
-    presentCall: args => ({ card: 'generic', title: `Workflow actions on ${args.id}`, kind: 'read' }),
+    presentCall: () => ({ card: 'generic', title: '查看可办理的操作', kind: 'read' }),
   }))
 
   ctx.tools.register(defineTool({
@@ -482,9 +486,7 @@ export function apply(ctx: Context, config: Config): void {
           rowVersion: { type: 'integer', required: true },
         },
       },
-      render: (_args, value) => [{
-        type: 'text', text: `Moved from ${value.from} to ${value.state}.`,
-      }],
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
     execute: args => call(async c => request<{
       recordId: string
@@ -494,6 +496,6 @@ export function apply(ctx: Context, config: Config): void {
     }>(c, 'POST',
       `/systems/${encodeURIComponent(args.system)}/records/${encodeURIComponent(args.id)}/transitions`,
       { action: args.action, rowVersion: args.rowVersion })),
-    presentCall: args => ({ card: 'generic', title: `${args.action} on ${args.id}`, kind: 'edit' }),
+    presentCall: () => ({ card: 'generic', title: '办理业务操作', kind: 'edit' }),
   }))
 }

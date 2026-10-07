@@ -4,11 +4,13 @@ Model-facing business tools over a deployed KVVI company's platform API.
 
 ## Model Experience
 
-Seven tools reach the model in the `kvvi-worker` preset. Each is one HTTP call into the customer's own platform service under the signed-in employee's identity, so the tool result is exactly what that employee would see in the panel — the same row scope, the same field visibility, the same refusals. `record_schema` reads the structure rather than the data: the field codes a payload must use, which of them are required, and what an enum accepts.
+Eight tools reach the model in the `kvvi-worker` preset. Each is one HTTP call into the customer's own platform service under the signed-in employee's identity, so the tool result is exactly what that employee would see in the panel — the same row scope, the same field visibility, the same refusals. `record_schema` reads the structure rather than the data: the field codes a payload must use, which of them are required, and what an enum accepts.
 
 The tools are the only thing this package contributes. They add no prompt section, no session event, and no system instruction; the persona that explains what the mode is lives in the preset. Descriptions are written for the model's decision, not for a human reader: they say which code means "re-read and decide" and which means "this is a rule, not a missing permission".
 
-Token cost is one tool schema per tool, seven schemas total, with flat argument objects. Nothing here caches or re-sends business data between calls, so no tool result affects the KV cache beyond the turn that produced it.
+Results render the complete schema-validated platform value as JSON into model-visible text, including visible record values, field labels, enum options, workflow destinations and row versions. The platform remains responsible for filtering rows and fields. `system_list` projects only names and codes from the company catalogue, discarding publication metadata. The employee persona presents business results and keeps internal metadata out of ordinary replies.
+
+Token cost is one tool schema per tool, eight schemas total, with flat argument objects. No package-level cache is added. Rendered results remain in normal conversation history and contribute to subsequent context and KV-cache usage; record_list may return up to 50 rows. Prefer record_get when a record reference is known.
 
 ## Configuration
 
@@ -23,6 +25,7 @@ Neither has a working default. An empty `contextSecret` throws `KVVI_RUNTIME_CON
 
 | Tool | Writes | Notes |
 |---|---|---|
+| `system_list` | no | Company catalogue of published system names and exact codes. It does not grant access to records. |
 | `record_schema` | no | The system's declared fields — the codes `data` accepts. Read it before writing; an unlisted code is `KVVI_FIELD_NOT_DECLARED`. Fields this session may not see are absent, and `hiddenFieldCount` says how many. |
 | `record_list` | no | Rows and fields already filtered by the platform. |
 | `record_get` | no | Returns the `rowVersion` the two writes need. |

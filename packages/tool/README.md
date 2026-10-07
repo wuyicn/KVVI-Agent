@@ -4,7 +4,7 @@
 
 The `tool/` group exposes **one deployed company's business data** to a model as model-facing tools. It is not a generic capability family like [`fs/`](../fs/README.md) or [`web/`](../web/README.md): its tools have no meaning outside a KVVI deployment, because every one of them is a call into that company's platform service under that employee's identity.
 
-The single package here is [`kvvi-business/`](kvvi-business/README.md). It holds a narrow contract client and seven tools; the platform endpoints it calls, the identity rules it obeys, and the tools it deliberately does **not** register are documented in its own README rather than repeated here.
+The single package here is [`kvvi-business/`](kvvi-business/README.md). It holds a narrow contract client and eight tools; the platform endpoints it calls, the identity rules it obeys, and the tools it deliberately does **not** register are documented in its own README rather than repeated here.
 
 ## Table of Contents
 
