@@ -8,7 +8,7 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import SystemPrompt, { renderContextSections } from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import * as Business from '../src/index.ts'
 import { contextHeaders } from '../src/client.ts'
@@ -156,7 +156,7 @@ describe('employee tools through real Loader and signed platform transport', () 
     const loaded = await boot()
     const input = { agent: { session: { header: { cwd: '/employee/客户登记系统' } } } } as unknown as Parameters<typeof loaded.systemPrompt.assemble>[0]
     const assembly = await loaded.systemPrompt.assemble(input)
-    const text = JSON.stringify(assembly.contexts)
+    const text = JSON.stringify(renderContextSections(assembly))
     expect(text).toContain('客户登记系统')
     expect(text).toContain('customer')
     expect(text).toContain('跟进状态')
@@ -168,8 +168,23 @@ describe('employee tools through real Loader and signed platform transport', () 
     requests.length = 0
     const entry = [...loaded.loader.entries()].find(item => item.options.name === '@deepseek-ai/dsh-tool-kvvi-business')
     await entry?.fiber?.dispose()
-    expect(JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)).not.toContain('客户登记系统')
+    expect(JSON.stringify(renderContextSections(await loaded.systemPrompt.assemble(input)))).not.toContain('客户登记系统')
     expect(requests).toEqual([])
+  })
+
+  it('preserves literal template markers in system, field and option names', async () => {
+    routeResponse = path => path.endsWith('/systems')
+      ? { items: [{ assetId: 'customer', name: '客户{{unknown}}' }] }
+      : { ...FIELDS, fields: [{ ...FIELDS.fields[0], label: '字段{{customer_name}}',
+        options: [{ code: 'one', label: '值{{registered}}' }] }] }
+    const loaded = await boot()
+    loaded.systemPrompt.variable('registered', () => 'unwanted-substitution')
+    const input = { agent: { session: { header: { cwd: '/employee/客户{{unknown}}' } } } } as unknown as Parameters<typeof loaded.systemPrompt.assemble>[0]
+    const text = JSON.stringify(renderContextSections(await loaded.systemPrompt.assemble(input)))
+    expect(text).toContain('客户{{unknown}}')
+    expect(text).toContain('字段{{customer_name}}')
+    expect(text).toContain('值{{registered}}')
+    expect(text).not.toContain('unwanted-substitution')
   })
 
   it('refreshes published rules and reports a later refusal without reusing stale rules', async () => {
@@ -177,13 +192,13 @@ describe('employee tools through real Loader and signed platform transport', () 
     response = FIELDS
     const loaded = await boot()
     const input = { agent: { session: { header: { cwd: '/employee/客户登记系统' } } } } as unknown as Parameters<typeof loaded.systemPrompt.assemble>[0]
-    expect(JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)).toContain('跟进状态')
+    expect(JSON.stringify(renderContextSections(await loaded.systemPrompt.assemble(input)))).toContain('跟进状态')
     response = { ...FIELDS, fields: [{ field_code: 'nickname', label: '客户简称', required: false, nullable: true }] }
-    const updated = JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)
+    const updated = JSON.stringify(renderContextSections(await loaded.systemPrompt.assemble(input)))
     expect(updated).toContain('客户简称')
     expect(updated).not.toContain('跟进状态')
     status = 403; response = { error: 'KVVI_NOT_ALLOWED' }; routeResponse = undefined
-    const denied = JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)
+    const denied = JSON.stringify(renderContextSections(await loaded.systemPrompt.assemble(input)))
     expect(denied).toContain('KVVI_NOT_ALLOWED')
     expect(denied).not.toContain('客户简称')
   })
@@ -194,7 +209,7 @@ describe('employee tools through real Loader and signed platform transport', () 
       : { ...FIELDS, fields: [{ field_code: 'bad', label: '错误规则', required: 'yes', nullable: false }] }
     const loaded = await boot()
     const input = { agent: { session: { header: { cwd: '/employee/客户登记系统' } } } } as unknown as Parameters<typeof loaded.systemPrompt.assemble>[0]
-    const text = JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)
+    const text = JSON.stringify(renderContextSections(await loaded.systemPrompt.assemble(input)))
     expect(text).toContain('暂时不可用')
     expect(text).not.toContain('错误规则')
   })
@@ -204,7 +219,7 @@ describe('employee tools through real Loader and signed platform transport', () 
     const loaded = await boot()
     const input = { agent: { session: { header: { cwd: '/employee/客户登记系统' } } } } as unknown as Parameters<typeof loaded.systemPrompt.assemble>[0]
     const start = performance.now()
-    expect(JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)).toContain('暂时不可用')
+    expect(JSON.stringify(renderContextSections(await loaded.systemPrompt.assemble(input)))).toContain('暂时不可用')
     expect(performance.now() - start).toBeLessThan(3500)
     expect(requests).toHaveLength(1)
   })
@@ -227,9 +242,9 @@ describe('employee tools through real Loader and signed platform transport', () 
     await mkdir(cwd)
     await writeFile(join(cwd, '.kvvi-system.json'), JSON.stringify({ assetId: 'customer' }))
     const input = { agent: { session: { header: { cwd } } } } as unknown as Parameters<typeof loaded.systemPrompt.assemble>[0]
-    expect(JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)).toContain('跟进状态')
+    expect(JSON.stringify(renderContextSections(await loaded.systemPrompt.assemble(input)))).toContain('跟进状态')
     response = { items: [{ assetId: 'other', name: 'other' }] }
-    expect(JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)).not.toContain('跟进状态')
+    expect(JSON.stringify(renderContextSections(await loaded.systemPrompt.assemble(input)))).not.toContain('跟进状态')
   })
 
   it('does not guess an unknown or ambiguous workspace system', async () => {
@@ -238,9 +253,9 @@ describe('employee tools through real Loader and signed platform transport', () 
     const assemble = (cwd: string) => loaded.systemPrompt.assemble(
       { agent: { session: { header: { cwd } } } } as unknown as Parameters<typeof loaded.systemPrompt.assemble>[0],
     )
-    expect(JSON.stringify((await assemble('/employee/客户登记系统')).contexts)).not.toContain('field_code')
+    expect(JSON.stringify(renderContextSections(await assemble('/employee/客户登记系统')))).not.toContain('field_code')
     response = { items: [{ assetId: 'one', name: '另外的系统' }] }
-    expect(JSON.stringify((await assemble('/employee/unknown')).contexts)).not.toContain('field_code')
+    expect(JSON.stringify(renderContextSections(await assemble('/employee/unknown')))).not.toContain('field_code')
     expect(requests.map(req => req.url)).toEqual(['/api/v1/systems', '/api/v1/systems'])
     requests.length = 0
     await loaded.systemPrompt.assemble()
