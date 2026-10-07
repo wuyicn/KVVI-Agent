@@ -1,0 +1,22 @@
+{
+  "observedConversationTitle": "帮我提交客户信息",
+  "observedQuestionTime": "2026-10-07 12:04",
+  "displayedDuration": "1分50秒",
+  "turnMillis": 110011,
+  "toolCalls": [
+    {
+      "tool": "system_list",
+      "milliseconds": 31
+    },
+    {
+      "tool": "record_schema",
+      "milliseconds": 30
+    }
+  ],
+  "failedStreamNoContentMillis": 100078,
+  "failureCode": "TRANSPORT",
+  "modelRetryCount": 1,
+  "retryDelayMillis": 538,
+  "businessWrites": 0,
+  "causeBoundary": "Model response transport interruption proven; underlying supplier gateway / network cause is not present in durable error detail."
+}

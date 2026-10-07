@@ -1,0 +1,82 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.8 /private/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/fork-fix
+
+ ❯ |thread-safe| packages/llm/llm-deepseek/tests/messages/adapter.spec.ts (27 tests | 1 failed | 25 skipped) 584ms
+     × times out missing model progress even while provider heartbeats keep the connection alive 421ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |thread-safe| packages/llm/llm-deepseek/tests/messages/adapter.spec.ts > direct Messages HTTP > times out missing model progress even while provider heartbeats keep the connection alive
+AssertionError: promise resolved "[ { type: 'block-start', …(2) }, …(4) ]" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+[
+  {
+    "blockType": "text",
+    "index": 0,
+    "type": "block-start",
+  },
+  {
+    "index": 0,
+    "text": "Hello 世界",
+    "type": "text-delta",
+  },
+  {
+    "block": {
+      "text": "Hello 世界",
+      "type": "text",
+    },
+    "index": 0,
+    "type": "block-end",
+  },
+  {
+    "type": "usage",
+    "usage": {
+      "inputTokens": 12,
+      "outputTokens": 5,
+      "totalTokens": 17,
+    },
+  },
+  {
+    "reason": {
+      "kind": "stop",
+    },
+    "replayState": {
+      "blocks": [
+        {
+          "type": "text",
+        },
+      ],
+      "response": {
+        "kind": "deepseek-messages",
+        "model": "deepseek-v4-flash",
+        "version": 1,
+      },
+    },
+    "type": "finish",
+  },
+]
+
+ ❯ packages/llm/llm-deepseek/tests/messages/adapter.spec.ts:64:129
+     62|       response.on('close', () => { clearTimeout(finish) })
+     63|     })
+     64|     await expect(chunks(adapter({ baseURL: http.url, streamIdleTimeout…
+       |                                                                                                                                 ^
+     65|       .rejects.toMatchObject({ code: 'TIMEOUT' })
+     66|     expect(http.requests).toHaveLength(1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed | 25 skipped (27)
+   Start at  12:26:50
+   Duration  1.23s (transform 452ms, setup 111ms, import 466ms, tests 584ms, environment 0ms)

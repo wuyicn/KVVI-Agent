@@ -1042,14 +1042,18 @@ describe('headless recorded-session snapshots', () => {
       let initialWorkspace: WorkspaceSnapshotEntry[] | undefined
       let finalWorkspace: WorkspaceSnapshotEntry[] | undefined
       const spillRoot = await mkdtemp(join(tmpdir(), 'acp-snap-spill-'))
+      const kvviCwd = join(spillRoot, '客户登记系统')
+      if (scenario.name === 'kvvi-record-read') await mkdir(kvviCwd)
       const locatorRoot = snapshotSpillRoot(join(scenario.dir, fixtureFiles[0] as string))
       const mcpDemo = scenario.name === 'plugin-manager-mcp' ? await startHttpMcpFixture() : undefined
       let result: Awaited<ReturnType<typeof runLoaderSmoke>>
       try {
         result = await runLoaderSmoke({
           label: `${scenario.name} headless snapshot`,
-          tempDirPrefix: 'dsh-log-snap-',
-          ...(scenario.manifest.workspace?.parent === 'outside-temp' ? { tempDirParent: outsideTempWorkspaceParent() } : {}),
+          ...(scenario.name === 'kvvi-record-read' ? { cwd: kvviCwd } : {
+            tempDirPrefix: 'dsh-log-snap-',
+            ...(scenario.manifest.workspace?.parent === 'outside-temp' ? { tempDirParent: outsideTempWorkspaceParent() } : {}),
+          }),
           binScript: dshBin,
           configPath: join(baseComposition.dir, 'cordis.yml'),
           binArgs: [
@@ -1118,6 +1122,11 @@ describe('headless recorded-session snapshots', () => {
                 fieldVisibility: { customer_name: 'VISIBLE', follow_status: 'READONLY' },
               }) }])
               expect(records(log).filter(event => event.type === 'tool/call')).toHaveLength(1)
+              const background = records(log).find(event => event.type === 'user/message'
+                && JSON.stringify(event.data).includes('kvvi:current-system'))
+              expect(JSON.stringify(background)).toContain('客户名称')
+              expect(JSON.stringify(background)).toContain('not_followed')
+              expect(JSON.stringify(background)).not.toContain('测试客户')
             }
             if (mcpDemo !== undefined) {
               const log = actualLogs[0]!.content

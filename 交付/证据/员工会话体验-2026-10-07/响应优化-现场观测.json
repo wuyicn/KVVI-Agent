@@ -1,0 +1,32 @@
+{
+  "scope": "staff-view local readonly test",
+  "fork": "af2d16d",
+  "observations": [
+    {
+      "time": "2026-10-07 12:40",
+      "case": "field rules before literal-label fix",
+      "display_seconds": 2,
+      "tool_calls": 0
+    },
+    {
+      "time": "2026-10-07 12:41",
+      "case": "registration missing information",
+      "display_seconds": 2,
+      "tool_calls": 0
+    },
+    {
+      "time": "2026-10-07 12:42",
+      "case": "record read",
+      "display_seconds": 4,
+      "tool_calls": 1
+    },
+    {
+      "time": "2026-10-07 12:46",
+      "case": "final field rules, no extra action invitation",
+      "display_seconds": 2,
+      "tool_calls": 0
+    }
+  ],
+  "writes": 0,
+  "note": "Observed times, not a latency guarantee; no private record values saved."
+}

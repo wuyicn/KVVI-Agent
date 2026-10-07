@@ -1,0 +1,31 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.8 /private/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/fork-fix
+
+ ❯ |thread-safe| packages/tool/kvvi-business/tests/model-output.spec.ts (23 tests | 1 failed | 22 skipped) 38ms
+     × preserves literal template markers in system, field and option names 37ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |thread-safe| packages/tool/kvvi-business/tests/model-output.spec.ts > employee tools through real Loader and signed platform transport > preserves literal template markers in system, field and option names
+Error: unknown prompt variable "{{unknown}}" in context "kvvi:current-system"; registered variables: registered
+ ❯ interpolate packages/core/system-prompt/src/index.ts:353:13
+    351|     if (!Object.hasOwn(variables, name)) {
+    352|       const known = Object.keys(variables)
+    353|       throw new Error(`unknown prompt variable "{{${name}}}" in ${kind…
+       |             ^
+    354|     }
+    355|     const value = variables[name]
+ ❯ packages/core/system-prompt/src/index.ts:321:50
+ ❯ renderContextSections packages/core/system-prompt/src/index.ts:321:6
+ ❯ packages/tool/kvvi-business/tests/model-output.spec.ts:183:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 22 skipped (23)
+   Start at  12:42:12
+   Duration  471ms (transform 301ms, setup 118ms, import 243ms, tests 38ms, environment 0ms)

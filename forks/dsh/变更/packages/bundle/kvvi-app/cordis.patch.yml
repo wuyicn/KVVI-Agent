@@ -75,3 +75,16 @@
 - id: goal
   config:
     defaultMaxGoalRounds: 24
+
+# Employee-facing deployment: bound missing output without limiting a healthy
+# long stream. SSE keepalives do not reset the progress limit.
+- id: llm-deepseek
+  config:
+    streamProgressTimeoutMs: 15000
+    retryPolicy:
+      mode: normal
+      maxRetries: 1
+      backoff:
+        initialDelayMs: 500
+        maxDelayMs: 1000
+        jitterRatio: 0

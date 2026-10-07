@@ -109,6 +109,8 @@ export interface CallContext {
   readonly secret: string
   /** Injectable for tests; defaults to global `fetch`. */
   readonly fetchImpl?: typeof fetch
+  /** Cancellation/deadline owned by the requesting operation. */
+  readonly signal?: AbortSignal
 }
 
 /**
@@ -135,6 +137,7 @@ export async function request<T>(
     res = await doFetch(`${call.baseUrl}/api/v1${path}`, {
       method,
       headers,
+      ...(call.signal === undefined ? {} : { signal: call.signal }),
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     })
   } catch (error) {

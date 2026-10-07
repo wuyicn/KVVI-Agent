@@ -24,13 +24,22 @@ export async function apply(ctx) {
     requestListener(req, res) {
       const expected = contextHeaders(MODE, SECRET, Number(req.headers['x-kvvi-issued-at']))
       const signed = Object.entries(expected).every(([key, value]) => req.headers[key] === value)
-      const match = req.method === 'GET' && req.url === '/api/v1/systems/customer/records/R-20261006-000001'
-      res.writeHead(signed && match ? 200 : 403, { 'content-type': 'application/json' })
-      res.end(JSON.stringify(signed && match ? {
-        recordId: 'record-one', recordNo: 'R-20261006-000001', state: 'not_followed', rowVersion: 7,
-        data: { customer_name: '测试客户', follow_status: '未跟进' },
-        fieldVisibility: { customer_name: 'VISIBLE', follow_status: 'READONLY', secret_salary: 'HIDDEN' },
-      } : { error: 'KVVI_NOT_ALLOWED' }))
+      const values = {
+        '/api/v1/systems': { items: [{ assetId: 'customer', name: '客户登记系统' }] },
+        '/api/v1/systems/customer/fields': { assetId: 'customer', hiddenFieldCount: 0, fields: [
+          { field_code: 'customer_name', label: '客户名称', required: true, nullable: false },
+          { field_code: 'follow_status', label: '跟进状态', type: 'enum', required: true, nullable: false,
+            options: [{ code: 'not_followed', label: '未跟进' }] },
+        ] },
+        '/api/v1/systems/customer/records/R-20261006-000001': {
+          recordId: 'record-one', recordNo: 'R-20261006-000001', state: 'not_followed', rowVersion: 7,
+          data: { customer_name: '测试客户', follow_status: '未跟进' },
+          fieldVisibility: { customer_name: 'VISIBLE', follow_status: 'READONLY', secret_salary: 'HIDDEN' },
+        },
+      }
+      const value = signed && req.method === 'GET' ? values[req.url] : undefined
+      res.writeHead(value === undefined ? 403 : 200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify(value ?? { error: 'KVVI_NOT_ALLOWED' }))
     },
   })
   const preset = yaml.load(readFileSync(new URL('../../../packages/preset/agent-presets/presets/kvvi-worker/agent.cordis.yml', import.meta.url), 'utf8'), { schema: yaml.DEFAULT_SCHEMA.extend([new yaml.Type('tag:yaml.org,2002:js', { kind: 'scalar', construct: value => value })]) })

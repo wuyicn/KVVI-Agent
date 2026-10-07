@@ -1,0 +1,8 @@
+  ✓ check-config: 只读
+  ✓ check-ports: 只读
+  ✓ ensure-cluster: 已在运行，跳过
+  ✓ ensure-schema: 已是最新
+  ✓ prepare-dsh-profile: 已存在，未覆盖
+  ✓ start-platform
+  ✓ start-runtime
+✓ start 完成

@@ -1,0 +1,2 @@
+$ tsx scripts/gen-config-catalog.ts --check
+gen-config-catalog: docs/config-catalog.md is up to date.
