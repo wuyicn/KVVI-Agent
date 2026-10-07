@@ -311,12 +311,8 @@ async function bootPreview(origin: string, browser: Browser): Promise<void> {
     // report the older one.
     expect(bootLine).toContain(`image lowering=${WRAPPER_CONTRACT}`)
     expect(bootLine).toContain('data overlays=1')
-    // The versioned notice is the seeded preview's first stable interactive
-    // surface after the startup chain completes over the tunnel.
-    const continueButton = page.getByRole('button', { name: 'Continue' })
-    await continueButton.waitFor({ timeout: HERO_TIMEOUT_MS })
-    await continueButton.click()
-    const configureLater = page.getByRole('button', { name: 'Configure later' })
+    // The seeded preview enters provider setup directly.
+    const configureLater = page.getByRole('button', { name: 'Configure later', exact: true })
     await configureLater.waitFor({ timeout: 30_000 })
     await configureLater.click()
     await page.locator('[data-composer-input][data-placeholder="Describe what you want to build, / commands, @ files or sessions"]')

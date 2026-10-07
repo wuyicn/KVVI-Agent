@@ -161,6 +161,17 @@ it('boots the built plugin graph and renders a fixture session end to end', asyn
   }
 })
 
+it('opens Models with the configured provider after boot-time onboarding', async () => {
+  mountAssembledApp()
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Settings' }))
+  const settings = await screen.findByRole('dialog', { name: 'Settings' })
+  fireEvent.click(within(settings).getByRole('button', { name: 'Models' }))
+  expect(await within(settings).findByText('DeepSeek', { exact: true })).toBeTruthy()
+  expect(await within(settings).findByLabelText('API key configured', { exact: true })).toBeTruthy()
+  expect(screen.queryByRole('dialog', { name: 'Add an API key to get started' })).toBeNull()
+})
+
 it('boots without ui-chat and does not select another conversation view implicitly', async () => {
   mountAssembledApp({ exclude: ['@deepseek-ai/dsh-client-ui-chat'] })
 

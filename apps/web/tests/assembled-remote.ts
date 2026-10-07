@@ -134,6 +134,15 @@ export function createAssembledRemote(options: AssembledRemoteOptions = {}): Ass
       'settings/describe': structuredClone(fixture.settingsDescribe),
       'credentials/describe': structuredClone(fixture.credentialsDescribe),
       'session/modelCatalog': structuredClone(fixture.modelCatalog),
+      // Removing the welcome step makes provider onboarding load at boot.
+      // This configured route shares the fixture's settings and credential.
+      'llm/listProviders': ok([{ id: 'deepseek-official', name: 'DeepSeek' }]),
+      'llm/listConfigurableProviders': ok([{
+        provider: 'deepseek-official',
+        displayName: 'DeepSeek',
+        settingsNs: 'llm-deepseek',
+        settingsPath: [],
+      }]),
       'agentPresets/list': structuredClone(fixture.agentPresets),
       'commands/list': structuredClone(fixture.commands),
       'settings/canOpenAgentPresetDirectory': ok(true),
