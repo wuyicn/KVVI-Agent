@@ -243,7 +243,12 @@ describe('KVVI mode router', () => {
       search: async () => ({ items: [], hasMore: false }),
       control: async function * () {},
     })
-    ctx.provide('agentPresets', { select: async (_agent: unknown, requested: string) => requested })
+    ctx.provide('agentPresets', {
+      select: async (_agent: unknown, requested: string) => requested,
+      // 路由会收窄预置清单（问题 12），桩里必须有这一个方法 ——
+      // 少了它插件在加载时就炸，而不是静默地不收窄。
+      remoteExportList: async () => ({ presets: [], authorable: false, modeSelectionEnabled: false }),
+    })
     await ctx.plugin(WebServer, { host: '127.0.0.1', port: 0 })
     await ctx.plugin(TypertRegistry)
     await ctx.plugin(TypertGatewayService)
@@ -311,6 +316,52 @@ describe('KVVI mode router', () => {
     }
   })
 
+  it('clamps the preset roster to the session mode, and turns mode selection off', async () => {
+    // 问题 12：`select` 只在点下去之后拦，界面照样把五个模式摆出来。
+    // 菜单里的模式清单、设置页的「允许切换 agent 模式」开关与六个预置的完整列表、
+    // 以及「新任务默认」那个标记，全都来自这一次 `remoteExportList`。
+    const full = {
+      presets: [
+        { id: 'standard' }, { id: 'ptc' }, { id: 'minimal' }, { id: 'cordis' },
+        { id: 'kvvi-builder' }, { id: 'kvvi-worker' },
+      ],
+      authorable: true,
+      modeSelectionEnabled: true,
+    }
+    const seen: string[] = []
+    const build = async (gateway: 'USER' | 'BUILDER') => {
+      const ctx = new Context()
+      ctx.provide('connection' as never, {} as never)
+      ctx.provide('sessionController', {
+        create: async (request: Record<string, unknown>) => request,
+        list: async () => ({ items: [] }),
+        search: async () => ({ items: [], hasMore: false }),
+        control: async function * () { yield { type: 'baseline', value: { jobs: {}, projections: {} } } },
+      })
+      ctx.provide('agentPresets', {
+        select: async (_agent: unknown, requested: string) => requested,
+        remoteExportList: async () => full,
+      })
+      await ctx.plugin(KvviModeRouter, { secret })
+      const headers = signModeHeaders({ ...context, gateway }, secret)
+      const response = { writeHead: () => response, end: () => response }
+      await ctx.waterfall('connection/request', { headers } as never, response as never,
+        async () => {
+          const roster = await ctx.agentPresets.remoteExportList()
+          seen.push(roster.presets.map(row => row.id).join(','))
+          // 只剩本会话被绑定的那一个 —— 别的模式连名字都不该出现在工位上。
+          expect(roster.presets).toHaveLength(1)
+          // 模式是登录门绑定的，工位上的会话只有一个可能取值，
+          // 所以选择器与那个开关都必须消失。
+          expect(roster.modeSelectionEnabled).toBe(false)
+        })
+      await ctx.fiber.dispose()
+    }
+    await build('USER')
+    await build('BUILDER')
+    expect(seen).toEqual(['kvvi-worker', 'kvvi-builder'])
+  })
+
   it('binds create and preset-select calls to the signed request context', async () => {
     const ctx = new Context()
     const creates: unknown[] = []
@@ -323,6 +374,7 @@ describe('KVVI mode router', () => {
     })
     ctx.provide('agentPresets', {
       select: async (_agent: unknown, requested: string) => requested,
+      remoteExportList: async () => ({ presets: [], authorable: false, modeSelectionEnabled: false }),
     })
     await ctx.plugin(KvviModeRouter, { secret })
 

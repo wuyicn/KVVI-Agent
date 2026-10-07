@@ -154,7 +154,21 @@ export type ApiResult<T> =
      * Shown to the employee so they know how far behind their copy is.
      */
     readonly currentRowVersion?: number
+    /**
+     * Present on a field-level refusal such as `KVVI_BRANDING_INVALID`: which
+     * field the platform rejected, and its own reason. Shown verbatim — a code
+     * without the field it names is a dead end for whoever has to fix it.
+     */
+    readonly problems?: readonly ApiProblem[]
   }
+
+/** One field a write was refused on, as the platform names it. */
+export interface ApiProblem {
+  /** The field the platform rejected. */
+  readonly field: string
+  /** The platform's own reason, shown verbatim. */
+  readonly reason: string
+}
 
 /**
  * Read the platform's error code from one failed response body.
@@ -167,7 +181,12 @@ export type ApiResult<T> =
  */
 async function errorOf(
   res: Response,
-): Promise<{ code: string; detail?: string; currentRowVersion?: number }> {
+): Promise<{
+  code: string
+  detail?: string
+  currentRowVersion?: number
+  problems?: readonly ApiProblem[]
+}> {
   let body: unknown
   try {
     body = await res.json()
@@ -181,6 +200,7 @@ async function errorOf(
     fields?: unknown
     states?: unknown
     currentRowVersion?: unknown
+    problems?: unknown
   }
   const code = typeof record.error === 'string' ? record.error : `KVVI_HTTP_${String(res.status)}`
   // A projection refusal names what is missing — the absent contracts, the
@@ -190,12 +210,32 @@ async function errorOf(
   const detail = typeof record.detail === 'string'
     ? record.detail
     : Array.isArray(extra) ? extra.join(', ') : undefined
+  const problems = problemsOf(record.problems)
   return {
     code,
     ...(detail === undefined ? {} : { detail }),
     ...(typeof record.currentRowVersion === 'number'
       ? { currentRowVersion: record.currentRowVersion } : {}),
+    ...(problems === undefined ? {} : { problems }),
   }
+}
+
+/**
+ * Read a field-level refusal list from one failure body.
+ *
+ * A malformed entry is dropped rather than reported: this list exists to say
+ * *which* field to fix, and an entry that names no field cannot say that.
+ * @param value - the `problems` member of a failure body.
+ * @returns the problems, or undefined when the body carried none.
+ */
+function problemsOf(value: unknown): readonly ApiProblem[] | undefined {
+  const problems = (Array.isArray(value) ? value : []).flatMap((entry): ApiProblem[] => {
+    if (typeof entry !== 'object' || entry === null) return []
+    const record = entry as { field?: unknown; reason?: unknown }
+    if (typeof record.field !== 'string' || typeof record.reason !== 'string') return []
+    return [{ field: record.field, reason: record.reason }]
+  })
+  return problems.length === 0 ? undefined : problems
 }
 
 /**
@@ -451,6 +491,53 @@ export function replacePolicies(
 /** 列本公司部门。 */
 export function listDepartments(signal?: AbortSignal): Promise<ApiResult<{ items: Department[] }>> {
   return request('GET', '/admin/departments', undefined, signal)
+}
+
+// ── 公司品牌 ─────────────────────────────────────────────────────────────
+//
+// 读是**任何有效会话**都能做的：员工界面要显示本公司的牌子，所以读的权限
+// 不能是所有者。写只有所有者能做，判定在服务端。
+
+/** 本公司的品牌：名称、标志地址、标语。未设置时为 null。 */
+export interface CompanyBranding {
+  readonly name: string | null
+  readonly logoUrl: string | null
+  readonly tagline: string | null
+}
+
+/**
+ * 一次品牌改动的请求体。
+ *
+ * ⚠️ **没给的键不动**：`{ name: 'X' }` 只改名称，另外两个字段保持原样。
+ * 反过来，传 `{ name: 'X', logoUrl: null, tagline: null }` 会把标志和标语
+ * **清掉** —— 平台会照做并报成功，因为请求本身是合法的。所以调用方必须
+ * 只发真正改动过的键（见 `brandingPatch`）。
+ */
+export interface BrandingPatch {
+  readonly name?: string | null
+  readonly logoUrl?: string | null
+  readonly tagline?: string | null
+}
+
+/**
+ * 读本公司的品牌。
+ * @param signal - aborts the request.
+ * @returns 三个值（未设置为 null），或平台的拒绝码。
+ */
+export function readCompanyBranding(signal?: AbortSignal): Promise<ApiResult<CompanyBranding>> {
+  return request('GET', '/company/branding', undefined, signal)
+}
+
+/**
+ * 改本公司的品牌。**仅所有者**。
+ *
+ * 校验失败是 `KVVI_BRANDING_INVALID` 加 `problems[]`：哪个字段、为什么。
+ * 那两个值原样显示，不翻译 —— 它们就是修的人要看的东西。
+ * @param patch - 只含改动过的键。
+ * @returns 改完之后的三个值。
+ */
+export function writeCompanyBranding(patch: BrandingPatch): Promise<ApiResult<CompanyBranding>> {
+  return request('PUT', '/company/branding', patch)
 }
 
 

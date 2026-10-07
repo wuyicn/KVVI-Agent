@@ -1,0 +1,13 @@
+{
+  "deleted": [
+    "apps/web/tests/expected/onboarding-deepseek-config/welcome.expected.md",
+    "apps/web/tests/remote-welcome.e2e.ts",
+    "packages/client/ui-settings-models/src/client/WelcomeNotice.module.css",
+    "packages/client/ui-settings-models/src/client/WelcomeNotice.tsx",
+    "packages/client/ui-settings-models/src/client/welcome-store.ts",
+    "packages/client/ui-settings-models/src/onboarding-copy.ts",
+    "packages/client/ui-settings-models/tests/welcome-notice.client.spec.tsx",
+    "packages/client/ui-settings-models/tests/welcome-store.client.spec.ts"
+  ],
+  "note": "由 工具/fork.py --export 从指纹清单里 status==\"D\" 的条目生成，禁止手改。重建时先覆盖、再按本表删除。"
+}

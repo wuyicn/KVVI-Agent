@@ -108,6 +108,29 @@ function healthy(extra: Readonly<Record<string, Answer>> = {}): Record<string, A
 }
 
 describe('我的系统', () => {
+  it('retries a failed runtime read and renders the real form after recovery', async () => {
+    platform(healthy({ 'GET /api/v1/systems/golden_01/runtime': { status: 503, body: { error: 'KVVI_UNREACHABLE' } } }))
+    render(<KvviSystemShell copy={t} />)
+    fireEvent.click(await screen.findByRole('button', { name: zh['systems.open'] }))
+    await screen.findByRole('alert')
+    platform(healthy())
+    fireEvent.click(screen.getByRole('button', { name: '重试' }))
+    await screen.findByLabelText('title')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('offers a readable failure and retries the systems read without reopening', async () => {
+    platform({ 'GET /api/v1/systems': { status: 503, body: { error: 'KVVI_UNREACHABLE' } } })
+    render(<KvviSystemShell copy={t} />)
+    await screen.findByRole('alert')
+    expect(screen.getByRole('alert').textContent).toContain('无法连接服务')
+    expect(screen.getByRole('alert').textContent).toContain('KVVI_UNREACHABLE')
+    platform(healthy())
+    fireEvent.click(screen.getByRole('button', { name: '重试' }))
+    await screen.findByText('事项登记')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
   it('列出已发布的系统，打开后到填单', async () => {
     platform(healthy())
     render(<KvviSystemShell copy={t} />)

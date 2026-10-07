@@ -12,6 +12,9 @@ import type { SidebarFooterActionOwnerProps } from '@deepseek-ai/dsh-client-ui-s
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import { KvviAdminShell } from './AdminShell.tsx'
 import { KvviSystemShell } from './SystemShell.tsx'
+import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { adminCapabilities } from './api.ts'
+import css from './business.module.css'
 
 /**
  * The translate seat this panel's entries receive.
@@ -44,52 +47,49 @@ export function KvviPanel({ t, onClose }: {
   // 所有者与管理员用得到。放在一个面板的两个页签里，是因为它们共享
   // 「我是谁、我在哪家公司」这一个前提 —— 分成两个悬浮层会让这个前提看起来像两个。
   const [page, setPage] = useState<'business' | 'admin'>('business')
+  const [canAdmin, setCanAdmin] = useState(false)
+  const [capabilityError, setCapabilityError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    const controller = new AbortController()
+    setCanAdmin(false)
+    setCapabilityError(null)
+    void adminCapabilities(controller.signal).then(result => {
+      if (controller.signal.aborted) return
+      if (result.ok) setCanAdmin(result.value.role === 'owner' || result.value.role === 'admin')
+      else setCapabilityError(result.code)
+    })
+    return () => { controller.abort() }
+  }, [attempt])
 
   return (
-    <div
-      role="dialog"
-      aria-label={t('panel.aria')}
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 60, padding: 24,
-        background: 'rgba(16,24,40,.28)', display: 'flex',
-        alignItems: 'center', justifyContent: 'center',
-      }}
-    >
-      <div
-        onClick={(event) => { event.stopPropagation() }}
-        style={{
-          background: 'var(--dsw-surface, #fff)', color: 'var(--dsw-fg, #111827)',
-          borderRadius: 14, padding: '22px 24px', width: '100%',
-          maxWidth: 760, maxHeight: '82vh', overflow: 'auto',
-          boxShadow: '0 12px 32px rgba(16,24,40,.18)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14 }}>
-          <strong style={{ fontSize: 15 }}>{t('panel.title')}</strong>
-          <button type="button" aria-pressed={page === 'business'}
-            style={{ fontSize: 12, fontWeight: page === 'business' ? 600 : 400 }}
-            onClick={() => { setPage('business') }}>{t('panel.tab.business')}</button>
-          <button type="button" aria-pressed={page === 'admin'}
-            style={{ fontSize: 12, fontWeight: page === 'admin' ? 600 : 400 }}
-            onClick={() => { setPage('admin') }}>{t('admin.title')}</button>
-          <span style={{ flex: 1 }} />
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              border: '1px solid var(--dsw-border, #e5e7eb)', background: 'none',
-              borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer',
-              color: 'inherit',
-            }}
-          >
-            {t('panel.close')}
-          </button>
+    <Modal open headless title={t('panel.aria')} onClose={onClose} className={css.panel ?? ''}>
+      <header className={css.header}>
+        <div>
+          <h2 className={css.title}>{t('panel.title')}</h2>
+          <p className={css.hint}>{t('panel.subtitle')}</p>
         </div>
-
-        {page === 'business' ? <KvviSystemShell copy={t} /> : <KvviAdminShell copy={t} />}
+        <Button variant="outline" onClick={onClose}>{t('panel.close')}</Button>
+      </header>
+      {canAdmin ? (
+        <nav className={css.tabs} aria-label={t('panel.aria')}>
+          <Button aria-pressed={page === 'business'} variant={page === 'business' ? 'primary' : 'ghost'}
+            onClick={() => { setPage('business') }}>{t('panel.tab.business')}</Button>
+          <Button aria-pressed={page === 'admin'} variant={page === 'admin' ? 'primary' : 'ghost'}
+            onClick={() => { setPage('admin') }}>{t('admin.title')}</Button>
+        </nav>
+      ) : null}
+      <div className={css.content}>
+        {capabilityError === null ? null : (
+          <div className={css.notice} role="alert">
+            <p>{t('panel.capabilitiesFailed')}</p>
+            <code>{capabilityError}</code>
+            <Button variant="outline" onClick={() => { setAttempt(value => value + 1) }}>{t('panel.retryCapabilities')}</Button>
+          </div>
+        )}
+        {page === 'admin' && canAdmin ? <KvviAdminShell copy={t} /> : <KvviSystemShell copy={t} />}
       </div>
-    </div>
+    </Modal>
   )
 }
 

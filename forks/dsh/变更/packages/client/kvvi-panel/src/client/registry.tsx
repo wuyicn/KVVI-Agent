@@ -31,6 +31,7 @@
  */
 import type { ReactNode } from 'react'
 import { NOT_REGISTERED, WRONG_VIEW_TYPE, FIELD_UNBOUND, QUERY_UNSUPPORTED } from './locales.ts'
+import css from './business.module.css'
 
 /** The three view types a published `view-schema` may declare. */
 export type ViewType = 'FORM' | 'LIST' | 'DETAIL'
@@ -115,14 +116,13 @@ function Field({ label, children }: {
   readonly children: ReactNode
 }): ReactNode {
   return (
-    <label style={{ display: 'block', marginBottom: 10 }}>
-      <span style={{ display: 'block', fontSize: 12, opacity: .7 }}>{label}</span>
+    <label className={css.field}>
+      <span>{label}</span>
       {children}
     </label>
   )
 }
 
-const CONTROL_STYLE = { width: '100%', padding: '6px 8px' } as const
 
 /**
  * Single-line text.
@@ -138,7 +138,7 @@ function ShortTextField({ field, label, value, mode, onChange }: FieldRenderProp
         readOnly={readOnlyOf(mode)}
         disabled={readOnlyOf(mode)}
         onChange={(e) => { onChange(e.target.value) }}
-        style={CONTROL_STYLE}
+        className={css.control}
       />
     </Field>
   )
@@ -158,7 +158,7 @@ function LongTextField({ field, label, value, mode, onChange }: FieldRenderProps
         readOnly={readOnlyOf(mode)}
         disabled={readOnlyOf(mode)}
         onChange={(e) => { onChange(e.target.value) }}
-        style={CONTROL_STYLE}
+        className={css.control}
       />
     </Field>
   )
@@ -183,7 +183,7 @@ function NumberField({ field, label, value, mode, onChange }: FieldRenderProps):
         readOnly={readOnlyOf(mode)}
         disabled={readOnlyOf(mode)}
         onChange={(e) => { onChange(e.target.value) }}
-        style={CONTROL_STYLE}
+        className={css.control}
       />
     </Field>
   )
@@ -226,7 +226,7 @@ function DateField({ field, label, value, mode, onChange }: FieldRenderProps): R
         readOnly={readOnlyOf(mode)}
         disabled={readOnlyOf(mode)}
         onChange={(e) => { onChange(e.target.value) }}
-        style={CONTROL_STYLE}
+        className={css.control}
       />
     </Field>
   )
@@ -247,7 +247,7 @@ function DateTimeField({ field, label, value, mode, onChange }: FieldRenderProps
         readOnly={readOnlyOf(mode)}
         disabled={readOnlyOf(mode)}
         onChange={(e) => { onChange(e.target.value) }}
-        style={CONTROL_STYLE}
+        className={css.control}
       />
     </Field>
   )
@@ -270,7 +270,7 @@ function SingleSelectField({ field, label, value, mode, options, onChange }: Fie
         value={value}
         disabled={readOnlyOf(mode)}
         onChange={(e) => { onChange(e.target.value) }}
-        style={CONTROL_STYLE}
+        className={css.control}
       >
         <option value="" />
         {(options ?? []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -363,8 +363,8 @@ function Text({ value }: ValueRenderProps): ReactNode {
  */
 function Section({ title, children }: { readonly title?: string; readonly children: ReactNode }): ReactNode {
   return (
-    <section style={{ marginBottom: 18 }}>
-      {title === undefined ? null : <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{title}</div>}
+    <section className={css.section}>
+      {title === undefined ? null : <div className={css.sectionHeading}>{title}</div>}
       {children}
     </section>
   )

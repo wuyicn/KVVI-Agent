@@ -37,7 +37,7 @@
 # calls the KVVI platform service under this session's signed identity. Adding
 # them must NOT be done by handing this mode the builder's tools: that would
 # collapse the two gateways into one and remove the whole point of the
-# separation. The tool list below is therefore closed — six business tools, the
+# separation. The tool list below is therefore closed — seven business tools, the
 # user question tool, and nothing that can build.
 #
 # There is still no shell, no filesystem, no web fetch and no subagent: a worker
@@ -97,5 +97,5 @@
 - id: tool-kvvi-business
   name: '@deepseek-ai/dsh-tool-kvvi-business'
   config:
-    platformUrl: !!js process.env.KVVI_PLATFORM_URL ?? 'http://127.0.0.1:7400'
+    platformUrl: !!js process.env.KVVI_PLATFORM_URL
     contextSecret: !!js process.env.KVVI_INTERNAL_TOKEN ?? ''

@@ -157,6 +157,23 @@
 - id: command-goal
   name: '@deepseek-ai/dsh-command-goal'
 
+# ★ **提交发布的那一步。**
+#
+# 发布通道的注释写着提交该由「the agent / the CLI scaffold」做，而「the agent」
+# 那一半此前没实现 —— 搭建者的工作台读不到工作区里的契约文件，他的工具集里
+# 也没有发布工具，于是只剩 CLI 一条路。这一行补的就是那一半：
+# 工具跑在运行时里，工作区在它手上，而提交只用本会话的 BUILDER 身份
+# （审批与发布仍在所有者那边，§9.6.1）。
+#
+# ⚠️ `platformUrl` 与 `contextSecret` 没有默认值，理由与 `kvvi-worker`
+#    那一行相同：默认 URL 会把搭建者指向不该指向的部署，默认口令是把共享
+#    秘密写进仓库。配错要在加载时失败。
+- id: tool-kvvi-publish
+  name: '@deepseek-ai/dsh-tool-kvvi-publish'
+  config:
+    platformUrl: !!js process.env.KVVI_PLATFORM_URL
+    contextSecret: !!js process.env.KVVI_INTERNAL_TOKEN ?? ''
+
 - id: tool-goal
   name: '@deepseek-ai/dsh-tool-goal'
 

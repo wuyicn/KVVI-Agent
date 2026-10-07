@@ -344,6 +344,7 @@
     { "path": "./packages/bundle/kvvi-app" },
     { "path": "./packages/host/kvvi-mode-router" },
     { "path": "./packages/tool/kvvi-business" },
+    { "path": "./packages/tool/kvvi-publish" },
     { "path": "./packages/bundle/sdk-minimal" },
     { "path": "./packages/bundle/web-app" },
     { "path": "./packages/boot/app-boot" },

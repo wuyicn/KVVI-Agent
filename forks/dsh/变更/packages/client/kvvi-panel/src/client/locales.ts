@@ -24,6 +24,14 @@ export const zh = {
   'panel.aria': 'KVVI 业务面板',
   'panel.loading': '读取中…',
   'panel.detail': '面板是附加信息。取不到时只会少显示内容，不影响对话与其他操作。',
+  'panel.subtitle': '使用已发布的系统，填写表单与查看业务记录',
+  'panel.capabilitiesFailed': '暂时无法确认管理权限，业务系统仍可单独读取。',
+  'panel.retryCapabilities': '重新检查权限',
+  'read.retry': '重试',
+  'read.unreachable': '无法连接服务，请检查连接后重试。',
+  'read.denied': '你暂无查看权限，请联系管理员确认授权。',
+  'read.sessionEnded': '登录状态已失效，请重新登录后继续。',
+  'read.failed': '暂时无法读取内容，请重试；若仍失败，请将错误码提供给管理员。',
 
   // Session banner. The code next to these sentences is shown verbatim so an
   // operator can search for it; the sentences are what the person reads.
@@ -99,6 +107,23 @@ export const zh = {
   'admin.noPermission': '你不是本公司的管理员，看不了这一页',
   'admin.failed': '读取失败：{detail}',
   'admin.readonly': '你可以查看，但不能修改（只有所有者能改动搭建模式与平台角色）',
+
+  // Brand half. "The platform refused" and "the network failed" are two
+  // sentences because they need two different people to look into them.
+  'brand.tab': '品牌',
+  'brand.hint': '公司名称、标志与标语会显示在员工界面的侧栏与新建会话页；留空表示不设置。',
+  'brand.name': '公司名称',
+  'brand.logoUrl': '标志地址',
+  'brand.tagline': '标语',
+  'brand.save': '保存',
+  'brand.saving': '保存中…',
+  'brand.saved': '品牌已保存',
+  'brand.unchanged': '没有改动，没有发出请求',
+  'brand.retry': '重试',
+  'brand.read.refused': '平台拒绝了这次读取：{detail}',
+  'brand.read.unreachable': '连不上平台，没读到品牌 —— 这不等于「公司没设置品牌」',
+  'brand.write.refused': '平台拒绝了这次改动：{detail}',
+  'brand.write.unreachable': '连不上平台，改动没有发生',
 
   'member.title': '员工',
   'member.empty': '本公司还没有成员',
@@ -181,6 +206,14 @@ export const en: Record<KvviKey, string> = {
   'panel.aria': 'KVVI business panel',
   'panel.loading': 'Loading…',
   'panel.detail': 'This panel is supplementary. When it cannot load, only its content is missing; the conversation is unaffected.',
+  'panel.subtitle': 'Use published systems to fill in forms and view business records',
+  'panel.capabilitiesFailed': 'Administration permissions could not be checked. Business systems can still load independently.',
+  'panel.retryCapabilities': 'Check permissions again',
+  'read.retry': 'Try again',
+  'read.unreachable': 'Cannot reach the service. Check your connection and try again.',
+  'read.denied': 'You do not have access. Ask an administrator to check your permissions.',
+  'read.sessionEnded': 'Your sign-in has expired. Sign in again to continue.',
+  'read.failed': 'Content could not be loaded. Try again, or share the error code with an administrator.',
 
   // Session banner; mirrors the Chinese key set.
   'session.ended.title': 'Sign-in ended',
@@ -254,6 +287,22 @@ export const en: Record<KvviKey, string> = {
   'admin.noPermission': 'You are not an administrator of this company, so this page is not available',
   'admin.failed': 'Could not load: {detail}',
   'admin.readonly': 'You can view but not change this (only the owner may change Builder access and platform roles)',
+
+  // Brand half; mirrors the Chinese key set.
+  'brand.tab': 'Brand',
+  'brand.hint': 'The company name, logo, and tagline appear in the employee sidebar and on the new-session page; empty means not set.',
+  'brand.name': 'Company name',
+  'brand.logoUrl': 'Logo URL',
+  'brand.tagline': 'Tagline',
+  'brand.save': 'Save',
+  'brand.saving': 'Saving…',
+  'brand.saved': 'Branding saved',
+  'brand.unchanged': 'Nothing changed, so no request was sent',
+  'brand.retry': 'Try again',
+  'brand.read.refused': 'The platform refused this read: {detail}',
+  'brand.read.unreachable': 'Could not reach the platform, so no branding was read — which is not the same as the company having none',
+  'brand.write.refused': 'The platform refused this change: {detail}',
+  'brand.write.unreachable': 'Could not reach the platform; the change did not happen',
 
   'member.title': 'People',
   'member.empty': 'This company has no members yet',

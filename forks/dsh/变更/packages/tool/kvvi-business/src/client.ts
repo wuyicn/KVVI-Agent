@@ -64,6 +64,37 @@ export interface CallFailure {
   readonly code: string
   readonly status: number
   readonly detail?: string
+  readonly problems?: readonly CallProblem[]
+}
+
+/**
+ * One per-field problem the platform reported (`problems` on a field-rule refusal).
+ *
+ * Carried structurally rather than flattened into `detail` because the one thing
+ * that makes a wrong field code recoverable is *the list the platform put in*
+ * `detail.declaredFields` — a string that already swallowed it cannot be read back.
+ */
+export interface CallProblem {
+  readonly field: string
+  readonly reason: string
+  readonly detail?: Record<string, unknown>
+}
+
+/**
+ * Is this a problem object as the platform writes them?
+ *
+ * Checked on the wire rather than trusted: this value came from another process
+ * as JSON. Without the check, one malformed `problems` entry would throw inside
+ * the error path, which is the worst place for a second failure.
+ * @param value - one element of the platform's `problems` array.
+ * @returns whether it has the fields the renderer reads.
+ */
+function isCallProblem(value: unknown): value is CallProblem {
+  if (value === null || typeof value !== 'object') return false
+  const problem = value as { field?: unknown; reason?: unknown; detail?: unknown }
+  return typeof problem.field === 'string' && typeof problem.reason === 'string'
+    && (problem.detail === undefined
+      || (problem.detail !== null && typeof problem.detail === 'object'))
 }
 
 /** The platform's answer. */
@@ -118,12 +149,26 @@ export async function request<T>(
       // A gate or proxy answering 502 in HTML must not read as a well-formed refusal.
       return { ok: false, code: `KVVI_HTTP_${String(res.status)}`, status: res.status }
     }
-    const record = (parsed ?? {}) as { error?: unknown; detail?: unknown; missing?: unknown }
+    const record = (parsed ?? {}) as {
+      error?: unknown
+      detail?: unknown
+      missing?: unknown
+      problems?: unknown
+    }
     const code = typeof record.error === 'string' ? record.error : `KVVI_HTTP_${String(res.status)}`
     const detail = typeof record.detail === 'string'
       ? record.detail
       : Array.isArray(record.missing) ? record.missing.join(', ') : undefined
-    return { ok: false, code, status: res.status, ...(detail === undefined ? {} : { detail }) }
+    const problems = Array.isArray(record.problems)
+      ? record.problems.filter(isCallProblem)
+      : []
+    return {
+      ok: false,
+      code,
+      status: res.status,
+      ...(detail === undefined ? {} : { detail }),
+      ...(problems.length === 0 ? {} : { problems }),
+    }
   }
 
   try {
@@ -131,6 +176,25 @@ export async function request<T>(
   } catch {
     return { ok: false, code: 'KVVI_BAD_RESPONSE', status: res.status }
   }
+}
+
+/**
+ * Render one per-field problem for the model.
+ *
+ * ⚠️ `declaredFields` is why this exists at all. The platform answers a wrong
+ * field code with the list of codes it does declare, and a model that gets that
+ * list can fix its payload on the next call. An earlier revision dropped
+ * `problems` on the floor, so the model saw the bare code and did exactly what
+ * the incident report describes: guessed, was refused, guessed again, gave up.
+ * @param problem - one entry of the platform's `problems`.
+ * @returns `field: REASON`, plus the declared field codes when the platform sent them.
+ */
+function describeProblem(problem: CallProblem): string {
+  const declared = problem.detail?.['declaredFields']
+  const hint = Array.isArray(declared) && declared.some(code => typeof code === 'string')
+    ? `；该系统的字段：${declared.filter(code => typeof code === 'string').join(', ')}`
+    : ''
+  return `${problem.field}: ${problem.reason}${hint}`
 }
 
 /**
@@ -142,7 +206,10 @@ export async function request<T>(
  * @returns the model-facing message.
  */
 export function refusalMessage(failure: CallFailure): string {
-  return failure.detail === undefined
-    ? failure.code
-    : `${failure.code}: ${failure.detail}`
+  const parts: string[] = [failure.code]
+  if (failure.detail !== undefined) parts.push(failure.detail)
+  if (failure.problems !== undefined && failure.problems.length > 0) {
+    parts.push(failure.problems.map(describeProblem).join('; '))
+  }
+  return parts.join(': ')
 }
