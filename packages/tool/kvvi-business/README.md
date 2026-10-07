@@ -4,11 +4,11 @@ Model-facing business tools over a deployed KVVI company's platform API.
 
 ## Model Experience
 
-Six tools reach the model in the `kvvi-worker` preset. Each is one HTTP call into the customer's own platform service under the signed-in employee's identity, so the tool result is exactly what that employee would see in the panel — the same row scope, the same field visibility, the same refusals.
+Seven tools reach the model in the `kvvi-worker` preset. Each is one HTTP call into the customer's own platform service under the signed-in employee's identity, so the tool result is exactly what that employee would see in the panel — the same row scope, the same field visibility, the same refusals. `record_schema` reads the structure rather than the data: the field codes a payload must use, which of them are required, and what an enum accepts.
 
 The tools are the only thing this package contributes. They add no prompt section, no session event, and no system instruction; the persona that explains what the mode is lives in the preset. Descriptions are written for the model's decision, not for a human reader: they say which code means "re-read and decide" and which means "this is a rule, not a missing permission".
 
-Token cost is one tool schema per tool, six schemas total, with flat argument objects. Nothing here caches or re-sends business data between calls, so no tool result affects the KV cache beyond the turn that produced it.
+Token cost is one tool schema per tool, seven schemas total, with flat argument objects. Nothing here caches or re-sends business data between calls, so no tool result affects the KV cache beyond the turn that produced it.
 
 ## Configuration
 
@@ -23,6 +23,7 @@ Neither has a working default. An empty `contextSecret` throws `KVVI_RUNTIME_CON
 
 | Tool | Writes | Notes |
 |---|---|---|
+| `record_schema` | no | The system's declared fields — the codes `data` accepts. Read it before writing; an unlisted code is `KVVI_FIELD_NOT_DECLARED`. Fields this session may not see are absent, and `hiddenFieldCount` says how many. |
 | `record_list` | no | Rows and fields already filtered by the platform. |
 | `record_get` | no | Returns the `rowVersion` the two writes need. |
 | `record_create` | yes | Flat `data` map of field code to value. |
@@ -33,6 +34,12 @@ Neither has a working default. An empty `contextSecret` throws `KVVI_RUNTIME_CON
 ## Identity
 
 `ctx.kvviModeRouter.requireMode()` is the only source of identity, and it is read at execution rather than at load. `assertNoIdentityFields` then refuses any argument tree containing `companyId`, `tenant`, `actor`, `roles`, `gateway`, or `userId` at any depth, before a request is built — record payloads are nested by nature, so a top-level-only check would pass exactly the request that matters.
+
+## The `id` argument
+
+The four record tools take `id`, and it accepts **either** the record's id **or** its record number (`recordNo`, e.g. `R-20261006-000003`). The platform resolves a record number within the session's company and the named system, so a freshly created record is reachable by the number `record_create` returned, without reading it back first.
+
+The argument descriptions spell this out because the model cannot infer it: `record_create` returns `recordNo` while `record_get` and `record_list` return `recordId`, and a model holding only the number has no way to learn that the number is accepted. An earlier incident ended with a record number pasted into an id lookup, an internal-error answer, and the model concluding the record was unreadable to its session.
 
 ## Known Limitations and Deferred Work
 

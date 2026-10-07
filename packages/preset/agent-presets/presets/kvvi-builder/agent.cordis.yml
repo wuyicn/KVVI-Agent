@@ -171,7 +171,7 @@
 - id: tool-kvvi-publish
   name: '@deepseek-ai/dsh-tool-kvvi-publish'
   config:
-    platformUrl: !!js process.env.KVVI_PLATFORM_URL ?? 'http://127.0.0.1:7400'
+    platformUrl: !!js process.env.KVVI_PLATFORM_URL
     contextSecret: !!js process.env.KVVI_INTERNAL_TOKEN ?? ''
 
 - id: tool-goal

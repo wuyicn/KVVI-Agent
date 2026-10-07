@@ -10,6 +10,8 @@
  * | 3 | The platform's refusal reaches the model unchanged | The Agent and the UI report different codes for the same denial |
  * | 4 | A claimed success is one the platform confirmed | The model tells the user an action happened when it did not |
  * | 5 | The signed header format matches the platform's verifier | The tool authenticates to nothing, and the failure looks like a 401 |
+ * | 6 | A wrong field code comes back with the platform's declared-field list |
+ *       The model cannot correct itself on the next call — it guesses until it gives up |
  *
  * ⚠️ 5 — that the signed header format matches the platform's verifier — is
  * **not** checked here. This package ships standalone inside the fork; a test
@@ -141,6 +143,37 @@ describe('契约客户端', () => {
     expect(refusalMessage(result as never)).toContain('workflow-spec')
   })
 
+  it('★ 逐字段的拒绝项带出来：猜错一个编码，下一轮才改得对', async () => {
+    // 平台在 `problems[].detail.declaredFields` 里给了**答案**。
+    // 丢掉它，模型看到的就是一句「这个字段没声明」——
+    // 现场就是这样：猜了三轮，最后放弃这次写入。
+    const fake = recorder(400, {
+      error: 'KVVI_FIELD_NOT_DECLARED',
+      problems: [
+        { field: 'phone', reason: 'KVVI_FIELD_NOT_DECLARED',
+          detail: { declaredFields: ['customer_name', 'contact_name', 'contact_phone', 'follow_status'] } },
+        { field: 'contact_name', reason: 'KVVI_FIELD_REQUIRED', detail: { by: 'model' } },
+      ],
+    })
+    const result = await request(context(fake.fetchImpl), 'POST', '/systems/customer/records',
+      { data: { phone: '138' } })
+    const message = refusalMessage(result as never)
+    expect(message).toContain('KVVI_FIELD_NOT_DECLARED')
+    expect(message).toContain('phone')
+    expect(message).toContain('contact_phone')
+    // 漏掉的必填字段名一样要出现 —— 现场连 `contact_name` 没填都没意识到。
+    expect(message).toContain('contact_name')
+  })
+
+  it('形状不对的拒绝项不会把错误处理本身炸掉', async () => {
+    const fake = recorder(400, {
+      error: 'KVVI_FIELD_NOT_DECLARED',
+      problems: [{ field: 'phone' }, 'not a problem', null],
+    })
+    const result = await request(context(fake.fetchImpl), 'POST', '/systems/customer/records', {})
+    expect(refusalMessage(result as never)).toBe('KVVI_FIELD_NOT_DECLARED')
+  })
+
   it('不是 JSON 的失败响应也能得到一个人看得懂的码', async () => {
     const fetchImpl = vi.fn(() => Promise.resolve({
       ok: false, status: 502, json: async () => { throw new Error('html') },
@@ -151,17 +184,27 @@ describe('契约客户端', () => {
 })
 
 describe('工具集', () => {
-  it('注册的是六个业务工具，且**不含**搭建类工具', async () => {
+  it('注册的是七个业务工具，且**不含**搭建类工具', async () => {
     const source = await import('node:fs/promises').then(fs => fs.readFile(
       new URL('../src/index.ts', import.meta.url), 'utf8'))
     // 逐个点名：漏掉一个就是「模型以为能做而做不到」，多一个就是能力边界变了。
-    for (const tool of ['record_list', 'record_get', 'record_create', 'record_update',
-      'workflow_available_actions', 'workflow_act']) {
+    for (const tool of ['record_schema', 'record_list', 'record_get', 'record_create',
+      'record_update', 'workflow_available_actions', 'workflow_act']) {
       expect(source).toContain(`name: '${tool}'`)
     }
     expect(source).not.toMatch(/name: '(?:bash|shell|write|edit|read_file|skill|workflow)'/u)
     // 聚合读数**刻意不注册**：平台没有端点，注册一个永远失败的工具有害无益。
     expect(source).not.toContain("name: 'aggregate_read'")
+  })
+
+  it('★ 字段清单走的是读端点，且身份仍然只从模式路由来', async () => {
+    const source = await import('node:fs/promises').then(fs => fs.readFile(
+      new URL('../src/index.ts', import.meta.url), 'utf8'))
+    // 端点写死在这一处：换了名字而没换过来，agent 会拿到一个 404，
+    // 而 404 看起来像「这个系统没有字段」。
+    expect(source).toContain('/systems/${encodeURIComponent(args.system)}/fields')
+    // 这条路径**没有**第二个参数 —— 身份一个都不能由模型指定。
+    expect(source).not.toMatch(/fields\?[^`]*company/u)
   })
 
   it('★ 身份从模式路由来，不从参数来', async () => {
@@ -174,5 +217,22 @@ describe('工具集', () => {
     for (const field of ['tenant', 'companyId', 'actor', 'gateway']) {
       expect(parameters).not.toContain(`${field}: {`)
     }
+  })
+
+  it('★ 每个记录工具的 `id` 都说明「记录号也能给」', async () => {
+    // 建单返回的是**记录号**，而按 id 的端点要 uuid。模型手上只有记录号，
+    // 说明里不提这件事，它就只能拿记录号去试 —— 现场就是这样撞上 500 的。
+    //
+    // ⚠️ 平台那边**确实**会把记录号解析成 id（`services/platform/src/request-refs.mjs`）；
+    //    这里测的是「模型知道不知道」，两件事缺一不可：只有解析没有说明，
+    //    模型仍然不知道自己可以给；只有说明没有解析，它给了一次就被拒。
+    const source = await import('node:fs/promises').then(fs => fs.readFile(
+      new URL('../src/index.ts', import.meta.url), 'utf8'))
+    const ref = source.match(/const RECORD_REF = ([\s\S]*?)\n\n/u)?.[1] ?? ''
+    expect(ref).toContain('recordNo')
+    // 四个工具共用一个常量：各自写一份就会有一份漏掉这句。
+    const uses = source.match(/description: RECORD_REF/gu)?.length ?? 0
+    expect(uses).toBe(4)
+    expect(source).not.toMatch(/description: 'The record id\.'/u)
   })
 })

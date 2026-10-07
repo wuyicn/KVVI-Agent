@@ -19,8 +19,14 @@
  *
  * ── The registered set, and the ones deliberately missing ───────────────────
  *
- * Registered: `record_list`, `record_get`, `record_create`, `record_update`,
- * `workflow_available_actions`, `workflow_act`.
+ * Registered: `record_schema`, `record_list`, `record_get`, `record_create`,
+ * `record_update`, `workflow_available_actions`, `workflow_act`.
+ *
+ * `record_schema` is the one that answers a question about the *system* rather
+ * than about its data: which field codes exist, which are required, what an
+ * enum accepts. Without it the model has no way to learn a field code it was
+ * not told, and a wrong guess is refused — so it guesses until it gives up.
+ * That exact sequence is what it was added for.
  *
  * **Not registered**: `aggregate_read`. The platform has no aggregate endpoint,
  * and §9.8.1 makes serving one non-trivial: whoever sees an aggregate must be
@@ -60,6 +66,20 @@ export const Config: z<Config> = z.object({
   platformUrl: z.string().required(),
   contextSecret: z.string().required(),
 })
+
+/**
+ * The `id` argument of every record tool.
+ *
+ * One constant, not four copies: the platform resolves either form in the same
+ * place (`services/platform/src/request-refs.mjs`), and four descriptions that
+ * drift would teach the model four different answers to one question. It is
+ * spelled out because the model has no way to learn it otherwise — that is why
+ * an earlier incident ended with the record number being pasted into a uuid
+ * lookup, and with the model concluding the record was unreadable to it.
+ */
+const RECORD_REF = 'The record\'s id, or its record number (`recordNo`, e.g. `R-20261006-000003`). '
+  + 'A record number is resolved by the platform, so either works. A freshly created record is '
+  + 'reachable by the number `record_create` returned, without reading it back first.'
 
 /**
  * Field names that would let a caller assert an identity.
@@ -127,6 +147,25 @@ interface ActionList {
   actions: { action: string; to: string }[]
 }
 
+/** One field as the platform declares it. */
+interface FieldDeclaration {
+  field_code: string
+  label: string
+  type?: string
+  required: boolean
+  nullable: boolean
+  write_policy?: string
+  options?: { code: string; label: string }[]
+}
+
+/** The field catalogue of one system. */
+interface FieldCatalogue {
+  assetId: string
+  fields: FieldDeclaration[]
+  /** Declared fields this session may not see. Their names are not sent at all. */
+  hiddenFieldCount: number
+}
+
 /**
  * Register the worker's business tools.
  *
@@ -152,6 +191,72 @@ export function apply(ctx: Context, config: Config): void {
     if (!result.ok) throw new Error(refusalMessage(result))
     return result.value
   }
+
+  ctx.tools.register(defineTool({
+    name: 'record_schema',
+    description: 'List the fields one published KVVI system declares — the field codes you must use '
+      + 'as the keys of `data` in `record_create` and `record_update`. Each entry carries the label, '
+      + 'the field type, `required`, `write_policy`, and the allowed values of an enum field. '
+      + 'Read this BEFORE building a record payload: a field code that is not listed here is '
+      + 'refused with `KVVI_FIELD_NOT_DECLARED`. This returns the system\'s declarations only, never '
+      + 'record values, and a field this session is not allowed to see is not listed at all.',
+    parameters: {
+      system: {
+        type: 'string', required: true,
+        description: 'The system code (`assetId`), as shown in the company\'s system list.',
+      },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          assetId: { type: 'string', required: true },
+          fields: {
+            type: 'array', required: true,
+            items: {
+              type: 'object', additionalProperties: false,
+              properties: {
+                // 逐字段列出而不是 `type: 'json'`：这份清单是**照着它写 payload** 用的，
+                // 声明成不设限的 JSON 就没人会发现平台少给了一个必填标记。
+                field_code: { type: 'string', required: true },
+                label: { type: 'string', required: true },
+                type: { type: 'string' },
+                required: { type: 'boolean', required: true },
+                nullable: { type: 'boolean', required: true },
+                write_policy: { type: 'string' },
+                options: {
+                  type: 'array',
+                  items: {
+                    type: 'object', additionalProperties: false,
+                    properties: {
+                      code: { type: 'string', required: true },
+                      label: { type: 'string', required: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          hiddenFieldCount: { type: 'integer', required: true },
+        },
+      },
+      render: (_args, value) => {
+        const names = value.fields
+          .map(field => (field.required === true ? `${field.field_code} (required)` : field.field_code))
+        const lines = [`${String(value.fields.length)} field(s): ${names.join(', ')}.`]
+        // 有字段被挡掉时说出来。不说的话，「这个角色看不见任何字段」与
+        // 「这个系统没有字段」对模型是同一件事 —— 而前者要去找管理员，后者不用。
+        if (value.hiddenFieldCount > 0) {
+          lines.push(`${String(value.hiddenFieldCount)} further field(s) are not visible to this session.`)
+        }
+        return [{ type: 'text', text: lines.join(' ') }]
+      },
+    },
+    execute: args => call(async c => request<FieldCatalogue>(c, 'GET',
+      `/systems/${encodeURIComponent(args.system)}/fields`)),
+    presentCall: args => ({ card: 'generic', title: `Fields of ${args.system}`, kind: 'read' }),
+  }))
 
   ctx.tools.register(defineTool({
     name: 'record_list',
@@ -204,7 +309,7 @@ export function apply(ctx: Context, config: Config): void {
       + 'the `rowVersion` you must pass back when updating it.',
     parameters: {
       system: { type: 'string', required: true, description: 'The system code (`assetId`).' },
-      id: { type: 'string', required: true, description: 'The record id from `record_list`.' },
+      id: { type: 'string', required: true, description: RECORD_REF },
     },
     output: {
       schema: {
@@ -232,8 +337,9 @@ export function apply(ctx: Context, config: Config): void {
   ctx.tools.register(defineTool({
     name: 'record_create',
     description: 'Create a record in a published KVVI system. `data` is a flat map of field code '
-      + 'to value; field codes come from the system\'s model. Only create when the user asked for '
-      + 'it — this writes to the company\'s real data. The response carries the new record number.',
+      + 'to value; take every code from `record_schema` rather than from the wording of the '
+      + 'request. Only create when the user asked for it — this writes to the company\'s real '
+      + 'data. The response carries the new record number.',
     parameters: {
       system: { type: 'string', required: true, description: 'The system code (`assetId`).' },
       data: {
@@ -272,7 +378,7 @@ export function apply(ctx: Context, config: Config): void {
       + 'record and decide with the user rather than retrying with the same version.',
     parameters: {
       system: { type: 'string', required: true, description: 'The system code (`assetId`).' },
-      id: { type: 'string', required: true, description: 'The record id.' },
+      id: { type: 'string', required: true, description: RECORD_REF },
       data: {
         type: 'object', required: true, additionalProperties: true,
         description: 'Only the fields you are changing. Omitted fields keep their value.',
@@ -313,7 +419,7 @@ export function apply(ctx: Context, config: Config): void {
       + 'an empty list means "no legal next step", not "you forgot to look".',
     parameters: {
       system: { type: 'string', required: true, description: 'The system code (`assetId`).' },
-      id: { type: 'string', required: true, description: 'The record id.' },
+      id: { type: 'string', required: true, description: RECORD_REF },
     },
     output: {
       schema: {
@@ -355,7 +461,7 @@ export function apply(ctx: Context, config: Config): void {
       + '(`KVVI_SELF_APPROVAL_FORBIDDEN`) — that is a rule, not a missing permission.',
     parameters: {
       system: { type: 'string', required: true, description: 'The system code (`assetId`).' },
-      id: { type: 'string', required: true, description: 'The record id.' },
+      id: { type: 'string', required: true, description: RECORD_REF },
       action: {
         type: 'string', required: true,
         description: 'The action code from `workflow_available_actions`.',
