@@ -19,7 +19,8 @@
 
 import { pool } from './db.mjs'
 import { scopeContext, fieldVisibility, projectFields, canAct } from './authorization.mjs'
-import { createRecord, readRecord, listRecords, updateRecord } from './refs.mjs'
+import { createRecord, readRecord, listRecords, updateRecord,
+         publishedBusinessModel } from './refs.mjs'
 import { runtimeProjection } from './runtime-projection.mjs'
 import { publishedSystems } from './publish.mjs'
 import { idempotencyKeyOf, withIdempotency } from './idempotency.mjs'
@@ -117,6 +118,76 @@ async function systemRuntime(ctx, assetId) {
     return { status: 200, body: await runtimeProjection(ctx.companyId, assetId) }
   } catch (error) {
     return projectionFailure(error, assetId)
+  }
+}
+
+/**
+ * 一个系统的**字段声明**：契约里声明了哪些字段、哪个必填、枚举有哪些取值。
+ *
+ * ── 为什么要有这个端点 ──────────────────────────────────────────────────
+ *
+ * 建记录要写 `data`，而 `data` 的键是字段 code（`customer_name` 这类）。
+ * 此前没有任何**模型能读到的**端点回答「这个系统有哪些字段」：`/runtime`
+ * 倒是带着模型，但它一次交出六份契约（权限、流程、命令），且要求六份齐全 ——
+ * 给一个只想填表的调用方，那不是同一个问题。于是模型只能猜编码，
+ * 猜错拿到 `KVVI_FIELD_NOT_DECLARED`，再猜，直到放弃这次写入。
+ *
+ * ── 它给的是**结构**，不是数据 ─────────────────────────────────────────
+ *
+ * 逐字段返回 code、标签、类型、必填、写入策略与枚举取值，**不返回任何记录值**。
+ *
+ * ⚠️ 字段可见性照旧生效：`HIDDEN` 的字段**连名字都不出现**。这与记录读取
+ *    是同一条判据的两处应用（那里是值不出现）—— 字段名与枚举取值同样是
+ *    该角色被配置为看不见的东西。被滤掉的**数量**单独报出来（`hiddenFieldCount`），
+ *    否则「这个角色没有字段权限」与「这个系统没有字段」在调用方看来是同一件事。
+ *
+ * @param ctx 会话派生的上下文
+ * @param assetId 系统代号
+ * @returns {Promise<{status: number, body: object}>}
+ */
+async function systemFields(ctx, assetId) {
+  if (!await canAct(ctx.companyId, ctx.userId, 'FORM', assetId, 'read')) {
+    return { status: 403, body: { error: 'KVVI_NOT_ALLOWED',
+      detail: `没有 ${assetId} 的 read 动作权限` } }
+  }
+  // 与写入点**读同一份**已发布模型（`refs.mjs` 的 `publishedBusinessModel`）：
+  // 清单里列出的字段，必须正是写入时不会判「未声明」的那些。
+  const model = await publishedBusinessModel(ctx.companyId, assetId)
+  if (model === null) return fail('KVVI_NO_SUCH_SYSTEM', { assetId })
+
+  const declared = (model.fields ?? []).filter((f) => typeof f?.field_code === 'string')
+  const visibility = await fieldVisibility(ctx.companyId, ctx.userId,
+    declared.map((f) => f.field_code))
+  const fields = declared
+    .filter((f) => (visibility[f.field_code] ?? 'HIDDEN') !== 'HIDDEN')
+    .map(fieldDeclaration)
+  return { status: 200, body: {
+    assetId, fields, hiddenFieldCount: declared.length - fields.length,
+  } }
+}
+
+/**
+ * 契约字段 → 给调用方看的字段声明。**只搬声明，不搬值**。
+ *
+ * 键名保持契约里的那一列（`field_code` / `write_policy`）：`field_code` 的取值
+ * 就是写 `data` 时要用的键，改一次名就多一道转写，而转写是会出错的。
+ * @param {object} field `business-schema` 的 `Field`
+ * @returns {object} 字段声明
+ */
+function fieldDeclaration(field) {
+  // 枚举取值来自 `type_config.options`（`business-schema.v1` 里 select 类字段必带）。
+  // 停用的选项不是可取值，列出来只会把调用方引到一个不该选的值上。
+  const options = (field.type_config?.options ?? [])
+    .filter((o) => o?.enabled !== false && typeof o?.code === 'string')
+    .map((o) => ({ code: o.code, label: typeof o.label === 'string' ? o.label : o.code }))
+  return {
+    field_code: field.field_code,
+    label: typeof field.label === 'string' ? field.label : field.field_code,
+    type: field.type,
+    required: field.required === true,
+    nullable: field.nullable === true,
+    write_policy: field.write_policy ?? 'MUTABLE',
+    ...(options.length === 0 ? {} : { options }),
   }
 }
 
@@ -440,6 +511,11 @@ export async function systemRoutes({ method, path, payload, session, headers = {
 
     if (method === 'GET' && parts.length === 3 && parts[2] === 'runtime') {
       return systemRuntime(ctx, assetId)
+    }
+
+    // 字段声明：从 HTTP 外面读「这个系统有哪些字段」的唯一出口。
+    if (method === 'GET' && parts.length === 3 && parts[2] === 'fields') {
+      return systemFields(ctx, assetId)
     }
 
     if (parts.length === 3 && parts[2] === 'records') {

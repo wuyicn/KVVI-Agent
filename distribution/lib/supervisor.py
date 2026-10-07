@@ -581,6 +581,18 @@ def start_plan(home: Path, release_root: Path, platform_port: int = DEFAULT_PLAT
             'KVVI_RUNTIME_CONTEXT_SECRET': internal_token,
             'KVVI_INTERNAL_TOKEN': internal_token,
             'DSH_HOME': str(home),
+            # ⚠️ **平台在哪，要显式告诉运行时。** 它与上面 platform_step 里的
+            #    `KVVI_RUNTIME_URL` 是一对：那两个进程互相知道对方，各有一个变量。
+            #    从前只有一半 —— 平台知道运行时，运行时的工具**不知道平台**。
+            #
+            #    失效模式极具误导性：worker 预设里 `platformUrl` 的兜底是
+            #    `http://127.0.0.1:7400`（开发默认值），没传就默默用了它。
+            #    而 7400 上可能坐着**另一个旧实例** —— 实测就被一个 9 月 23 日
+            #    留下的旧平台占着，它把工具的 API 调用当成未登录的浏览器请求，
+            #    回 `303 See Other` + `text/plain`。工具读不出 JSON，报
+            #    `KVVI_BAD_RESPONSE`，而人看到的结论是「系统没通、员工啥也做不了」。
+            #    **连错端口不报错、只报一个别的错**，这就是逐条挑键漏掉的代价。
+            'KVVI_PLATFORM_URL': f'http://127.0.0.1:{platform_port}',
         }),
     }
     profile_step = {'kind': 'prepare-dsh-profile', 'writes': True, 'program': 'runtime',

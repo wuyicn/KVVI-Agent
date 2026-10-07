@@ -32,6 +32,8 @@ import { brandingRoutes } from './branding-api.mjs'
 import { loadSession } from './identity.mjs'
 import { verifyRuntimeContextHeaders } from './runtime-auth.mjs'
 import { FieldRuleError } from './field-rules.mjs'
+import { checkIdentifierSegments, INVALID_IDENTIFIER } from './request-refs.mjs'
+import { appendDenial, digestOf } from './audit.mjs'
 
 /** 产品 API 的前缀。与运行时 RPC 的 `/api` 区分靠**更具体**的路径。 */
 const PREFIX = '/api/v1'
@@ -122,6 +124,10 @@ const STATUS_OF = Object.freeze({
   KVVI_SELF_APPROVAL_FORBIDDEN: 403,
   KVVI_NO_SUCH_DRAFT: 404,
   KVVI_NO_SUCH_RECORD: 404,
+  // 路径段里的标识符既不是 uuid、也解析不到记录号。404 是**刻意的**：
+  // 它由调用方给的值决定，不是服务端故障 —— 500 会让模型把「我拿错了 id」
+  // 读成「这条记录对我不可读」，而那是一个假前提。
+  KVVI_RECORD_NOT_FOUND: 404,
   KVVI_NO_SUCH_SYSTEM: 404,
   KVVI_RUNTIME_CONTRACT_INCOMPLETE: 409,
   KVVI_CONTRACT_CONTENT_TAMPERED: 409,
@@ -214,7 +220,40 @@ export async function handleApi({ method, path, query, body, headers, loadSessio
   //   管理路由单列，不是「多一个前缀」：`/admin/*` 的闸门与 `/systems/*` 不同
   //   （前者要求所有者/管理员角色，后者只要求一个有效会话），
   //   而且它的**每一个分支各自过闸** —— 一处粗判会让新增的子路径默认放行。
-  const rest = path.slice(PREFIX.length) || '/'
+  let rest = path.slice(PREFIX.length) || '/'
+
+  // ── ③a 标识符闸：**进任何查询之前，只判这一次**（`request-refs.mjs`）──────
+  //
+  // 装在这里而不是逐接口补，有两条理由：
+  //   · 「哪些段是标识符」是路由表自己的知识，逐接口补是**端点数量级**的改动，
+  //     漏一处就是又一个 500；
+  //   · 这里是 `/api/v1` 唯一的入口，三条路由通道（管理、发布、产品）全在它下面。
+  //
+  // 不装的话：非法 id 一路喂给 uuid 列，PostgreSQL 抛 `22P02`，穿到请求边界变成
+  // 500 `KVVI_INTERNAL_ERROR` —— 而模型据那个 500 推出「这条记录对我不可读」，
+  // 并把那个假前提写进回复。真实原因只是「你给的标识符不是这个接口要的 id」。
+  //
+  // ★ 记录号在这里被换成记录 id，原路径继续走：权限、数据范围、字段可见性
+  //   一律不在这一层判 —— 在这里顺手判一次就是第二份授权实现。
+  const checked = await checkIdentifierSegments({
+    path: rest, companyId: session.companyId, userId: session.userId,
+  })
+  if (!checked.ok) {
+    // 拒绝也留痕（§9.11.2）。`reason` 记的就是「调用方给的标识符不存在」本身 ——
+    // 它与服务端故障（500 那条路径）分得开，两者的处置也完全不同。
+    await appendDenial({
+      companyId: session.companyId, actorKind: 'USER',
+      actorId: session.userId, gateway: session.gateway,
+      sessionId: session.sessionId ?? null,
+      action: 'api.invalid-identifier', resourceKind: 'PATH',
+      resourceId: `HTTP ${method} /api/v1${rest}`,
+      reason: INVALID_IDENTIFIER, paramsDigest: digestOf(checked.value),
+    }).catch(() => {})
+    return { status: statusOf(INVALID_IDENTIFIER),
+             body: { error: INVALID_IDENTIFIER, identifier: checked.value } }
+  }
+  rest = checked.path
+
   // ⚠️ `headers` 要一路传下去：幂等键**只认请求头** ——
   //    放进请求体它就成了一条模型可见的参数，而「重发不产生第二次效果」
   //    这条判据不该由模型决定。
@@ -240,23 +279,25 @@ export async function handleApi({ method, path, query, body, headers, loadSessio
 
 /** 分派：管理、发布、产品三类路由，各自的前缀与闸门见下面的注释。 */
 async function dispatch(routes) {
-  // ⚠️ `routes.path` **已经**是去掉 `/api/v1` 之后的相对路径（见上面的 ③）。
+  // ⚠️ `routes.path` **已经**是去掉 `/api/v1` 之后的相对路径（见上面的 ③），
+  //    而且记录号已在 ③a 被换成了记录 id。下面**一律用它**，不再自己切一遍：
   //    在这里再切一次前缀，会把 `/admin/members` 切成 `bers` ——
   //    表现是每一个管理接口都回 404，而 404 看起来像「端点没写」。
-  const rest = routes.path || '/'
+  const resolved = routes.path || '/'
+
   // ⚠️ 交给 `adminRoutes` 的是**去掉 `/admin` 之后**的路径。传整条路径的话，
   //    它的 `parts[0]` 是 `'admin'`，于是每一个分支都落到兜底 404 ——
   //    而 404 看起来像「端点没写」，不像「前缀剥错了」。
-  if (rest === '/admin' || rest.startsWith('/admin/')) {
-    return adminRoutes({ ...routes, path: rest.slice('/admin'.length) || '/' })
+  if (resolved === '/admin' || resolved.startsWith('/admin/')) {
+    return adminRoutes({ ...routes, path: resolved.slice('/admin'.length) || '/' })
   }
   // ⚠️ **发布通道单列，不挂进 `/admin`。**
   //    `/admin` 的闸门是「管理员」，而发布的两半是**两个不同的人**：
   //    搭建者提交（他不是管理员），所有者审批与发布（他是）。
   //    挂进 `/admin` 只会让搭建者这一步先被 403 挡住 ——
   //    而那条 403 看起来像「你没有权限」，不像「这个动作本来就不在管理面里」。
-  if (rest === '/publish' || rest.startsWith('/publish/')) {
-    return publishRoutes({ ...routes, path: rest.slice('/publish'.length) || '/' })
+  if (resolved === '/publish' || resolved.startsWith('/publish/')) {
+    return publishRoutes({ ...routes, path: resolved.slice('/publish'.length) || '/' })
   }
   // ⚠️ **公司品牌也单列，不挂进 `/admin`。**
   //    `/admin/*` 的两道闸都是「所有者或管理员」，而品牌这一处的两半是
@@ -264,7 +305,7 @@ async function dispatch(routes) {
   //    读是**任何有效会话** —— 牌子要显示在每一个员工的界面上。
   //    挂进 `/admin` 的话，员工这一读会先被 403 挡住，而那条 403 看起来
   //    像「这个界面没权限」，不像「它本来就不该在管理面里」。
-  if (rest === '/company' || rest.startsWith('/company/')) {
+  if (resolved === '/company' || resolved.startsWith('/company/')) {
     return brandingRoutes(routes)
   }
   return systemRoutes(routes)

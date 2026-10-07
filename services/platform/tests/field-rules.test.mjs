@@ -94,6 +94,29 @@ describe('字段写入约束：纯判定', () => {
     })), ['随便一个键:KVVI_FIELD_NOT_DECLARED'])
   })
 
+  test('★ 未声明字段的拒绝带上**已声明字段清单**（猜错一次就能改对）', () => {
+    // 只说「这个字段没声明」，调用方只能接着猜 —— 模型尤其如此：
+    // 它手里没有系统结构，重猜到放弃为止。
+    const problems = checkFieldValues({
+      model: MODEL, operation: 'create',
+      data: { customer_name: 'x', phone: '138' },
+      declaredFields: ['customer_name', 'owner_id', 'note'],
+    })
+    const declared = problems.find((p) => p.field === 'phone')?.detail.declaredFields
+    assert.deepEqual(declared, ['customer_name', 'owner_id', 'note'],
+      '拒绝里没有把清单带出来')
+    // 只放编码，不放整份 schema：字段可能上百个，这条 detail 随每条错误响应出去。
+    assert.equal(problems[0].detail.fields, undefined)
+  })
+
+  test('调用方没给清单时**不放空数组** —— `[]` 是另一句话', () => {
+    const problems = checkFieldValues({
+      model: MODEL, operation: 'create', data: { 未知: 1 },
+    })
+    assert.deepEqual(problems[0].detail, {},
+      '空数组读起来像「这个系统一个字段都没有」')
+  })
+
   test('一次列出**全部**违规项，不只第一条', () => {
     // 只报第一条会让调用方补一个、被打回一次，来回好几轮。
     const problems = checkFieldValues({

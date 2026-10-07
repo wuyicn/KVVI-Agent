@@ -21,7 +21,7 @@
 import { pool, withTransaction } from './db.mjs'
 import { latestContract } from './contracts.mjs'
 import { assertFieldValues } from './field-rules.mjs'
-import { applyScopeGucs, requiredFields } from './authorization.mjs'
+import { applyScopeGucs, fieldVisibility, requiredFields } from './authorization.mjs'
 import { nextRecordNo } from './record-no.mjs'
 
 export class KvviRefError extends Error {
@@ -138,10 +138,15 @@ export async function listRecords(scope, schemaCode, options = {}) {
  * @returns {Promise<object>} 新记录
  */
 /**
- * 这个业务对象的字段声明 —— **写入约束的唯一来源**。
+ * 这个业务对象的字段声明 —— **写入约束与字段清单的唯一来源**。
  *
  * 读的是**已发布的** `business-schema`（当前版）：字段的 `required` /
  * `write_policy` 是模型层的事，与「走哪一版流程」无关，所以不钉版本。
+ *
+ * ★ **两个消费者共用它**：写入点（`createRecord` / `updateRecord`）与
+ *   字段清单端点（`system-api.mjs` 的 `GET /systems/:id/fields`）。
+ *   各读一次就会让「清单里列出的字段」与「写进去不报错的字段」变成两份判据，
+ *   而它们分叉时的症状正是这次要修的那个：模型照着清单写，却被判未声明。
  *
  * ── ⚠️ 读不到时为什么**不拒绝写入** ────────────────────────────────────
  *
@@ -162,9 +167,34 @@ export async function listRecords(scope, schemaCode, options = {}) {
  * @param {string} schemaCode 业务对象代号
  * @returns {Promise<object|null>} 模型 Spec；没有已发布模型时为 null
  */
-async function modelOrNull(companyId, schemaCode) {
+export async function publishedBusinessModel(companyId, schemaCode) {
   const contract = await latestContract(companyId, 'business-schema', schemaCode)
   return contract === null ? null : contract.content
+}
+
+/**
+ * 这个会话**看得见**的字段编码，保持契约里的声明顺序。
+ *
+ * ⚠️ 过滤放在这里而不是 `field-rules.mjs`：那是模型层，不认识字段权限
+ *    ——`field-rules.mjs` 模块头那句「`required` 与权限是两件事」在这里兑现。
+ *    `fieldVisibility` 是唯一判据，本函数只把它应用到字段清单上 ——
+ *    没命中任何策略时它给 `HIDDEN`，照它的结论走。
+ *
+ * 为什么必须滤：`KVVI_FIELD_NOT_DECLARED` 的 `detail` 会带着这份清单回到调用方，
+ * 而记录读取正是靠同一条判据不让 `HIDDEN` 的字段出现（那里是值不出现）。
+ * 不过滤的话，一条写错的字段名就把该角色看不见的字段名念了出来。
+ *
+ * @param {object} ctx 身份上下文（公司、账号来自会话）
+ * @param {object} model 已发布的模型 Spec
+ * @returns {Promise<string[]>} 字段 code；一个都看不见时是空数组
+ */
+async function visibleFieldCodes(ctx, model) {
+  const codes = (model?.fields ?? [])
+    .map((field) => field?.field_code)
+    .filter((code) => typeof code === 'string')
+  if (codes.length === 0) return []
+  const visibility = await fieldVisibility(ctx.companyId, ctx.userId, codes)
+  return codes.filter((code) => (visibility[code] ?? 'HIDDEN') !== 'HIDDEN')
 }
 
 export async function createRecord(ctx, scope, input) {
@@ -173,13 +203,14 @@ export async function createRecord(ctx, scope, input) {
   // 为什么在这一层而不是 API 适配器里：记录有四个写入点
   // （产品 API、命令执行器、访客链路、流程迁移）。只在一个适配器里检查，
   // 另外三个就是绕过口 —— 「换个调用方就能跳过」的东西不叫约束。
-  const model = await modelOrNull(ctx.companyId, input.schemaCode)
+  const model = await publishedBusinessModel(ctx.companyId, input.schemaCode)
   if (model !== null) {
     assertFieldValues({
       model, operation: 'create', data: input.data ?? {},
       // 权限层的必填**只用在同一件事上**：建这条记录时你得把它填上。
       // 取并集交给 `checkFieldValues`，这里不替模型层下结论。
       requiredFields: await requiredFields(ctx.companyId, ctx.userId),
+      declaredFields: await visibleFieldCodes(ctx, model),
     })
   }
   return withTransaction('business', async (client) => {
@@ -228,9 +259,12 @@ export async function updateRecord(ctx, scope, logical, patch) {
   // 补丁里带的**字段值**要过同一套约束（`CREATE_ONLY` / `SYSTEM` 的字段不能改）。
   // `patch.state` 不走这里 —— 它不是模型字段，是流程迁移写的那一列。
   if (patch?.data !== undefined && Object.keys(patch.data).length > 0) {
-    const model = await modelOrNull(ctx.companyId, logical.schemaCode)
+    const model = await publishedBusinessModel(ctx.companyId, logical.schemaCode)
     if (model !== null) {
-      assertFieldValues({ model, operation: 'update', data: patch.data })
+      assertFieldValues({
+        model, operation: 'update', data: patch.data,
+        declaredFields: await visibleFieldCodes(ctx, model),
+      })
     }
   }
   const handle = buildHandle(ctx, logical)

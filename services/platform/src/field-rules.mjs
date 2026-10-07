@@ -87,16 +87,29 @@ function writable(field, operation) {
  * @param {'create'|'update'} input.operation 这是新增还是修改
  * @param {object} input.data 这次要写的字段值
  * @param {Set<string>} [input.requiredFields] **权限层**要求的必填字段（按角色）
+ * @param {string[]} [input.declaredFields] 已声明字段的编码清单，
+ *   **由调用方按可见性过滤后传入**。写进 `KVVI_FIELD_NOT_DECLARED` 的 `detail`。
+ *   过滤之所以是调用方的事：本模块是模型层那一件（见模块头），不认识字段权限。
  * @returns {Array<{field: string, reason: string, detail: object}>} 违规项，空数组表示可以写
  * @throws {TypeError} 入参形状不对（这是编程错误，不是数据错误）
  */
-export function checkFieldValues({ model, operation, data, requiredFields }) {
+export function checkFieldValues({ model, operation, data, requiredFields, declaredFields }) {
   if (!OPERATIONS.includes(operation)) {
     throw new TypeError(`未知的写入操作：${operation}`)
   }
   const fields = Array.isArray(model?.fields) ? model.fields : []
   const byCode = new Map(fields.map((f) => [f?.field_code, f]))
   const problems = []
+  // ★ 猜错一个字段名时，**把答案一起给回去**。
+  //
+  // 平台手里就有这张表，此前却说一句「这个字段没声明」：调用方（尤其是不带
+  // 系统结构知识的模型）只能一个编码一个编码地重猜，猜到放弃为止 ——
+  // 实测发生的就是这件事。清单只放编码：字段可能上百个，而 detail 会随
+  // 每一条错误响应出去。调用方没给清单时**不放空数组** —— `[]` 读起来像
+  // 「这个系统一个字段都没有」，那是另一句话。
+  const declaredCodes = Array.isArray(declaredFields)
+    ? declaredFields.filter((code) => typeof code === 'string')
+    : []
 
   for (const [code, value] of Object.entries(data ?? {})) {
     const field = byCode.get(code)
@@ -104,7 +117,10 @@ export function checkFieldValues({ model, operation, data, requiredFields }) {
     // 界面上不渲染、投影里不出现、Schema 里不声明，而它确实躺在库里。
     // 那种记录看起来「少了一个字段」，而真因是当初多写了一个没人认的键。
     if (field === undefined) {
-      problems.push({ field: code, reason: 'KVVI_FIELD_NOT_DECLARED', detail: {} })
+      problems.push({
+        field: code, reason: 'KVVI_FIELD_NOT_DECLARED',
+        detail: declaredCodes.length === 0 ? {} : { declaredFields: declaredCodes },
+      })
       continue
     }
     if (field.write_policy === 'SYSTEM') {
