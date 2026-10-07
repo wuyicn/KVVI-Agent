@@ -184,11 +184,11 @@ describe('契约客户端', () => {
 })
 
 describe('工具集', () => {
-  it('注册的是七个业务工具，且**不含**搭建类工具', async () => {
+  it('注册的是八个业务工具，且**不含**搭建类工具', async () => {
     const source = await import('node:fs/promises').then(fs => fs.readFile(
       new URL('../src/index.ts', import.meta.url), 'utf8'))
     // 逐个点名：漏掉一个就是「模型以为能做而做不到」，多一个就是能力边界变了。
-    for (const tool of ['record_schema', 'record_list', 'record_get', 'record_create',
+    for (const tool of ['system_list', 'record_schema', 'record_list', 'record_get', 'record_create',
       'record_update', 'workflow_available_actions', 'workflow_act']) {
       expect(source).toContain(`name: '${tool}'`)
     }

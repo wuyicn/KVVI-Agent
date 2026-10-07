@@ -1,0 +1,9 @@
+{
+  "recordQueryCalls": 1,
+  "toolExecutionMillis": 38,
+  "turnMillis": 108035,
+  "failureCode": "TRANSPORT",
+  "retryCount": 1,
+  "streamWaitMillis": 100132,
+  "businessWrites": 0
+}

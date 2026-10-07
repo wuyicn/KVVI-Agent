@@ -1,0 +1,87 @@
+{
+  "date": "2026-10-07",
+  "scope": "当前员工会话：客户系统字段及字段编码；只读查看两轮问题、工具折叠面板和源码，未发送消息、未改业务数据、未改产品代码。",
+  "session_title": "客户系统字段及字段编码",
+  "url": "http://127.0.0.1:7500/",
+  "steps": [
+    {
+      "step": 1,
+      "task": "查看字段查询结果",
+      "health": "部分可用，8次调用与冗长解释增加负担",
+      "screenshot": "03-字段回复原貌.png",
+      "observed": "用户明确要求字段编码，回复展示编码是合理的；额外系统别名/权限错误解释不必要。界面显示总用时3分45秒，包含一次已回答的用户澄清和一次模型请求重试，不能当成单个接口耗时。"
+    },
+    {
+      "step": 2,
+      "task": "展开字段查询的工具链",
+      "health": "有重复查询和系统定位缺口",
+      "screenshot": "02-字段查询与调用.png",
+      "observed": "先尝试客户登记系统两次、customer-registry一次均被拒；customer 的record_list两次、record_schema两次，最后还向员工确认系统编码。record_list只返回37条计数；schema只返回4字段编码及required。"
+    },
+    {
+      "step": 3,
+      "task": "查看按记录号读取资料的结果",
+      "health": "业务答案失败，并把排查交给员工",
+      "screenshot": "01-员工会话原貌.png",
+      "observed": "3次调用：按记录号get、按内部ID再次get、用户未要求的available_actions。get显示仅Record UUID (state not_followed)，回复没有客户资料，却展示内部ID、工具名、状态码并提供3条排查选择。界面显示用时11秒。"
+    }
+  ],
+  "source_evidence": [
+    {
+      "path": "vendor/dsh/packages/tool/kvvi-business/src/index.ts",
+      "line": 244,
+      "finding": "record_schema.render省掉label/type/options/write_policy，只输出字段编码与required"
+    },
+    {
+      "path": "vendor/dsh/packages/tool/kvvi-business/src/index.ts",
+      "line": 296,
+      "finding": "record_list.render只输出数量，省掉items/data/record refs"
+    },
+    {
+      "path": "vendor/dsh/packages/tool/kvvi-business/src/index.ts",
+      "line": 327,
+      "finding": "record_get.render只输出ID与state，省掉data与rowVersion"
+    },
+    {
+      "path": "vendor/dsh/packages/llm/llm-deepseek/src/protocols/chat-completions/serialize.ts",
+      "line": 263,
+      "finding": "发送给模型的tool content来自渲染后的result.content；结构化value不是自动附加到模型文本"
+    },
+    {
+      "path": "services/platform/src/system-api.mjs",
+      "line": 183,
+      "finding": "字段投影本来包含label/type/required/options；不是仅给编码"
+    },
+    {
+      "path": "vendor/dsh/packages/tool/kvvi-business/tests/tools.spec.ts",
+      "line": 186,
+      "finding": "工具注册和说明主要以源码文本断言验证，未覆盖模型可见内容的数据完整性"
+    }
+  ],
+  "verification": {
+    "command": "pnpm --filter @deepseek-ai/dsh-tool-kvvi-business test",
+    "exit_code": 0,
+    "passed": 19,
+    "meaning": "现有测试绿并未覆盖上述模型可见投影缺陷；不能视为员工业务任务成功"
+  },
+  "recommendation": {
+    "intent": "员工自然语言办理明确业务，拿到结果；不承担技术定位与排障。",
+    "priority": [
+      "补齐经权限过滤后的模型可见数据，包括字段标签、记录值及必要版本",
+      "给模型可核实的系统名称/编码映射，禁止靠猜别名反复探测；真有多个候选再做一次业务名称澄清",
+      "只为用户当前任务调用工具，成功读到记录不再重复读ID，不额外查询流程动作",
+      "员工回复以结果/必要下一步为主，正常回复1至3句或一张简短表；默认不用UUID、工具名、错误码和排障长文",
+      "员工入口默认呈现业务状态和结果；模型参数、Token、工作区及调试细节留在维护视图"
+    ],
+    "alternatives": "仅压短提示词可以缓解话多，但无法补齐丢失的数据；完全新做员工页面范围大。推荐先修工具输出和对话规则，再确认界面收窄。",
+    "example_success": "R-…：直接列真实客户名称、联系人、电话、跟进状态；记录号保留，内部ID和技术解释不展示。此处只是期望格式，不代表本次已读到客户值。",
+    "example_failure": "已找到这条记录，但暂时无法显示资料。请稍后重试。",
+    "exceptions": "用户明确要求字段编码时可以显示；记录目标不清楚、业务必要确认或不可逆/批量动作仍必须澄清/确认；权限拒绝仍保留真实可审计错误，不编造成功。"
+  },
+  "limits": [
+    "没有逐项计时或新的模型性能基准，不能判断平台接口慢还是模型等待占主因",
+    "未重新验证真实字段值、权限矩阵或业务写入",
+    "截图可见信息较密、低对比度元信息和工程标签增加阅读负担；未做键盘、读屏、缩放的完整无障碍测试",
+    "仅查看当前打开的员工模式会话，没有独立确认实际登录账号用户名"
+  ]
+}

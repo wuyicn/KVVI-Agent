@@ -1,0 +1,159 @@
+{
+  "forkHead": "6d0052fd144a2e162416abb66dc0846ba86f84d9",
+  "forkTree": "eb23cba401ac49457a2b8a1391dd6a81d47587f5",
+  "base": "22407d2aa4a9fb436861a6158ec4d15d41e09397",
+  "newRegressionRed": {
+    "failed": 9,
+    "passed": 4
+  },
+  "focusedGreen": {
+    "files": 4,
+    "passed": 51,
+    "business": 34,
+    "preset": 6,
+    "modeRouter": 11
+  },
+  "builtSnapshotGreen": {
+    "passed": 4,
+    "skippedUnselected": 119
+  },
+  "build": "full isolated and installed root succeeded; final host build succeeded",
+  "delivery": {
+    "changedPaths": 146,
+    "entries": 36,
+    "present": 138,
+    "deleted": 8,
+    "rebuildVerified": true
+  },
+  "sourceModeLimitation": "New kvvi-record-read and unchanged bash-tool-turn both fail with undefined prepare in source mode; built mode is the pilot entry and passed.",
+  "logs": [
+    {
+      "path": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/employee-build.log",
+      "sha256": "b1828ba184b5b81f55b0e803c9135dc6c3b5b5c0bc9d3d1693da0eb920c579e5"
+    },
+    {
+      "path": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/employee-host-final.log",
+      "sha256": "859baa11878061b15dee9a29479b923b17d0ea2aae6653a2a33a1e61cc95af19"
+    },
+    {
+      "path": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/employee-original-build.log",
+      "sha256": "498d1f8a86de524f18b07d1a5c132870a9932d38def8261b2c9fb82b031bf472"
+    },
+    {
+      "path": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/employee-original-build-final.log",
+      "sha256": "c4a1847deb5b3b2772cd86981998c4851ab49372881f7cdb92d214fc39bf8d4c"
+    },
+    {
+      "path": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/employee-red.log",
+      "sha256": "190232a408dd6bf5e8c15ff47efa70a7da532717bfddc9db4333763f8b2b99ba"
+    },
+    {
+      "path": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/employee-green-final.log",
+      "sha256": "a3edf68bf20e4f75d4b420c0bd303bb7603b50a0d73de2b6d6dce3f31336305d"
+    },
+    {
+      "path": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/employee-snapshot-replay-final.log",
+      "sha256": "3f5abac07e2733434c99532d23bc08b93a513942373931cff08731da942607ef"
+    },
+    {
+      "path": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/employee-snapshot-control.log",
+      "sha256": "cf0285c03ba82ac1152955ea96945e0aafe1c34509327d82d38d54069bfe1138"
+    },
+    {
+      "path": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/employee-hidden-red.log",
+      "sha256": "8814cffdfdd9ecb31d5cccdd4069b72ea02b8bbe3a2c0c0a1cda7cbf8a0f091e"
+    },
+    {
+      "path": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/employee-final-tests.log",
+      "sha256": "55e50774c47af75c941a0d9888c369495e5c1f1920168b31f4ca6a032d8b54b1"
+    },
+    {
+      "path": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/employee-hidden-snapshot-replay.log",
+      "sha256": "f0d71bb8a6dbbf0a11aa06cf9b6b0581573b15dc07d2be11282f0875efae29ab"
+    },
+    {
+      "path": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/employee-hidden-build.log",
+      "sha256": "b554fe512bf071b5fe8ef53de1c1e0532e026946228470ca0f03f6da657ff358"
+    },
+    {
+      "path": "/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/employee-original-build-security.log",
+      "sha256": "d22349dd62807dae75980c4fb4014ebfea2bd73df767d1f4a437d67977583b6c"
+    }
+  ],
+  "localPilot": {
+    "updated": true,
+    "releaseRoot": "/Users/wuyi-macs/Documents/KVVI-Agent",
+    "buildFinal": "employee-original-build-security.log",
+    "healthHTTP": 200,
+    "businessWrites": 0,
+    "firstLive": {
+      "role": "staff-view",
+      "fieldQueryCalls": 2,
+      "fieldQueryDisplayedSeconds": 7,
+      "recordQueryCalls": 1,
+      "recordQueryDisplayedSeconds": 3,
+      "recordNo": "R-20261006-000001",
+      "visibleFieldCount": 4,
+      "permissionFooterObserved": true
+    },
+    "finalPersona": "Successful reads omit permission footer and stop after business result without unsolicited follow-up.",
+    "observedTransportSlowTurn": {
+      "recordQueryCalls": 1,
+      "toolExecutionMillis": 38,
+      "turnMillis": 108035,
+      "failureCode": "TRANSPORT",
+      "retryCount": 1,
+      "streamWaitMillis": 100132,
+      "businessWrites": 0
+    },
+    "finalLive": {
+      "role": "staff-view",
+      "fieldQueryCalls": 2,
+      "fieldQueryDisplayedSeconds": 6,
+      "recordQueryCalls": 1,
+      "recordQueryDisplayedSeconds": 4,
+      "visibleFieldCount": 4,
+      "noTechnicalExplanation": true,
+      "noPermissionFooter": true,
+      "noUnsolicitedFollowup": true,
+      "personaEndRuleLoaded": true,
+      "businessWrites": 0,
+      "eventTimings": [
+        {
+          "turn": 1,
+          "calls": [
+            "system_list",
+            "record_schema"
+          ],
+          "toolMilliseconds": [
+            26,
+            31
+          ],
+          "retryCount": 0
+        },
+        {
+          "turn": 2,
+          "calls": [
+            "record_get"
+          ],
+          "toolMilliseconds": [
+            38
+          ],
+          "retryCount": 0
+        }
+      ],
+      "screenshot": "05-员工字段查询最终修复.png"
+    }
+  },
+  "hiddenFieldRed": {
+    "failed": 2,
+    "passed": 13
+  },
+  "independentReview": {
+    "critical": 0,
+    "important": 0,
+    "minor": 0,
+    "closedImportant": "HIDDEN field names removed before canonical value and rendering",
+    "scope": "Source diff, real fixtures and existing red/green logs; excludes business acceptance and provider stability"
+  }
+}

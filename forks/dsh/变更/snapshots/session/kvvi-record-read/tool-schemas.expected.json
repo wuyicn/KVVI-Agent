@@ -1,0 +1,172 @@
+{
+  "initial": [
+    {
+      "name": "record_create",
+      "description": "Create a record in a published KVVI system. `data` is a flat map of field code to value; take every code from `record_schema` rather than from the wording of the request. Only create when the user asked for it — this writes to the company's real data. The response carries the new record number.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "system": {
+            "type": "string",
+            "description": "The system code (`assetId`)."
+          },
+          "data": {
+            "type": "object",
+            "description": "Field code to value. Never include identity fields such as `tenant`.",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "system",
+          "data"
+        ]
+      }
+    },
+    {
+      "name": "record_get",
+      "description": "Read one KVVI record by id. Returns the field values this session may see and the `rowVersion` you must pass back when updating it.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "system": {
+            "type": "string",
+            "description": "The system code (`assetId`)."
+          },
+          "id": {
+            "type": "string",
+            "description": "The record's id, or its record number (`recordNo`, e.g. `R-20261006-000003`). A record number is resolved by the platform, so either works. A freshly created record is reachable by the number `record_create` returned, without reading it back first."
+          }
+        },
+        "required": [
+          "system",
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "record_list",
+      "description": "List the records of one published KVVI system that this session may read. Rows and fields are already filtered by the platform: a field you cannot see is absent from the response rather than empty, and an out-of-scope row is not returned. Use this for list requests or when the record reference is unknown. If a record id or number is known, call record_get directly instead.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "system": {
+            "type": "string",
+            "description": "The system code (`assetId`), as shown in the company's system list."
+          }
+        },
+        "required": [
+          "system"
+        ]
+      }
+    },
+    {
+      "name": "record_schema",
+      "description": "List the fields one published KVVI system declares — the field codes you must use as the keys of `data` in `record_create` and `record_update`. Each entry carries the label, the field type, `required`, `write_policy`, and the allowed values of an enum field. Read this BEFORE building a record payload: a field code that is not listed here is refused with `KVVI_FIELD_NOT_DECLARED`. This returns the system's declarations only, never record values, and a field this session is not allowed to see is not listed at all.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "system": {
+            "type": "string",
+            "description": "The system code (`assetId`), as shown in the company's system list."
+          }
+        },
+        "required": [
+          "system"
+        ]
+      }
+    },
+    {
+      "name": "record_update",
+      "description": "Update a KVVI record. `rowVersion` is REQUIRED and must be the value you read most recently: if someone else changed the record in between, the platform refuses with `KVVI_ROW_VERSION_CONFLICT` instead of overwriting their change. On that code, re-read the record and decide with the user rather than retrying with the same version.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "system": {
+            "type": "string",
+            "description": "The system code (`assetId`)."
+          },
+          "id": {
+            "type": "string",
+            "description": "The record's id, or its record number (`recordNo`, e.g. `R-20261006-000003`). A record number is resolved by the platform, so either works. A freshly created record is reachable by the number `record_create` returned, without reading it back first."
+          },
+          "data": {
+            "type": "object",
+            "description": "Only the fields you are changing. Omitted fields keep their value.",
+            "additionalProperties": true
+          },
+          "rowVersion": {
+            "type": "integer",
+            "description": "The version from `record_get`. Not a guess."
+          }
+        },
+        "required": [
+          "system",
+          "id",
+          "data",
+          "rowVersion"
+        ]
+      }
+    },
+    {
+      "name": "system_list",
+      "description": "List this company's published system names and their exact codes (assetId). Use this to resolve a business name when the system code is unknown; do not guess codes. This is the company catalogue, not a grant to read or write records. Each subsequent record or field request still checks the employee's permissions.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "workflow_act",
+      "description": "Move a KVVI record through one workflow transition. `action` must come from `workflow_available_actions`. The platform refuses anything the published contract does not allow, including approving a request you submitted yourself (`KVVI_SELF_APPROVAL_FORBIDDEN`) — that is a rule, not a missing permission.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "system": {
+            "type": "string",
+            "description": "The system code (`assetId`)."
+          },
+          "id": {
+            "type": "string",
+            "description": "The record's id, or its record number (`recordNo`, e.g. `R-20261006-000003`). A record number is resolved by the platform, so either works. A freshly created record is reachable by the number `record_create` returned, without reading it back first."
+          },
+          "action": {
+            "type": "string",
+            "description": "The action code from `workflow_available_actions`."
+          },
+          "rowVersion": {
+            "type": "integer",
+            "description": "The version from `record_get`. A transition changes the record too."
+          }
+        },
+        "required": [
+          "system",
+          "id",
+          "action",
+          "rowVersion"
+        ]
+      }
+    },
+    {
+      "name": "workflow_available_actions",
+      "description": "List the workflow actions this session may run on one record right now. The platform applies the published workflow contract and the caller's flow permissions, so an empty list means \"no legal next step\", not \"you forgot to look\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "system": {
+            "type": "string",
+            "description": "The system code (`assetId`)."
+          },
+          "id": {
+            "type": "string",
+            "description": "The record's id, or its record number (`recordNo`, e.g. `R-20261006-000003`). A record number is resolved by the platform, so either works. A freshly created record is reachable by the number `record_create` returned, without reading it back first."
+          }
+        },
+        "required": [
+          "system",
+          "id"
+        ]
+      }
+    }
+  ],
+  "changes": []
+}

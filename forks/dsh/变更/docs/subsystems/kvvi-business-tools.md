@@ -6,7 +6,7 @@ description: "How a deployed KVVI company's business data becomes model-facing t
 
 ## Summary
 
-[`packages/tool/kvvi-business`](../../packages/tool/kvvi-business/README.md) exposes one deployed company's records, their declared fields, and its workflow to the Worker Agent as seven model-facing tools. Every one of them is an HTTP call into **that company's own platform service**, under **the signed-in employee's identity** — the same execution point the web panel calls. The Agent therefore holds no authorization logic of its own: whatever the system permits the employee, the Agent may do on their behalf, and whatever it refuses, it refuses the Agent too.
+[`packages/tool/kvvi-business`](../../packages/tool/kvvi-business/README.md) exposes one deployed company's records, their declared fields, and its workflow to the Worker Agent as eight model-facing tools. Every one of them is an HTTP call into **that company's own platform service**, under **the signed-in employee's identity** — the same execution point the web panel calls. The Agent therefore holds no authorization logic of its own: whatever the system permits the employee, the Agent may do on their behalf, and whatever it refuses, it refuses the Agent too.
 
 That is the whole design. Everything below is either the identity path that makes it literally true, or the boundary that keeps it true as the tool set grows.
 
@@ -48,6 +48,7 @@ The wire format is one format with two implementations (the platform's `runtime-
 
 | Tool | Platform call | Writes? |
 |---|---|---|
+| `system_list` | `GET /systems` | no |
 | `record_schema` | `GET /systems/:id/fields` | no |
 | `record_list` | `GET /systems/:id/records` | no |
 | `record_get` | `GET /systems/:id/records/:rid` | no |
@@ -56,9 +57,11 @@ The wire format is one format with two implementations (the platform's `runtime-
 | `workflow_available_actions` | `GET /systems/:id/records/:rid/actions` | no |
 | `workflow_act` | `POST /systems/:id/records/:rid/transitions` | yes |
 
+The system catalogue resolves business names to exact codes within the signed session company; catalogue membership is not permission to read or write records. Subsequent field and record endpoints continue to enforce their existing checks. Every successful tool renders its complete validated value as model-visible JSON, rather than a count or identifier-only summary.
+
 The `:rid` segment accepts the record's id or its record number (`R-20261006-000003`). The platform resolves a record number within the session's company and the named system, so `record_create`'s `recordNo` is a usable argument to `record_get` without reading the record back first.
 
-The `kvvi-worker` preset carries exactly these seven, plus `ask_user`, and nothing that can build, run a command, read a file, or fetch a URL. That is a boundary, not a short list: a mode that can run commands is a mode whose permissions cannot be reasoned about, because the command need not go through the platform at all.
+The `kvvi-worker` preset carries exactly these eight, plus `ask_user`, and nothing that can build, run a command, read a file, or fetch a URL. That is a boundary, not a short list: a mode that can run commands is a mode whose permissions cannot be reasoned about, because the command need not go through the platform at all.
 
 `record_update` and `workflow_act` both require `rowVersion`, and the platform refuses a stale one. A transition also changes the record, so it carries the version for the same reason a field edit does — a workflow that let last-writer-win would push an already-approved request back to pending.
 
