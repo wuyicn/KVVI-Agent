@@ -386,7 +386,11 @@ async function *filteredControl(source: AsyncIterable<unknown>,
   }
 }
 
-export interface Config { readonly secret: string }
+/** Signature verification configuration shared with the platform. */
+export interface Config {
+  /** Shared secret for platform-signed employee and builder session contexts. */
+  readonly secret: string
+}
 
 declare module '@deepseek-ai/cordis' {
   interface Context {

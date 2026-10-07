@@ -52,7 +52,10 @@ function failureMessage(
   code: unknown,
   t: ChatViewSlotProps['t'],
 ): string {
-  return code === 'AUTH' ? t('message.failure.auth') : message
+  if (code === 'AUTH') return t('message.failure.auth')
+  if (code === 'TIMEOUT') return t('message.failure.timeout')
+  if (code === 'TRANSPORT') return t('message.failure.transport')
+  return message
 }
 
 function ModelRetryItem({ node, active, t }: {
@@ -133,7 +136,7 @@ function TurnErrorItem({ node, t }: {
         <span className={css.turnErrorTitle}>{t('message.turnError')}</span>
         <span className={css.turnErrorMessage}>{failureMessage(node.message, node.code, t)}</span>
       </div>
-      {node.code !== undefined && <code className={css.turnErrorCode}>{node.code}</code>}
+      {node.code !== undefined && node.code !== 'TIMEOUT' && node.code !== 'TRANSPORT' && <code className={css.turnErrorCode}>{node.code}</code>}
     </div>
   )
 }

@@ -27,6 +27,7 @@ import type {
   RequestImageAttachment,
 } from '@deepseek-ai/dsh-attachment'
 import type { AnonymousUserId } from '@deepseek-ai/dsh-anonymous-user-id'
+import { outputProgress } from '../../common/progress.ts'
 import { idleWatchdog, timeoutOf } from '@deepseek-ai/dsh-timeout'
 import type {
   DeepSeekLlmApiJson,
@@ -200,7 +201,9 @@ export class ChatCompletionsAdapter extends LlmAdapter {
     const upstream = options.signal === undefined
       ? consumer.signal
       : AbortSignal.any([options.signal, consumer.signal])
-    using watchdog = idleWatchdog(upstream, connection.streamIdleTimeoutMs, STREAM_IDLE_TIMEOUT_CODE)
+    using progress = connection.streamProgressTimeoutMs === undefined ? undefined
+      : outputProgress(upstream, connection.streamProgressTimeoutMs)
+    using watchdog = idleWatchdog(progress?.signal ?? upstream, connection.streamIdleTimeoutMs, STREAM_IDLE_TIMEOUT_CODE)
     const iterator = this.request(
       options,
       watchdog.signal,
@@ -213,7 +216,8 @@ export class ChatCompletionsAdapter extends LlmAdapter {
     let exhausted = false
     try {
       while (true) {
-        const result = await watchdog.next(iterator)
+        const result = await (progress === undefined ? watchdog.next(iterator)
+          : progress.next({ next: () => watchdog.next(iterator) }))
         if (result.done) {
           exhausted = true
           return
@@ -221,6 +225,9 @@ export class ChatCompletionsAdapter extends LlmAdapter {
         yield result.value
       }
     } catch (error: unknown) {
+      if (progress !== undefined && timeoutOf(progress.signal, 'DEEPSEEK_PROGRESS') !== undefined) {
+        throw new LlmError('DeepSeek output progress timeout', 'TIMEOUT', { cause: error })
+      }
       if (timeoutOf(watchdog.signal, STREAM_IDLE_TIMEOUT_CODE) !== undefined) {
         throw new LlmError(
           `DeepSeek stream idle timeout after ${connection.streamIdleTimeoutMs}ms`,

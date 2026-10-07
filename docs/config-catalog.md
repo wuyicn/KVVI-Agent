@@ -197,7 +197,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/api/gateway/src/index.ts:119`](../packages/api/gateway/src/index.ts)
+Source: [`packages/api/gateway/src/index.ts:134`](../packages/api/gateway/src/index.ts)
 
 <a id="deepseek-aidsh-api-session-controller"></a>
 
@@ -1055,6 +1055,22 @@ export interface Config {
 
 Source: [`packages/host/frontend-static/src/index.ts:30`](../packages/host/frontend-static/src/index.ts)
 
+<a id="deepseek-aidsh-host-kvvi-mode-router"></a>
+
+## `@deepseek-ai/dsh-host-kvvi-mode-router`
+
+Requires: `connection` · `sessionController` · `agentPresets`
+
+```ts config-catalog
+/** Signature verification configuration shared with the platform. */
+export interface Config {
+  /** Shared secret for platform-signed employee and builder session contexts. */
+  readonly secret: string
+}
+```
+
+Source: [`packages/host/kvvi-mode-router/src/index.ts:390`](../packages/host/kvvi-mode-router/src/index.ts)
+
 <a id="deepseek-aidsh-host-open-in-app"></a>
 
 ## `@deepseek-ai/dsh-host-open-in-app`
@@ -1093,8 +1109,18 @@ Source: [`packages/host/open-in-app/src/index.ts:50`](../packages/host/open-in-a
 ```ts config-catalog
 /** Web server listen and response-compression config. */
 export interface Config {
-  /** Listen host; the two supported values are loopback and all-interfaces. */
-  host: '127.0.0.1' | '0.0.0.0'
+  /**
+   * Listen host: the loopback literal, the all-interfaces literal, or one
+   * explicit IPv4 literal.
+   *
+   * The all-interfaces literal stays enumerated here because a cordis.yml may
+   * set it directly, but the Web app's flag parser refuses `--host 0.0.0.0`,
+   * so the values a deployment can actually choose are loopback and one
+   * explicit address. The explicit form is what lets a deployment bind an
+   * internal interface and put its own entry point in front, instead of being
+   * confined to loopback that no other container can reach.
+   */
+  host: string
   /** Listen port; zero requests an OS-assigned port. */
   port: number
   /** Response compression for socket-backed HTTP requests. @default 'none' */
@@ -1106,7 +1132,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/host/webserver/src/index.ts:59`](../packages/host/webserver/src/index.ts)
+Source: [`packages/host/webserver/src/index.ts:68`](../packages/host/webserver/src/index.ts)
 
 <a id="deepseek-aidsh-invariants"></a>
 
@@ -1177,6 +1203,8 @@ export interface Config {
   models?: DeepSeekCatalogModel[]
   /** Maximum provider idle time while one stream read is outstanding (default five minutes). */
   streamIdleTimeoutMs?: number
+  /** Optional maximum silence between translated model chunks; heartbeats do not count. */
+  streamProgressTimeoutMs?: number
   /** Maximum accumulated file-referenced image bytes per chat request (default 128 MiB). */
   maxRequestFilesBytes?: number
   /** Maximum accumulated base64 image payload after Files API fallback (default 20 MiB). */
@@ -3157,6 +3185,42 @@ export type CompletionDelivery = 'quiet' | 'wakeup'
 
 Source: [`packages/jobs/tool-jobs/src/index.ts:31`](../packages/jobs/tool-jobs/src/index.ts)
 
+<a id="deepseek-aidsh-tool-kvvi-business"></a>
+
+## `@deepseek-ai/dsh-tool-kvvi-business`
+
+Requires: `tools` · `kvviModeRouter` · `systemPrompt`
+
+```ts config-catalog
+/** Deployment configuration for the business tools. */
+export interface Config {
+  /** Base URL of the KVVI platform service (no trailing `/api/v1`). */
+  platformUrl: string
+  /** Shared runtime-context secret; identical in both processes. */
+  contextSecret: string
+}
+```
+
+Source: [`packages/tool/kvvi-business/src/index.ts:58`](../packages/tool/kvvi-business/src/index.ts)
+
+<a id="deepseek-aidsh-tool-kvvi-publish"></a>
+
+## `@deepseek-ai/dsh-tool-kvvi-publish`
+
+Requires: `tools` · `kvviModeRouter`
+
+```ts config-catalog
+/** Deployment configuration for the publish tool. */
+export interface Config {
+  /** Base URL of the KVVI platform service (no trailing `/api/v1`). */
+  platformUrl: string
+  /** Shared runtime-context secret; identical in both processes. */
+  contextSecret: string
+}
+```
+
+Source: [`packages/tool/kvvi-publish/src/index.ts:45`](../packages/tool/kvvi-publish/src/index.ts)
+
 <a id="deepseek-aidsh-tool-lsp"></a>
 
 ## `@deepseek-ai/dsh-tool-lsp`
@@ -3777,6 +3841,8 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-authorization` — requires `credentials` ([`packages/credentials/authorization/src/index.ts`](../packages/credentials/authorization/src/index.ts))
 - `@deepseek-ai/dsh-browser-use` ([`packages/browser-use/browser-use/src/index.ts`](../packages/browser-use/browser-use/src/index.ts))
 - `@deepseek-ai/dsh-client-file-upload` — requires `agents` · `attachments` · `commands` · `connection` ([`packages/client/file-upload/src/index.ts`](../packages/client/file-upload/src/index.ts))
+- `@deepseek-ai/dsh-client-kvvi-brand` ([`packages/client/kvvi-brand/src/index.ts`](../packages/client/kvvi-brand/src/index.ts))
+- `@deepseek-ai/dsh-client-kvvi-panel` ([`packages/client/kvvi-panel/src/index.ts`](../packages/client/kvvi-panel/src/index.ts))
 - `@deepseek-ai/dsh-client-locale` ([`packages/client/locale/src/index.ts`](../packages/client/locale/src/index.ts))
 - `@deepseek-ai/dsh-client-modules` — requires `loader` ([`packages/client/modules/src/index.ts`](../packages/client/modules/src/index.ts))
 - `@deepseek-ai/dsh-client-resources` ([`packages/client/resources/src/index.ts`](../packages/client/resources/src/index.ts))
@@ -3912,6 +3978,7 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 - `@deepseek-ai/dsh-home-paths` ([`packages/util/home-paths/src/index.ts`](../packages/util/home-paths/src/index.ts))
 - `@deepseek-ai/dsh-hook-protocol` ([`packages/hooks/hook-protocol/src/index.ts`](../packages/hooks/hook-protocol/src/index.ts))
 - `@deepseek-ai/dsh-http-proxy` ([`packages/util/http-proxy/src/index.ts`](../packages/util/http-proxy/src/index.ts))
+- `@deepseek-ai/dsh-kvvi-app` ([`packages/bundle/kvvi-app/src/index.ts`](../packages/bundle/kvvi-app/src/index.ts))
 - `@deepseek-ai/dsh-launch-environment` ([`packages/util/launch-environment/src/index.ts`](../packages/util/launch-environment/src/index.ts))
 - `@deepseek-ai/dsh-lazy-require` ([`packages/util/lazy-require/src/index.ts`](../packages/util/lazy-require/src/index.ts))
 - `@deepseek-ai/dsh-llm-mock-server` ([`packages/test-support/llm-mock-server/src/index.ts`](../packages/test-support/llm-mock-server/src/index.ts))

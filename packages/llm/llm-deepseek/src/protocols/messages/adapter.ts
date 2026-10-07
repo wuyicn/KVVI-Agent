@@ -4,6 +4,7 @@ import { attributionHeaders, LlmAdapter, LlmError } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, ImageAttachmentAccessResolver, PreparedAdapterCall, StreamChunk } from '@deepseek-ai/dsh-llm'
 import type { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import type { DeepSeekLlmApiJson } from '@deepseek-ai/dsh-deepseek-llm-api-extensions'
+import { outputProgress } from '../../common/progress.ts'
 import { idleWatchdog, timeoutOf } from '@deepseek-ai/dsh-timeout'
 import { catalogModelInfo, modelInfo } from '../../common/model-info.ts'
 import type { DeepSeekAdapterOptions, DeepSeekConnectionOptions as Connection } from '../../common/types.ts'
@@ -64,15 +65,21 @@ export class DeepSeekMessagesAdapter extends LlmAdapter {
   private async * generate(options: GenerateOptions, connection: Connection): AsyncGenerator<StreamChunk> {
     const consumer = new AbortController()
     const signal = options.signal === undefined ? consumer.signal : AbortSignal.any([consumer.signal, options.signal])
-    using watchdog = idleWatchdog(signal, connection.streamIdleTimeoutMs, 'MESSAGES_IDLE')
+    using progress = connection.streamProgressTimeoutMs === undefined ? undefined
+      : outputProgress(signal, connection.streamProgressTimeoutMs)
+    using watchdog = idleWatchdog(progress?.signal ?? signal, connection.streamIdleTimeoutMs, 'MESSAGES_IDLE')
     const iterator = this.request(options, connection, watchdog.signal, () => { watchdog.pulse() })
     try {
       while (true) {
-        const next = await watchdog.next(iterator)
+        const next = await (progress === undefined ? watchdog.next(iterator)
+          : progress.next({ next: () => watchdog.next(iterator) }))
         if (next.done) return
         yield next.value
       }
     } catch (error) {
+      if (progress !== undefined && timeoutOf(progress.signal, 'DEEPSEEK_PROGRESS') !== undefined) {
+        throw new LlmError('DeepSeek Messages output progress timeout', 'TIMEOUT', { cause: error })
+      }
       if (timeoutOf(watchdog.signal, 'MESSAGES_IDLE') !== undefined) throw new LlmError('DeepSeek Messages stream idle timeout', 'TIMEOUT', { cause: error })
       if (options.signal?.aborted) throw new LlmError('DeepSeek Messages request aborted', 'ABORTED', { cause: error })
       if (error instanceof LlmError) throw error

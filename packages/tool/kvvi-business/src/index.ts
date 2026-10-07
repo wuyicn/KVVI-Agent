@@ -47,11 +47,12 @@ import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type {} from '@deepseek-ai/dsh-host-kvvi-mode-router'
+import { registerSystemContext } from './system-context.ts'
 import { refusalMessage, request } from './client.ts'
 import type { CallContext, CallResult } from './client.ts'
 
 export const name = 'kvvi-business'
-export const inject = ['tools', 'kvviModeRouter']
+export const inject = ['tools', 'kvviModeRouter', 'systemPrompt']
 
 /** Deployment configuration for the business tools. */
 export interface Config {
@@ -206,6 +207,8 @@ export function apply(ctx: Context, config: Config): void {
     return result.value
   }
 
+  registerSystemContext(ctx, contextFor)
+
   ctx.tools.register(defineTool({
     name: 'system_list',
     description: 'List this company\'s published system names and their exact codes (assetId). '
@@ -242,7 +245,8 @@ export function apply(ctx: Context, config: Config): void {
     description: 'List the fields one published KVVI system declares — the field codes you must use '
       + 'as the keys of `data` in `record_create` and `record_update`. Each entry carries the label, '
       + 'the field type, `required`, `write_policy`, and the allowed values of an enum field. '
-      + 'Read this BEFORE building a record payload: a field code that is not listed here is '
+      + 'When current published fields are already supplied in runtime context, reuse them without this call. '
+      + 'Otherwise read this BEFORE building a record payload: a field code that is not listed here is '
       + 'refused with `KVVI_FIELD_NOT_DECLARED`. This returns the system\'s declarations only, never '
       + 'record values, and a field this session is not allowed to see is not listed at all.',
     parameters: {

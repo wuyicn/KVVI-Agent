@@ -57,6 +57,7 @@ A request selects the route with `provider: deepseek-official`; the model id pas
 | `maxTokens` | `256,000` | Per-request output cap; a model's own cap and explicit request values win |
 | `defaultContextWindow` | `1,000,000` | Capacity fallback for models without an exact value |
 | `models` | V41 Flash + V4 Pro | Advisory catalog shown by discovery consumers |
+| `streamProgressTimeoutMs` | omitted | Optional model-output progress deadline, independent of network keepalives |
 | `streamIdleTimeoutMs` | `300,000` | Maximum provider idle time per outstanding stream read |
 | `maxRequestFilesBytes` | `128 MiB` | File-mode request-image byte budget; a request whose retained images exceed it fails with `IMAGE_OFFLOAD_REQUIRED` |
 | `maxInlineRequestImageBytes` | `20 MiB` | Independent base64 fallback high watermark |
@@ -226,3 +227,5 @@ This Dev Note is non-authoritative working context: undecided directions and not
 </details>
 
 **Runtime invariant:** No companion is published. This package exposes no independent event sequence or mutable data relation beyond contracts enforced at its owning seam.
+
+The optional `streamProgressTimeoutMs` bounds provider wait without meaningful model output in both protocols. Keepalives and usage do not reset it; text, thinking, tool-call content and block transitions do. It includes request preparation and excludes consumer processing. Omitting it preserves the ordinary idle policy. KVVI supplies 15,000 ms and one retry with 500 ms initial backoff. This bounds stalls, not the total duration of an actively progressing turn.

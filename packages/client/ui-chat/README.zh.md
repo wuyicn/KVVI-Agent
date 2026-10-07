@@ -98,3 +98,5 @@ Chat 会在历史前插与 renderer 重新挂载时恢复语义锚点。没有�
 </details>
 
 **运行时不变式：** 不发布伴生入口。Conversation 与 slot 注册已经强制 Chat target 一致。
+
+连接失败（`TIMEOUT`、`TRANSPORT`）在重试详情和最终失败提示中使用简短的本地化说明。供应商诊断保留在持久会话中；最终提示隐藏这两个连接错误码。

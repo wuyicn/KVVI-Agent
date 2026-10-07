@@ -1310,6 +1310,18 @@ describe('ChatView', () => {
     ])
   })
 
+  it('shows short connection failures without provider diagnostics or network codes', () => {
+    const h = makeHarness({ nodes: [user(1, 'try'),
+      { ...turnError(2, 'TIMEOUT'), message: 'DeepSeek output progress timeout' },
+      { ...turnError(3, 'TRANSPORT'), message: 'DeepSeek Messages transport failed' },
+    ] })
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.getAllByRole('status').map(status => status.textContent)).toEqual([
+      '本轮运行失败暂时没有收到回复，请稍后重试。',
+      '本轮运行失败连接中断，请稍后重试。',
+    ])
+  })
+
   it('renders the max-tokens notice with localized guidance, distinct from turn errors', () => {
     const h = makeHarness({ nodes: [user(1, 'try'), assistant(2, 'truncated'), turnMaxTokens(3)] })
     const view = render(<h.ChatView {...h.props} />)

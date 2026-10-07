@@ -1,5 +1,6 @@
 /** HTTP lifecycle, routing and optional Cordis services under real composition. */
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import yaml from 'js-yaml'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -53,6 +54,33 @@ async function send(agent: Agent, text: string) {
 }
 
 describe('direct Messages HTTP', () => {
+  it('times out missing model progress even while provider heartbeats keep the connection alive', async () => {
+    const http = await endpoint((response) => {
+      response.write(sse(textEvents.slice(0, 2)))
+      const timer = setInterval(() => { response.write(': keepalive\n\n' + sse([{ type: 'ping' }])) }, 15)
+      response.on('close', () => { clearInterval(timer) })
+      const finish = setTimeout(() => { response.end(sse(textEvents.slice(2))) }, 400)
+      response.on('close', () => { clearTimeout(finish) })
+    })
+    await expect(chunks(adapter({ baseURL: http.url, streamIdleTimeoutMs: 100, streamProgressTimeoutMs: 80 }).stream(options())))
+      .rejects.toMatchObject({ code: 'TIMEOUT' })
+    expect(http.requests).toHaveLength(1)
+  })
+
+  it('allows a long response as long as model output keeps progressing', async () => {
+    const http = await endpoint((response) => {
+      response.write(sse(textEvents.slice(0, 2)))
+      let count = 0
+      const timer = setInterval(() => {
+        if (count++ < 5) response.write(sse([textEvents[2]]))
+        else { clearInterval(timer); response.end(sse(textEvents.slice(3))) }
+      }, 25)
+      response.on('close', () => { clearInterval(timer) })
+    })
+    const result = await assemble(adapter({ baseURL: http.url, streamProgressTimeoutMs: 80 }).stream(options()))
+    expect(result.message.content).toEqual([{ type: 'text', text: 'Hello 世界'.repeat(5) }])
+  })
+
   it('continues without a diagnostic callback when replay metadata is unusable', async () => {
     const http = await endpoint()
     const message = createAssistantMessage({ content: [{ type: 'text', text: 'Remember 731.' }], source: {
@@ -153,14 +181,16 @@ describe('direct Messages HTTP', () => {
     expect(second.requests[0]).toMatchObject({ headers: { 'x-api-key': 'second' }, body: { max_tokens: 20 } })
   })
 
-  it('aborts an open provider response when its consumer stops', async () => {
+  it.each([undefined, 80])('aborts an open provider response when its consumer stops, progress=%s', async (streamProgressTimeoutMs) => {
     let closed!: () => void
     const stopped = new Promise<void>((resolve) => { closed = resolve })
     const http = await endpoint((response) => {
       response.once('close', closed)
       response.write(sse(textEvents.slice(0, 3)))
     })
-    const stream = adapter({ baseURL: http.url }).stream(options())[Symbol.asyncIterator]()
+    const stream = adapter({ baseURL: http.url,
+      ...(streamProgressTimeoutMs === undefined ? {} : { streamProgressTimeoutMs }),
+    }).stream(options())[Symbol.asyncIterator]()
     expect((await stream.next()).value).toMatchObject({ type: 'block-start' })
     await stream.return!()
     await stopped
@@ -206,14 +236,14 @@ describe('Cordis provider composition', () => {
     expect(price().priceImages([{ type: 'image', attachment }])[0]?.text).toContain('/mounted/image.png')
   })
 
-  async function boot(...args: Parameters<typeof server>) {
-    const http = await endpoint(...args)
+  async function boot(reply?: Parameters<typeof server>[0], providerConfig: Record<string, unknown> = {}) {
+    const http = await endpoint(reply)
     const { ctx, home } = await context()
     vi.stubEnv('DEEPSEEK_API_KEY', '')
     await writeFile(join(home, '.credentials.yaml'), 'version: 1\nrefs:\n  DEEPSEEK_API_KEY: stored-key\n', { mode: 0o600 })
     await writeFile(join(home, 'settings.yaml'), '{}\n')
     const template = await readFile(new URL('fixtures/cordis.yml', import.meta.url), 'utf8')
-    await writeFile(join(home, 'cordis.yml'), template.replaceAll('{{endpoint}}', JSON.stringify(http.url)).replaceAll('{{settings}}', JSON.stringify(join(home, 'settings.yaml'))).replaceAll('{{credentials}}', JSON.stringify(join(home, '.credentials.yaml'))))
+    await writeFile(join(home, 'cordis.yml'), (template + Object.entries(providerConfig).map(([key, value]) => `    ${key}: ${JSON.stringify(value)}\n`).join('')).replaceAll('{{endpoint}}', JSON.stringify(http.url)).replaceAll('{{settings}}', JSON.stringify(join(home, 'settings.yaml'))).replaceAll('{{credentials}}', JSON.stringify(join(home, '.credentials.yaml'))))
     ctx.baseUrl = pathToFileURL(home).href + '/'
     await ctx.plugin(Loader)
     ctx.loader.builtins.include = Include
@@ -238,6 +268,20 @@ describe('Cordis provider composition', () => {
     await ctx.loader.await()
     return { ctx, http }
   }
+
+  it('loads KVVI shipped stall and retry defaults through the real provider Loader', async () => {
+    const patch = yaml.load(await readFile(new URL('../../../../bundle/kvvi-app/cordis.patch.yml', import.meta.url), 'utf8'), { schema: yaml.DEFAULT_SCHEMA.extend([new yaml.Type('tag:yaml.org,2002:js', { kind: 'scalar', construct: (value: unknown) => value })]) }) as { id?: string; config?: Record<string, unknown> }[]
+    const defaults = patch.find(entry => entry.id === 'llm-deepseek')!.config!
+    expect(defaults).toMatchObject({ streamProgressTimeoutMs: 15000, retryPolicy: { maxRetries: 1 } })
+    const { ctx, http } = await boot(undefined, defaults)
+    const prepared = await ctx.llm.prepareCall({ provider: 'deepseek-official', model: MODEL })
+    expect(prepared.retryPolicy.mode).toBe('normal')
+    if (prepared.retryPolicy.mode !== 'normal') throw new Error('expected bounded retries')
+    expect(prepared.retryPolicy.maxRetries).toBe(1)
+    expect(prepared.retryPolicy.initialDelayMs).toBe(500)
+    await chunks(ctx.llm.stream(options()))
+    expect(http.requests).toHaveLength(1)
+  })
 
   it.each([
     { model: MODEL, inHistory: false },

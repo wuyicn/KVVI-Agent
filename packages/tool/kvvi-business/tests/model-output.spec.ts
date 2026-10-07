@@ -1,5 +1,5 @@
 import { createServer } from 'node:http'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -42,6 +42,8 @@ class TestMode extends Service {
 let ctx: Context | undefined
 let root: string | undefined
 let server: ReturnType<typeof createServer> | undefined
+let routeResponse: ((path: string) => unknown) | undefined
+let holdResponse = false
 let response: unknown
 let status = 200
 const requests: { method: string | undefined; url: string | undefined; body: string; signed: boolean }[] = []
@@ -58,6 +60,8 @@ afterEach(async () => {
   root = undefined
   requests.length = 0
   status = 200
+  routeResponse = undefined
+  holdResponse = false
 })
 
 async function boot() {
@@ -67,8 +71,9 @@ async function boot() {
     const expected = contextHeaders(MODE, SECRET, Number(req.headers['x-kvvi-issued-at']))
     const signed = Object.entries(expected).every(([key, value]) => req.headers[key] === value)
     requests.push({ method: req.method, url: req.url, body, signed })
+    if (holdResponse) return
     res.writeHead(signed ? status : 401, { 'content-type': 'application/json' })
-    res.end(JSON.stringify(signed ? response : { error: 'KVVI_TEST_BAD_SIGNATURE' }))
+    res.end(JSON.stringify(signed ? (routeResponse?.(req.url ?? '') ?? response) : { error: 'KVVI_TEST_BAD_SIGNATURE' }))
   })
   await new Promise<void>(resolve => server?.listen(0, '127.0.0.1', resolve))
   const address = server.address()
@@ -143,6 +148,103 @@ describe('employee tools through real Loader and signed platform transport', () 
     expect(JSON.stringify(result)).not.toContain('secret_salary')
     expect(requests).toHaveLength(1)
     expect(requests[0]?.signed).toBe(true)
+  })
+
+  it('preloads the exact published workspace system and visible rules before the model request', async () => {
+    routeResponse = path => path.endsWith('/systems')
+      ? { items: [{ assetId: 'customer', name: '客户登记系统', internalSecret: 'not-for-model' }] } : FIELDS
+    const loaded = await boot()
+    const input = { agent: { session: { header: { cwd: '/employee/客户登记系统' } } } } as unknown as Parameters<typeof loaded.systemPrompt.assemble>[0]
+    const assembly = await loaded.systemPrompt.assemble(input)
+    const text = JSON.stringify(assembly.contexts)
+    expect(text).toContain('客户登记系统')
+    expect(text).toContain('customer')
+    expect(text).toContain('跟进状态')
+    expect(text).toContain('not_followed')
+    expect(text).not.toContain('not-for-model')
+    expect(requests.map(req => req.url)).toEqual(['/api/v1/systems', '/api/v1/systems/customer/fields'])
+    expect(requests.every(req => req.signed)).toBe(true)
+    expect(text).not.toContain('record-one')
+    requests.length = 0
+    const entry = [...loaded.loader.entries()].find(item => item.options.name === '@deepseek-ai/dsh-tool-kvvi-business')
+    await entry?.fiber?.dispose()
+    expect(JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)).not.toContain('客户登记系统')
+    expect(requests).toEqual([])
+  })
+
+  it('refreshes published rules and reports a later refusal without reusing stale rules', async () => {
+    routeResponse = path => path.endsWith('/systems') ? { items: [{ assetId: 'customer', name: '客户登记系统' }] } : response
+    response = FIELDS
+    const loaded = await boot()
+    const input = { agent: { session: { header: { cwd: '/employee/客户登记系统' } } } } as unknown as Parameters<typeof loaded.systemPrompt.assemble>[0]
+    expect(JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)).toContain('跟进状态')
+    response = { ...FIELDS, fields: [{ field_code: 'nickname', label: '客户简称', required: false, nullable: true }] }
+    const updated = JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)
+    expect(updated).toContain('客户简称')
+    expect(updated).not.toContain('跟进状态')
+    status = 403; response = { error: 'KVVI_NOT_ALLOWED' }; routeResponse = undefined
+    const denied = JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)
+    expect(denied).toContain('KVVI_NOT_ALLOWED')
+    expect(denied).not.toContain('客户简称')
+  })
+
+  it('does not present malformed fields as current business rules', async () => {
+    routeResponse = path => path.endsWith('/systems')
+      ? { items: [{ assetId: 'customer', name: '客户登记系统' }] }
+      : { ...FIELDS, fields: [{ field_code: 'bad', label: '错误规则', required: 'yes', nullable: false }] }
+    const loaded = await boot()
+    const input = { agent: { session: { header: { cwd: '/employee/客户登记系统' } } } } as unknown as Parameters<typeof loaded.systemPrompt.assemble>[0]
+    const text = JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)
+    expect(text).toContain('暂时不可用')
+    expect(text).not.toContain('错误规则')
+  })
+
+  it('bounds unavailable background preparation without blocking the model indefinitely', async () => {
+    holdResponse = true
+    const loaded = await boot()
+    const input = { agent: { session: { header: { cwd: '/employee/客户登记系统' } } } } as unknown as Parameters<typeof loaded.systemPrompt.assemble>[0]
+    const start = performance.now()
+    expect(JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)).toContain('暂时不可用')
+    expect(performance.now() - start).toBeLessThan(3500)
+    expect(requests).toHaveLength(1)
+  })
+
+  it('cancels background preparation with its owning turn', async () => {
+    holdResponse = true
+    const loaded = await boot()
+    const controller = new AbortController()
+    const input = { signal: controller.signal, agent: { session: { header: { cwd: '/employee/客户登记系统' } } } } as unknown as Parameters<typeof loaded.systemPrompt.assemble>[0]
+    const pending = loaded.systemPrompt.assemble(input)
+    const timer = setTimeout(() => { controller.abort(new Error('turn cancelled')) }, 50)
+    try { await expect(pending).rejects.toThrow('turn cancelled') } finally { clearTimeout(timer) }
+  })
+
+  it('resolves an explicit workspace hint against the signed published catalogue', async () => {
+    response = { items: [{ assetId: 'customer', name: 'customer' }] }
+    routeResponse = path => path.endsWith('/systems') ? response : FIELDS
+    const loaded = await boot()
+    const cwd = join(root!, '客户登记系统')
+    await mkdir(cwd)
+    await writeFile(join(cwd, '.kvvi-system.json'), JSON.stringify({ assetId: 'customer' }))
+    const input = { agent: { session: { header: { cwd } } } } as unknown as Parameters<typeof loaded.systemPrompt.assemble>[0]
+    expect(JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)).toContain('跟进状态')
+    response = { items: [{ assetId: 'other', name: 'other' }] }
+    expect(JSON.stringify((await loaded.systemPrompt.assemble(input)).contexts)).not.toContain('跟进状态')
+  })
+
+  it('does not guess an unknown or ambiguous workspace system', async () => {
+    response = { items: [{ assetId: 'one', name: '客户登记系统' }, { assetId: 'two', name: '客户登记系统' }] }
+    const loaded = await boot()
+    const assemble = (cwd: string) => loaded.systemPrompt.assemble(
+      { agent: { session: { header: { cwd } } } } as unknown as Parameters<typeof loaded.systemPrompt.assemble>[0],
+    )
+    expect(JSON.stringify((await assemble('/employee/客户登记系统')).contexts)).not.toContain('field_code')
+    response = { items: [{ assetId: 'one', name: '另外的系统' }] }
+    expect(JSON.stringify((await assemble('/employee/unknown')).contexts)).not.toContain('field_code')
+    expect(requests.map(req => req.url)).toEqual(['/api/v1/systems', '/api/v1/systems'])
+    requests.length = 0
+    await loaded.systemPrompt.assemble()
+    expect(requests).toEqual([])
   })
 
   it('resolves company system names without exposing publication metadata or claiming read access', async () => {

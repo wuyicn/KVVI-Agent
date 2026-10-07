@@ -30,11 +30,10 @@ That choice is deliberate. Copying `dsh-web-app`'s rows into a KVVI bundle would
 
 ## Model Experience
 
-None. This package contributes no prompt text, no tool, and no model-visible value — it declares a patch layer, and every row it mounts is owned by the package that ships it.
+This package declares a patch layer; mounted packages own their prompts and tools. It configures DeepSeek model-output progress to time out after 15 seconds without progress, with one transient model retry and 500 ms initial backoff. Saved provider settings can override these defaults.
 
 ## Known Limitations and Deferred Work
 
-- **The bundle is currently one row.** KVVI's builder console and workbench plugins do not exist yet; they are added here as they are built.
 - **The package name uses the upstream `@deepseek-ai/` scope.** The client package gates scan `packages/client/*`, so a foreign scope would let KVVI's packages skip validation. The scope should move to KVVI's own when the fork becomes a separate repository; it is a mechanical rename.
 
 **Runtime invariant:** No companion is published. This package carries Loader rows and mounts other packages; the mounted packages own every runtime relationship, and it holds none of its own.

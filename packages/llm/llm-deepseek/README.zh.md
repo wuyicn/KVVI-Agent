@@ -57,6 +57,7 @@ kind: "package-reference"
 | `maxTokens` | `256,000` | 单次请求输出上限；模型自身上限与显式请求值优先 |
 | `defaultContextWindow` | `1,000,000` | 无精确值模型的容量回退 |
 | `models` | V41 Flash + V4 Pro | 供发现消费方查看的建议性目录 |
+| `streamProgressTimeoutMs` | 省略 | 可选的模型输出进展时限，不由网络心跳续期 |
 | `streamIdleTimeoutMs` | `300,000` | 单次流读取未完成的最大提供方空闲时间 |
 | `maxRequestFilesBytes` | `128 MiB` | file 模式请求图片字节预算，保留图片超过时请求以 `IMAGE_OFFLOAD_REQUIRED` 失败 |
 | `maxInlineRequestImageBytes` | `20 MiB` | 独立的 base64 回退高水位 |
@@ -226,3 +227,5 @@ loop 保留的响应块会追加到下一个请求，并保留其更早的可复
 </details>
 
 **运行时不变式：** 不发布伴生入口。本包没有独立事件序列或可变数据关系，相关约定在所属 seam 强制执行。
+
+可选的 `streamProgressTimeoutMs` 为两种协议限制没有有效模型输出的等待：心跳与用量不重置计时，文字、思考、工具内容和块切换会重置。它包含请求准备时间，不包含消费方处理时间；省略时保留原有空闲策略。KVVI 配置为 15,000 毫秒，最多重试一次，首次退避 500 毫秒。这限制停滞等待，不限制持续有进展的整轮时长。

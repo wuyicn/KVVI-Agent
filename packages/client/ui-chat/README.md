@@ -96,3 +96,5 @@ None.
 </details>
 
 **Runtime invariant:** No companion is published. Conversation and Slot registration enforce Chat target consistency.
+
+Connection failures (`TIMEOUT` and `TRANSPORT`) use short localized guidance in retry details and terminal notices. Provider diagnostics remain in the durable session; terminal notices hide these two network codes.

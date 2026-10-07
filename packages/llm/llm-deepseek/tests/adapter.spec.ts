@@ -2279,6 +2279,22 @@ describe('plugin registration and config', () => {
     expect(server.headers[0]?.authorization).toBe('Bearer per-request-key')
   })
 
+  it('does not let usage-only chunks keep a stalled model alive', async () => {
+    const server = await mockServer([{ kind: 'sse', delayMs: 15,
+      events: [...Array<string>(12).fill('{"choices":[],"usage":{"prompt_tokens":3,"completion_tokens":0}}'), ...textEvents],
+    }])
+    const ctx = await harness(server.url, { streamProgressTimeoutMs: 80, streamIdleTimeoutMs: 100 })
+    const result = await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
+    expect(result.finish.kind).toBe('error')
+    if (result.finish.kind !== 'error') throw new Error('expected an error finish')
+    expect(result.finish.failure.code).toBe('TIMEOUT')
+    expect(server.requests).toHaveLength(1)
+  })
+
+  it.each([0, -1, NaN, Infinity, MAX_TIMER_DELAY_MS + 1])('rejects invalid model progress deadline %s', (value) => {
+    expect(() => resolveAdapterOptions({ streamProgressTimeoutMs: value })).toThrow(/streamProgressTimeoutMs/)
+  })
+
   it('rejects invalid idle watchdog bounds for direct and plugin composition', async () => {
     expect(() => resolveAdapterOptions({ streamIdleTimeoutMs: Number.POSITIVE_INFINITY }))
       .toThrow(/streamIdleTimeoutMs.*positive finite/)
