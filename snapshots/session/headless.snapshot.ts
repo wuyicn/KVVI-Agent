@@ -1115,7 +1115,7 @@ describe('headless recorded-session snapshots', () => {
               expect(message?.content?.[0]?.content).toEqual([{ type: 'text', text: JSON.stringify({
                 recordId: 'record-one', recordNo: 'R-20261006-000001', state: 'not_followed', rowVersion: 7,
                 data: { customer_name: '测试客户', follow_status: '未跟进' },
-                fieldVisibility: { customer_name: true, follow_status: true },
+                fieldVisibility: { customer_name: 'VISIBLE', follow_status: 'READONLY' },
               }) }])
               expect(records(log).filter(event => event.type === 'tool/call')).toHaveLength(1)
             }

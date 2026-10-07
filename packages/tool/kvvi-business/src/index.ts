@@ -140,6 +140,20 @@ interface RecordView extends RecordRow {
   fieldVisibility: Record<string, JsonValue>
 }
 
+/**
+ * Drop hidden field names before a result enters the canonical tool value.
+ * The platform has already projected data (including masks); preserve it and
+ * the remaining visibility modes without recreating authorization here.
+ */
+function visibleRecordResult<T extends RecordPage | RecordView>(value: T): T {
+  return {
+    ...value,
+    fieldVisibility: Object.fromEntries(
+      Object.entries(value.fieldVisibility).filter(([, mode]) => mode !== 'HIDDEN'),
+    ),
+  }
+}
+
 /** The workflow actions available on one record. */
 interface ActionList {
   recordId: string
@@ -316,8 +330,8 @@ export function apply(ctx: Context, config: Config): void {
       },
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
-    execute: args => call(async c => request<RecordPage>(c, 'GET',
-      `/systems/${encodeURIComponent(args.system)}/records`)),
+    execute: async args => visibleRecordResult(await call(async c => request<RecordPage>(c, 'GET',
+      `/systems/${encodeURIComponent(args.system)}/records`))),
     presentCall: () => ({ card: 'generic', title: '查看记录列表', kind: 'read' }),
   }))
 
@@ -344,8 +358,8 @@ export function apply(ctx: Context, config: Config): void {
       },
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
-    execute: args => call(async c => request<RecordView>(c, 'GET',
-      `/systems/${encodeURIComponent(args.system)}/records/${encodeURIComponent(args.id)}`)),
+    execute: async args => visibleRecordResult(await call(async c => request<RecordView>(c, 'GET',
+      `/systems/${encodeURIComponent(args.system)}/records/${encodeURIComponent(args.id)}`))),
     presentCall: () => ({ card: 'generic', title: '查看记录', kind: 'read' }),
   }))
 

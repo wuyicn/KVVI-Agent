@@ -22,7 +22,7 @@ const SECRET = 'isolated-test-context-secret'
 const RECORD = {
   recordId: 'record-one', recordNo: 'R-20261006-000001', state: 'not_followed', rowVersion: 7,
   data: { customer_name: '测试客户', contact_name: '测试联系人', follow_status: 'not_followed' },
-  fieldVisibility: { customer_name: true, contact_name: true, follow_status: true },
+  fieldVisibility: { customer_name: 'VISIBLE', contact_name: 'READONLY', follow_status: 'VISIBLE' },
 }
 const { fieldVisibility, ...ROW } = RECORD
 const FIELDS = {
@@ -125,8 +125,24 @@ describe('employee tools through real Loader and signed platform transport', () 
     expect(result.content).toEqual([{ type: 'text', text: JSON.stringify(value) }])
     expect(requests).toMatchObject([{ url: `/api/v1${path}`, method, signed: true }])
     expect(requests).toHaveLength(1)
-    expect(JSON.stringify(result.content)).not.toContain('secret_salary')
     if ('rowVersion' in args) expect(JSON.parse(requests[0]?.body ?? '{}').rowVersion).toBe(7)
+  })
+
+  it.each(['record_get', 'record_list'])('%s excludes hidden field names from canonical and model-visible results', async (name) => {
+    const visibility = { ...fieldVisibility, phone: 'MASKED' }
+    const row = { ...ROW, data: { ...ROW.data, phone: '***' } }
+    const expected = name === 'record_get'
+      ? { ...row, fieldVisibility: visibility }
+      : { items: [row], fieldVisibility: visibility }
+    response = { ...expected, fieldVisibility: { ...visibility, secret_salary: 'HIDDEN' } }
+    await boot()
+    const result = await execute(name, { system: 'customer', ...(name === 'record_get' ? { id: RECORD.recordNo } : {}) })
+    expect(result.isError, JSON.stringify(result.content)).toBe(false)
+    expect(result.value).toEqual(expected)
+    expect(result.content).toEqual([{ type: 'text', text: JSON.stringify(expected) }])
+    expect(JSON.stringify(result)).not.toContain('secret_salary')
+    expect(requests).toHaveLength(1)
+    expect(requests[0]?.signed).toBe(true)
   })
 
   it('resolves company system names without exposing publication metadata or claiming read access', async () => {
