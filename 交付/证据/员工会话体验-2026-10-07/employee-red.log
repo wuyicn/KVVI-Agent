@@ -1,0 +1,234 @@
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+ RUN  v4.1.8 /private/var/folders/43/w0dv_7_n7hlb0kvtqs6bb4_00000gn/T/kvvi-testweb-20261007-am5linc9/fork-fix
+
+ ❯ |thread-safe| packages/tool/kvvi-business/tests/model-output.spec.ts (13 tests | 9 failed) 110ms
+     × record_schema sends complete authorized values to the model, in one request 38ms
+     × record_list sends complete authorized values to the model, in one request 8ms
+     × record_get sends complete authorized values to the model, in one request 6ms
+     × record_create sends complete authorized values to the model, in one request 7ms
+     × record_update sends complete authorized values to the model, in one request 8ms
+     × workflow_available_actions sends complete authorized values to the model, in one request 6ms
+     × workflow_act sends complete authorized values to the model, in one request 5ms
+     × resolves company system names without exposing publication metadata or claiming read access 4ms
+     × unregisters the closed business tool set when the Loader plugin is disposed 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |thread-safe| packages/tool/kvvi-business/tests/model-output.spec.ts > employee tools through real Loader and signed platform transport > record_schema sends complete authorized values to the model, in one request
+AssertionError: expected [ { type: 'text', …(1) } ] to deeply equal [ { type: 'text', …(1) } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "text": "{\"assetId\":\"customer\",\"hiddenFieldCount\":1,\"fields\":[{\"field_code\":\"follow_status\",\"label\":\"跟进状态\",\"type\":\"enum\",\"required\":true,\"nullable\":false,\"write_policy\":\"editable\",\"options\":[{\"code\":\"not_followed\",\"label\":\"未跟进\"}]}]}",
++     "text": "1 field(s): follow_status (required). 1 further field(s) are not visible to this session.",
+      "type": "text",
+    },
+  ]
+
+ ❯ packages/tool/kvvi-business/tests/model-output.spec.ts:124:28
+    122|     const result = await execute(name, args)
+    123|     expect(result.isError).toBe(false)
+    124|     expect(result.content).toEqual([{ type: 'text', text: JSON.stringi…
+       |                            ^
+    125|     expect(requests).toMatchObject([{ url: `/api/v1${path}`, method, s…
+    126|     expect(requests).toHaveLength(1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯
+
+ FAIL  |thread-safe| packages/tool/kvvi-business/tests/model-output.spec.ts > employee tools through real Loader and signed platform transport > record_list sends complete authorized values to the model, in one request
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ packages/tool/kvvi-business/tests/model-output.spec.ts:123:28
+    121|     await boot()
+    122|     const result = await execute(name, args)
+    123|     expect(result.isError).toBe(false)
+       |                            ^
+    124|     expect(result.content).toEqual([{ type: 'text', text: JSON.stringi…
+    125|     expect(requests).toMatchObject([{ url: `/api/v1${path}`, method, s…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯
+
+ FAIL  |thread-safe| packages/tool/kvvi-business/tests/model-output.spec.ts > employee tools through real Loader and signed platform transport > record_get sends complete authorized values to the model, in one request
+AssertionError: expected [ { type: 'text', …(1) } ] to deeply equal [ { type: 'text', …(1) } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "text": "{\"recordId\":\"record-one\",\"recordNo\":\"R-20261006-000001\",\"state\":\"not_followed\",\"rowVersion\":7,\"data\":{\"customer_name\":\"测试客户\",\"contact_name\":\"测试联系人\",\"follow_status\":\"not_followed\"},\"fieldVisibility\":{\"customer_name\":true,\"contact_name\":true,\"follow_status\":true}}",
++     "text": "Record record-one (state not_followed).",
+      "type": "text",
+    },
+  ]
+
+ ❯ packages/tool/kvvi-business/tests/model-output.spec.ts:124:28
+    122|     const result = await execute(name, args)
+    123|     expect(result.isError).toBe(false)
+    124|     expect(result.content).toEqual([{ type: 'text', text: JSON.stringi…
+       |                            ^
+    125|     expect(requests).toMatchObject([{ url: `/api/v1${path}`, method, s…
+    126|     expect(requests).toHaveLength(1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯
+
+ FAIL  |thread-safe| packages/tool/kvvi-business/tests/model-output.spec.ts > employee tools through real Loader and signed platform transport > record_create sends complete authorized values to the model, in one request
+AssertionError: expected [ { type: 'text', …(1) } ] to deeply equal [ { type: 'text', …(1) } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "text": "{\"recordId\":\"record-one\",\"recordNo\":\"R-20261006-000001\",\"rowVersion\":1}",
++     "text": "Created record R-20261006-000001.",
+      "type": "text",
+    },
+  ]
+
+ ❯ packages/tool/kvvi-business/tests/model-output.spec.ts:124:28
+    122|     const result = await execute(name, args)
+    123|     expect(result.isError).toBe(false)
+    124|     expect(result.content).toEqual([{ type: 'text', text: JSON.stringi…
+       |                            ^
+    125|     expect(requests).toMatchObject([{ url: `/api/v1${path}`, method, s…
+    126|     expect(requests).toHaveLength(1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/9]⎯
+
+ FAIL  |thread-safe| packages/tool/kvvi-business/tests/model-output.spec.ts > employee tools through real Loader and signed platform transport > record_update sends complete authorized values to the model, in one request
+AssertionError: expected [ { type: 'text', …(1) } ] to deeply equal [ { type: 'text', …(1) } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "text": "{\"recordId\":\"record-one\",\"rowVersion\":8}",
++     "text": "Updated record-one to version 8.",
+      "type": "text",
+    },
+  ]
+
+ ❯ packages/tool/kvvi-business/tests/model-output.spec.ts:124:28
+    122|     const result = await execute(name, args)
+    123|     expect(result.isError).toBe(false)
+    124|     expect(result.content).toEqual([{ type: 'text', text: JSON.stringi…
+       |                            ^
+    125|     expect(requests).toMatchObject([{ url: `/api/v1${path}`, method, s…
+    126|     expect(requests).toHaveLength(1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/9]⎯
+
+ FAIL  |thread-safe| packages/tool/kvvi-business/tests/model-output.spec.ts > employee tools through real Loader and signed platform transport > workflow_available_actions sends complete authorized values to the model, in one request
+AssertionError: expected [ { type: 'text', …(1) } ] to deeply equal [ { type: 'text', …(1) } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "text": "{\"recordId\":\"record-one\",\"state\":\"not_followed\",\"actions\":[{\"action\":\"follow\",\"to\":\"followed\"}]}",
++     "text": "Available: follow.",
+      "type": "text",
+    },
+  ]
+
+ ❯ packages/tool/kvvi-business/tests/model-output.spec.ts:124:28
+    122|     const result = await execute(name, args)
+    123|     expect(result.isError).toBe(false)
+    124|     expect(result.content).toEqual([{ type: 'text', text: JSON.stringi…
+       |                            ^
+    125|     expect(requests).toMatchObject([{ url: `/api/v1${path}`, method, s…
+    126|     expect(requests).toHaveLength(1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/9]⎯
+
+ FAIL  |thread-safe| packages/tool/kvvi-business/tests/model-output.spec.ts > employee tools through real Loader and signed platform transport > workflow_act sends complete authorized values to the model, in one request
+AssertionError: expected [ { type: 'text', …(1) } ] to deeply equal [ { type: 'text', …(1) } ]
+
+- Expected
++ Received
+
+  [
+    {
+-     "text": "{\"recordId\":\"record-one\",\"from\":\"not_followed\",\"state\":\"followed\",\"rowVersion\":8}",
++     "text": "Moved from not_followed to followed.",
+      "type": "text",
+    },
+  ]
+
+ ❯ packages/tool/kvvi-business/tests/model-output.spec.ts:124:28
+    122|     const result = await execute(name, args)
+    123|     expect(result.isError).toBe(false)
+    124|     expect(result.content).toEqual([{ type: 'text', text: JSON.stringi…
+       |                            ^
+    125|     expect(requests).toMatchObject([{ url: `/api/v1${path}`, method, s…
+    126|     expect(requests).toHaveLength(1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/9]⎯
+
+ FAIL  |thread-safe| packages/tool/kvvi-business/tests/model-output.spec.ts > employee tools through real Loader and signed platform transport > resolves company system names without exposing publication metadata or claiming read access
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ packages/tool/kvvi-business/tests/model-output.spec.ts:137:28
+    135|     await boot()
+    136|     const result = await execute('system_list', {})
+    137|     expect(result.isError).toBe(false)
+       |                            ^
+    138|     expect(result.content).toEqual([{ type: 'text', text: JSON.stringi…
+    139|     expect(requests).toMatchObject([{ method: 'GET', url: '/api/v1/sys…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/9]⎯
+
+ FAIL  |thread-safe| packages/tool/kvvi-business/tests/model-output.spec.ts > employee tools through real Loader and signed platform transport > unregisters the closed business tool set when the Loader plugin is disposed
+AssertionError: expected [ 'record_create', 'record_get', …(5) ] to deeply equal [ 'record_create', 'record_get', …(6) ]
+
+- Expected
++ Received
+
+@@ -2,9 +2,8 @@
+    "record_create",
+    "record_get",
+    "record_list",
+    "record_schema",
+    "record_update",
+-   "system_list",
+    "workflow_act",
+    "workflow_available_actions",
+  ]
+
+ ❯ packages/tool/kvvi-business/tests/model-output.spec.ts:170:66
+    168|     response = {}
+    169|     const loaded = await boot()
+    170|     expect(loaded.tools.schemas().map(tool => tool.name).sort()).toEqu…
+       |                                                                  ^
+    171|       'record_create', 'record_get', 'record_list', 'record_schema', '…
+    172|       'system_list', 'workflow_act', 'workflow_available_actions',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/9]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  9 failed | 4 passed (13)
+   Start at  11:37:15
+   Duration  551ms (transform 306ms, setup 122ms, import 240ms, tests 110ms, environment 0ms)
+
