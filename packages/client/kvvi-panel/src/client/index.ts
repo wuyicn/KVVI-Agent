@@ -101,14 +101,15 @@ export function apply(ctx: ClientContext): void {
     name: 'sidebar.panellist', id: panelId, order: -10, label: () => t('panel.title'),
   }, BusinessIcon))
   ctx.slots.inject('main', () => ctx.slots.register({
-    name: 'main', key: panelId, locale: NS,
+    name: 'main', key: panelId, locale: NS, store: createBusinessStore(),
     children: { 'kvvi.business.session': { kind: 'single', scope: 'session' } },
     inject: (): BusinessPageInjected => ({
       back: () => { ctx.layout.selectPanel(null) },
       manage: () => { globalThis.dispatchEvent(new Event(KVVI_OPEN_EVENT)) },
-      bindBusiness: async (system, current) => {
-        const matches = ctx.workspaces.list.getSnapshot().items.filter(w =>
-          w.title === system.name || w.title === system.assetId || w.title === system.name + '系统')
+      bindBusiness: async (system, current, workspaceId) => {
+        const matches = ctx.workspaces.list.getSnapshot().items.filter(w => workspaceId === undefined
+          ? w.title === system.name || w.title === system.assetId || w.title === system.name + '系统'
+          : w.workspaceId === workspaceId)
         if (matches.length !== 1) return undefined
         const workspace = matches[0]
         if (workspace === undefined) return undefined

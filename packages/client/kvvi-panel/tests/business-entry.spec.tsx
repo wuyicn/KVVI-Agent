@@ -60,3 +60,21 @@ it('ignores replayed writes and refreshes new results without opening a workspac
   nodes = [...nodes, { ...result(13), isError: true }]; view.rerender(<BusinessActivity {...p}/>)
   expect(store.getSnapshot().revisions.customer).toBe(2)
 })
+
+it('keeps the new record-first layout usable when no workspace name matches', async () => {
+  const runtime = { system, models: { customer: { fields: [] } }, views: { customer: { view_type: 'FORM', componentsTree: [] } }, workflows: {} }
+  vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(
+    url.endsWith('/runtime') ? runtime : url.endsWith('/records') ? { items: [], fieldVisibility: {} } : { items: [system] },
+  )))))
+  const p = props()
+  p.bindBusiness = vi.fn(async () => undefined)
+  const store = createBusinessStore().create()
+  const useStore: BusinessPageProps['useStore'] = select => select(store.getSnapshot())
+  render(<BusinessPage {...p} {...{ useStore, actions: store.actions }}/>)
+  fireEvent.click(await screen.findByRole('button', { name: '进入业务' }))
+  await screen.findByRole('button', { name: '刷新' })
+  expect(screen.getByRole('button', { name: 'AI协助' })).toHaveProperty('disabled', true)
+  expect(screen.getByRole('combobox', { name: 'AI会话工作区' })).toBeTruthy()
+  fireEvent.change(screen.getByRole('combobox', { name: 'AI会话工作区' }), { target: { value: 'w1' } })
+  expect(p.bindBusiness).toHaveBeenLastCalledWith(system, 's1', 'w1')
+})

@@ -24,7 +24,9 @@ export const zh = {
   'business.ai.close': '收起AI协助',
   'business.home': '全部业务',
   'business.search': '搜索业务',
-  'business.workspaceMissing': '请先在工作区添加这个业务对应的文件夹，再使用 AI 协助。',
+  'business.workspaceMissing': '表单和记录可直接使用。选择对应工作区后可开启 AI 协助。',
+  'business.workspace': 'AI会话工作区',
+  'business.workspace.choose': '选择对应工作区',
   'business.connecting': '正在打开业务…',
   'business.assistantHint': 'AI 协助当前业务',
 
@@ -233,7 +235,9 @@ export const en: Record<KvviKey, string> = {
   'business.ai.close': 'Close AI assistant',
   'business.home': 'All businesses',
   'business.search': 'Search businesses',
-  'business.workspaceMissing': 'Add the matching business folder to Workspaces before using AI assistance.',
+  'business.workspaceMissing': 'Forms and records are available. Select the corresponding workspace to enable AI assistance.',
+  'business.workspace': 'AI conversation workspace',
+  'business.workspace.choose': 'Select the corresponding workspace',
   'business.connecting': 'Opening business…',
   'business.assistantHint': 'AI assistance for this business',
 
