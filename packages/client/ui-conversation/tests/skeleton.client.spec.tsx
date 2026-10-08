@@ -134,6 +134,7 @@ function mount(
     nestedSubagent?: boolean
     /** A composer block another plugin raised for this session. */
     composerBlock?: { reason: string }
+    composerPlaceholder?: string
     /** Mutable view ledger used by registration-order regressions. */
     viewTabs?: ViewTab[]
   } = {},
@@ -318,6 +319,7 @@ function mount(
   const renderFactorySlot = ((_name: string, input: ConversationContentInputProps, factoryOptions?: {
     slots?: Record<string, (props: never) => ReactNode>
   }) => {
+    if (options.composerPlaceholder !== undefined) input = { ...input, composerPlaceholder: options.composerPlaceholder }
     const common: ConversationViewsProps = {
       sessionId: SID,
       SessionProvider,
@@ -475,9 +477,16 @@ describe('ConversationRoot resident composer', () => {
     expect(dispatchCount()).toBe(before)
   })
 
+  it('uses caller copy in an active composer without changing the ordinary draft', () => {
+    const b = mount(sessionSnapshotOf(), undefined, undefined, { composerPlaceholder: 'Ask about this form' })
+    expect(b.view.getByRole('textbox').getAttribute('data-placeholder')).toBe('Ask about this form')
+    expect(b.wiring.state.getSnapshot().draft).toBe('ordinary draft')
+  })
+
   it('renders the composer inert with the blocker\u2019s own reason', () => {
     const b = mount(sessionSnapshotOf(), undefined, undefined, {
       composerBlock: { reason: 'select a model first' },
+      composerPlaceholder: 'Ask about this form',
     })
     const box = b.view.getByRole('textbox')
     // One disabled composer with the blocker's placeholder, never a second

@@ -19,6 +19,7 @@ export const QUERY_UNSUPPORTED = 'KVVI_TABLE_QUERY_UNSUPPORTED'
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
   'business.enter': '进入业务',
+  'business.workspace.form': '填写表单',
   'business.new': '新建业务',
   'business.switchBuilder': '进入搭建模式后新建业务',
   'business.name': '业务名称',
@@ -39,6 +40,13 @@ export const zh = {
   'business.records': '表单列表',
   'business.ai': 'AI协助',
   'business.ai.close': '收起AI协助',
+  'business.ai.current': '当前表单',
+  'business.ai.hint': '可针对当前表单或选中的记录提问',
+  'business.ai.askForm': '针对当前表单提问',
+  'business.ai.askRecords': '针对选中记录提问',
+  'business.ai.placeholder': '就当前表单提问…',
+  'business.ai.context': '当前表单：{name}（业务标识：{assetId}）。请在我的权限范围内协助处理。',
+  'business.ai.records': '选中的记录标识：{ids}',
   'business.home': '全部业务',
   'business.search': '搜索业务',
   'business.workspaceMissing': '表单和记录可直接使用。选择对应工作区后可开启 AI 协助。',
@@ -257,6 +265,7 @@ export const zh = {
 /** English dictionary, key-identical to the Chinese source of truth. */
 export const en: Record<KvviKey, string> = {
   'business.enter': 'Open business',
+  'business.workspace.form': 'Fill form',
   'business.new': 'New business',
   'business.switchBuilder': 'Enter builder mode to create a business',
   'business.name': 'Business name',
@@ -277,6 +286,13 @@ export const en: Record<KvviKey, string> = {
   'business.records': 'Records',
   'business.ai': 'AI assistant',
   'business.ai.close': 'Close AI assistant',
+  'business.ai.current': 'Current form',
+  'business.ai.hint': 'Ask about this form or selected records',
+  'business.ai.askForm': 'Ask about current form',
+  'business.ai.askRecords': 'Ask about selected records',
+  'business.ai.placeholder': 'Ask about this form…',
+  'business.ai.context': 'Current form: {name} (business ID: {assetId}). Help within my permissions.',
+  'business.ai.records': 'Selected record IDs: {ids}',
   'business.home': 'All businesses',
   'business.search': 'Search businesses',
   'business.workspaceMissing': 'Forms and records are available. Select the corresponding workspace to enable AI assistance.',

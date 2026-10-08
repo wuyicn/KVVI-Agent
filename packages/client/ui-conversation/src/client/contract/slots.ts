@@ -457,6 +457,8 @@ export interface ConversationContentInputProps {
   variant: 'main' | 'embedded'
   phase: 'settling' | 'hero' | 'active'
   hero: boolean
+  /** Caller copy for an active composer; workspace and permission blocks take precedence. */
+  composerPlaceholder?: string
 }
 
 /** Values passed from shared content to its occurrence-selected width controls. */

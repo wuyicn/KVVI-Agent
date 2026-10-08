@@ -151,7 +151,7 @@ export function ConversationContent(props: ConversationContentProps) {
         // block keeps the model seat live because choosing a model is how the
         // user clears it.
         ? { blocked: composerBlock, placeholder: composerBlock.reason }
-        : hero ? { placeholder: t('placeholder.hero') } : {}),
+        : hero ? { placeholder: t('placeholder.hero') } : props.composerPlaceholder === undefined ? {} : { placeholder: props.composerPlaceholder }),
   })
 
   const composerBar = (

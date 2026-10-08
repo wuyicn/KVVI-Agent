@@ -5,12 +5,15 @@ export interface BusinessDraftState {
   drafts: Record<string, Record<string, string>>
   writes: Record<string, BusinessWrite>
   revisions: Record<string, number>
+  selections: Record<string, readonly string[]>
 }
 /** Shared handle for every business tab occurrence in the same session. */
 export function createBusinessStore() {
   return defineStore({
-    init: (): BusinessDraftState => ({ drafts: {}, writes: {}, revisions: {} }),
+    init: (): BusinessDraftState => ({ drafts: {}, writes: {}, revisions: {}, selections: {} }),
     actions: {
+      /** Keep only viewing identifiers, never business row data. */
+      select(state: BusinessDraftState, assetId: string, ids: readonly string[]) { state.selections[assetId] = [...new Set(ids)] },
       invalidate(state: BusinessDraftState, assetId: string) { state.revisions[assetId] = (state.revisions[assetId] ?? 0) + 1 },
       change(state: BusinessDraftState, assetId: string, values: Record<string, string>) { state.drafts[assetId] = values },
       clearIfUnchanged(state: BusinessDraftState, assetId: string, submitted: Record<string, string>) {

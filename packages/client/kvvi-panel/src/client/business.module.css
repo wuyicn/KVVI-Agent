@@ -98,7 +98,7 @@
 .businessName { display:flex;align-items:center;gap:12px }.businessName strong { font-size:15px;font-weight:600 }
 .businessName .hint { margin:3px 0 0;font-size:12px }
 .businessChip { display:grid;place-items:center;width:44px;height:44px;flex-shrink:0;color:var(--dsw-alias-link);background:var(--dsw-alias-bg-layer-1);border-radius:8px }
-.published { color:var(--dsw-alias-state-success-primary);font-size:13px }
+.published { color:var(--dsw-alias-state-success-primary);font-size:13px;white-space:nowrap }
 .breadcrumb { display:flex;align-items:center;gap:12px;color:var(--dsw-alias-label-secondary);font-size:12px;margin-bottom:10px }
 .breadcrumb button { background:transparent;border:0;padding:0;color:inherit;font:inherit;cursor:pointer }
 .resourceDirectory { width:180px;padding:17px 10px;gap:18px;box-sizing:content-box;overflow:auto }
@@ -129,3 +129,9 @@
   --dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);
 }
+.assistantContent { display:flex;flex-direction:column;min-height:0;overflow:hidden }
+.contextCard { display:flex;flex-direction:column;gap:8px;margin:14px;padding:14px;border:0.5px solid var(--dsw-alias-border-l2);border-radius:8px;flex-shrink:0 }
+.contextCard .hint { margin:0 }
+.assistantContent>div:last-child { flex:1;min-height:0 }
+.workbench { --dsw-alias-button-primary-fill:var(--dsw-alias-link);--dsw-alias-button-primary-hover:var(--dsw-alias-link) }
+.workbench button { border-radius:8px }

@@ -16,6 +16,8 @@ export interface KvviListViewProps {
   readonly onCreate?: () => void
   readonly error?: string
   readonly busy?: boolean
+  readonly onSelection?: (ids: readonly string[]) => void
+  readonly selectedIds?: readonly string[]
 }
 function cell(row: RecordRow, field: string): string {
   const value = row.data[field]
@@ -26,13 +28,14 @@ function cell(row: RecordRow, field: string): string {
 }
 /** Search and filtering operate on the already authorized returned page, never hidden fields. */
 export function KvviListView({
-  copy, fields, rows, fieldVisibility, title, onOpen, onRefresh, onCreate, error, busy,
+  copy, fields, rows, fieldVisibility, title, onOpen, onRefresh, onCreate, onSelection, selectedIds, error, busy,
 }: KvviListViewProps): ReactNode {
   const [query, setQuery] = useState('')
   const [filtering, setFiltering] = useState(false)
   const [filter, setFilter] = useState('')
   const [value, setValue] = useState('')
-  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
+  const [localSelected, setSelected] = useState<ReadonlySet<string>>(new Set())
+  const selected = selectedIds === undefined ? localSelected : new Set(selectedIds)
   const columns = (fields ?? []).filter(f => fieldVisibility[f.field_code] !== 'HIDDEN')
   const filterable = columns.filter(f => (f.type_config?.options?.length ?? 0) > 0 && fieldVisibility[f.field_code] !== 'MASKED')
   const filterField = filterable.find(f => f.field_code === filter)
@@ -56,7 +59,7 @@ export function KvviListView({
       <th aria-label={copy('list.selected', { count: selectedCount })}/><th>{copy('list.number')}</th>
       {columns.map(f => <th key={f.field_code}>{f.label ?? f.field_code}</th>)}<th>{copy('business.actions')}</th>
     </tr></thead><tbody>{visible.map(row => <tr key={row.recordId} data-selected={selected.has(row.recordId) || undefined}>
-      <td><input type="checkbox" aria-label={copy('list.select', { name: row.recordNo ?? cell(row, columns[0]?.field_code ?? '') })} checked={selected.has(row.recordId)} onChange={(e) => { const next = new Set(selected); if (e.target.checked) next.add(row.recordId); else next.delete(row.recordId); setSelected(next) }}/></td>
+      <td><input type="checkbox" aria-label={copy('list.select', { name: row.recordNo ?? cell(row, columns[0]?.field_code ?? '') })} checked={selected.has(row.recordId)} onChange={(e) => { const next = new Set(selected); if (e.target.checked) next.add(row.recordId); else next.delete(row.recordId); setSelected(next); onSelection?.(rows.filter(r => next.has(r.recordId)).map(r => r.recordId)) }}/></td>
       <td>{row.recordNo ?? '—'}</td>{columns.map((f, i) => <td key={f.field_code}>{i === 0 ? <button type="button" className={css.recordLink} onClick={() => { onOpen(row.recordId) }}>{cell(row, f.field_code) || '—'}</button> : cell(row, f.field_code) || '—'}</td>)}
       <td><Button size="sm" onClick={() => { onOpen(row.recordId) }}>{copy('list.open')}</Button></td>
     </tr>)}</tbody></table>

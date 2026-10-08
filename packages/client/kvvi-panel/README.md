@@ -110,3 +110,20 @@ No prototype role switch, fake AI reply, sample records or client-only publish s
 is imported. Grouping several assets into one app, dashboards/reports and direct
 business rename/delete still need platform contracts; no fake success controls are
 presented for those deferred actions.
+
+## Workspace binding and contextual AI
+
+The UI reads `.kvvi-system.json` through the session's original workspace-file
+gateway and resolves its `assetId` against the current published catalogue. This
+matches the Worker's source of business identity even when the folder and system
+names differ. A missing marker permits only a unique legacy name match; malformed,
+truncated, inaccessible or unknown markers do not fall back. Binding chooses a
+workspace for Conversation and never grants record access. Navigation aborts late
+associations and releases any retained session that no longer belongs to the page.
+
+The optional Business assistant shows the current published form and selected
+record references. Its question button inserts these references into the visible
+original composer and preserves the existing draft; it does not send a message or
+inject hidden model input. Only selection identifiers live in the session store,
+and a records reload clears selection. Original submission, model blocks, logs,
+permissions and the main Workspace welcome screen remain owned by Conversation.
