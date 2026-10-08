@@ -75,8 +75,14 @@ export function truncateUnicodeCodePoints(value: string, maximum: number): strin
 
 /** Owns list projection registration, bounded cold summaries, and authorized search. */
 export class ApiSessionList {
-  /** @param ctx - Host context carrying Session, query, persistence, and projection services. */
-  constructor(private readonly ctx: Context) {
+  /**
+   * @param ctx - Host context carrying Session, query, persistence, and projection services.
+   * @param recoverColdListMetadata - whether cache misses may read stored logs to recover list metadata.
+   */
+  constructor(
+    private readonly ctx: Context,
+    private readonly recoverColdListMetadata = false,
+  ) {
     ctx.sessionProjections.register<'sessionListMetadata', SessionListMetadata>({
       key: 'sessionListMetadata',
       stateSchema: sessionListMetadataSchema,
@@ -138,7 +144,12 @@ export class ApiSessionList {
       if (record.header.cwd === undefined) continue
       cold.push(record.header)
     }
-    for (const header of cold) items.push(this.summarizeCold(header))
+    for (const header of cold) {
+      const summary = this.summarizeCold(header)
+      items.push(this.recoverColdListMetadata && summary.projections?.values.sessionListMetadata === undefined
+        ? await this.recoverColdSummary(header, summary, signal)
+        : summary)
+    }
     items.sort((left, right) => right.updatedAt - left.updatedAt)
     return items
   }
@@ -154,6 +165,47 @@ export class ApiSessionList {
       blank: metadata?.blank ?? false,
       ...listFields(header),
       ...(projections === undefined ? {} : { projections }),
+    }
+  }
+
+  private async recoverColdSummary(
+    header: SessionHeader,
+    fallback: SessionSummary,
+    signal?: AbortSignal,
+  ): Promise<SessionSummary> {
+    const persistence = this.ctx.get('sessionPersistence')
+    if (persistence === undefined) return fallback
+    const options = signal === undefined ? undefined : { signal }
+    try {
+      const handle = await persistence.open(header.id, 'read', options)
+      let projections
+      let storedHeader: SessionHeader
+      try {
+        const { events } = await handle.read(0, undefined, options)
+        signal?.throwIfAborted()
+        const live = this.ctx.sessions.get(header.id)
+        if (live !== undefined) return this.summaryFor(live)
+        storedHeader = handle.header
+        const cache = this.ctx.get('sessionProjectionCache')
+        projections = cache === undefined
+          ? this.ctx.sessionProjections.restore({}, events, SessionLogOffset(0), storedHeader, handle.inheritedEventCount).snapshot
+          : cache.coldSnapshot(storedHeader, handle.inheritedEventCount, events)
+      } finally {
+        await handle.close()
+      }
+      const metadata = projections.values.sessionListMetadata
+      return {
+        ...fallback,
+        ...listFields(storedHeader),
+        blank: metadata?.blank ?? fallback.blank,
+        updatedAt: updatedAt(storedHeader, metadata),
+        projections: { asOfSeq: projections.asOfSeq, values: projections.values as SessionProjectionValues },
+      }
+    } catch (error: unknown) {
+      signal?.throwIfAborted()
+      // An unreadable log is unknown, never evidence that the conversation is empty.
+      this.ctx.logger.warn(`api-session.list: metadata recovery for "${header.id}" failed; keeping the row visible: ${String(error)}`)
+      return fallback
     }
   }
 
