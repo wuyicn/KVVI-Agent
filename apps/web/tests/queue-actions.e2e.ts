@@ -106,6 +106,9 @@ describe('web e2e: queue row actions', () => {
     await input.fill(ACTIVE_PROMPT)
     await input.press('Enter')
     await expect.poll(() => existsSync(readyFile), { timeout: 15_000 }).toBe(true)
+    // Host tool admission can precede the Client's streaming paint. The golden
+    // includes this assistant paragraph, so wait for that visible milestone too.
+    await page.getByText('partial', { exact: true }).waitFor()
 
     const admitted = page.waitForResponse('**/api/session/prompt')
     const received = Promise.withResolvers<undefined>()
