@@ -13,7 +13,9 @@ import { SessionNoticeController } from './session-notice.ts'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import { BusinessPage, BusinessIcon, BusinessSession, type BusinessPageInjected } from './BusinessPage.tsx'
+import type {} from '@deepseek-ai/dsh-api-gateway/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-files/client'
+import { BusinessPage, BusinessIcon, BusinessSession, type BusinessPageInjected, type BusinessSessionInjected } from './BusinessPage.tsx'
 import { AccountArea } from './AccountArea.tsx'
 import { BusinessHeader } from './BusinessHeader.tsx'
 import { BusinessActivity } from './BusinessActivity.tsx'
@@ -22,6 +24,7 @@ import { businessAddress, businessDefinition, BUSINESS_TAB_ID } from './business
 import { createBusinessStore } from './business-store.ts'
 import { en, NS, zh, type KvviKey } from './locales.ts'
 import { readEntrance } from './api.ts'
+import { businessFromHint, parseBusinessHint, type BusinessHint } from './business-binding.ts'
 
 declare module '@deepseek-ai/dsh-api-session-controller/client' {
   interface SessionReferenceSourceMap { kvviBusiness: unknown }
@@ -44,7 +47,7 @@ const KVVI_PANEL_ID = '@deepseek-ai/dsh-client-kvvi-panel'
 const KVVI_SESSION_ID = '@deepseek-ai/dsh-client-kvvi-panel/session-banner'
 
 /** Services this browser half requires: the slot registry and the dictionary. */
-export const inject = ['slots', 'locale', 'layout', 'sidebarRight', 'sidebarRightTabs', 'uiWorkspace', 'sessions', 'workspaces']
+export const inject = ['slots', 'locale', 'layout', 'sidebarRight', 'sidebarRightTabs', 'uiWorkspace', 'sessions', 'workspaces', 'remote', 'remote.workspaceFiles', 'conversation']
 
 /**
  * Register this package's dictionaries, sidebar entry and overlay.
@@ -78,6 +81,11 @@ export function apply(ctx: ClientContext): void {
   }, SessionBanner))
 
   const t = ctx.locale.bind(NS)
+  const readHint = async (sessionId: import('@deepseek-ai/dsh-session/types').SessionId, signal: AbortSignal): Promise<BusinessHint> => {
+    const result = await ctx.remote.workspaceFiles.read(sessionId, '.kvvi-system.json', { offset: 1, limit: 128 }, signal)
+    if (!result.ok) return { kind: result.error.code === 'workspace-file/not-found' ? 'absent' : 'unavailable' }
+    return parseBusinessHint(result.value.text, result.value.eof)
+  }
   const panelId = 'kvvi-business' as MainPanelId
   ctx.effect(() => ctx.sidebarRightTabs.register(businessDefinition(t)), 'kvvi-panel: business resource type')
   const store = createBusinessStore()
@@ -89,6 +97,12 @@ export function apply(ctx: ClientContext): void {
     inject: () => ({
       open: (assetId, mode) => { ctx.sidebarRight.openResource(businessAddress(assetId, mode)) },
       choose: () => { ctx.layout.selectPanel(panelId) },
+      resolveBusiness: async (sessionId, systems, signal) => {
+        const hint = await readHint(sessionId, signal)
+        const workspace = ctx.workspaces.list.getSnapshot().items.find(w => w.sessionIds.includes(sessionId))
+        const name = workspace?.title ?? ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd?.split(/[\\/]/u).filter(Boolean).at(-1)
+        return businessFromHint(systems, name, hint)
+      },
     }),
   }, BusinessHeader))
   ctx.slots.inject('conversation.session.header.actions', () => ctx.slots.register({
@@ -133,23 +147,38 @@ export function apply(ctx: ClientContext): void {
       },
       back: () => { ctx.layout.selectPanel(null) },
       manage: () => { globalThis.dispatchEvent(new Event(KVVI_OPEN_EVENT)) },
-      bindBusiness: async (system, current, workspaceId) => {
-        const matches = ctx.workspaces.list.getSnapshot().items.filter(w => workspaceId === undefined
-          ? w.title === system.name || w.title === system.assetId || w.title === system.name + '系统'
-          : w.workspaceId === workspaceId)
+      bindBusiness: async (system, current, workspaceId, signal) => {
+        const candidates = ctx.workspaces.list.getSnapshot().items
+        const matches = workspaceId === undefined ? (await Promise.all(candidates.map(async (workspace) => {
+          const representative = current !== undefined && workspace.sessionIds.includes(current) ? current : workspace.sessionIds[0]
+          const hint = representative === undefined ? { kind: 'absent' } as const : await readHint(representative, signal)
+          return businessFromHint([system], workspace.title, hint) === undefined ? undefined : workspace
+        }))).filter(workspace => workspace !== undefined) : candidates.filter(workspace => workspace.workspaceId === workspaceId)
+        signal.throwIfAborted()
         if (matches.length !== 1) return undefined
         const workspace = matches[0]
         if (workspace === undefined) return undefined
         const id = current !== undefined && workspace.sessionIds.includes(current)
           ? current : await ctx.uiWorkspace.connectWorkspace(workspace.workspaceId)
-        const reference = ctx.sessions.retain(id, { source: 'kvviBusiness' })
-        try { await reference.ready; return reference } catch (error) { reference.release(); throw error }
+        signal.throwIfAborted()
+        const reference = ctx.sessions.retain(id, { source: 'kvviBusiness', signal })
+        try { await reference.ready; signal.throwIfAborted(); return reference } catch (error) { reference.release(); throw error }
       },
     }),
   }, BusinessPage))
 
   ctx.slots.inject('kvvi.business.session', () => ctx.slots.register({
     name: 'kvvi.business.session', locale: NS, store,
+    inject: (sessionId): BusinessSessionInjected => ({
+      hooks: { businessComposerBlock: ctx.conversation.blocks.storeFor(sessionId) },
+      insertContext: (text, revision) => {
+        const scope = ctx.sessions.scope(sessionId)
+        if (scope === undefined || ctx.conversation.blocks.storeFor(sessionId).getSnapshot() !== undefined) return
+        const input = ctx.conversation.input.for(scope).state.getSnapshot()
+        if (input.phase !== 'plain' || input.draftRev !== revision) return
+        scope.bail('slash/input-insert-text', { text, span: { start: 0, end: 0, draftRev: revision } })
+      },
+    }),
   }, BusinessSession))
 
   ctx.effect(

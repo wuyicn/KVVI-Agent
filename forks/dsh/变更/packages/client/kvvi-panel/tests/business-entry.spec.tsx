@@ -105,5 +105,5 @@ it('keeps the new record-first layout usable when no workspace name matches', as
   expect(screen.getByRole('button', { name: 'AI协助' })).toHaveProperty('disabled', true)
   expect(screen.getByRole('combobox', { name: 'AI会话工作区' })).toBeTruthy()
   fireEvent.change(screen.getByRole('combobox', { name: 'AI会话工作区' }), { target: { value: 'w1' } })
-  expect(p.bindBusiness).toHaveBeenLastCalledWith(system, 's1', 'w1')
+  expect(p.bindBusiness).toHaveBeenLastCalledWith(system, 's1', 'w1', expect.any(AbortSignal))
 })

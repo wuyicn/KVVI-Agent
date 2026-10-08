@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>7500 对齐修复与验收</title>
+<style>body{font:16px/1.8 system-ui,sans-serif;color:#182233;max-width:1100px;margin:40px auto;padding:0 24px}h1{font-size:28px}h2{font-size:21px;margin-top:36px}img{width:100%;border:1px solid #dce2e9;border-radius:10px}p,li{max-width:90ch}code{background:#f2f5fa;padding:2px 5px}a{color:#355fd7}</style>
+<h1>7500 对齐修复与验收</h1><p>2026-10-08 · fork <code>0d8efbe</code> · 本地 7500 已更新。范围为已存在的业务功能与已确认 7506 设计对齐；不增加业务重命名、删除、多页面或看板/报表后台。</p>
+<h2>本轮变化</h2><ul><li>从原会话文件接口读取 <code>.kvvi-system.json</code>，与当前已发布业务核对。中文工作区不再因 customer 名称差异而丢失入口。无效、截断、无权读取或未知标记停止自动匹配。</li><li>Workspace 顶部恢复“填写表单 / 表单列表”，复用原右栏资源页签。</li><li>Business 的 AI 默认收起；打开后显示当前真实表单、选中记录提示，原会话输入框放在底部。</li><li>针对表单/记录提问将标识插入可见草稿，保留已有文字、结构化引用和原发送流程；阻断状态和忙碌阶段拒绝插入。</li><li>刷新清除旧选择；返回业务目录时取消未完成连接并释放会话引用。</li><li>业务区主按钮采用蓝色和 8px 圆角，发布状态不换行。原 DSH 侧栏宽度与全局导航选中样式保留。</li></ul>
+<h2>验证范围</h2><p>16 个测试文件、190 项定向回归通过。客户端及页面构建通过；提交检查包含代码规范、空白、第三方清单与 vendor guard。独立只读审查发现的草稿引用丢失和连接取消问题均修正。</p>
+<p>fork 导出 183 个文件及 8 条删除记录；从干净上游基线重建后逐字节一致；改造点登记与指纹检查通过。</p>
+<p>7500 使用现有 builder 登录验收：快捷入口、自动关联、真实表单名称、AI 卡片、可见上下文插入、保留文字草稿、可发送状态和 820px 窗口已查看。未发送测试问题，测试草稿已清空。builder 的 <code>KVVI_NOT_ALLOWED</code> 是后台权限拒绝；本次未扩大数据权限，也未将这些页面当作员工读写闭环的验收。</p>
+<p>验证期间继续构建曾触发原框架热更新中断旧页面；最终构建完成后重启服务、重新载入并复查页面，后续无新增页面错误。本轮不包含框架热更新生命周期修复。</p>
+<h2>Workspace 表单入口</h2><img src="01-workspace-form.jpg" alt="Workspace 中的填写表单、表单列表快捷按钮及表单右栏">
+<h2>业务列表</h2><img src="02-business.jpg" alt="业务主按钮、列表及单行发布状态">
+<h2>Business 当前表单与原会话</h2><img src="03-business-ai.jpg" alt="当前表单卡片和底部原会话输入框">
+<h2>插入可见上下文并保留草稿</h2><img src="04-context-draft.jpg" alt="上下文和已有草稿同时保留在可见输入框">
+<h2>820px 窗口</h2><img src="05-narrow-ai.jpg" alt="较窄窗口下业务区与 AI 输入框">
+<h2>仍需后台能力</h2><p>直接业务重命名/删除，多页面目录及看板/报表仍未交付。此次本地修复、190 项测试和原型展示均不代表私有化交付或业务闭环完成。</p>
+</html>

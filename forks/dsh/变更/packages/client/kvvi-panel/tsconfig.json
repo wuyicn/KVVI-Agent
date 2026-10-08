@@ -8,6 +8,8 @@
     "src"
   ],
   "references": [
+    { "path": "../../api/gateway/tsconfig.client.json" },
+    { "path": "../../api/workspace-files/tsconfig.client.json" },
     {
       "path": "../../../vendor/cordis"
     },

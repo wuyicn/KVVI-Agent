@@ -31,6 +31,7 @@ export interface BusinessContentProps extends Pick<BusinessBodyProps, 'useStore'
 export function BusinessContent({ address, signal, openResource, useStore, actions, t, presentation = 'dock' }: BusinessContentProps) {
   const route = parseBusinessAddress(address)
   const draft = useStore(state => state.drafts[route?.assetId ?? ''])
+  const selected = useStore(state => state.selections[route?.assetId ?? ''] ?? [])
   const [projection, setProjection] = useState<RuntimeProjection | null>(null)
   const [page, setPage] = useState<RecordPage | null>(null)
   const [allowedFields, setAllowedFields] = useState<AuthorizedField[] | null>(null)
@@ -53,6 +54,7 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
     setProjection(null); setAllowedFields(null); setPage(null); setDetail(null); setError(undefined); setNotice(undefined)
     if (route === null) { setError('KVVI_BAD_REQUEST'); return () => { controller.abort() } }
     const { assetId, mode, recordId } = route
+    actions.select(assetId, [])
     void (async () => {
       const runtime = await loadRuntime(assetId, controller.signal)
       if (controller.signal.aborted) return
@@ -125,6 +127,8 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
     {notice === undefined ? null : <p role="status">{notice}</p>}
     {projection === null ? <p role="status">{t('panel.loading')}</p> : mode === 'form' ? (allowedFields === null ? null : dialog ? null : form) : mode === 'records' ?
       <KvviListView key={assetId} copy={t} fields={model?.fields} rows={page?.items ?? []} fieldVisibility={page?.fieldVisibility ?? {}}
+        onSelection={(ids) => { actions.select(assetId, ids) }}
+        selectedIds={selected}
         onCreate={() => { setDialog(true) }}
         busy={page === null && error === undefined} {...(error === undefined ? {} : { error })}
         onOpen={(id) => { openResource(businessAddress(assetId, 'detail', id)) }} onRefresh={() => { setAttempt(a => a + 1) }} /> :

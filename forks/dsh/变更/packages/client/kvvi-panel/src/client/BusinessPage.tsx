@@ -1,6 +1,8 @@
 /** Business data takes the main area; the original Conversation is an optional assistant. */
 import { useEffect, useRef, useState } from 'react'
-import type { PropsLocale, PropsRenderFactories, PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
+import type { InjectFace, PropsLocale, PropsRenderFactories, PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { ComposerBlock } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -12,7 +14,7 @@ import type { PublishedSystem } from './api.ts'
 import { BusinessActivity } from './BusinessActivity.tsx'
 import type { ConversationViewsProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { BusinessContent } from './BusinessBody.tsx'
-import { businessAddress } from './business-tabs.ts'
+import { businessAddress, parseBusinessAddress } from './business-tabs.ts'
 import type { createBusinessStore } from './business-store.ts'
 import { ReadFailure } from './ReadFailure.tsx'
 import css from './business.module.css'
@@ -23,7 +25,9 @@ export interface BusinessPageInjected {
   designBusiness: (workspaceId: string) => Promise<void>
   back: () => void
   manage: () => void
-  bindBusiness: (system: PublishedSystem, current?: SessionId, workspaceId?: string) => Promise<SessionReference | undefined>
+  bindBusiness: (
+    system: PublishedSystem, current: SessionId | undefined, workspaceId: string | undefined, signal: AbortSignal,
+  ) => Promise<SessionReference | undefined>
 }
 export type BusinessPageProps = PropsRuntime<'main'> & PropsLocale<'kvviPanel'> & PropsStore<ReturnType<typeof createBusinessStore>> & PropsRenderSlots<'kvvi.business.session'> & PropsRenderFactories & BusinessPageInjected
 export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWorkspaces,
@@ -52,6 +56,7 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
   const [pageQuery, setPageQuery] = useState('')
   const [formName, setFormName] = useState('')
   const navigation = useRef(0)
+  const association = useRef<AbortController | undefined>()
   useEffect(() => {
     const controller = new AbortController()
     setError(undefined)
@@ -67,25 +72,38 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
     void adminCapabilities(controller.signal).then((result) => { if (!controller.signal.aborted && result.ok) setCanAdmin(result.value.role === 'owner' || result.value.role === 'admin') })
     return () => { controller.abort() }
   }, [attempt])
-  useEffect(() => () => { navigation.current++ }, [])
+  useEffect(() => () => { navigation.current++; association.current?.abort() }, [])
   useEffect(() => () => { session?.release() }, [session])
+  useEffect(() => {
+    const controller = new AbortController()
+    if (system !== null) {
+      setFormName(system.name)
+      void loadRuntime(system.assetId, controller.signal).then((result) => {
+        if (!controller.signal.aborted && result.ok) {
+          setFormName(result.value.views?.[system.assetId]?.name ?? result.value.models?.[system.assetId]?.name ?? system.name)
+        }
+      })
+    }
+    return () => { controller.abort() }
+  }, [system])
   const enter = (next: PublishedSystem, selectedWorkspace?: string) => {
+    association.current?.abort()
+    const controller = new AbortController()
+    association.current = controller
     const token = ++navigation.current
     setFormName(next.name); setPageQuery(''); setSystem(next); setAI(false); setSession(undefined); setBusy(true); setError(undefined)
-    void loadRuntime(next.assetId).then((result) => {
-      if (navigation.current === token && result.ok) {
-        setFormName(result.value.views?.[next.assetId]?.name ?? result.value.models?.[next.assetId]?.name ?? next.name)
-      }
-    })
     setAddress(businessAddress(next.assetId, 'records'))
     setWorkspaceId(selectedWorkspace ?? '')
-    void bindBusiness(next, current, selectedWorkspace).then((id) => {
+    void bindBusiness(next, current, selectedWorkspace, controller.signal).then((id) => {
       if (token !== navigation.current) { id?.release(); return }
       setSession(id); setBusy(false)
       if (id === undefined) setError(t('business.workspaceMissing'))
     }).catch(() => { if (token === navigation.current) { setBusy(false); setError(t('business.workspaceMissing')) } })
   }
-  const home = () => { navigation.current++; setSystem(null); setSession(undefined); setAI(false); setBusy(false); setError(undefined) }
+  const home = () => {
+    navigation.current++; association.current?.abort()
+    setSystem(null); setSession(undefined); setAI(false); setBusy(false); setError(undefined)
+  }
   return <section className={css.workbench}>
     <header className={css.workbenchHeader}><div>{system === null ? null : <div className={css.breadcrumb}><button type="button" onClick={home}>{t('panel.title')}</button><span>/</span><span>{system.name}</span></div>}<h1>{system?.name ?? t('panel.title')}</h1>{system === null ? <p className={css.hint}>{t('panel.subtitle')}</p> : null}</div><div>
       {system === null ? <>{canAdmin ? <Button variant="ghost" onClick={manage}>{t('admin.title')}</Button> : null}{canBuild ? <Button variant="primary" icon={<IconPlusOutline16/>} title={builder ? undefined : t('business.switchBuilder')} onClick={() => { if (!builder) { enterBuilder(); return }; setCreating(true); setBuildError(false) }}>{t('business.new')}</Button> : null}<Button variant="ghost" onClick={back}>{t('panel.close')}</Button></> : <>
@@ -133,30 +151,57 @@ function StandaloneBusiness({ address, navigate, ...props }: Pick<BusinessPagePr
   return <BusinessContent {...props} address={address} signal={lifetime.current.signal} presentation="workbench"
     openResource={(next) => { if (currentAddress.current === address) navigate(next) }}/>
 }
-export type BusinessSessionProps = PropsRuntime<'kvvi.business.session'> & PropsLocale<'kvviPanel'> & PropsStore<ReturnType<typeof createBusinessStore>> & PropsRenderFactories
+export interface BusinessSessionInjected {
+  hooks: { businessComposerBlock: SnapshotStore<ComposerBlock | undefined> }
+  insertContext: (text: string, revision: number) => void
+}
+export type BusinessSessionProps = PropsRuntime<'kvvi.business.session'> & PropsLocale<'kvviPanel'> & PropsStore<ReturnType<typeof createBusinessStore>> & PropsRenderFactories & InjectFace<BusinessSessionInjected>
 export function BusinessSession({ address, navigate, assistant, ...props }: BusinessSessionProps) {
   const lifetime = useRef(new AbortController())
   const currentAddress = useRef(address)
   currentAddress.current = address
   useEffect(() => { const controller = lifetime.current; return () => { controller.abort() } }, [])
-  return assistant ? <BusinessAssistant {...props}/> : <>
+  return assistant ? <BusinessAssistant {...props} address={address}/> : <>
     <BusinessActivity {...props} afterWrite={() => {}}/>
     <BusinessContent {...props} address={address} signal={lifetime.current.signal} presentation="workbench"
       openResource={(next) => { if (currentAddress.current === address) navigate(next) }}/>
   </>
 }
-function BusinessAssistant(props: Omit<BusinessSessionProps, 'address' | 'navigate' | 'assistant'>) {
-  const session = props.useSession(s => s)
-  const conversation = props.useConversation(s => s)
-  const blank = props.useSessions(s => s.byId[props.sessionId]?.blank)
-  const active = conversation.activeTargets.size > 0 || (!session.blank && !session.awaitingFirstTurn) || session.running
-  const shellPhase = active ? 'active' : session.promptAttempted ? 'engaging' : 'blank'
-  const settling = shellPhase === 'blank' && session.openState === 'loading' && blank !== true
-  const hero = shellPhase === 'blank' && (session.openState === 'open' || blank === true)
-  const phase = settling ? 'settling' : hero ? 'hero' : 'active'
-  return props.renderFactorySlot('conversation.content', { variant: 'embedded', phase, hero }, {
-    slots: { views: BusinessConversationView },
-  })
+/** Put business references into the visible draft; submission remains the original logged Conversation path. */
+function BusinessAssistant(props: Omit<BusinessSessionProps, 'navigate' | 'assistant'>) {
+  const route = parseBusinessAddress(props.address)
+  const assetId = route?.assetId
+  const [title, setTitle] = useState<string | undefined>()
+  const input = props.useInput(s => s)
+  const blocked = props.useBusinessComposerBlock(s => s) !== undefined
+  const selected = props.useStore(s => s.selections[assetId ?? ''] ?? [])
+  const recordIds = route?.mode === 'detail' && route.recordId !== undefined ? [route.recordId] : selected
+  useEffect(() => {
+    const controller = new AbortController()
+    setTitle(undefined)
+    if (assetId !== undefined) void loadRuntime(assetId, controller.signal).then((result) => {
+      if (!controller.signal.aborted && result.ok) {
+        setTitle(result.value.views?.[assetId]?.name ?? result.value.models?.[assetId]?.name ?? result.value.system.name)
+      }
+    })
+    return () => { controller.abort() }
+  }, [assetId])
+  const ask = () => {
+    if (assetId === undefined || title === undefined || input.phase !== 'plain' || blocked) return
+    const context = props.t('business.ai.context', { name: title, assetId })
+      + (recordIds.length === 0 ? '' : '\n' + props.t('business.ai.records', { ids: JSON.stringify(recordIds) }))
+    props.insertContext(context + '\n\n', input.draftRev)
+  }
+  return <div className={css.assistantContent}>
+    <section className={css.contextCard} aria-label={props.t('business.ai.current')}>
+      <span className={css.hint}>{props.t('business.ai.current')}</span>
+      <strong>{title ?? props.t('panel.loading')}</strong>
+      <span className={css.hint}>{recordIds.length === 0 ? props.t('business.ai.hint') : props.t('list.selected', { count: recordIds.length })}</span>
+      <Button variant="outline" disabled={title === undefined || input.phase !== 'plain' || blocked} onClick={ask}>{props.t(recordIds.length === 0 ? 'business.ai.askForm' : 'business.ai.askRecords')}</Button>
+    </section>
+    {props.renderFactorySlot('conversation.content', { variant: 'embedded', phase: 'active', hero: false, composerPlaceholder: props.t('business.ai.placeholder') }, {
+      slots: { views: BusinessConversationView },
+    })}</div>
 }
 function BusinessConversationView({ renderSlot }: ConversationViewsProps) {
   return renderSlot('conversation.session', { view: 'chat' })
