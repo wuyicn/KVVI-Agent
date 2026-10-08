@@ -1,5 +1,5 @@
 {
-  "count": 177,
+  "count": 181,
   "files": {
     "apps/cli/package.json": {
       "sha256": "3a80bdf6c7da3ace285b256accb233212e9991c0335b0a1dd2c489815595801d",
@@ -95,7 +95,7 @@
       "upstream_baseline_sha256": "01289094d1d9a6d66bfe78332b3047cc14dde94b5c43b23774d0017cb71ba92a"
     },
     "docs/config-catalog.md": {
-      "sha256": "2da7a215ce58edaf34404545f35b47d9e5b3f03258103d93f1b0b17ae3f85a33",
+      "sha256": "4b23f7ade099db8c9170249ded8d6207f75aa43ad950cfe4d5f830db1f389cbb",
       "status": "M",
       "upstream_baseline_sha256": "5abf0f304cd042d0d48f961cc1d813779cb4279c4986703d5c11c17476b025c5"
     },
@@ -128,12 +128,31 @@
       "status": "M",
       "upstream_baseline_sha256": "8dd9c7895d8059419ca416d344e308a07d55e436ae3b9930393047dee1b9f5f5"
     },
+    "packages/api/session-controller/README.md": {
+      "sha256": "3261c2cb33db4c604d51bad53dd18f769ddad69953a4cc628baa18432f4e329f",
+      "status": "M",
+      "upstream_baseline_sha256": "7813961a0512bc534cb9bfc098ba1aed6c7b3cbeda33ab95f8d40340df0c05f7"
+    },
+    "packages/api/session-controller/src/index.ts": {
+      "sha256": "67f844bc7649e60915b6f1ac4235791a0a0256e2e6d19b6f1307269bc8eb03ee",
+      "status": "M",
+      "upstream_baseline_sha256": "c3c8f0e1b3272db26bdb90b56a3efd373e492e26d7aa491c509aa9c988eddd7d"
+    },
+    "packages/api/session-controller/src/list.ts": {
+      "sha256": "7880a9c27ed03cf07b7df6141b1c7fa1654acfcbfa1366f6c70ab32f72c8bcc4",
+      "status": "M",
+      "upstream_baseline_sha256": "8c1d376917552b8c510393666438f53d9bbe2d8e728fd0b50cfd2d81b52858e9"
+    },
+    "packages/api/session-controller/tests/session-list-recovery.host.spec.ts": {
+      "sha256": "a053d0e1e0e8360aff0627debad804a9131779c255de772e738ec27f9387b138",
+      "status": "A"
+    },
     "packages/bundle/kvvi-app/README.md": {
       "sha256": "1f20b453926146b958f007a43b0f6b1eef8f3a5da3bc7ebcc6bc8f27f704f56a",
       "status": "A"
     },
     "packages/bundle/kvvi-app/cordis.patch.yml": {
-      "sha256": "5d542b890d669743944a9ffee2709547163a8f534c175b1c16c62acca70a2753",
+      "sha256": "9973b8a0bdb463d5ad7f0dd1878491660408b64524fda61f867c5c0635cda14f",
       "status": "A"
     },
     "packages/bundle/kvvi-app/package.json": {
@@ -782,7 +801,7 @@
       "upstream_baseline_sha256": "568b5f6d7d94f9a7d02040ea309ab858e8d2d47c9c5f68a9236a48268ed50d03"
     }
   },
-  "fork_head": "1cd1251f2a8d7223b2f6a222bdb16999fc579587",
+  "fork_head": "273f3f2e22da99ddec233c03494aa25de0c04122",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "e6a559b1550f5bee359cffc514f6a498710d0697"

@@ -18,6 +18,10 @@
 # pruning waits until the dependencies between upstream rows have been measured;
 # until then a removed row can fail silently rather than loudly.
 
+- id: session-controller
+  config:
+    recoverColdListMetadata: true
+
 - insert:
     # KVVI's mode binding: one signed identity per request, one fixed agent preset
     # per gateway (`USER` → `kvvi-worker`, `BUILDER` → `kvvi-builder`).

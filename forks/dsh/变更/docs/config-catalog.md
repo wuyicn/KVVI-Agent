@@ -210,6 +210,8 @@ Requires: `agentDefaultModel` · `agents` · `attachments` · `fileUploads` · `
 export interface Config {
   /** Override platform desktop-opener detection. */
   readonly nativeOpen?: boolean
+  /** Recover missing cold list metadata from stored logs without activating Agents. Defaults to false. */
+  readonly recoverColdListMetadata?: boolean
 }
 ```
 
