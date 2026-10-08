@@ -79,3 +79,53 @@
 @media(max-width:1100px){.resourceDirectory{width:148px}.assistantPane{width:320px}.workbenchHeader{padding:16px}.directory{padding:20px}}
 @media(max-width:820px){.workbenchBody[data-ai-open] .resourceDirectory{display:none}.assistantPane{width:300px}.workbenchHeader h1{font-size:18px}}
 @media(max-width:600px){.resourceDirectory{width:110px;padding:14px 8px}.assistantPane{position:absolute;inset:0 0 0 auto;width:min(100%,380px);background:var(--dsw-alias-bg-base);z-index:5}.workbenchBody{position:relative}.workbenchHeader{flex-wrap:wrap}}
+
+/* Harness business layout, using semantic DSH tokens and actual resources. */
+.workbenchHeader { min-height:100px;box-sizing:border-box;padding:20px 32px;flex-shrink:0 }
+.workbenchHeader h1 { font-size:23px;margin:0;line-height:1.5 }
+.directory { padding:18px 32px 32px;flex:1;min-height:0 }
+.searchBox { display:flex;align-items:center;gap:9px;min-width:0;height:40px;padding:0 12px;border:0.5px solid var(--dsw-alias-border-l2);border-radius:8px;color:var(--dsw-alias-label-secondary);box-sizing:border-box;background:var(--dsw-alias-bg-layer-1) }
+.searchBox input { width:100%;min-width:0;flex:1;border:0;outline:0;background:transparent;color:var(--dsw-alias-label-primary);font:inherit }
+.searchBox:focus-within { outline:2px solid var(--dsw-alias-link);outline-offset:2px }
+.directory>.searchBox { margin-bottom:20px }
+.directoryTable { overflow:auto;border:0.5px solid var(--dsw-alias-border-l2);border-radius:9px }
+.directoryTable table { border-collapse:collapse;width:100%;text-align:left;font-size:14px }
+.directoryTable th { font-size:13px;font-weight:600;background:var(--dsw-alias-bg-module-platform);padding:17px 20px;border-bottom:0.5px solid var(--dsw-alias-border-l2) }
+.directoryTable td { padding:18px 20px;border-bottom:0.5px solid var(--dsw-alias-border-l2);height:80px;box-sizing:border-box }
+.directoryTable tr:last-child td { border-bottom:0 }
+.directoryTable th:first-child { width:44% }.directoryTable th:nth-child(2) { width:35% }
+.directoryTable td:last-child { white-space:nowrap }
+.businessName { display:flex;align-items:center;gap:12px }.businessName strong { font-size:15px;font-weight:600 }
+.businessName .hint { margin:3px 0 0;font-size:12px }
+.businessChip { display:grid;place-items:center;width:44px;height:44px;flex-shrink:0;color:var(--dsw-alias-link);background:var(--dsw-alias-bg-layer-1);border-radius:8px }
+.published { color:var(--dsw-alias-state-success-primary);font-size:13px }
+.breadcrumb { display:flex;align-items:center;gap:12px;color:var(--dsw-alias-label-secondary);font-size:12px;margin-bottom:10px }
+.breadcrumb button { background:transparent;border:0;padding:0;color:inherit;font:inherit;cursor:pointer }
+.resourceDirectory { width:180px;padding:17px 10px;gap:18px;box-sizing:content-box;overflow:auto }
+.resourceDirectory .searchBox { height:35px;font-size:12px;padding:0 7px }
+.resourceDirectory button { font-size:13px;white-space:normal;height:auto;min-height:38px;text-align:left }
+.resourceActive { color:var(--dsw-alias-link);background:var(--dsw-alias-button-ghost-active-fill) }
+.records { display:flex;flex-direction:column;min-height:240px;gap:18px }
+.recordToolbar { display:flex;gap:9px;align-items:center;flex-wrap:wrap }.recordToolbar>.searchBox { flex:1;min-width:140px }.recordToolbar>.control { width:auto;min-width:140px }
+.tableScroll { overflow:auto;border:0.5px solid var(--dsw-alias-border-l2);border-radius:8px }
+.recordTable { border-collapse:collapse;min-width:100%;width:max-content;font-size:14px;text-align:left }
+.recordTable th { padding:16px 12px;background:var(--dsw-alias-bg-module-platform);font-weight:600;white-space:nowrap;border-bottom:0.5px solid var(--dsw-alias-border-l2) }
+.recordTable td { padding:16px 12px;border-bottom:0.5px solid var(--dsw-alias-border-l2);white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis }
+.recordTable tr:last-child td { border-bottom:0 }.recordTable th:first-child,.recordTable td:first-child { width:32px;padding-inline:10px }
+.recordTable input[type=checkbox] { accent-color:var(--dsw-alias-link);width:15px;height:15px }
+.recordTable tr[data-selected] { background:var(--dsw-alias-bg-layer-1) }
+.recordLink { background:transparent;border:0;padding:0;color:var(--dsw-alias-link);font:inherit;cursor:pointer }
+.recordFooter { display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--dsw-alias-label-secondary);font-size:12px;padding-top:12px }
+.workbench :is(button,input,textarea,select):focus-visible { outline:2px solid var(--dsw-alias-link);outline-offset:3px }
+@media(max-width:1100px) { .directory { padding-inline:20px }.workbenchHeader { padding-inline:20px }.recordTable td { padding-block:12px } }
+@media(max-width:600px) { .directory { padding-inline:15px }.directoryTable th,.directoryTable td { padding:12px }.directoryTable table { min-width:580px }.resourceDirectory { width:125px;box-sizing:border-box }.recordToolbar>.searchBox { flex-basis:100% }.workbenchHeader h1 { font-size:18px } }
+.workbench .dockBody { display:flex;flex-direction:column;min-height:0 }
+.workbench .records { flex:1;min-height:0 }
+.recordToolbar { flex-shrink:0 }.recordFooter { margin-top:auto;flex-shrink:0 }
+.records .tableScroll { min-height:70px }
+.resourceDirectory { box-sizing:border-box }.assistantPane { width:330px }
+@media(max-width:1100px) { .assistantPane { width:300px } }
+.directoryTable,.tableScroll {
+  --dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);
+}

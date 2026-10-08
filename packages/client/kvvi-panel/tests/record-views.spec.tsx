@@ -40,6 +40,18 @@ const FIELDS = [
 ]
 
 describe('记录列表', () => {
+  it('搜索只查看有权限显示的字段，并保持表头与每行列数一致', () => {
+    const { container } = render(<KvviListView copy={t} fields={FIELDS} fieldVisibility={{ amount: 'HIDDEN' }}
+      rows={[{ recordId: 'r1', rowVersion: 1, data: { title: '报销', amount: 'secret' } }]}
+      onOpen={noop} onRefresh={noop} />)
+    expect(screen.queryByRole('columnheader', { name: '金额' })).toBeNull()
+    expect(container.querySelector('thead tr')?.children.length).toBe(container.querySelector('tbody tr')?.children.length)
+    fireEvent.change(screen.getByRole('textbox', { name: '搜索当前表单记录' }), { target: { value: 'secret' } })
+    expect(screen.queryByText('报销')).toBeNull()
+    fireEvent.change(screen.getByRole('textbox', { name: '搜索当前表单记录' }), { target: { value: '报销' } })
+    expect(screen.getByText('报销')).toBeTruthy()
+  })
+
   it('★ 读失败与空列表是两种状态，不能画成一个空表', () => {
     render(<KvviListView copy={t} fields={FIELDS} rows={[]} fieldVisibility={{}}
       onOpen={noop} onRefresh={noop} error="KVVI_NOT_ALLOWED" />)

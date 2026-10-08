@@ -255,10 +255,11 @@ async function request<T>(
   path: string,
   body: unknown,
   signal?: AbortSignal,
+  base = API,
 ): Promise<ApiResult<T>> {
   let res: Response
   try {
-    res = await fetch(`${API}${path}`, {
+    res = await fetch(`${base}${path}`, {
       method,
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       ...(body === undefined ? {} : { headers: { 'content-type': 'application/json' } }),
@@ -279,6 +280,11 @@ async function request<T>(
     // let an HTML error page reach the renderer as if it were a contract.
     return { ok: false, code: 'KVVI_BAD_RESPONSE', status: res.status }
   }
+}
+
+/** Actual entrance identity; builder actions are never inferred from a role switch. */
+export function readEntrance(signal?: AbortSignal): Promise<ApiResult<{ gateway: 'BUILDER' | 'USER' }>> {
+  return request('GET', '/auth/session', undefined, signal, PLATFORM_BASE)
 }
 
 /**

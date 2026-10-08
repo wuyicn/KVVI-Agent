@@ -87,3 +87,23 @@ could clear all three.
 - **Copy is locale-owned and English is machine-checked only for key parity.** The dictionaries agree on their key set; the English sentences themselves have had no native review.
 
 **Runtime invariant:** No companion is published. Every panel read goes to the KVVI platform service over HTTP, and the registry table it renders from is a frozen local constant rather than a runtime relationship.
+
+## Harness business layout (2026-10-08)
+
+The Business main slot uses the selected prototype's directory table, breadcrumb,
+form navigation, searchable record table and optional original Conversation pane.
+New record opens the authorized form in a modal, posts to the platform and refreshes
+records without moving the business page. Search/filter/selection act on returned
+rows only; HIDDEN columns are omitted, and masked fields cannot become filters.
+The endpoint currently returns at most 50 rows. The footer reports loaded/shown
+counts rather than claiming a tenant-wide total or inventing pagination.
+
+`/auth/session.gateway` gates New business and Design form. Starting a business
+collects its name, requirements and parent folder; the original Host directory,
+Workspace and Session APIs create its builder workspace and send its first request.
+It is listed as a published business only after the actual publish flow succeeds.
+Design form opens a new builder conversation in the explicitly bound workspace.
+No prototype role switch, fake AI reply, sample records or client-only publish state
+is imported. Grouping several assets into one app, dashboards/reports and direct
+business rename/delete still need platform contracts; no fake success controls are
+presented for those deferred actions.
