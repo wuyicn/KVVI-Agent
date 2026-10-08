@@ -70,7 +70,8 @@ function mount({
   const connectionListeners = new Set<() => void>()
   const reconnect = vi.fn()
   const renderSlot = vi.fn(
-    ((key: string, _owner: unknown, opts?: { only?: string }) => {
+    ((key: string, _owner: unknown, opts?: { only?: string; fallback?: import('react').ReactNode }) => {
+      if (key === 'settings.account') return opts?.fallback
       if (key === 'settings.section') return <div data-testid={`section-${opts?.only ?? 'all'}`} />
       return SEAT_CONTENT[key]
     }) as SettingsRootComponentProps['renderSlot'],

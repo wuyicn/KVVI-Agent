@@ -123,6 +123,7 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
   const [holdConnecting, setHoldConnecting] = useState(false)
   const connectingShownAt = useRef<number | undefined>(undefined)
   const triggerButton = useRef<HTMLButtonElement | null>(null)
+  const accountFocusReturn = useRef<(() => void) | undefined>(undefined)
   const wasOpen = useRef(open)
   const close = useCallback(() => {
     setOpen(false)
@@ -130,7 +131,11 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
   }, [])
   // Restore after the close commit, when the dialog can no longer own focus.
   useEffect(() => {
-    if (wasOpen.current && !open) triggerButton.current?.focus()
+    if (wasOpen.current && !open) {
+      if (accountFocusReturn.current !== undefined) accountFocusReturn.current()
+      else triggerButton.current?.focus()
+      accountFocusReturn.current = undefined
+    }
     wasOpen.current = open
   }, [open])
   const openSection = useCallback((id: string) => {
@@ -216,7 +221,7 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
   return (
     <>
       <div className={clsx(css.triggerRow, !wide && css.railRow)}>
-        <button
+        {renderSlot('settings.account', { wide, openSettings: (onClosed) => { accountFocusReturn.current = onClosed; setOpen(true) } }, { fallback: <button
           ref={triggerButton}
           type="button"
           className={clsx(css.trigger, !wide && css.rail)}
@@ -226,7 +231,7 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
           onClick={() => { setOpen(true) }}
         >
           {renderSlot('settings.trigger', { wide })}
-        </button>
+        </button> })}
         <ConnectionIndicator
           state={wide && desktopUpdate.presentation?.phase !== 'installing' ? connectionIndicator : undefined}
           disconnectedLabel={t('connection.error')}

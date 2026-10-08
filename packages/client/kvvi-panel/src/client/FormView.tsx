@@ -78,6 +78,10 @@ export interface KvviViewProps {
   readonly onSubmit?: (data: Record<string, string>) => void
   /** Called when the tree named an `OpenRecordLink`. */
   readonly onOpenRecord?: () => void
+  /** Controlled draft shared by the business tab and its form dialog. */
+  readonly values?: Readonly<Record<string, string>>
+  readonly onValuesChange?: (values: Record<string, string>) => void
+  readonly busy?: boolean
 }
 
 /** The context used when a caller supplies none: identifiers, no options. */
@@ -222,17 +226,21 @@ function Blocked({ problems, copy }: {
  * @returns the rendered tree, or the blocking refusal.
  */
 export function KvviFormView({
-  spec, copy, context = EMPTY_CONTEXT, initial = {}, onSubmit, onOpenRecord,
+  spec, copy, context = EMPTY_CONTEXT, initial = {}, onSubmit, onOpenRecord, values: controlledValues, onValuesChange, busy,
 }: KvviViewProps): ReactNode {
   const tree = spec.componentsTree ?? []
   const problems = useMemo(() => problemsOf(tree, spec.view_type), [tree, spec.view_type])
   const fields = useMemo(() => visibleFields(tree, context.modes), [tree, context.modes])
-  const [values, setValues] = useState<Record<string, string>>(initial)
+  const [localValues, setValues] = useState<Record<string, string>>(initial)
+  const values = controlledValues ?? localValues
 
   if (problems.length > 0) return <Blocked problems={problems} copy={copy} />
 
   const set = (field: string, next: string): void => {
-    setValues(v => ({ ...v, [field]: next }))
+    if (busy === true) return
+    const updated = { ...values, [field]: next }
+    setValues(updated)
+    onValuesChange?.(updated)
   }
 
   const draw = (list: readonly ViewNode[]): ReactNode[] => list.map((node) => {
@@ -300,6 +308,7 @@ export function KvviFormView({
   })
 
   const submit = (): void => {
+    if (busy === true) return
     const data: Record<string, string> = {}
     for (const field of fields) {
       // Filtered again on the way out. The payload is built from the fields that
@@ -313,9 +322,9 @@ export function KvviFormView({
 
   return (
     <form className={css.form} onSubmit={(e) => { e.preventDefault(); submit() }}>
-      {draw(tree)}
+      <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>{draw(tree)}</fieldset>
       {onSubmit === undefined ? null : (
-        <div className={css.formActions}><Button type="submit" variant="primary">{copy('form.submit')}</Button></div>
+        <div className={css.formActions}><Button type="submit" variant="primary" disabled={busy}>{copy('form.submit')}</Button></div>
       )}
     </form>
   )

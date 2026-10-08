@@ -1,36 +1,24 @@
-/**
- * KVVI business panel, browser half: one sidebar entry plus one overlay page.
- *
- * Why this package exists instead of a separate frontend: the product reuses
- * DSH's own web interface and only adds what an employee needs on top of it.
- * The conversation view, session list, and tool rendering already exist here.
- *
- * DSH's extension point is the slot registry (`ctx.slots`), not a source edit.
- * Two upstream-declared `list` slots are filled, so both registrations append
- * rather than replace:
- *
- * | Slot | Declared by | Contribution |
- * |---|---|---|
- * | `sidebar.footer.action` | `ui-sidebar` | the entry at the sidebar foot |
- * | `shell.overlay` | `ui-layout` | the panel itself |
- *
- * Data comes from the KVVI platform service, not from DSH: the platform is the
- * only process that knows who this session is, which company they belong to,
- * and what they may do. The DSH runtime knows no tenant and must not.
- *
- * Copy comes from this package's own namespace. Both registrations declare
- * `locale`, which is what puts the typed `t` seat on their components.
- *
- * This module carries no JSX: the client bundle entry is fixed at
- * `src/client/index.ts`, so every component lives beside it in other files.
+/** KVVI UI contributes a global business page, authenticated account area and
+ * session-bound resources through DSH slots and injected services. The platform
+ * remains the sole authority for identity, tenant membership and permissions.
+ * The legacy overlay stays available to existing callers.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-import { createKvviEntry, createKvviOverlay } from './Panel.tsx'
+import { createKvviOverlay } from './Panel.tsx'
 import { SessionBanner, type SessionBannerInjected } from './SessionBanner.tsx'
 import { SessionNoticeController } from './session-notice.ts'
+import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import { BusinessPage, BusinessIcon } from './BusinessPage.tsx'
+import { AccountArea } from './AccountArea.tsx'
+import { BusinessHeader } from './BusinessHeader.tsx'
+import { BusinessBody } from './BusinessBody.tsx'
+import { businessAddress, businessDefinition, BUSINESS_TAB_ID } from './business-tabs.ts'
+import { createBusinessStore } from './business-store.ts'
 import { en, NS, zh, type KvviKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -47,7 +35,7 @@ const KVVI_PANEL_ID = '@deepseek-ai/dsh-client-kvvi-panel'
 const KVVI_SESSION_ID = '@deepseek-ai/dsh-client-kvvi-panel/session-banner'
 
 /** Services this browser half requires: the slot registry and the dictionary. */
-export const inject = ['slots', 'locale']
+export const inject = ['slots', 'locale', 'layout', 'sidebarRight', 'sidebarRightTabs']
 
 /**
  * Register this package's dictionaries, sidebar entry and overlay.
@@ -80,13 +68,34 @@ export function apply(ctx: ClientContext): void {
     }),
   }, SessionBanner))
 
-  ctx.effect(
-    () => ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register(
-      { name: 'sidebar.footer.action', id: KVVI_PANEL_ID, locale: NS },
-      createKvviEntry(),
-    )),
-    'kvvi-panel: sidebar entry',
-  )
+  const t = ctx.locale.bind(NS)
+  const panelId = 'kvvi-business' as MainPanelId
+  ctx.effect(() => ctx.sidebarRightTabs.register(businessDefinition(t)), 'kvvi-panel: business resource type')
+  const store = createBusinessStore()
+  ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+    name: 'sidebar.right.pane.tab', key: BUSINESS_TAB_ID, locale: NS, store,
+  }, BusinessBody))
+  ctx.slots.inject('conversation.session.header.actions', () => ctx.slots.register({
+    name: 'conversation.session.header.actions', id: KVVI_PANEL_ID, locale: NS,
+    inject: () => ({
+      open: (assetId, mode) => { ctx.sidebarRight.openResource(businessAddress(assetId, mode)) },
+      choose: () => { ctx.layout.selectPanel(panelId) },
+    }),
+  }, BusinessHeader))
+  ctx.slots.inject('settings.account', () => ctx.slots.register({ name: 'settings.account', locale: NS }, AccountArea))
+  ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+    name: 'sidebar.panellist', id: panelId, order: -10, label: () => t('panel.title'),
+  }, BusinessIcon))
+  ctx.slots.inject('main', () => ctx.slots.register({
+    name: 'main', key: panelId, locale: NS,
+    inject: () => ({
+      back: () => { ctx.layout.selectPanel(null) },
+      openDock: (sessionId, system, mode) => {
+        ctx.layout.selectPanel(null)
+        ctx.sidebarRight.openResourceIn(sessionId, businessAddress(system.assetId, mode))
+      },
+    }),
+  }, BusinessPage))
 
   ctx.effect(
     () => ctx.slots.inject('shell.overlay', () => ctx.slots.register(

@@ -13,6 +13,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-slots'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
+    /** Optional complete account area; the settings shell retains its dialog. */
+    'settings.account': { kind: 'single'; scope: 'root'; owner: { wide: boolean; openSettings: (onClosed?: () => void) => void } }
     /**
      * The sidebar-foot trigger row content: icon + label, supplied as slot
      * content (the accessible name comes from the content — rail state

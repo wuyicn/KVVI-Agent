@@ -22,6 +22,18 @@
     },
     {
       "path": "../ui-layout"
+    },
+    {
+      "path": "../ui-sidebar-right"
+    },
+    {
+      "path": "../ui-settings"
+    },
+    {
+      "path": "../store"
+    },
+    {
+      "path": "../ui-conversation"
     }
   ]
 }

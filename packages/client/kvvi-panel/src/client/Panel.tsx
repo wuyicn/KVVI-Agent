@@ -13,6 +13,7 @@ import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import { KvviAdminShell } from './AdminShell.tsx'
 import { KvviSystemShell } from './SystemShell.tsx'
 import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { PublishedSystem } from './api.ts'
 import { adminCapabilities } from './api.ts'
 import css from './business.module.css'
 
@@ -39,9 +40,11 @@ export const KVVI_OPEN_EVENT = 'kvvi-panel:open'
  * @param props - the framework's `t` seat and `onClose` from the registration site.
  * @returns the overlay.
  */
-export function KvviPanel({ t, onClose }: {
+export function KvviPanel({ t, onClose, onDock, embedded }: {
   readonly t: KvviTranslate
   readonly onClose: () => void
+  readonly onDock?: (system: PublishedSystem, mode: 'form' | 'records') => void
+  readonly embedded?: boolean
 }): ReactNode {
   // 两半是同一层的两个入口：**业务**是员工每天用的，**企业管理**只有
   // 所有者与管理员用得到。放在一个面板的两个页签里，是因为它们共享
@@ -54,7 +57,7 @@ export function KvviPanel({ t, onClose }: {
     const controller = new AbortController()
     setCanAdmin(false)
     setCapabilityError(null)
-    void adminCapabilities(controller.signal).then(result => {
+    void adminCapabilities(controller.signal).then((result) => {
       if (controller.signal.aborted) return
       if (result.ok) setCanAdmin(result.value.role === 'owner' || result.value.role === 'admin')
       else setCapabilityError(result.code)
@@ -63,7 +66,7 @@ export function KvviPanel({ t, onClose }: {
   }, [attempt])
 
   return (
-    <Modal open headless title={t('panel.aria')} onClose={onClose} className={css.panel ?? ''}>
+    <BusinessFrame embedded={embedded} title={t('panel.aria')} onClose={onClose}>
       <header className={css.header}>
         <div>
           <h2 className={css.title}>{t('panel.title')}</h2>
@@ -87,9 +90,9 @@ export function KvviPanel({ t, onClose }: {
             <Button variant="outline" onClick={() => { setAttempt(value => value + 1) }}>{t('panel.retryCapabilities')}</Button>
           </div>
         )}
-        {page === 'admin' && canAdmin ? <KvviAdminShell copy={t} /> : <KvviSystemShell copy={t} />}
+        {page === 'admin' && canAdmin ? <KvviAdminShell copy={t} /> : <KvviSystemShell copy={t} {...(onDock === undefined ? {} : { onDock })} />}
       </div>
-    </Modal>
+    </BusinessFrame>
   )
 }
 
@@ -154,4 +157,14 @@ export function createKvviOverlay(): (props: { t: KvviTranslate }) => ReactNode 
     }, [])
     return open ? <KvviPanel t={t} onClose={() => { setOpen(false) }} /> : null
   }
+}
+
+/** One directory surface offered as a main page or its legacy dialog. */
+function BusinessFrame({ embedded, title, onClose, children }: {
+  embedded: boolean | undefined
+  title: string
+  onClose: () => void
+  children: ReactNode
+}) {
+  return embedded === true ? <section className={css.businessPage}>{children}</section> : <Modal open headless title={title} onClose={onClose} className={css.panel ?? ''}>{children}</Modal>
 }

@@ -152,23 +152,26 @@ export function KvviRecordDetail({
         <span style={{ marginLeft: 10 }}>{copy('detail.version', { rowVersion: String(record.rowVersion) })}</span>
       </div>
 
-      {shown.map(field => (
-        <label key={field.field_code} style={{ display: 'block', marginBottom: 10 }}>
-          <span style={{ display: 'block', fontSize: 12, opacity: .7 }}>{field.label ?? field.field_code}</span>
-          {editorFor(field, values[field.field_code] ?? '', record.fieldVisibility[field.field_code] ?? 'VISIBLE',
-            (next) => { setValues(v => ({ ...v, [field.field_code]: next })) })}
-        </label>
-      ))}
+      <fieldset disabled={busy} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+        {shown.map(field => (
+          <label key={field.field_code} style={{ display: 'block', marginBottom: 10 }}>
+            <span style={{ display: 'block', fontSize: 12, opacity: .7 }}>{field.label ?? field.field_code}</span>
+            {editorFor(field, values[field.field_code] ?? '', record.fieldVisibility[field.field_code] ?? 'VISIBLE',
+              (next) => { if (busy !== true) setValues(v => ({ ...v, [field.field_code]: next })) })}
+          </label>
+        ))}
+      </fieldset>
 
       <button
         type="button"
         disabled={busy === true}
         onClick={() => {
+          if (busy === true) return
           const data: Record<string, string> = {}
           for (const field of shown) {
             // A masked field is displayed as a mask. Posting the mask back would
             // store the mask as the value, so it is left out of the payload.
-            if (record.fieldVisibility[field.field_code] === 'MASKED') continue
+            if (['MASKED', 'READONLY'].includes(record.fieldVisibility[field.field_code] ?? 'VISIBLE')) continue
             data[field.field_code] = values[field.field_code] ?? ''
           }
           onSave(data, record.rowVersion)
