@@ -21,7 +21,7 @@ export function BusinessBody({ useTabInfo, ...props }: BusinessBodyProps) {
   return <BusinessContent {...props} address={tab.navigation.address} signal={tab.signal}
     openResource={(address, options) => { tab.actions.openResource(address, options) }} />
 }
-export interface BusinessContentProps extends Omit<BusinessBodyProps, 'useTabInfo'> {
+export interface BusinessContentProps extends Pick<BusinessBodyProps, 'useStore' | 'actions' | 't'> {
   address: string
   signal: AbortSignal
   openResource: (address: string, options?: { replaceTab: boolean }) => void
