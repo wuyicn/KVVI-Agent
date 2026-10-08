@@ -62,3 +62,31 @@ AI需唯一对应工作区（当前按发布名称/assetId/名称+系统匹配�
 本轮日志：`/tmp/kvvi-no-update-{focused,gui,types,build,lint,start,manifest-verify,verify,web}.log`。
 
 本轮完整浏览器replay最终结果：`DSH_SNAPSHOT=replay pnpm run test:web:built` exit 0；120文件通过、1文件跳过；431项通过、15项跳过。耗时609.77秒。此前queue-actions快照失败本次未重现，未改写golden。这个回归使用测试夹具与测试服务，不是7500已登录页面验收。最后再次检查7500 healthz为HTTP200/ok=true。
+
+## 7506 原型的实际布局迁移（2026-10-08 17:08）
+
+依据用户再次明确授权，将当前7506的业务目录表格与业务工作台移入正式客户端；此次不再仅迁移“主表单、右侧AI”的大框架。
+
+- 首页：业务名称/内容/状态/操作四列，业务搜索和进入业务；数据来自已发布 systems，未复制原型中的 GAD/访客示例。
+- 业务内：面包屑、左侧真实表单目录与搜索，中间业务记录及操作栏，右侧按需打开原 Conversation；工作区原会话布局保持。
+- 新增记录：弹出经平台字段授权的表单，真实创建接口成功后留在列表并刷新。隐藏列从表头、单元格、搜索中排除；筛选使用有权限的枚举字段，MASKED不能充当筛选字段；显示加载/匹配数，不冒充全量统计。接口目前最多返回50条，尚未添加全量分页。
+- 新建业务：仅实际BUILDER入口显示；填写名称/需求，选择保存父目录，通过原 Host目录、Workspace和Session API开始真实搭建会话。发布成功前不伪造已发布业务。设计表单转到已明确关联工作区的全新搭建会话。
+- 尚未接入的平台能力：多个asset归组为同一应用、仪表盘/报表、直接重命名/删除业务。没有将原型的本地状态操作当成正式API或伪造成功按钮。公司的通知仍按原有明确占位，未冒充已实现发送。
+
+验证：
+
+- 失败先行的目录布局/隐藏字段搜索及列对齐测试，随后新增搭建入口填写和主区弹窗提交测试；KVVI定向139项通过。
+- 最终整套GUI447文件通过、6351项通过、1跳过。完整构建（包含Host与Client类型检查）、提交范围lint通过。
+- 新增 `apps/web/tests/kvvi-business.e2e.ts`：真正编译客户端+原DSH装配，在独立临时服务上以夹具API验证目录、隐藏列、弹窗提交一次及列表刷新，单独回归1项通过。截图位于 `reference/compiled-fixture-{home,records}-20261008.png`，只表示测试夹具，**不是7500截图或真实业务验收**。
+- 检查修复了深色主题滚动条token重绑定；没有通过改写golden或放宽权限绕过失败。
+- fork提交 `3f8138c6`。G2登记185路径、46条；导出177文件、8删除；独立重建逐字节验证与manifest验证通过。
+- 受管stop/start已完成，platform PID44398、runtime PID44440；数据库保持运行、schema已最新，未重建数据库、未修改真实业务记录。
+- 7500 healthz ok=true、schemaBehind=0/schemaExtra=0/schemaReadable=true。
+- 同一实际profile/home/installAnchor解析kvvi-panel到仓库源码包；启动后的解析bundle sha256 `8329d30ad37b2f6f20f23f241e151b2be69e45027259a3bc8ca45b4cf82db14b`，包含directoryTable/recordToolbar/startBuilder及真实入口身份读取。实际新包已进入运行时解析，不是只更新7506的样例页面。
+- 7500已登录页面的工具点击/截图仍受此前浏览器URL策略明确拒绝；未换浏览器、端口或CDP绕过，未把匿名页面/测试夹具当成真实登录验收。用户可刷新7500进行本地验收。
+
+完整浏览器回归运行中，最终结果另附；临时日志 `/tmp/kvvi-prototype-{focused-final,gui-final,build-final,lint-final,web-focused,web-final,start,verify,manifest}.log`。中途Host浏览器用例误归Client program引起的构建失败已按原项目分层规范修复，产生的56个临时源旁输出已清理；中止的回归不算通过。
+
+最终回归结果（17:15）：完整浏览器replay结束，120文件通过、1文件失败、1跳过；431项通过、1失败、15跳过。唯一失败是原 `queue-actions` 的sending快照在客户端`partial`段落尚未绘制时采样；队列测试未加载KVVI overlay。单独复跑复现同一缺失段落，之后对测试补充“已显示partial”里程碑等待，**未修改预期快照、未跳过断言、未修改会话运行逻辑**。修复后同文件3项全部通过、无未处理错误。首次整套运行仍记为失败；其他120文件与新增KVVI编译浏览器检查通过，不冒充修复后的全套单次exit0。
+
+队列测试修复fork提交 `47541074`，最终G2为186路径/46条登记；导出178文件/8删除、独立重建逐字节验证和manifest验证通过。这项修复只有测试文件，不改变已部署的客户端bundle（sha256仍为`8329d30ad37b2f6f20f23f241e151b2be69e45027259a3bc8ca45b4cf82db14b`）。队列复查日志 `/tmp/kvvi-prototype-queue-{repeat,fixed,lint,commit}.log`。

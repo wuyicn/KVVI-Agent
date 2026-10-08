@@ -21,6 +21,7 @@ import { BusinessBody } from './BusinessBody.tsx'
 import { businessAddress, businessDefinition, BUSINESS_TAB_ID } from './business-tabs.ts'
 import { createBusinessStore } from './business-store.ts'
 import { en, NS, zh, type KvviKey } from './locales.ts'
+import { readEntrance } from './api.ts'
 
 declare module '@deepseek-ai/dsh-api-session-controller/client' {
   interface SessionReferenceSourceMap { kvviBusiness: unknown }
@@ -104,6 +105,31 @@ export function apply(ctx: ClientContext): void {
     name: 'main', key: panelId, locale: NS, store: createBusinessStore(),
     children: { 'kvvi.business.session': { kind: 'single', scope: 'session' } },
     inject: (): BusinessPageInjected => ({
+      pickDirectory: () => ctx.uiWorkspace.pickDirectory(),
+      startBuilder: async (parent, name, purpose) => {
+        const entrance = await readEntrance()
+        if (!entrance.ok || entrance.value.gateway !== 'BUILDER') throw new Error('KVVI_NOT_ALLOWED')
+        const path = await ctx.uiWorkspace.createDirectory(parent, name)
+        const workspace = await ctx.workspaces.create({ path })
+        const id = await ctx.sessions.create({ workspaceId: workspace.workspaceId })
+        const reference = ctx.sessions.retain(id, { source: 'kvviBusiness' })
+        try {
+          const { session } = await reference.ready
+          ctx.uiWorkspace.openSession(id)
+          const text = `请搭建业务“${name}”。需求：${purpose}。先确认表单与业务流程，再按搭建规范生成，发布前交给我检查。`
+          const submission = session.beginSubmission({ mode: 'queue', text, attachments: [] })
+          const result = await session.prompt([{ type: 'text', text }], 'queue', undefined, submission.requestId)
+          if (!result.ok) throw result.error
+        } finally { reference.release() }
+      },
+      designBusiness: async (workspaceId) => {
+        const entrance = await readEntrance()
+        if (!entrance.ok || entrance.value.gateway !== 'BUILDER') throw new Error('KVVI_NOT_ALLOWED')
+        const workspace = ctx.workspaces.list.getSnapshot().items.find(item => item.workspaceId === workspaceId)
+        if (workspace === undefined) throw new Error('KVVI_BAD_REQUEST')
+        const id = await ctx.sessions.create({ workspaceId: workspace.workspaceId })
+        ctx.uiWorkspace.openSession(id)
+      },
       back: () => { ctx.layout.selectPanel(null) },
       manage: () => { globalThis.dispatchEvent(new Event(KVVI_OPEN_EVENT)) },
       bindBusiness: async (system, current, workspaceId) => {

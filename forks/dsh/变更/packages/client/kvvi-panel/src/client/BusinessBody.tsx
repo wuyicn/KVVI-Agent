@@ -24,10 +24,11 @@ export function BusinessBody({ useTabInfo, ...props }: BusinessBodyProps) {
 export interface BusinessContentProps extends Pick<BusinessBodyProps, 'useStore' | 'actions' | 't'> {
   address: string
   signal: AbortSignal
+  presentation?: 'workbench' | 'dock'
   openResource: (address: string, options?: { replaceTab: boolean }) => void
 }
 /** One authorized renderer shared by the main business page and workspace dock. */
-export function BusinessContent({ address, signal, openResource, useStore, actions, t }: BusinessContentProps) {
+export function BusinessContent({ address, signal, openResource, useStore, actions, t, presentation = 'dock' }: BusinessContentProps) {
   const route = parseBusinessAddress(address)
   const draft = useStore(state => state.drafts[route?.assetId ?? ''])
   const [projection, setProjection] = useState<RuntimeProjection | null>(null)
@@ -43,6 +44,7 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
   const [notice, setNotice] = useState<string | undefined>()
   const [attempt, setAttempt] = useState(0)
   const [dialog, setDialog] = useState(false)
+  const [formError, setFormError] = useState<string | undefined>()
   const live = useRef(true)
   const writing = useRef(false)
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
@@ -72,6 +74,17 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
     })()
     return () => { controller.abort() }
   }, [address, attempt, revision])
+  useEffect(() => { setDialog(false); setFormError(undefined) }, [address])
+  useEffect(() => {
+    if (!dialog || route?.mode === 'form' || route === null) return
+    const controller = new AbortController()
+    setAllowedFields(null); setFormError(undefined)
+    void readFormFields(route.assetId, controller.signal).then((result) => {
+      if (controller.signal.aborted) return
+      if (result.ok) setAllowedFields(result.value.fields); else setFormError(result.code)
+    })
+    return () => { controller.abort() }
+  }, [dialog, address])
   if (route === null) return <ReadFailure error="KVVI_BAD_REQUEST" copy={t} onRetry={() => { setAttempt(a => a + 1) }} />
   const { assetId, mode, recordId } = route
   const model = projection?.models[assetId]
@@ -90,7 +103,7 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
         actions.invalidate(assetId)
         actions.clearIfUnchanged(assetId, submittedDraft)
         if (live.current) setDialog(false)
-        if (!signal.aborted) openResource(businessAddress(assetId, 'detail', result.value.recordId), { replaceTab: true })
+        if (!signal.aborted && presentation !== 'workbench') openResource(businessAddress(assetId, 'detail', result.value.recordId), { replaceTab: true })
       }
     })
   }
@@ -102,16 +115,17 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
     <KvviFormView spec={view} copy={t} context={fieldContextOf((model?.fields ?? []).filter(field => allowedFields?.some(visible => visible.field_code === field.field_code)).map(field => ({ ...field, type_config: { ...field.type_config, options: allowedFields?.find(visible => visible.field_code === field.field_code)?.options ?? [] } })), Object.fromEntries((model?.fields ?? []).map(field => [field.field_code, allowedFields?.some(visible => visible.field_code === field.field_code) === true ? 'VISIBLE' : 'HIDDEN'])))} values={draft ?? {}}
       onValuesChange={(values) => { actions.change(assetId, values) }} onSubmit={create} busy={busy} />
   return <section className={css.dockBody}>
-    <header className={css.systemHeading}><h2 className={css.sectionTitle}>{projection?.system.name ?? t('panel.loading')}</h2></header>
-    <nav className={css.viewTabs} aria-label={t('panel.aria')}>
+    <header className={css.systemHeading}><h2 className={css.sectionTitle}>{view?.name ?? model?.name ?? projection?.system.name ?? t('panel.loading')}</h2></header>
+    {presentation === 'dock' ? <nav className={css.viewTabs} aria-label={t('panel.aria')}>
       <Button variant={mode === 'form' ? 'primary' : 'ghost'} onClick={() => { open('form') }}>{t('dock.form')}</Button>
       <Button variant={mode === 'records' ? 'primary' : 'ghost'} onClick={() => { open('records') }}>{t('dock.records')}</Button>
       {mode === 'form' ? <Button variant="outline" disabled={allowedFields === null} onClick={() => { setDialog(true) }}>{t('dock.dialog')}</Button> : null}
-    </nav>
+    </nav> : null}
     {failure}
     {notice === undefined ? null : <p role="status">{notice}</p>}
     {projection === null ? <p role="status">{t('panel.loading')}</p> : mode === 'form' ? (allowedFields === null ? null : dialog ? null : form) : mode === 'records' ?
-      <KvviListView copy={t} fields={model?.fields} rows={page?.items ?? []} fieldVisibility={page?.fieldVisibility ?? {}}
+      <KvviListView key={assetId} copy={t} fields={model?.fields} rows={page?.items ?? []} fieldVisibility={page?.fieldVisibility ?? {}}
+        onCreate={() => { setDialog(true) }}
         busy={page === null && error === undefined} {...(error === undefined ? {} : { error })}
         onOpen={(id) => { openResource(businessAddress(assetId, 'detail', id)) }} onRefresh={() => { setAttempt(a => a + 1) }} /> :
       detail === null ? null : <KvviRecordDetail key={detail.recordId + ':' + detail.rowVersion} copy={t} record={detail}
@@ -130,7 +144,7 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
           })
         }} />}
     {dialog ? <Modal open closeLabel={t('panel.close')} title={projection?.system.name ?? t('dock.form')} onClose={() => { setDialog(false) }}>
-      {form}{failure}
+      {formError === undefined ? allowedFields === null ? <p role="status">{t('panel.loading')}</p> : form : <ReadFailure error={formError} copy={t} onRetry={() => { setDialog(false) }}/>} {failure}
     </Modal> : null}
   </section>
 }

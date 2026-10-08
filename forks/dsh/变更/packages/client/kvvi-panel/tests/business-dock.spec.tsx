@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { BusinessSession, type BusinessSessionProps } from '../src/client/BusinessPage.tsx'
-import { BusinessBody, type BusinessBodyProps } from '../src/client/BusinessBody.tsx'
+import { BusinessBody, BusinessContent, type BusinessBodyProps } from '../src/client/BusinessBody.tsx'
 import { createBusinessStore } from '../src/client/business-store.ts'
 import { businessAddress, parseBusinessAddress } from '../src/client/business-tabs.ts'
 import { AccountArea, type AccountAreaProps } from '../src/client/AccountArea.tsx'
@@ -20,6 +20,21 @@ function body(address: string) {
   const props = { t, useStore, actions:store.actions, useTabInfo:() => ({ tab:{ id:'t1',signal,navigation:{ address },actions:{ openResource } } }) } as unknown as BusinessBodyProps
   return { props, store, openResource }
 }
+it('opens an authorized form from the main record list and refreshes that list after a real create', async () => {
+  const fetcher = vi.fn((url: string, init?: RequestInit) => Promise.resolve(new Response(JSON.stringify(
+    init?.method === 'POST' ? { recordId: 'actual-new', rowVersion: 1 } : url.endsWith('/fields') ? { fields: runtime.models.customer.fields } : url.endsWith('/records') ? { items: [], fieldVisibility: {} } : runtime,
+  ))))
+  vi.stubGlobal('fetch', fetcher)
+  const b = body(businessAddress('customer', 'records'))
+  render(<BusinessContent {...b.props} address={businessAddress('customer', 'records')} signal={new AbortController().signal} openResource={b.openResource} presentation="workbench"/>)
+  fireEvent.click(await screen.findByRole('button', { name: '新增记录' }))
+  fireEvent.change(await screen.findByLabelText('name'), { target: { value: '新客户' } })
+  fireEvent.submit(screen.getByLabelText('name').closest('form')!)
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(b.openResource).not.toHaveBeenCalled()
+  expect(fetcher.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1)
+  expect(fetcher.mock.calls.filter(([url]) => url.endsWith('/records'))).toHaveLength(3)
+})
 it('validates restored URI shapes and preserves escaped business/record identity', () => {
   expect(parseBusinessAddress(businessAddress('客户/业务','detail','记录/1'))).toEqual({ assetId:'客户/业务',mode:'detail',recordId:'记录/1' })
   for(const address of ['dsh-resource://kvvi-business/%ZZ/form','dsh-resource://kvvi-business/customer/detail','dsh-resource://kvvi-business/customer/form/x','https://example.com/customer/form']) expect(parseBusinessAddress(address)).toBeNull()
