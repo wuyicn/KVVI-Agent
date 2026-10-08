@@ -16,16 +16,25 @@ import css from './business.module.css'
 export type BusinessBodyProps = PropsRuntime<'sidebar.right.pane.tab'> & PropsLocale<'kvviPanel'> & PropsStore<ReturnType<typeof createBusinessStore>>
 
 /** Every read is cancelled on navigation; writes settle only for their original occurrence. */
-export function BusinessBody({ useTabInfo, useStore, actions, t }: BusinessBodyProps) {
+export function BusinessBody({ useTabInfo, ...props }: BusinessBodyProps) {
   const { tab } = useTabInfo()
-  const address = tab.navigation.address
+  return <BusinessContent {...props} address={tab.navigation.address} signal={tab.signal}
+    openResource={(address, options) => { tab.actions.openResource(address, options) }} />
+}
+export interface BusinessContentProps extends Omit<BusinessBodyProps, 'useTabInfo'> {
+  address: string
+  signal: AbortSignal
+  openResource: (address: string, options?: { replaceTab: boolean }) => void
+}
+/** One authorized renderer shared by the main business page and workspace dock. */
+export function BusinessContent({ address, signal, openResource, useStore, actions, t }: BusinessContentProps) {
   const route = parseBusinessAddress(address)
   const draft = useStore(state => state.drafts[route?.assetId ?? ''])
   const [projection, setProjection] = useState<RuntimeProjection | null>(null)
   const [page, setPage] = useState<RecordPage | null>(null)
   const [allowedFields, setAllowedFields] = useState<AuthorizedField[] | null>(null)
   const write = useStore(state => state.writes[address])
-  const revision = write?.revision ?? 0
+  const revision = (write?.revision ?? 0) + useStore(state => state.revisions[route?.assetId ?? ''] ?? 0)
   const busy = write?.busy === true
   const conflictVersion = write?.currentRowVersion
   const [detail, setDetail] = useState<RecordView | null>(null)
@@ -67,7 +76,7 @@ export function BusinessBody({ useTabInfo, useStore, actions, t }: BusinessBodyP
   const { assetId, mode, recordId } = route
   const model = projection?.models[assetId]
   const view = projection?.views[assetId]
-  const open = (next: 'form' | 'records') => { tab.actions.openResource(businessAddress(assetId, next)) }
+  const open = (next: 'form' | 'records') => { openResource(businessAddress(assetId, next)) }
   const create = (data: Record<string, string>) => {
     if (writing.current || busy || allowedFields === null) return
     const submittedDraft = { ...draft }
@@ -78,9 +87,10 @@ export function BusinessBody({ useTabInfo, useStore, actions, t }: BusinessBodyP
         busy: false, error: result.code, fields: (result.problems ?? []).map(problem => problem.field),
       }, result.ok)
       if (result.ok) {
+        actions.invalidate(assetId)
         actions.clearIfUnchanged(assetId, submittedDraft)
         if (live.current) setDialog(false)
-        if (!tab.signal.aborted) tab.actions.openResource(businessAddress(assetId, 'detail', result.value.recordId), { replaceTab: true })
+        if (!signal.aborted) openResource(businessAddress(assetId, 'detail', result.value.recordId), { replaceTab: true })
       }
     })
   }
@@ -103,7 +113,7 @@ export function BusinessBody({ useTabInfo, useStore, actions, t }: BusinessBodyP
     {projection === null ? <p role="status">{t('panel.loading')}</p> : mode === 'form' ? (allowedFields === null ? null : dialog ? null : form) : mode === 'records' ?
       <KvviListView copy={t} fields={model?.fields} rows={page?.items ?? []} fieldVisibility={page?.fieldVisibility ?? {}}
         busy={page === null && error === undefined} {...(error === undefined ? {} : { error })}
-        onOpen={(id) => { tab.actions.openResource(businessAddress(assetId, 'detail', id)) }} onRefresh={() => { setAttempt(a => a + 1) }} /> :
+        onOpen={(id) => { openResource(businessAddress(assetId, 'detail', id)) }} onRefresh={() => { setAttempt(a => a + 1) }} /> :
       detail === null ? null : <KvviRecordDetail key={detail.recordId + ':' + detail.rowVersion} copy={t} record={detail}
         fields={model?.fields} busy={busy} {...(error === undefined ? {} : { error })} {...(conflictVersion === undefined ? {} : { conflictRowVersion: conflictVersion })} onBack={() => { open('records') }}
         onSave={(data, rowVersion) => {
@@ -115,7 +125,8 @@ export function BusinessBody({ useTabInfo, useStore, actions, t }: BusinessBodyP
               busy: false, error: result.code,
               ...(result.currentRowVersion === undefined ? {} : { currentRowVersion: result.currentRowVersion }),
             }, result.ok)
-            if (live.current && !tab.signal.aborted && result.ok) setNotice(t('detail.saved'))
+            if (result.ok) actions.invalidate(assetId)
+            if (live.current && !signal.aborted && result.ok) setNotice(t('detail.saved'))
           })
         }} />}
     {dialog ? <Modal open closeLabel={t('panel.close')} title={projection?.system.name ?? t('dock.form')} onClose={() => { setDialog(false) }}>

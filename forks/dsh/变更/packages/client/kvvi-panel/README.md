@@ -12,15 +12,26 @@ The package uses the original shell and right-sidebar resource controller. Busin
 
 | Slot | Contribution |
 |---|---|
-| `sidebar.panellist` / `main` | Global business entry and published systems page |
+| `sidebar.panellist` / `main` | Global business entry, system directory and records-first workbench |
+| `kvvi.business.session` | Shared session-bound business content and optional embedded AI host |
 | `settings.account` | Actual authenticated identity, settings and notification placeholder |
-| `conversation.session.header.actions` | Current workspace's form and record shortcuts |
+| `conversation.session.header.actions` | Current workspace's form/record shortcuts and successful-write observer |
 | `sidebar.right.pane.tab` | Authorized form, list and detail resource bodies |
 | `shell.overlay` | Session notice and legacy business overlay |
 
 Business resource URIs contain the asset and, for details, record identity. Opening a business resource uses the existing pane; explicit DSH split, floating and fullscreen actions remain available. The body store is session-scoped and not persisted: a tab and form dialog share drafts, pending writes survive unmount, and successful updates publish a revision so remounted details reload. Success navigation targets the original tab occurrence only while its signal is active. Draft clearing compares the submitted snapshot; submitting locks editors. Runtime model declarations supply layout metadata, while `/fields` gates form visibility and selectable active options. Record writes still use the platform's authorization and row-version checks; masked and readonly columns are omitted from updates.
 
 The notification entry contains no invented messages and no delivery backend. Profile identity comes from `/auth/session`; company role and access remain server-owned.
+
+## Conversation and business emphasis
+
+Workspaces retain the original main Conversation and its session navigation. A new structured successful `record_create` or `record_update` opens that session's records in the original right pane; initial/replayed history does not open panes. In the global Business entry, published records take the main area, form entry stays beside them, and AI is closed until requested. The AI host instantiates the original `conversation.content` Factory with `variant: embedded` and a fixed Chat view. It does not redeclare the main Conversation slot, import another plugin's component, or provide a separate model/send path.
+
+The main business renderer, workspace resources and write observer share one session-scoped store handle. Successful writes invalidate the asset's visible records/details. Main-page navigation also checks the address captured when submitting so a late result does not pull a user back from a different page. The data renderer does not subscribe to token-by-token Conversation snapshots.
+
+Business-to-workspace association currently requires exactly one workspace whose title is the published name, asset code, or name plus 系统. A current main session is reused only if it belongs to that workspace; otherwise the existing `uiWorkspace.connectWorkspace` API reuses/creates a blank session in that workspace. The retained reference is released when leaving/switching the business. Missing or ambiguous associations keep the authenticated standalone forms available and disable AI with a short explanation. Title association is presentation routing, not authorization; every business read/write is still checked by the platform.
+
+Multi-form groups, dashboards/reports, schema design and business create/rename/delete from the 7506 mock are not supplied by these published-system endpoints. This integration does not copy its sample GAD records, fake role selector or instant-rule AI. Existing owner administration stays in the original overlay.
 
 ## The closed renderer
 

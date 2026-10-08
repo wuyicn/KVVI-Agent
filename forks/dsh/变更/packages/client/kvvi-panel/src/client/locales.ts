@@ -18,6 +18,16 @@ export const QUERY_UNSUPPORTED = 'KVVI_TABLE_QUERY_UNSUPPORTED'
 
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
+  'business.enter': '进入业务',
+  'business.records': '表单列表',
+  'business.ai': 'AI协助',
+  'business.ai.close': '收起AI协助',
+  'business.home': '全部业务',
+  'business.search': '搜索业务',
+  'business.workspaceMissing': '请先在工作区添加这个业务对应的文件夹，再使用 AI 协助。',
+  'business.connecting': '正在打开业务…',
+  'business.assistantHint': 'AI 协助当前业务',
+
   'panel.title': '业务',
   'panel.tab.business': '业务',
   'panel.close': '关闭',
@@ -217,6 +227,16 @@ export const zh = {
 
 /** English dictionary, key-identical to the Chinese source of truth. */
 export const en: Record<KvviKey, string> = {
+  'business.enter': 'Open business',
+  'business.records': 'Records',
+  'business.ai': 'AI assistant',
+  'business.ai.close': 'Close AI assistant',
+  'business.home': 'All businesses',
+  'business.search': 'Search businesses',
+  'business.workspaceMissing': 'Add the matching business folder to Workspaces before using AI assistance.',
+  'business.connecting': 'Opening business…',
+  'business.assistantHint': 'AI assistance for this business',
+
   'panel.title': 'Business',
   'panel.tab.business': 'Business',
   'panel.close': 'Close',
