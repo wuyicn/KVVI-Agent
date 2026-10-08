@@ -60,3 +60,5 @@ AI需唯一对应工作区（当前按发布名称/assetId/名称+系统匹配�
 用户验证入口：刷新7500 → 左侧「业务」→ customer「进入业务」。应默认显示记录列表；没有自动关联时选择「AI会话工作区」中的「客户登记系统」，再点「AI协助」开启右侧原会话。工作区主会话按已确认方向保持原样。
 
 本轮日志：`/tmp/kvvi-no-update-{focused,gui,types,build,lint,start,manifest-verify,verify,web}.log`。
+
+本轮完整浏览器replay最终结果：`DSH_SNAPSHOT=replay pnpm run test:web:built` exit 0；120文件通过、1文件跳过；431项通过、15项跳过。耗时609.77秒。此前queue-actions快照失败本次未重现，未改写golden。这个回归使用测试夹具与测试服务，不是7500已登录页面验收。最后再次检查7500 healthz为HTTP200/ok=true。
