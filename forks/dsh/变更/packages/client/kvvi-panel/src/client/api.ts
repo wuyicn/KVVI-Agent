@@ -630,3 +630,9 @@ export function decideDraft(
 export function publishDraft(draftId: string): Promise<ApiResult<{ status: string }>> {
   return request('POST', `/publish/drafts/${encodeURIComponent(draftId)}/publish`, {})
 }
+
+/** Read only the platform-authorized declarations for a new business form. */
+export interface AuthorizedField { field_code: string; options?: { code: string; label?: string }[] }
+export function readFormFields(assetId: string, signal?: AbortSignal): Promise<ApiResult<{ fields: AuthorizedField[] }>> {
+  return request('GET', `/systems/${encodeURIComponent(assetId)}/fields`, undefined, signal)
+}

@@ -199,3 +199,11 @@ describe('API 客户端', () => {
     expect(Object.keys(en).sort()).toEqual(Object.keys(zh).sort())
   })
 })
+
+it('omits readonly fields from a detail edit while preserving the version check',()=>{
+  const onSave=vi.fn()
+  render(<KvviRecordDetail copy={t} fields={FIELDS} record={{ recordId:'r',rowVersion:4,data:{ title:'不能改',amount:'10' },fieldVisibility:{ title:'READONLY',amount:'VISIBLE' } }} onSave={onSave} onBack={noop} />)
+  fireEvent.change(screen.getByLabelText('amount'),{ target:{ value:'20' } })
+  fireEvent.click(screen.getByRole('button',{ name:zh['detail.save'] }))
+  expect(onSave).toHaveBeenCalledWith({ amount:'20' },4)
+})

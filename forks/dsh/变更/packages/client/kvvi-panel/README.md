@@ -1,6 +1,6 @@
 # @deepseek-ai/dsh-client-kvvi-panel
 
-KVVI's business panel for the DSH web client: one sidebar entry plus one overlay page that renders the company's published systems.
+KVVI's business page, authenticated account area and session-bound business tabs for the DSH web client.
 
 ## Model Experience
 
@@ -8,16 +8,19 @@ This package contributes browser presentation only; it adds no model-visible inp
 
 ## Contribution
 
-Two upstream-declared `list` slots are filled, so both registrations append rather than replace another plugin's occupant. Both declare `locale: kvviPanel`, which is what puts the typed `t` seat on their components.
+The package uses the original shell and right-sidebar resource controller. Business navigation appears before plugins; the account contribution opens the original settings dialog. Without an account occupant, the shell keeps its original settings trigger.
 
-| Slot | Declared by | Contribution |
-|---|---|---|
-| `sidebar.footer.action` | `ui-sidebar` | the entry at the sidebar foot |
-| `shell.overlay` | `ui-layout` | the panel itself |
+| Slot | Contribution |
+|---|---|
+| `sidebar.panellist` / `main` | Global business entry and published systems page |
+| `settings.account` | Actual authenticated identity, settings and notification placeholder |
+| `conversation.session.header.actions` | Current workspace's form and record shortcuts |
+| `sidebar.right.pane.tab` | Authorized form, list and detail resource bodies |
+| `shell.overlay` | Session notice and legacy business overlay |
 
-The two occupy different slots, so neither can render the other. They communicate through one namespaced DOM event (`kvvi-panel:open`) rather than a module-level mutable shared by every consumer.
+Business resource URIs contain the asset and, for details, record identity. Opening a business resource uses the existing pane; explicit DSH split, floating and fullscreen actions remain available. The body store is session-scoped and not persisted: a tab and form dialog share drafts, pending writes survive unmount, and successful updates publish a revision so remounted details reload. Success navigation targets the original tab occurrence only while its signal is active. Draft clearing compares the submitted snapshot; submitting locks editors. Runtime model declarations supply layout metadata, while `/fields` gates form visibility and selectable active options. Record writes still use the platform's authorization and row-version checks; masked and readonly columns are omitted from updates.
 
-The business panel uses the shared modal and button components, with a fixed header and a separately scrolling content area. The administration tab appears only after `/api/v1/admin/capabilities` identifies an owner or administrator; a failed capabilities read leaves business content available and offers a separate retry. The server remains responsible for authorization on every request. Failed system-list and runtime reads retain their diagnostic codes alongside a localized explanation and retry action; retrying a read never resubmits a business record.
+The notification entry contains no invented messages and no delivery backend. Profile identity comes from `/auth/session`; company role and access remain server-owned.
 
 ## The closed renderer
 

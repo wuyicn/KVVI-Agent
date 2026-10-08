@@ -248,3 +248,12 @@ describe('我的系统', () => {
     })
   })
 })
+
+it('opens a published system beside the conversation through its injected dock action', async () => {
+  platform(healthy())
+  const onDock = vi.fn()
+  render(<KvviSystemShell copy={t} onDock={onDock} />)
+  fireEvent.click(await screen.findByRole('button', { name: '边聊边填' }))
+  expect(onDock).toHaveBeenCalledWith(SYSTEMS.items[0], 'form')
+  expect(screen.queryByLabelText('title')).toBeNull()
+})
