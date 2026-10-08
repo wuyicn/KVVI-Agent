@@ -317,6 +317,8 @@ export async function handleAuth({ method, path, body, headers }) {
     const payload = {
       sessionId: ctx.sessionId, userId: ctx.userId, companyId: ctx.companyId,
       gateway: ctx.gateway, state: session.state, createdAt: session.createdAt,
+      // Entrance discovery is separate from the active gateway's tool authority.
+      allowedGateways: await gatewaysFor(ctx.companyId, ctx.userId),
       login, companyName,
       tools: toolsForGateway(ctx.gateway, enabled),
     }

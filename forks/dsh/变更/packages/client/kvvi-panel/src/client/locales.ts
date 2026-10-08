@@ -20,6 +20,7 @@ export const QUERY_UNSUPPORTED = 'KVVI_TABLE_QUERY_UNSUPPORTED'
 export const zh = {
   'business.enter': '进入业务',
   'business.new': '新建业务',
+  'business.switchBuilder': '进入搭建模式后新建业务',
   'business.name': '业务名称',
   'business.contents': '内容',
   'business.status': '状态',
@@ -257,6 +258,7 @@ export const zh = {
 export const en: Record<KvviKey, string> = {
   'business.enter': 'Open business',
   'business.new': 'New business',
+  'business.switchBuilder': 'Enter builder mode to create a business',
   'business.name': 'Business name',
   'business.contents': 'Contents',
   'business.status': 'Status',

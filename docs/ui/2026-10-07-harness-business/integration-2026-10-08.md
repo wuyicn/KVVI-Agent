@@ -90,3 +90,16 @@ AI需唯一对应工作区（当前按发布名称/assetId/名称+系统匹配�
 最终回归结果（17:15）：完整浏览器replay结束，120文件通过、1文件失败、1跳过；431项通过、1失败、15跳过。唯一失败是原 `queue-actions` 的sending快照在客户端`partial`段落尚未绘制时采样；队列测试未加载KVVI overlay。单独复跑复现同一缺失段落，之后对测试补充“已显示partial”里程碑等待，**未修改预期快照、未跳过断言、未修改会话运行逻辑**。修复后同文件3项全部通过、无未处理错误。首次整套运行仍记为失败；其他120文件与新增KVVI编译浏览器检查通过，不冒充修复后的全套单次exit0。
 
 队列测试修复fork提交 `47541074`，最终G2为186路径/46条登记；导出178文件/8删除、独立重建逐字节验证和manifest验证通过。这项修复只有测试文件，不改变已部署的客户端bundle（sha256仍为`8329d30ad37b2f6f20f23f241e151b2be69e45027259a3bc8ca45b4cf82db14b`）。队列复查日志 `/tmp/kvvi-prototype-queue-{repeat,fixed,lint,commit}.log`。
+
+## 新建业务入口缺失修复（2026-10-08）
+
+用户提供的7500截图确认业务目录已更新，但builder账号没有「新建业务」。受管平台只读查询确认该账号当前活跃会话gateway为USER，服务端允许的入口为USER、BUILDER。此前按钮只按活跃gateway显示，导致有搭建资格但进入使用模式的账号无法发现搭建入口。
+
+- `/auth/session`增加服务端判定的allowedGateways，当前gateway及对应tools不变。账号姓名不参与授权。
+- 有搭建资格的账号在业务页右上角显示「新建业务」。当前为USER时，点击进入原`/kvvi/builder/login`登录流程；完成BUILDER登录后才可打开新建对话框。USER模式点击不创建目录、工作区或会话。实际搭建回调继续检查BUILDER，普通员工不显示入口。
+- 失败先行验证缺失入口与身份返回值，再验证修复。平台身份/模式测试19项通过，KVVI定向140项通过，完整GUI447文件、6352项通过、1跳过；完整构建和提交范围lint通过。编译客户端浏览器夹具验证USER有资格时按钮可见并跳转正式搭建登录、无创建，BUILDER模式可打开新建弹窗，1项通过。夹具不是7500真实登录验收。
+- fork提交`ce216c432372980eb596dfe707177c393aebcc87`；G2为186路径/46条，导出178文件/8删除，独立重建逐字节校验及manifest验证通过。
+- 7500受管stop/start已完成，platform PID53717、runtime PID53738。healthz ok=true、schemaBehind=0/schemaExtra=0/schemaReadable=true；数据库保持运行，未改业务记录或账号授权。
+- 同一实际profile/home/installAnchor解析到仓库kvvi-panel，bundle sha256为`1db1facdb16ac62d4eb6d74ca4470227546da5ae59bff0a7fea9c94926bd03eb`，包含allowedGateways和正式搭建登录跳转。7500工具浏览器访问仍受此前URL策略拒绝，未绕过，未声称完成真实页面点击验收。
+
+用户验证：刷新7500 →「业务」→ 右上角「新建业务」→ 搭建者登录 →「业务」→「新建业务」。临时日志`/tmp/kvvi-builder-{auth-green,entry-focused,gui,build,web,lint,stop,start,fork-commit}.log`。

@@ -28,6 +28,15 @@ it('uses the prototype business directory columns and only offers building in th
   for (const name of ['业务名称', '内容', '状态', '操作']) expect(screen.getByRole('columnheader', { name })).toBeTruthy()
   expect(screen.queryByRole('button', { name: '新建业务' })).toBeNull()
 })
+it('offers New business to an authorized builder in USER mode and enters builder login before any creation', async () => {
+  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ items: [system], gateway: 'USER', allowedGateways: ['USER', 'BUILDER'] })))))
+  const enterBuilder = vi.fn(), startBuilder = vi.fn()
+  render(<BusinessPage {...props()} {...{ enterBuilder, startBuilder }}/>)
+  fireEvent.click(await screen.findByRole('button', { name: '新建业务' }))
+  expect(enterBuilder).toHaveBeenCalledOnce()
+  expect(startBuilder).not.toHaveBeenCalled()
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
 it('collects builder requirements inside Business before starting the real builder flow', async () => {
   vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ items: [system], gateway: 'BUILDER' })))))
   const startBuilder = vi.fn(async () => {})

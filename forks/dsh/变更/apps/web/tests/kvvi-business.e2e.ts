@@ -22,7 +22,9 @@ it('renders the Harness business layout and submits through the authorized recor
     const runtime = { system, models: { customer: { fields } }, views: { customer: { name: 'Customer form', view_type: 'FORM', componentsTree: [{ id: 'root', componentName: 'FormPage', children: [{ id: 'name', componentName: 'ShortTextField', props: { fieldBinding: { fieldRef: 'name' } } }] }] } }, workflows: {} }
     const rows = [{ recordId: 'r1', rowVersion: 1, recordNo: 'R1', data: { name: 'Alice' } }]
     let creates = 0
-    await page.route('**/auth/session', route => route.fulfill({ json: { gateway: 'BUILDER', login: 'fixture-builder', companyName: 'UI test' } }))
+    let gateway = 'USER'
+    await page.route('**/auth/session', route => route.fulfill({ json: { gateway, allowedGateways: ['USER', 'BUILDER'], login: 'fixture-builder', companyName: 'UI test' } }))
+    await page.route('**/kvvi/builder/login', route => route.fulfill({ contentType: 'text/html', body: '<h1>Builder login</h1>' }))
     await page.route('**/api/v1/**', async (route) => {
       const request = route.request()
       const path = new URL(request.url()).pathname
@@ -43,6 +45,15 @@ it('renders the Harness business layout and submits through the authorized recor
     await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
     await page.getByRole('button', { name: 'Business', exact: true }).click()
     await page.getByRole('button', { name: 'Open business', exact: true }).waitFor()
+    await page.getByRole('button', { name: 'New business', exact: true }).click()
+    await page.waitForURL('**/kvvi/builder/login')
+    expect(creates).toBe(0)
+    gateway = 'BUILDER'
+    await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
+    await page.getByRole('button', { name: 'Business', exact: true }).click()
+    await page.getByRole('button', { name: 'New business', exact: true }).click()
+    await page.getByRole('dialog', { name: 'New business' }).waitFor()
+    await page.keyboard.press('Escape')
     expect(await page.getByRole('columnheader').allTextContents()).toEqual(['Business name', 'Contents', 'Status', 'Actions'])
     await page.screenshot({ path: '/tmp/kvvi-prototype-proof-home.png' })
     await page.getByRole('button', { name: 'Open business', exact: true }).click()

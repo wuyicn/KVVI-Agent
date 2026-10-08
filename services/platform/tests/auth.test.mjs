@@ -15,6 +15,7 @@ import { pool, closeAll } from '../src/db.mjs'
 import { A, B, PASSWORD, resetDatabase, grantBaseline, grantPlatformRole } from './harness.mjs'
 import { TOOL_GATEWAY, toolsForGateway, checkGateway } from '../src/authorization.mjs'
 import { appendDenial, verifyChain } from '../src/audit.mjs'
+import { grantBuilderAccess } from '../src/mode-policy.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const PORT = 7499
@@ -246,8 +247,18 @@ describe('锚点① 员工看不到搭建引擎（§9.6.5）', () => {
       { headers: { authorization: `Bearer ${token}` } })).json()
     const { rows } = await pool('platform').query('SELECT 1')  // 保持连接池活跃
     void rows
+    assert.deepEqual(session.allowedGateways, ['USER'])
     for (const tool of session.tools) {
       assert.equal(TOOL_GATEWAY[tool], 'USER', `员工会话里出现了 ${tool}`)
     }
+  })
+  test('有搭建资格的账号在USER模式能发现搭建入口，工具仍只有USER能力', async () => {
+    await grantBuilderAccess({ companyId: A.company, userId: A.alice, gateway: 'BUILDER' }, A.bob)
+    const login = await post('/auth/login', { login: 'bob', password: PASSWORD, companyId: A.company, gateway: 'USER' })
+    const { token } = await login.json()
+    const session = await (await fetch(`${BASE}/auth/session`, { headers: { authorization: `Bearer ${token}` } })).json()
+    assert.equal(session.gateway, 'USER')
+    assert.deepEqual(session.allowedGateways, ['USER', 'BUILDER'])
+    for (const tool of session.tools) assert.equal(TOOL_GATEWAY[tool], 'USER')
   })
 })
