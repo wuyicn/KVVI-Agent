@@ -37,6 +37,7 @@ import css from './business.module.css'
 
 /** Props the shell accepts. */
 export interface KvviSystemShellProps {
+  readonly initialSystem?: PublishedSystem
   readonly copy: Copy
   readonly onDock?: (system: PublishedSystem, mode: 'form' | 'records') => void
 }
@@ -63,10 +64,10 @@ function describeFailure(code: string, detail?: string): string {
  * @param props - copy from the surrounding panel.
  * @returns the shell.
  */
-export function KvviSystemShell({ copy, onDock }: KvviSystemShellProps): ReactNode {
+export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShellProps): ReactNode {
   const [systems, setSystems] = useState<readonly PublishedSystem[] | null>(null)
   const [systemsError, setSystemsError] = useState<string | undefined>(undefined)
-  const [open, setOpen] = useState<PublishedSystem | null>(null)
+  const [open, setOpen] = useState<PublishedSystem | null>(initialSystem ?? null)
   const [systemsAttempt, setSystemsAttempt] = useState(0)
   const [runtimeAttempt, setRuntimeAttempt] = useState(0)
 

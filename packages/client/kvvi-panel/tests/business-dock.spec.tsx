@@ -3,6 +3,7 @@ import type {} from '../src/client/index.ts'
 import { useSyncExternalStore } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
+import { BusinessSession, type BusinessSessionProps } from '../src/client/BusinessPage.tsx'
 import { BusinessBody, type BusinessBodyProps } from '../src/client/BusinessBody.tsx'
 import { createBusinessStore } from '../src/client/business-store.ts'
 import { businessAddress, parseBusinessAddress } from '../src/client/business-tabs.ts'
@@ -97,4 +98,28 @@ it('reloads a remounted detail when its pending update settles',async()=>{
   render(<BusinessBody {...b.props} />);await screen.findByLabelText('name');expect(reads).toBe(2)
   version=2;finish(new Response(JSON.stringify({ recordId:'r1',rowVersion:2 })))
   await waitFor(()=>expect(reads).toBe(3))
+})
+
+
+it('does not redirect a business page after leaving a form with a pending submit', async () => {
+  let finish: (response: Response) => void = () => {}
+  vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => init?.method === 'POST'
+    ? new Promise<Response>((resolve) => { finish = resolve })
+    : Promise.resolve(new Response(JSON.stringify(url.endsWith('/fields') ? { fields: runtime.models.customer.fields } : runtime)))))
+  const b = body(businessAddress('customer', 'form'))
+  const props = {
+    ...b.props, address: businessAddress('customer', 'form'), navigate: b.openResource, sessionId: 's1',
+    useSession: (select: (snapshot: object) => unknown) => select({ blank: true, openState: 'open' }),
+    useConversation: (select: (snapshot: object) => unknown) => select({ activeTargets: new Set(), views: { get: () => undefined } }),
+    useSessions: (select: (snapshot: object) => unknown) => select({ byId: { s1: { blank: true } } }),
+    usePanelInfo: (select: (snapshot: object) => unknown) => select({ activePanelId: 'kvvi-business' }),
+  } as unknown as BusinessSessionProps
+  const view = render(<BusinessSession {...props}/>)
+  fireEvent.change(await screen.findByLabelText('name'), { target: { value: '后台完成' } })
+  fireEvent.submit(screen.getByLabelText('name').closest('form')!)
+  view.rerender(<BusinessSession {...props} address={businessAddress('customer', 'records')}/>)
+  finish(new Response(JSON.stringify({ recordId: 'saved', rowVersion: 1 })))
+  await waitFor(() => expect(b.store.getSnapshot().writes[props.address]?.busy).toBe(false))
+  expect(b.openResource).not.toHaveBeenCalled()
+  expect(b.store.getSnapshot().revisions.customer).toBe(1)
 })

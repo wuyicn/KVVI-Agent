@@ -4,12 +4,14 @@ export interface BusinessWrite { busy: boolean; revision?: number; error?: strin
 export interface BusinessDraftState {
   drafts: Record<string, Record<string, string>>
   writes: Record<string, BusinessWrite>
+  revisions: Record<string, number>
 }
 /** Shared handle for every business tab occurrence in the same session. */
 export function createBusinessStore() {
   return defineStore({
-    init: (): BusinessDraftState => ({ drafts: {}, writes: {} }),
+    init: (): BusinessDraftState => ({ drafts: {}, writes: {}, revisions: {} }),
     actions: {
+      invalidate(state: BusinessDraftState, assetId: string) { state.revisions[assetId] = (state.revisions[assetId] ?? 0) + 1 },
       change(state: BusinessDraftState, assetId: string, values: Record<string, string>) { state.drafts[assetId] = values },
       clearIfUnchanged(state: BusinessDraftState, assetId: string, submitted: Record<string, string>) {
         const draft = state.drafts[assetId]

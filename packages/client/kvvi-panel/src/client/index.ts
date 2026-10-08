@@ -7,21 +7,29 @@ import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-import { createKvviOverlay } from './Panel.tsx'
+import { createKvviOverlay, KVVI_OPEN_EVENT } from './Panel.tsx'
 import { SessionBanner, type SessionBannerInjected } from './SessionBanner.tsx'
 import { SessionNoticeController } from './session-notice.ts'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import { BusinessPage, BusinessIcon } from './BusinessPage.tsx'
+import { BusinessPage, BusinessIcon, BusinessSession, type BusinessPageInjected } from './BusinessPage.tsx'
 import { AccountArea } from './AccountArea.tsx'
 import { BusinessHeader } from './BusinessHeader.tsx'
+import { BusinessActivity } from './BusinessActivity.tsx'
 import { BusinessBody } from './BusinessBody.tsx'
 import { businessAddress, businessDefinition, BUSINESS_TAB_ID } from './business-tabs.ts'
 import { createBusinessStore } from './business-store.ts'
 import { en, NS, zh, type KvviKey } from './locales.ts'
 
+declare module '@deepseek-ai/dsh-api-session-controller/client' {
+  interface SessionReferenceSourceMap { kvviBusiness: unknown }
+}
+
 declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface SlotMap {
+    'kvvi.business.session': { kind: 'single'; scope: 'session'; owner: { address: string; navigate: (address: string) => void; assistant?: boolean } }
+  }
   interface LocaleNamespaceMap {
     /** Business-panel copy: the systems list, the form/list/detail views, refusals. */
     kvviPanel: KvviKey
@@ -35,7 +43,7 @@ const KVVI_PANEL_ID = '@deepseek-ai/dsh-client-kvvi-panel'
 const KVVI_SESSION_ID = '@deepseek-ai/dsh-client-kvvi-panel/session-banner'
 
 /** Services this browser half requires: the slot registry and the dictionary. */
-export const inject = ['slots', 'locale', 'layout', 'sidebarRight', 'sidebarRightTabs']
+export const inject = ['slots', 'locale', 'layout', 'sidebarRight', 'sidebarRightTabs', 'uiWorkspace', 'sessions', 'workspaces']
 
 /**
  * Register this package's dictionaries, sidebar entry and overlay.
@@ -82,20 +90,39 @@ export function apply(ctx: ClientContext): void {
       choose: () => { ctx.layout.selectPanel(panelId) },
     }),
   }, BusinessHeader))
+  ctx.slots.inject('conversation.session.header.actions', () => ctx.slots.register({
+    name: 'conversation.session.header.actions', id: KVVI_PANEL_ID + '/activity', store,
+    inject: sessionId => ({ afterWrite: (assetId: string) => {
+      ctx.sidebarRight.openResourceIn(sessionId, businessAddress(assetId, 'records'))
+    } }),
+  }, BusinessActivity))
   ctx.slots.inject('settings.account', () => ctx.slots.register({ name: 'settings.account', locale: NS }, AccountArea))
   ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
     name: 'sidebar.panellist', id: panelId, order: -10, label: () => t('panel.title'),
   }, BusinessIcon))
   ctx.slots.inject('main', () => ctx.slots.register({
     name: 'main', key: panelId, locale: NS,
-    inject: () => ({
+    children: { 'kvvi.business.session': { kind: 'single', scope: 'session' } },
+    inject: (): BusinessPageInjected => ({
       back: () => { ctx.layout.selectPanel(null) },
-      openDock: (sessionId, system, mode) => {
-        ctx.layout.selectPanel(null)
-        ctx.sidebarRight.openResourceIn(sessionId, businessAddress(system.assetId, mode))
+      manage: () => { globalThis.dispatchEvent(new Event(KVVI_OPEN_EVENT)) },
+      bindBusiness: async (system, current) => {
+        const matches = ctx.workspaces.list.getSnapshot().items.filter(w =>
+          w.title === system.name || w.title === system.assetId || w.title === system.name + '系统')
+        if (matches.length !== 1) return undefined
+        const workspace = matches[0]
+        if (workspace === undefined) return undefined
+        const id = current !== undefined && workspace.sessionIds.includes(current)
+          ? current : await ctx.uiWorkspace.connectWorkspace(workspace.workspaceId)
+        const reference = ctx.sessions.retain(id, { source: 'kvviBusiness' })
+        try { await reference.ready; return reference } catch (error) { reference.release(); throw error }
       },
     }),
   }, BusinessPage))
+
+  ctx.slots.inject('kvvi.business.session', () => ctx.slots.register({
+    name: 'kvvi.business.session', locale: NS, store,
+  }, BusinessSession))
 
   ctx.effect(
     () => ctx.slots.inject('shell.overlay', () => ctx.slots.register(
