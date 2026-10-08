@@ -17,6 +17,7 @@ import type { createBusinessStore } from './business-store.ts'
 import { ReadFailure } from './ReadFailure.tsx'
 import css from './business.module.css'
 export interface BusinessPageInjected {
+  enterBuilder: () => void
   pickDirectory: () => Promise<string | null>
   startBuilder: (parent: string, name: string, purpose: string) => Promise<void>
   designBusiness: (workspaceId: string) => Promise<void>
@@ -26,7 +27,7 @@ export interface BusinessPageInjected {
 }
 export type BusinessPageProps = PropsRuntime<'main'> & PropsLocale<'kvviPanel'> & PropsStore<ReturnType<typeof createBusinessStore>> & PropsRenderSlots<'kvvi.business.session'> & PropsRenderFactories & BusinessPageInjected
 export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWorkspaces,
-  SessionProvider, renderSlot, useStore, actions, pickDirectory, startBuilder, designBusiness }: BusinessPageProps) {
+  SessionProvider, renderSlot, useStore, actions, pickDirectory, startBuilder, designBusiness, enterBuilder }: BusinessPageProps) {
   const current = useSessions(state => Object.values(state.byId).find(s => (s.retainedBy.mainView ?? 0) > 0)?.id)
   const workspaces = useWorkspaces(state => state.items)
   const [systems, setSystems] = useState<PublishedSystem[]>([])
@@ -41,6 +42,7 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
   const [workspaceId, setWorkspaceId] = useState('')
   const [canAdmin, setCanAdmin] = useState(false)
   const [builder, setBuilder] = useState(false)
+  const [canBuild, setCanBuild] = useState(false)
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
   const [purpose, setPurpose] = useState('')
@@ -57,7 +59,11 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
       if (controller.signal.aborted) return
       if (result.ok) setSystems(result.value.items); else setError(result.code)
     })
-    void readEntrance(controller.signal).then((result) => { if (!controller.signal.aborted) setBuilder(result.ok && result.value.gateway === 'BUILDER') })
+    void readEntrance(controller.signal).then((result) => {
+      if (controller.signal.aborted) return
+      setBuilder(result.ok && result.value.gateway === 'BUILDER')
+      setCanBuild(result.ok && (result.value.gateway === 'BUILDER' || result.value.allowedGateways?.includes('BUILDER') === true))
+    })
     void adminCapabilities(controller.signal).then((result) => { if (!controller.signal.aborted && result.ok) setCanAdmin(result.value.role === 'owner' || result.value.role === 'admin') })
     return () => { controller.abort() }
   }, [attempt])
@@ -82,7 +88,7 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
   const home = () => { navigation.current++; setSystem(null); setSession(undefined); setAI(false); setBusy(false); setError(undefined) }
   return <section className={css.workbench}>
     <header className={css.workbenchHeader}><div>{system === null ? null : <div className={css.breadcrumb}><button type="button" onClick={home}>{t('panel.title')}</button><span>/</span><span>{system.name}</span></div>}<h1>{system?.name ?? t('panel.title')}</h1>{system === null ? <p className={css.hint}>{t('panel.subtitle')}</p> : null}</div><div>
-      {system === null ? <>{canAdmin ? <Button variant="ghost" onClick={manage}>{t('admin.title')}</Button> : null}{builder ? <Button variant="primary" icon={<IconPlusOutline16/>} onClick={() => { setCreating(true); setBuildError(false) }}>{t('business.new')}</Button> : null}<Button variant="ghost" onClick={back}>{t('panel.close')}</Button></> : <>
+      {system === null ? <>{canAdmin ? <Button variant="ghost" onClick={manage}>{t('admin.title')}</Button> : null}{canBuild ? <Button variant="primary" icon={<IconPlusOutline16/>} title={builder ? undefined : t('business.switchBuilder')} onClick={() => { if (!builder) { enterBuilder(); return }; setCreating(true); setBuildError(false) }}>{t('business.new')}</Button> : null}<Button variant="ghost" onClick={back}>{t('panel.close')}</Button></> : <>
         {builder ? <Button variant="outline" disabled={session === undefined || busy || building} onClick={() => { if (session === undefined) return; const w = workspaces.find(w => w.sessionIds.includes(session.sessionId)); if (w === undefined) return; setBuilding(true); void designBusiness(w.workspaceId).catch(() => { setBuildError(true) }).finally(() => { setBuilding(false) }) }}>{t('business.design')}</Button> : null}
         <Button variant="outline" disabled={session === undefined || busy} aria-pressed={ai} onClick={() => { setAI(!ai) }}>{t(ai ? 'business.ai.close' : 'business.ai')}</Button></>}
     </div></header>

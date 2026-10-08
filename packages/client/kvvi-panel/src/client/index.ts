@@ -105,6 +105,7 @@ export function apply(ctx: ClientContext): void {
     name: 'main', key: panelId, locale: NS, store: createBusinessStore(),
     children: { 'kvvi.business.session': { kind: 'single', scope: 'session' } },
     inject: (): BusinessPageInjected => ({
+      enterBuilder: () => { globalThis.location.assign('/kvvi/builder/login') },
       pickDirectory: () => ctx.uiWorkspace.pickDirectory(),
       startBuilder: async (parent, name, purpose) => {
         const entrance = await readEntrance()

@@ -98,7 +98,10 @@ rows only; HIDDEN columns are omitted, and masked fields cannot become filters.
 The endpoint currently returns at most 50 rows. The footer reports loaded/shown
 counts rather than claiming a tenant-wide total or inventing pagination.
 
-`/auth/session.gateway` gates New business and Design form. Starting a business
+`/auth/session.allowedGateways` determines whether New business is discoverable.
+An eligible builder currently in USER mode enters the official builder login before
+creation. Active `gateway=BUILDER` is still required by every builder callback;
+discovery never grants tools or creates resources in USER mode. Starting a business
 collects its name, requirements and parent folder; the original Host directory,
 Workspace and Session APIs create its builder workspace and send its first request.
 It is listed as a published business only after the actual publish flow succeeds.

@@ -283,7 +283,10 @@ async function request<T>(
 }
 
 /** Actual entrance identity; builder actions are never inferred from a role switch. */
-export function readEntrance(signal?: AbortSignal): Promise<ApiResult<{ gateway: 'BUILDER' | 'USER' }>> {
+export function readEntrance(signal?: AbortSignal): Promise<ApiResult<{
+  gateway: 'BUILDER' | 'USER'
+  allowedGateways?: readonly ('BUILDER' | 'USER')[]
+}>> {
   return request('GET', '/auth/session', undefined, signal, PLATFORM_BASE)
 }
 
