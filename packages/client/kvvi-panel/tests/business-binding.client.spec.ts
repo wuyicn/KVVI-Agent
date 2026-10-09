@@ -1,3 +1,4 @@
+/** Client-only identity routing; excluded from the host TypeScript aggregate. */
 import { expect, it } from 'vitest'
 import { businessFromHint, parseBusinessHint } from '../src/client/business-binding.ts'
 const customer = { assetId: 'customer', systemId: 's1', name: 'customer', schemaCode: 'customer', publishedAt: '' }

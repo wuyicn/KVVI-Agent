@@ -12,12 +12,12 @@ Range.prototype.getBoundingClientRect = () => ({
 })
 afterEach(()=>vi.unstubAllGlobals())
 it('boots the actual business slots alongside the original conversation without declaration collisions',async({ start,mock })=>{
-  vi.stubGlobal('fetch',vi.fn(()=>Promise.resolve(new Response(JSON.stringify({ items:[],role:null,login:'test-user',companyName:'测试公司' })))))
+  vi.stubGlobal('fetch',vi.fn(()=>Promise.resolve(new Response(JSON.stringify({ groups:[], forms:[], items:[], gateway:'USER', companyId:'c1', userId:'u1', sessionId:'login1', role:null,login:'test-user',companyName:'测试公司' })))))
   mock.load({ unary:{ 'settings/mutate':{ ok:true,value:null },'llm/listProviders':{ ok:true,value:[] },'llm/listConfigurableProviders':{ ok:true,value:[] } } })
   const client=await start()
   expect(client.ctx.slots.entries('main').some(e=>e.options.key==='kvvi-business')).toBe(true)
   fireEvent.click(await screen.findByRole('button',{ name:'Business' }))
-  await screen.findByRole('textbox',{ name:'Search businesses' })
+  await screen.findByRole('textbox',{ name:'Search forms' })
   expect(client.ctx.slots.entries('kvvi.business.session')).toHaveLength(1)
 },60000)
 
@@ -25,7 +25,7 @@ it('mounts records and the original embedded AI under the matching business sess
   const system = { assetId: 'customer', systemId: 'published', name: '客户登记', schemaCode: 'customer', publishedAt: '2026-10-08' }
   const runtime = { system, models: { customer: { fields: [] } }, views: { customer: { view_type: 'FORM', componentsTree: [] } }, workflows: {} }
   vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(
-    url.endsWith('/runtime') ? runtime : url.endsWith('/records') ? { items: [], fieldVisibility: {} } : { items: [system] },
+    url.endsWith('/runtime') ? runtime : url.endsWith('/records') ? { items: [], fieldVisibility: {} } : { items: [system], groups: [], forms: [{ ...system, groupId: null, archived: false, version: 0, actions: ['read', 'create'] }], gateway: 'USER', companyId: 'c1', userId: 'u1', sessionId: 'login1' },
   )))))
   mock.load({ unary: {
     'settings/mutate': { ok: true, value: null },
@@ -45,7 +45,6 @@ it('mounts records and the original embedded AI under the matching business sess
   })
   const client = await start()
   fireEvent.click(await screen.findByRole('button', { name: 'Business' }))
-  fireEvent.click(await screen.findByRole('button', { name: 'Open business' }))
   const ai = await screen.findByRole('button', { name: 'AI assistant' })
   await vi.waitFor(() => expect(ai).toHaveProperty('disabled', false))
   expect(client.ctx.sessions.list.getSnapshot().byId['s1' as SessionId]?.retainedBy.kvviBusiness).toBe(1)
@@ -55,9 +54,9 @@ it('mounts records and the original embedded AI under the matching business sess
   fireEvent.click(screen.getAllByRole('button', { name: 'Close AI assistant' })[0]!)
 }, 60_000)
 
-it('releases an opening business session when returning to the directory before the first stream frame', async ({ start, mock }) => {
+it('releases an opening business session when closing Business before the first stream frame', async ({ start, mock }) => {
   const system = { assetId: 'customer', systemId: 'published', name: 'customer', schemaCode: 'customer', publishedAt: '' }
-  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ items: [system] })))))
+  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ items: [system], groups: [], forms: [{ ...system, groupId: null, archived: false, version: 0, actions: ['read', 'create'] }], gateway: 'USER', companyId: 'c1', userId: 'u1', sessionId: 'login1' })))))
   mock.load({ unary: {
     'settings/mutate': { ok: true, value: null }, 'llm/listProviders': { ok: true, value: [] },
     'llm/listConfigurableProviders': { ok: true, value: [] },
@@ -72,10 +71,8 @@ it('releases an opening business session when returning to the directory before 
   mock.stream('session/follow', () => {})
   const client = await start()
   fireEvent.click(await screen.findByRole('button', { name: 'Business' }))
-  fireEvent.click(await screen.findByRole('button', { name: 'Open business' }))
   await vi.waitFor(() => expect(client.ctx.sessions.list.getSnapshot().byId['s1' as SessionId]?.retainedBy.kvviBusiness).toBe(1))
-  fireEvent.click(screen.getAllByRole('button', { name: 'Business' }).at(-1)!)
-  await screen.findByRole('textbox', { name: 'Search businesses' })
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }))
   await vi.waitFor(() => expect(client.ctx.sessions.list.getSnapshot().byId['s1' as SessionId]?.retainedBy.kvviBusiness ?? 0).toBe(0))
 }, 60_000)
 
@@ -83,7 +80,7 @@ it('uses the workspace business marker for a differently named published system 
   const system = { assetId: 'customer', systemId: 'published', name: 'customer', schemaCode: 'customer', publishedAt: '2026-10-08' }
   const runtime = { system, models: { customer: { fields: [] } }, views: { customer: { name: '客户登记表', view_type: 'FORM', componentsTree: [] } }, workflows: {} }
   vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(
-    url.endsWith('/runtime') ? runtime : url.endsWith('/records') ? { items: [{ recordId: 'r1', recordNo: '001', data: {} }], fieldVisibility: {} } : { items: [system] },
+    url.endsWith('/runtime') ? runtime : url.endsWith('/records') ? { items: [{ recordId: 'r1', recordNo: '001', data: {} }], fieldVisibility: {} } : { items: [system], groups: [], forms: [{ ...system, groupId: null, archived: false, version: 0, actions: ['read', 'create'] }], gateway: 'USER', companyId: 'c1', userId: 'u1', sessionId: 'login1' },
   )))))
   mock.load({ unary: {
     'settings/mutate': { ok: true, value: null }, 'llm/listProviders': { ok: true, value: [] },
@@ -101,7 +98,6 @@ it('uses the workspace business marker for a differently named published system 
   })
   const client = await start()
   fireEvent.click(await screen.findByRole('button', { name: 'Business' }))
-  fireEvent.click(await screen.findByRole('button', { name: 'Open business' }))
   await vi.waitFor(() => expect(screen.getByRole('button', { name: 'AI assistant' })).toHaveProperty('disabled', false))
   expect(screen.queryByRole('combobox', { name: 'AI conversation workspace' })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'AI assistant' }))
@@ -138,7 +134,7 @@ it('uses the same record layout and explicitly binds differently named business 
   const system = { assetId: 'customer', systemId: 'published', name: 'customer', schemaCode: 'customer', publishedAt: '2026-10-08' }
   const runtime = { system, models: { customer: { fields: [] } }, views: { customer: { view_type: 'FORM', componentsTree: [] } }, workflows: {} }
   vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(
-    url.endsWith('/runtime') ? runtime : url.endsWith('/records') ? { items: [], fieldVisibility: {} } : { items: [system] },
+    url.endsWith('/runtime') ? runtime : url.endsWith('/records') ? { items: [], fieldVisibility: {} } : { items: [system], groups: [], forms: [{ ...system, groupId: null, archived: false, version: 0, actions: ['read', 'create'] }], gateway: 'USER', companyId: 'c1', userId: 'u1', sessionId: 'login1' },
   )))))
   mock.load({ unary: {
     'settings/mutate': { ok: true, value: null },
@@ -158,7 +154,6 @@ it('uses the same record layout and explicitly binds differently named business 
   })
   const client = await start()
   fireEvent.click(await screen.findByRole('button', { name: 'Business' }))
-  fireEvent.click(await screen.findByRole('button', { name: 'Open business' }))
   await screen.findByRole('button', { name: 'Refresh' })
   expect(screen.getByRole('button', { name: 'AI assistant' })).toHaveProperty('disabled', true)
   fireEvent.change(screen.getByRole('combobox', { name: 'AI conversation workspace' }), { target: { value: 'w1' } })

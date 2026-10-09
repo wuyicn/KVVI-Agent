@@ -250,19 +250,20 @@ function problemsOf(value: unknown): readonly ApiProblem[] | undefined {
  * @param signal - aborts the request when its caller goes away.
  * @returns the parsed value, or a stable failure.
  */
-async function request<T>(
+export async function request<T>(
   method: string,
   path: string,
   body: unknown,
   signal?: AbortSignal,
   base = API,
+  headers: Record<string, string> = {},
 ): Promise<ApiResult<T>> {
   let res: Response
   try {
     res = await fetch(`${base}${path}`, {
       method,
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      ...(body === undefined ? {} : { headers: { 'content-type': 'application/json' } }),
+      headers: { ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...headers },
       ...(signal === undefined ? {} : { signal }),
     })
   } catch (error) {
@@ -284,6 +285,9 @@ async function request<T>(
 
 /** Actual entrance identity; builder actions are never inferred from a role switch. */
 export function readEntrance(signal?: AbortSignal): Promise<ApiResult<{
+  companyId: string
+  userId: string
+  sessionId: string
   gateway: 'BUILDER' | 'USER'
   allowedGateways?: readonly ('BUILDER' | 'USER')[]
 }>> {

@@ -12,7 +12,7 @@ The package uses the original shell and right-sidebar resource controller. Busin
 
 | Slot | Contribution |
 |---|---|
-| `sidebar.panellist` / `main` | Global business entry, system directory and records-first workbench |
+| `sidebar.panellist` / `main` | Global business entry, grouped form directory and records-first workbench |
 | `kvvi.business.session` | Shared session-bound business content and optional embedded AI host |
 | `settings.account` | Actual authenticated identity, settings and notification placeholder |
 | `conversation.session.header.actions` | Current workspace's form/record shortcuts and successful-write observer |
@@ -31,7 +31,7 @@ The main business renderer, workspace resources and write observer share one ses
 
 Automatic business-to-workspace association requires exactly one workspace whose title is the published name, asset code, or name plus 系统. When names differ or are ambiguous, the user can explicitly select the corresponding workspace from the business page. A current main session is reused only if it belongs to that workspace; otherwise the existing `uiWorkspace.connectWorkspace` API reuses/creates a blank session in that workspace. The retained reference is released when leaving/switching the business. Missing or ambiguous associations keep the same records-first business renderer and navigation available, using a separate root-scoped store handle; AI remains disabled until an explicit valid workspace is selected. One store handle never spans root and session scopes. Switching into the associated session uses that session's drafts, not the standalone draft. Title association is presentation routing, not authorization; every business read/write is still checked by the platform.
 
-Multi-form groups, dashboards/reports, schema design and business create/rename/delete from the 7506 mock are not supplied by these published-system endpoints. This integration does not copy its sample GAD records, fake role selector or instant-rule AI. Existing owner administration stays in the original overlay.
+The company directory comes from `/api/v1/business-directory`. Active builders create, rename and dissolve groups, move forms, and archive or restore forms through versioned, idempotent platform APIs. Dissolving a group retains its forms and records. Archiving retains data but stops ordinary use. Employees see only the server-filtered directory; create-only access opens the fill form without listing records. Group membership grants no record permission. Conflicts reload server metadata and require renewed confirmation. Company/login changes clear local drafts and management dialogs. No sample GAD records, fake role selector or instant-rule AI is imported; owner administration stays in the original overlay.
 
 ## The closed renderer
 
@@ -52,7 +52,8 @@ The tree is validated **completely** before anything is drawn, so a contract eit
 
 | Panel view | Endpoint |
 |---|---|
-| 我的系统 | `GET /api/v1/systems` |
+| Grouped forms | `GET /api/v1/business-directory` |
+| Legacy workspace catalogue | `GET /api/v1/systems` |
 | the open system's form | `GET /api/v1/systems/:assetId/runtime` |
 | 记录 | `GET /api/v1/systems/:assetId/records` |
 | one record | `GET`/`PATCH /api/v1/systems/:assetId/records/:recordId` |
@@ -90,8 +91,7 @@ could clear all three.
 
 ## Harness business layout (2026-10-08)
 
-The Business main slot uses the selected prototype's directory table, breadcrumb,
-form navigation, searchable record table and optional original Conversation pane.
+The Business main slot opens the first available form directly, with a searchable, collapsible single-level group directory, record table and optional original Conversation pane.
 New record opens the authorized form in a modal, posts to the platform and refreshes
 records without moving the business page. Search/filter/selection act on returned
 rows only; HIDDEN columns are omitted, and masked fields cannot become filters.
@@ -107,9 +107,7 @@ Workspace and Session APIs create its builder workspace and send its first reque
 It is listed as a published business only after the actual publish flow succeeds.
 Design form opens a new builder conversation in the explicitly bound workspace.
 No prototype role switch, fake AI reply, sample records or client-only publish state
-is imported. Grouping several assets into one app, dashboards/reports and direct
-business rename/delete still need platform contracts; no fake success controls are
-presented for those deferred actions.
+is imported. Dashboards/reports and permanent record deletion are not exposed by the directory controls.
 
 ## Workspace binding and contextual AI
 

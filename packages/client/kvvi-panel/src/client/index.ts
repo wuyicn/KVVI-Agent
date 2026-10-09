@@ -32,7 +32,7 @@ declare module '@deepseek-ai/dsh-api-session-controller/client' {
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
-    'kvvi.business.session': { kind: 'single'; scope: 'session'; owner: { address: string; navigate: (address: string) => void; assistant?: boolean } }
+    'kvvi.business.session': { kind: 'single'; scope: 'session'; owner: { identity: string; address: string; navigate: (address: string) => void; assistant?: boolean } }
   }
   interface LocaleNamespaceMap {
     /** Business-panel copy: the systems list, the form/list/detail views, refusals. */

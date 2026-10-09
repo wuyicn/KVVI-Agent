@@ -29,6 +29,7 @@ export interface BusinessContentProps extends Pick<BusinessBodyProps, 'useStore'
 }
 /** One authorized renderer shared by the main business page and workspace dock. */
 export function BusinessContent({ address, signal, openResource, useStore, actions, t, presentation = 'dock' }: BusinessContentProps) {
+  const identity = useStore(state => state.identity)
   const route = parseBusinessAddress(address)
   const draft = useStore(state => state.drafts[route?.assetId ?? ''])
   const selected = useStore(state => state.selections[route?.assetId ?? ''] ?? [])
@@ -100,10 +101,10 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
       writing.current = false
       actions.finish(address, result.ok ? { busy: false } : {
         busy: false, error: result.code, fields: (result.problems ?? []).map(problem => problem.field),
-      }, result.ok)
+      }, result.ok, identity)
       if (result.ok) {
-        actions.invalidate(assetId)
-        actions.clearIfUnchanged(assetId, submittedDraft)
+        actions.invalidate(assetId, identity)
+        actions.clearIfUnchanged(assetId, submittedDraft, identity)
         if (live.current) setDialog(false)
         if (!signal.aborted && presentation !== 'workbench') openResource(businessAddress(assetId, 'detail', result.value.recordId), { replaceTab: true })
       }
@@ -142,8 +143,8 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
             actions.finish(address, result.ok ? { busy: false } : {
               busy: false, error: result.code,
               ...(result.currentRowVersion === undefined ? {} : { currentRowVersion: result.currentRowVersion }),
-            }, result.ok)
-            if (result.ok) actions.invalidate(assetId)
+            }, result.ok, identity)
+            if (result.ok) actions.invalidate(assetId, identity)
             if (live.current && !signal.aborted && result.ok) setNotice(t('detail.saved'))
           })
         }} />}
