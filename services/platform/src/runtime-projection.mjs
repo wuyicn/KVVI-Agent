@@ -31,6 +31,7 @@
 
 import { createHash } from 'node:crypto'
 import { pool } from './db.mjs'
+import { withActiveForm } from './business-lifecycle.mjs'
 import { contractAt, contractsOfSystem } from './contracts.mjs'
 
 /**
@@ -116,6 +117,9 @@ function statesOf(spec) {
  *   `message === 'KVVI_CONTRACT_CONTENT_TAMPERED'` 内容指纹不符
  */
 export async function runtimeProjection(companyId, assetId, options = {}) {
+  return withActiveForm(companyId,assetId,()=>buildRuntimeProjection(companyId,assetId,options))
+}
+async function buildRuntimeProjection(companyId, assetId, options) {
   // ① 系统本身要在。不在就与「契约不全」同一类结果：
   //    两者对调用方的含义都是「这个系统现在不能跑」。
   const sys = await pool('platform').query(

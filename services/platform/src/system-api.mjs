@@ -23,6 +23,8 @@ import { createRecord, readRecord, listRecords, updateRecord,
          publishedBusinessModel } from './refs.mjs'
 import { runtimeProjection } from './runtime-projection.mjs'
 import { publishedSystems } from './publish.mjs'
+import { readDirectory, isDirectoryBuilder } from './business-directory.mjs'
+import { withActiveForm } from './business-lifecycle.mjs'
 import { idempotencyKeyOf, withIdempotency } from './idempotency.mjs'
 import { step, nextActions, submitterOf, WorkflowError } from './workflow.mjs'
 
@@ -501,13 +503,19 @@ export async function systemRoutes({ method, path, payload, session, headers = {
 
   // GET /systems
   if (method === 'GET' && parts.length === 1 && parts[0] === 'systems') {
-    const items = await publishedSystems(ctx.companyId)
+    const items = (await readDirectory(ctx)).forms.map(({systemId,assetId,name,schemaCode,publishedAt})=>({systemId,assetId,name,schemaCode,publishedAt}))
     return { status: 200, body: { items, companyId: ctx.companyId } }
   }
 
   // /systems/:assetId/...
   if (parts[0] === 'systems' && parts.length >= 2) {
     const assetId = decodeURIComponent(parts[1])
+    const canEnter=(await Promise.all(['read','create','update'].map(action=>canAct(ctx.companyId,ctx.userId,'FORM',assetId,action)))).some(Boolean)
+    if(!canEnter && !await isDirectoryBuilder(ctx)) {
+      const exists=(await publishedSystems(ctx.companyId)).some(s=>s.assetId===assetId)
+      return {status:exists?403:404,body:{error:exists?'KVVI_NOT_ALLOWED':'KVVI_NO_SUCH_SYSTEM'}}
+    }
+    await withActiveForm(ctx.companyId,assetId,async()=>{})
 
     if (method === 'GET' && parts.length === 3 && parts[2] === 'runtime') {
       return systemRuntime(ctx, assetId)

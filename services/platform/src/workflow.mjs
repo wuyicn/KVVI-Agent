@@ -20,6 +20,7 @@
  * （那在唯一执行点里，`commands.mjs`）。本模块只做「这一步合不合法」。
  */
 import { pool } from './db.mjs'
+import { withActiveForm } from './business-lifecycle.mjs'
 import { append, appendDenial } from './audit.mjs'
 import { resolveTransition, canAct } from './authorization.mjs'
 
@@ -98,6 +99,8 @@ export function judgeTransition(spec, input) {
  */
 export async function step({ ctx, spec, assetId, recordId, from, action,
                              submitterUserId = null, applyTransition }) {
+  // Reject even non-writing workflow callbacks. Actual record writes recheck under their own transaction lock.
+  await withActiveForm(ctx.companyId,assetId,async()=>{})
   // ⚠️ **资源是业务对象，动作是类别，外加当前状态。** 三者此前都取错过：
   //    资源取 `spec.workflow_code ?? '*'`（契约里根本没有 `workflow_code`，
   //    于是恒为 `'*'`，而策略的 resource_code 是业务对象）、动作取 action_code、

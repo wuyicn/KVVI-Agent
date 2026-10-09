@@ -30,6 +30,7 @@ import { adminRoutes } from './admin-api.mjs'
 import { publishRoutes } from './publish-api.mjs'
 import { brandingRoutes } from './branding-api.mjs'
 import { directoryRoutes } from './business-directory-api.mjs'
+import { FormArchivedError } from './business-lifecycle.mjs'
 import { loadSession } from './identity.mjs'
 import { verifyRuntimeContextHeaders } from './runtime-auth.mjs'
 import { FieldRuleError } from './field-rules.mjs'
@@ -274,6 +275,7 @@ export async function handleApi({ method, path, query, body, headers, loadSessio
     if (error instanceof FieldRuleError) {
       return { status: error.status, body: { error: error.code, problems: error.problems } }
     }
+    if(error instanceof FormArchivedError) return {status:409,body:{error:error.code}}
     throw error
   }
 }

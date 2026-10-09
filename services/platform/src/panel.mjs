@@ -29,7 +29,7 @@
 
 /** 会话 Cookie 名。与登录门共用同一个常量，避免两处各写一个字符串。 */
 import { tokenFromCookie } from './gate.mjs'
-import { publishedSystems } from './publish.mjs'
+import { readDirectory } from './business-directory.mjs'
 
 /** 面板数据的路径前缀，与浏览器半的相对路径一致。 */
 const PREFIX = '/kvvi'
@@ -96,7 +96,7 @@ export async function handlePanel({ method, path, headers, loadSession }) {
   let systems = []
   let systemsError = null
   try {
-    systems = companyId === null ? [] : await publishedSystems(companyId)
+    systems = companyId === null ? [] : (await readDirectory(p)).forms.map(({systemId,assetId,name,schemaCode,publishedAt})=>({systemId,assetId,name,schemaCode,publishedAt}))
   } catch (error) {
     systemsError = String(error && error.message ? error.message : error).slice(0, 160)
   }

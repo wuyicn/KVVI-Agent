@@ -5,6 +5,7 @@ import { loadSession } from './identity.mjs'
 import { canAct } from './authorization.mjs'
 import { publishedSystems } from './publish.mjs'
 import { digestOf } from './audit.mjs'
+import { lockFormLifecycle } from './business-lifecycle.mjs'
 
 export class DirectoryError extends Error {
   constructor(code) { super(code); this.code=code }
@@ -104,6 +105,7 @@ export async function mutateDirectory(ctx,input) {
         }
       } else {
         if(!(await publishedSystems(ctx.companyId)).some(s=>s.assetId===target)) fail('KVVI_DIRECTORY_NOT_FOUND')
+        await lockFormLifecycle(c,ctx.companyId,target,action==='form.move'?'read':'archive')
         const meta=(await c.query('SELECT * FROM business_form_directory WHERE company_id=$1 AND asset_id=$2 FOR UPDATE',[ctx.companyId,target])).rows[0]
         if((meta?.version??0)!==expectedVersion) fail('KVVI_DIRECTORY_VERSION_CONFLICT')
         let groupId=meta?.group_id??null, archived=Boolean(meta?.archived_at)

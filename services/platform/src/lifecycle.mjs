@@ -32,6 +32,7 @@ import { pool, withTransaction } from './db.mjs'
 import { applyScopeGucs } from './authorization.mjs'
 import { append } from './audit.mjs'
 import { suspendAccount } from './identity.mjs'
+import { lockFormLifecycle, assertFormActive, FormArchivedError } from './business-lifecycle.mjs'
 
 /** 分流表：**封闭**。状态不在表里即拒绝，不猜。 */
 export const HANDOVER_BY_STATE = Object.freeze({
@@ -92,6 +93,15 @@ export async function offboard({ actor, userId, successorUserId, records }) {
       deptId: null, deptSubtree: [], shopId: null, scopes: ['COMPANY'],
     })
     for (const record of records ?? []) {
+      const actual=(await client.query('SELECT schema_code FROM business_records WHERE company_id=$1 AND record_id=$2',[actor.companyId,record.recordId])).rows[0]
+      if(!actual) { report.skipped.push({recordId:record.recordId,reason:'KVVI_RECORD_NOT_FOUND'}); continue }
+      await lockFormLifecycle(client,actor.companyId,actual.schema_code,'write')
+      try { await assertFormActive(client,actor.companyId,actual.schema_code) }
+      catch(error) {
+        if(!(error instanceof FormArchivedError)) throw error
+        report.skipped.push({recordId:record.recordId,reason:error.code})
+        continue
+      }
       const plan = handoverPlan(record.state)
       if (plan.terminal) {
         await client.query(

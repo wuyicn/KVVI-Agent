@@ -19,6 +19,7 @@
  * 「有权就能跨」在权限配置出错时会真的生效。
  */
 import { pool, withTransaction } from './db.mjs'
+import { lockFormLifecycle, assertFormActive } from './business-lifecycle.mjs'
 import { latestContract } from './contracts.mjs'
 import { assertFieldValues } from './field-rules.mjs'
 import { applyScopeGucs, fieldVisibility, requiredFields } from './authorization.mjs'
@@ -74,6 +75,10 @@ export async function readRecord(ctx, scope, logical) {
               state, record_no, data, row_version, workflow_version
          FROM business_records
         WHERE record_id = $1 AND company_id = $2`, [handle.id, handle.companyId])
+    if(rows.length===1) {
+      await lockFormLifecycle(client,handle.companyId,rows[0].schema_code,'read')
+      await assertFormActive(client,handle.companyId,rows[0].schema_code)
+    }
     await client.query('COMMIT')
     if (rows.length !== 1) return null
     const r = rows[0]
@@ -107,6 +112,8 @@ export async function listRecords(scope, schemaCode, options = {}) {
   try {
     await client.query('BEGIN')
     await applyScopeGucs(client, scope)
+    await lockFormLifecycle(client,scope.companyId,schemaCode,'read')
+    await assertFormActive(client,scope.companyId,schemaCode)
     const { rows } = await client.query(
       `SELECT record_id, company_id, schema_code, dept_id, shop_id, owner_id,
               state, record_no, data, row_version
@@ -215,6 +222,8 @@ export async function createRecord(ctx, scope, input) {
   }
   return withTransaction('business', async (client) => {
     await applyScopeGucs(client, scope)
+    await lockFormLifecycle(client,ctx.companyId,input.schemaCode,'write')
+    await assertFormActive(client,ctx.companyId,input.schemaCode)
     // ★ 单号缺省时**由本函数生成**，不留给调用方。
     //
     // `record_no` 是 NOT NULL 且有唯一约束；此前没有任何地方生成它，
@@ -270,6 +279,11 @@ export async function updateRecord(ctx, scope, logical, patch) {
   const handle = buildHandle(ctx, logical)
   return withTransaction('business', async (client) => {
     await applyScopeGucs(client, scope)
+    // Generic commands only carry a record ID. Resolve its real schema under RLS.
+    const existing=(await client.query('SELECT schema_code FROM business_records WHERE company_id=$1 AND record_id=$2',[handle.companyId,handle.id])).rows[0]
+    if(!existing) return null
+    await lockFormLifecycle(client,handle.companyId,existing.schema_code,'write')
+    await assertFormActive(client,handle.companyId,existing.schema_code)
     const { rows } = await client.query(
       `UPDATE business_records
           SET data = data || $3::jsonb,
