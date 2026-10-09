@@ -76,3 +76,7 @@ tools/meta-schema/node/node_modules/
 
 # Docker 本地开发令牌（含进程间调用凭据）
 .kvvi-docker.env
+
+# Isolated implementation worktrees and execution ledgers
+.worktrees/
+.superpowers/
