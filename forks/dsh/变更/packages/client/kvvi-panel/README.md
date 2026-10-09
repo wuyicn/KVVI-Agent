@@ -12,7 +12,7 @@ The package uses the original shell and right-sidebar resource controller. Busin
 
 | Slot | Contribution |
 |---|---|
-| `sidebar.panellist` / `main` | Global business entry, system directory and records-first workbench |
+| `sidebar.panellist` / `main` | Global business entry, grouped form directory and records-first workbench |
 | `kvvi.business.session` | Shared session-bound business content and optional embedded AI host |
 | `settings.account` | Actual authenticated identity, settings and notification placeholder |
 | `conversation.session.header.actions` | Current workspace's form/record shortcuts and successful-write observer |
@@ -29,9 +29,18 @@ Workspaces retain the original main Conversation and its session navigation. A n
 
 The main business renderer, workspace resources and write observer share one session-scoped store handle. Successful writes invalidate the asset's visible records/details. Main-page navigation also checks the address captured when submitting so a late result does not pull a user back from a different page. The data renderer does not subscribe to token-by-token Conversation snapshots.
 
-Automatic business-to-workspace association requires exactly one workspace whose title is the published name, asset code, or name plus 系统. When names differ or are ambiguous, the user can explicitly select the corresponding workspace from the business page. A current main session is reused only if it belongs to that workspace; otherwise the existing `uiWorkspace.connectWorkspace` API reuses/creates a blank session in that workspace. The retained reference is released when leaving/switching the business. Missing or ambiguous associations keep the same records-first business renderer and navigation available, using a separate root-scoped store handle; AI remains disabled until an explicit valid workspace is selected. One store handle never spans root and session scopes. Switching into the associated session uses that session's drafts, not the standalone draft. Title association is presentation routing, not authorization; every business read/write is still checked by the platform.
+Business-to-workspace association first checks the asset marker. Without a marker,
+automatic association requires a unique legacy title match across the full visible
+form catalogue. Explicit selection cannot override a conflicting or unreadable
+marker. An unmarked workspace gets a new conversation rather than adopting another
+form's conversation or unsent draft; a marked workspace can reuse a session unless
+this UI already bound it to another asset. The retained reference is released when
+leaving or switching Business. Missing or ambiguous associations keep the same
+records-first renderer and navigation available with a separate root-scoped store;
+AI stays disabled until a valid workspace is selected. Association grants no record
+access; the platform still checks every read and write.
 
-Multi-form groups, dashboards/reports, schema design and business create/rename/delete from the 7506 mock are not supplied by these published-system endpoints. This integration does not copy its sample GAD records, fake role selector or instant-rule AI. Existing owner administration stays in the original overlay.
+The company directory comes from `/api/v1/business-directory`. Active builders create, rename and dissolve groups, move forms, and archive or restore forms through versioned, idempotent platform APIs. Dissolving a group retains its forms and records. Archiving retains data but stops ordinary use. Employees see only the server-filtered directory; create-only access opens the fill form without listing records. Group membership grants no record permission. Conflicts reload server metadata and require renewed confirmation. Company/login changes clear local drafts and management dialogs. No sample GAD records, fake role selector or instant-rule AI is imported; owner administration stays in the original overlay.
 
 ## The closed renderer
 
@@ -52,7 +61,8 @@ The tree is validated **completely** before anything is drawn, so a contract eit
 
 | Panel view | Endpoint |
 |---|---|
-| 我的系统 | `GET /api/v1/systems` |
+| Grouped forms | `GET /api/v1/business-directory` |
+| Legacy workspace catalogue | `GET /api/v1/systems` |
 | the open system's form | `GET /api/v1/systems/:assetId/runtime` |
 | 记录 | `GET /api/v1/systems/:assetId/records` |
 | one record | `GET`/`PATCH /api/v1/systems/:assetId/records/:recordId` |
@@ -90,8 +100,7 @@ could clear all three.
 
 ## Harness business layout (2026-10-08)
 
-The Business main slot uses the selected prototype's directory table, breadcrumb,
-form navigation, searchable record table and optional original Conversation pane.
+The Business main slot opens the first available form directly, with a searchable, collapsible single-level group directory, record table and optional original Conversation pane.
 New record opens the authorized form in a modal, posts to the platform and refreshes
 records without moving the business page. Search/filter/selection act on returned
 rows only; HIDDEN columns are omitted, and masked fields cannot become filters.
@@ -104,12 +113,22 @@ creation. Active `gateway=BUILDER` is still required by every builder callback;
 discovery never grants tools or creates resources in USER mode. Starting a business
 collects its name, requirements and parent folder; the original Host directory,
 Workspace and Session APIs create its builder workspace and send its first request.
+The selected group is stored in a server build intent before opening the original
+builder conversation. Its logged request gives the intent ID to `publish_submit`;
+the platform binds it to the submitted draft, without approving it. Owner-approved
+publication queues durable initial placement. A deleted group falls back to
+Ungrouped; existing manual placement and archived state win over delayed placement.
 It is listed as a published business only after the actual publish flow succeeds.
-Design form opens a new builder conversation in the explicitly bound workspace.
+Within the current page lifetime, a failed start retries only its unfinished
+directory, workspace, session or prompt step; prompt retries reuse the submission
+identity. Reloading the page does not recover this local setup checkpoint. Existing
+same-named folders are never adopted automatically.
+Design form resolves a unique matching `.kvvi-system.json` asset marker, never a
+workspace title. Otherwise it requires an explicit unmarked workspace selection;
+unreadable and mismatching markers refuse. The new conversation edits a draft, not
+the employee's currently published version, and still requires owner approval.
 No prototype role switch, fake AI reply, sample records or client-only publish state
-is imported. Grouping several assets into one app, dashboards/reports and direct
-business rename/delete still need platform contracts; no fake success controls are
-presented for those deferred actions.
+is imported. Dashboards/reports and permanent record deletion are not exposed by the directory controls.
 
 ## Workspace binding and contextual AI
 
@@ -120,6 +139,8 @@ names differ. A missing marker permits only a unique legacy name match; malforme
 truncated, inaccessible or unknown markers do not fall back. Binding chooses a
 workspace for Conversation and never grants record access. Navigation aborts late
 associations and releases any retained session that no longer belongs to the page.
+An archived-write refusal closes editing, refreshes the directory and retains the
+unsent draft. Read-only retry can reload the form after an authorized restore.
 
 The optional Business assistant shows the current published form and selected
 record references. Its question button inserts these references into the visible

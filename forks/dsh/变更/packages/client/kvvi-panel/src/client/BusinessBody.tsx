@@ -29,6 +29,7 @@ export interface BusinessContentProps extends Pick<BusinessBodyProps, 'useStore'
 }
 /** One authorized renderer shared by the main business page and workspace dock. */
 export function BusinessContent({ address, signal, openResource, useStore, actions, t, presentation = 'dock' }: BusinessContentProps) {
+  const identity = useStore(state => state.identity)
   const route = parseBusinessAddress(address)
   const draft = useStore(state => state.drafts[route?.assetId ?? ''])
   const selected = useStore(state => state.selections[route?.assetId ?? ''] ?? [])
@@ -48,6 +49,12 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
   const [formError, setFormError] = useState<string | undefined>()
   const live = useRef(true)
   const writing = useRef(false)
+  useEffect(() => {
+    if (write?.error !== 'KVVI_FORM_ARCHIVED') return
+    setDialog(false); setProjection(null); setPage(null); setDetail(null); setAllowedFields(null)
+    setError('KVVI_FORM_ARCHIVED')
+    globalThis.dispatchEvent(new Event('kvvi-business-directory-refresh'))
+  }, [write?.error])
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   useEffect(() => {
     const controller = new AbortController()
@@ -93,17 +100,17 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
   const view = projection?.views[assetId]
   const open = (next: 'form' | 'records') => { openResource(businessAddress(assetId, next)) }
   const create = (data: Record<string, string>) => {
-    if (writing.current || busy || allowedFields === null) return
+    if (writing.current || busy || allowedFields === null || error === 'KVVI_FORM_ARCHIVED') return
     const submittedDraft = { ...draft }
     writing.current = true; actions.begin(address); setError(undefined)
     void createRecord(assetId, data).then((result) => {
       writing.current = false
       actions.finish(address, result.ok ? { busy: false } : {
         busy: false, error: result.code, fields: (result.problems ?? []).map(problem => problem.field),
-      }, result.ok)
+      }, result.ok, identity)
       if (result.ok) {
-        actions.invalidate(assetId)
-        actions.clearIfUnchanged(assetId, submittedDraft)
+        actions.invalidate(assetId, identity)
+        actions.clearIfUnchanged(assetId, submittedDraft, identity)
         if (live.current) setDialog(false)
         if (!signal.aborted && presentation !== 'workbench') openResource(businessAddress(assetId, 'detail', result.value.recordId), { replaceTab: true })
       }
@@ -116,6 +123,10 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
   const form = view === undefined ? <p role="alert">{t('system.unrunnable', { detail: 'KVVI_RUNTIME_CONTRACT_INCOMPLETE' })}</p> :
     <KvviFormView spec={view} copy={t} context={fieldContextOf((model?.fields ?? []).filter(field => allowedFields?.some(visible => visible.field_code === field.field_code)).map(field => ({ ...field, type_config: { ...field.type_config, options: allowedFields?.find(visible => visible.field_code === field.field_code)?.options ?? [] } })), Object.fromEntries((model?.fields ?? []).map(field => [field.field_code, allowedFields?.some(visible => visible.field_code === field.field_code) === true ? 'VISIBLE' : 'HIDDEN'])))} values={draft ?? {}}
       onValuesChange={(values) => { actions.change(assetId, values) }} onSubmit={create} busy={busy} />
+  if (error === 'KVVI_FORM_ARCHIVED') return <ReadFailure error={error} copy={t} onRetry={() => {
+    actions.finish(address, { busy: false }, false, identity)
+    setAttempt(a => a + 1)
+  }}/>
   return <section className={css.dockBody}>
     <header className={css.systemHeading}><h2 className={css.sectionTitle}>{view?.name ?? model?.name ?? projection?.system.name ?? t('panel.loading')}</h2></header>
     {presentation === 'dock' ? <nav className={css.viewTabs} aria-label={t('panel.aria')}>
@@ -142,8 +153,8 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
             actions.finish(address, result.ok ? { busy: false } : {
               busy: false, error: result.code,
               ...(result.currentRowVersion === undefined ? {} : { currentRowVersion: result.currentRowVersion }),
-            }, result.ok)
-            if (result.ok) actions.invalidate(assetId)
+            }, result.ok, identity)
+            if (result.ok) actions.invalidate(assetId, identity)
             if (live.current && !signal.aborted && result.ok) setNotice(t('detail.saved'))
           })
         }} />}

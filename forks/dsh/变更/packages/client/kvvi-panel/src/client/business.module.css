@@ -135,3 +135,17 @@
 .assistantContent>div:last-child { flex:1;min-height:0 }
 .workbench { --dsw-alias-button-primary-fill:var(--dsw-alias-link);--dsw-alias-button-primary-hover:var(--dsw-alias-link) }
 .workbench button { border-radius:8px }
+.directoryActions { flex-wrap:wrap;justify-content:flex-end }
+.groupSection { display:flex;flex-direction:column;gap:4px }
+.groupHeading { display:flex;align-items:center;gap:4px;color:var(--dsw-alias-text-secondary) }
+.groupHeading>button { flex:1;min-width:0;font-weight:600 }
+.groupForm { padding-inline-start:18px }
+.groupMenu { position:relative }
+.groupMenu>summary { cursor:pointer;padding:8px;list-style:none }
+.groupMenu>div { position:absolute;inset-inline-end:0;z-index:3;min-width:130px;background:var(--dsw-alias-bg-layer-1);border:0;box-shadow:var(--dsw-elevation-panel);border-radius:8px;padding:4px }
+.businessWorkspace { display:flex;flex:1;flex-direction:column;min-width:0;min-height:0 }
+.businessWorkspaceBody { display:flex;flex:1;min-height:0 }
+.formManagement { display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 24px;border-bottom:0.5px solid var(--dsw-alias-border-l2) }
+.formManagement>div { display:flex;gap:8px;flex-wrap:wrap }
+.resourceDirectory { width:225px }
+@media(max-width:820px) { .resourceDirectory { width:180px }.formManagement { flex-wrap:wrap;padding:12px }.workbenchHeader>div:last-child { justify-content:flex-start } }

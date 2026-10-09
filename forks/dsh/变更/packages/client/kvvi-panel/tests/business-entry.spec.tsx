@@ -8,47 +8,51 @@ import { zh } from '../src/client/locales.ts'
 import { createBusinessStore } from '../src/client/business-store.ts'
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 const system = { assetId:'customer', systemId:'s1', name:'客户登记',schemaCode:'customer',publishedAt:'2026-10-08' }
+const directory = { groups: [], forms: [{ ...system, groupId: null, archived: false, version: 0, actions: ['read', 'create'] }] }
 function props() {
+  const store = createBusinessStore().create()
   const renderSlot=vi.fn((seat:string, input:{ assistant?: boolean })=> <p>{input.assistant ? 'embedded-conversation' : seat}</p>), bindBusiness=vi.fn(async()=> ({ sessionId:'s1', release:vi.fn() }))
-  return { renderSlot,bindBusiness,t:(key:string)=>(zh as Record<string,string>)[key] ?? key,back:vi.fn(),SessionProvider:({ children }:{ children:ReactNode })=>children,useSessions:(select:(state:unknown)=>unknown)=>select({ byId:{ s1:{ id:'s1',cwd:'/客户登记系统',retainedBy:{ mainView:1 } } } }),useWorkspaces:(select:(state:unknown)=>unknown)=>select({ items:[{ workspaceId:'w1',title:'客户登记系统',path:'/客户登记系统',sessionIds:['s1'] }] }) } as unknown as BusinessPageProps
+  return { useStore: (select: (s: ReturnType<typeof store.getSnapshot>) => unknown) => select(store.getSnapshot()), actions: store.actions, renderSlot,bindBusiness,t:(key:string)=>(zh as Record<string,string>)[key] ?? key,back:vi.fn(),SessionProvider:({ children }:{ children:ReactNode })=>children,useSessions:(select:(state:unknown)=>unknown)=>select({ byId:{ s1:{ id:'s1',cwd:'/客户登记系统',retainedBy:{ mainView:1 } } } }),useWorkspaces:(select:(state:unknown)=>unknown)=>select({ items:[{ workspaceId:'w1',title:'客户登记系统',path:'/客户登记系统',sessionIds:['s1'] }] }) } as unknown as BusinessPageProps
 }
 it('keeps business records in the main area and opens the original AI only on request',async()=>{
-  vi.stubGlobal('fetch',vi.fn(()=>Promise.resolve(new Response(JSON.stringify({ items:[system] })))))
-  const p=props();render(<BusinessPage {...p}/>);fireEvent.click(await screen.findByRole('button',{ name:'进入业务' }))
+  vi.stubGlobal('fetch',vi.fn(()=>Promise.resolve(new Response(JSON.stringify({ ...directory, gateway: 'USER', companyId: 'c1', userId: 'u1', sessionId: 'login1' })))))
+  const p=props();render(<BusinessPage {...p}/>)
   await screen.findByText('kvvi.business.session')
   expect(screen.queryByText('embedded-conversation')).toBeNull()
   fireEvent.click(screen.getByRole('button',{ name:'AI协助' }));await screen.findByText('embedded-conversation')
   expect(p.back).not.toHaveBeenCalled()
   fireEvent.click(screen.getAllByRole('button',{ name:'收起AI协助' })[0]!);expect(screen.queryByText('embedded-conversation')).toBeNull()
 })
-it('uses the prototype business directory columns and only offers building in the builder gateway', async () => {
-  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ items: [system], gateway: 'USER' })))))
+it('opens the form directory directly and hides builder actions from employees', async () => {
+  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ ...directory, companyId: 'c1', userId: 'u1', sessionId: 'login1', gateway: 'USER' })))))
   render(<BusinessPage {...props()}/> )
-  await screen.findByRole('button', { name: '进入业务' })
-  for (const name of ['业务名称', '内容', '状态', '操作']) expect(screen.getByRole('columnheader', { name })).toBeTruthy()
-  expect(screen.queryByRole('button', { name: '新建业务' })).toBeNull()
+  await screen.findByRole('button', { name: '客户登记' })
+  expect(screen.queryByRole('columnheader', { name: '业务名称' })).toBeNull()
+  expect(screen.queryByRole('button', { name: '新增表单' })).toBeNull()
 })
 it('offers New business to an authorized builder in USER mode and enters builder login before any creation', async () => {
-  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ items: [system], gateway: 'USER', allowedGateways: ['USER', 'BUILDER'] })))))
+  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ ...directory, companyId: 'c1', userId: 'u1', sessionId: 'login1', gateway: 'USER', allowedGateways: ['USER', 'BUILDER'] })))))
   const enterBuilder = vi.fn(), startBuilder = vi.fn()
   render(<BusinessPage {...props()} {...{ enterBuilder, startBuilder }}/>)
-  fireEvent.click(await screen.findByRole('button', { name: '新建业务' }))
+  fireEvent.click(await screen.findByRole('button', { name: '新增表单' }))
   expect(enterBuilder).toHaveBeenCalledOnce()
   expect(startBuilder).not.toHaveBeenCalled()
   expect(screen.queryByRole('dialog')).toBeNull()
 })
 it('collects builder requirements inside Business before starting the real builder flow', async () => {
-  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ items: [system], gateway: 'BUILDER' })))))
+  vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(Response.json(url.endsWith('/business-build-intents')
+    ? { intentId: 'server-intent', version: 1 }
+    : { ...directory, companyId: 'c1', userId: 'u1', sessionId: 'login1', gateway: 'BUILDER' }))))
   const startBuilder = vi.fn(async () => {})
   render(<BusinessPage {...props()} {...{ startBuilder, pickDirectory: async () => '/workspaces' }}/>)
-  fireEvent.click(await screen.findByRole('button', { name: '新建业务' }))
+  fireEvent.click(await screen.findByRole('button', { name: '新增表单' }))
   expect(screen.getByRole('button', { name: '开始搭建' })).toHaveProperty('disabled', true)
   fireEvent.change(screen.getByLabelText('业务名称'), { target: { value: '访客登记' } })
   fireEvent.change(screen.getByLabelText('业务需求'), { target: { value: '登记访客姓名和到访时间' } })
   fireEvent.click(screen.getByRole('button', { name: '选择文件夹' }))
   await vi.waitFor(() => expect(screen.getByRole('button', { name: '开始搭建' })).toHaveProperty('disabled', false))
   fireEvent.click(screen.getByRole('button', { name: '开始搭建' }))
-  expect(startBuilder).toHaveBeenCalledExactlyOnceWith('/workspaces', '访客登记', '登记访客姓名和到访时间')
+  await vi.waitFor(() => expect(startBuilder).toHaveBeenCalledExactlyOnceWith('/workspaces', '访客登记', '登记访客姓名和到访时间', 'server-intent'))
 })
 it('invalidates every view of the same business after a write, without changing other businesses',()=>{
   const store=createBusinessStore().create();store.actions.invalidate('customer')
@@ -93,14 +97,13 @@ it('ignores replayed writes and refreshes new results without opening a workspac
 it('keeps the new record-first layout usable when no workspace name matches', async () => {
   const runtime = { system, models: { customer: { fields: [] } }, views: { customer: { view_type: 'FORM', componentsTree: [] } }, workflows: {} }
   vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(
-    url.endsWith('/runtime') ? runtime : url.endsWith('/records') ? { items: [], fieldVisibility: {} } : { items: [system] },
+    url.endsWith('/runtime') ? runtime : url.endsWith('/records') ? { items: [], fieldVisibility: {} } : { ...directory, companyId: 'c1', userId: 'u1', sessionId: 'login1', gateway: 'USER' },
   )))))
   const p = props()
   p.bindBusiness = vi.fn(async () => undefined)
   const store = createBusinessStore().create()
   const useStore: BusinessPageProps['useStore'] = select => select(store.getSnapshot())
   render(<BusinessPage {...p} {...{ useStore, actions: store.actions }}/>)
-  fireEvent.click(await screen.findByRole('button', { name: '进入业务' }))
   await screen.findByRole('button', { name: '刷新' })
   expect(screen.getByRole('button', { name: 'AI协助' })).toHaveProperty('disabled', true)
   expect(screen.getByRole('combobox', { name: 'AI会话工作区' })).toBeTruthy()

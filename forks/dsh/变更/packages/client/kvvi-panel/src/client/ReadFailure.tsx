@@ -14,7 +14,7 @@ export function ReadFailure({ error, copy, onRetry }: {
   readonly copy: Copy
   readonly onRetry: () => void
 }): ReactNode {
-  const message = error.startsWith('KVVI_UNREACHABLE') ? 'read.unreachable'
+  const message = error === 'KVVI_FORM_ARCHIVED' ? 'read.archived' : error.startsWith('KVVI_UNREACHABLE') ? 'read.unreachable'
     : error.startsWith('KVVI_NOT_ALLOWED') || error.startsWith('KVVI_FORBIDDEN') ? 'read.denied'
       : error.startsWith('KVVI_TOKEN_') || error.startsWith('KVVI_SESSION_') ? 'read.sessionEnded'
         : 'read.failed'

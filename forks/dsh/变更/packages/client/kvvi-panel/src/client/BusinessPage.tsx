@@ -1,5 +1,6 @@
 /** Business data takes the main area; the original Conversation is an optional assistant. */
 import { useEffect, useRef, useState } from 'react'
+import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
 import type { InjectFace, PropsLocale, PropsRenderFactories, PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ComposerBlock } from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -8,8 +9,11 @@ import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { SessionReference } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import { Button, Modal, IconPlusOutline16, IconSearchOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
-import { listSystems, adminCapabilities, readEntrance, loadRuntime } from './api.ts'
+import { Button, Modal, IconPlusOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { adminCapabilities, readEntrance, loadRuntime } from './api.ts'
+import { createBuildIntent, loadDirectory, type BusinessForm, type Directory } from './business-directory-api.ts'
+import { BusinessDirectory } from './BusinessDirectory.tsx'
+import { BusinessDirectoryDialogs, type DirectoryDialog } from './BusinessDirectoryDialogs.tsx'
 import type { PublishedSystem } from './api.ts'
 import { BusinessActivity } from './BusinessActivity.tsx'
 import type { ConversationViewsProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -21,8 +25,8 @@ import css from './business.module.css'
 export interface BusinessPageInjected {
   enterBuilder: () => void
   pickDirectory: () => Promise<string | null>
-  startBuilder: (parent: string, name: string, purpose: string) => Promise<void>
-  designBusiness: (workspaceId: string) => Promise<void>
+  startBuilder: (parent: string, name: string, purpose: string, intentId: string) => Promise<void>
+  designBusiness: (assetId: string, workspaceId?: string) => Promise<void>
   back: () => void
   manage: () => void
   bindBusiness: (
@@ -34,8 +38,8 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
   SessionProvider, renderSlot, useStore, actions, pickDirectory, startBuilder, designBusiness, enterBuilder }: BusinessPageProps) {
   const current = useSessions(state => Object.values(state.byId).find(s => (s.retainedBy.mainView ?? 0) > 0)?.id)
   const workspaces = useWorkspaces(state => state.items)
-  const [systems, setSystems] = useState<PublishedSystem[]>([])
-  const [system, setSystem] = useState<PublishedSystem | null>(null)
+  const [directory, setDirectory] = useState<Directory>({ groups: [], forms: [] })
+  const [system, setSystem] = useState<BusinessForm | null>(null)
   const [session, setSession] = useState<SessionReference | undefined>()
   const [address, setAddress] = useState('')
   const [query, setQuery] = useState('')
@@ -43,6 +47,10 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
   const [error, setError] = useState<string | undefined>()
   const [attempt, setAttempt] = useState(0)
   const [busy, setBusy] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [archived, setArchived] = useState(false)
+  const [dialog, setDialog] = useState<DirectoryDialog>()
+  const [auditPending, setAuditPending] = useState(false)
   const [workspaceId, setWorkspaceId] = useState('')
   const [canAdmin, setCanAdmin] = useState(false)
   const [builder, setBuilder] = useState(false)
@@ -53,90 +61,155 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
   const [parent, setParent] = useState('')
   const [building, setBuilding] = useState(false)
   const [buildError, setBuildError] = useState(false)
-  const [pageQuery, setPageQuery] = useState('')
-  const [formName, setFormName] = useState('')
+  const [buildGroup, setBuildGroup] = useState('')
+  const [designing, setDesigning] = useState(false)
+  const buildOperation = useRef<{ group: string; id: string }>()
+  const collapsed = useStore(s => s.collapsed)
+  const selection = useRef<BusinessForm | null>(null)
+  const identity = useRef('')
   const navigation = useRef(0)
   const association = useRef<AbortController | undefined>()
   useEffect(() => {
     const controller = new AbortController()
-    setError(undefined)
-    void listSystems(controller.signal).then((result) => {
+    setError(undefined); setLoading(true)
+    void (async () => {
+      const entrance = await readEntrance(controller.signal)
       if (controller.signal.aborted) return
-      if (result.ok) setSystems(result.value.items); else setError(result.code)
-    })
-    void readEntrance(controller.signal).then((result) => {
+      if (!entrance.ok) {
+        clearSelection(); clearBuilderDraft(); setDirectory({ groups: [], forms: [] }); setBuilder(false); setCanBuild(false); setCanAdmin(false); actions.identify(''); identity.current = ''; setError(entrance.code); setLoading(false); return
+      }
+      const scope = JSON.stringify([entrance.value.companyId, entrance.value.userId, entrance.value.sessionId, entrance.value.gateway])
+      if (identity.current !== scope) {
+        clearSelection(); clearBuilderDraft(); setDirectory({ groups: [], forms: [] }); setQuery(''); actions.identify(scope); identity.current = scope
+      }
+      const activeBuilder = entrance.value.gateway === 'BUILDER'
+      setBuilder(activeBuilder); setCanBuild(activeBuilder || entrance.value.allowedGateways?.includes('BUILDER') === true)
+      if (archived && !activeBuilder) { setArchived(false); return }
+      const result = await loadDirectory({ archived, signal: controller.signal })
       if (controller.signal.aborted) return
-      setBuilder(result.ok && result.value.gateway === 'BUILDER')
-      setCanBuild(result.ok && (result.value.gateway === 'BUILDER' || result.value.allowedGateways?.includes('BUILDER') === true))
-    })
+      setLoading(false)
+      if (!result.ok) { clearSelection(); setDirectory({ groups: [], forms: [] }); setError(result.code); return }
+      setDirectory(result.value)
+      const next = result.value.forms.find(f => f.assetId === selection.current?.assetId) ?? result.value.forms[0]
+      if (next === undefined) clearSelection()
+      else if (next.assetId !== selection.current?.assetId || next.archived !== selection.current.archived
+        || next.actions.join() !== selection.current.actions.join()) enter(next)
+      else { selection.current = next; setSystem(next) }
+    })()
     void adminCapabilities(controller.signal).then((result) => { if (!controller.signal.aborted && result.ok) setCanAdmin(result.value.role === 'owner' || result.value.role === 'admin') })
     return () => { controller.abort() }
-  }, [attempt])
+  }, [attempt, archived])
+  useEffect(() => {
+    const refresh = () => { setAttempt(v => v + 1) }
+    globalThis.addEventListener('focus', refresh)
+    globalThis.addEventListener('kvvi-business-directory-refresh', refresh)
+    return () => {
+      globalThis.removeEventListener('focus', refresh)
+      globalThis.removeEventListener('kvvi-business-directory-refresh', refresh)
+    }
+  }, [])
   useEffect(() => () => { navigation.current++; association.current?.abort() }, [])
   useEffect(() => () => { session?.release() }, [session])
-  useEffect(() => {
-    const controller = new AbortController()
-    if (system !== null) {
-      setFormName(system.name)
-      void loadRuntime(system.assetId, controller.signal).then((result) => {
-        if (!controller.signal.aborted && result.ok) {
-          setFormName(result.value.views?.[system.assetId]?.name ?? result.value.models?.[system.assetId]?.name ?? system.name)
-        }
-      })
-    }
-    return () => { controller.abort() }
-  }, [system])
-  const enter = (next: PublishedSystem, selectedWorkspace?: string) => {
+  const enter = (next: BusinessForm, selectedWorkspace?: string) => {
     association.current?.abort()
     const controller = new AbortController()
     association.current = controller
     const token = ++navigation.current
-    setFormName(next.name); setPageQuery(''); setSystem(next); setAI(false); setSession(undefined); setBusy(true); setError(undefined)
-    setAddress(businessAddress(next.assetId, 'records'))
+    selection.current = next; setSystem(next); setAI(false); setSession(undefined); setBusy(false); setError(undefined)
+    setAddress(businessAddress(next.assetId, next.actions.includes('read') ? 'records' : 'form'))
     setWorkspaceId(selectedWorkspace ?? '')
-    void bindBusiness(next, current, selectedWorkspace, controller.signal).then((id) => {
+    if (next.archived || !next.actions.length) return
+    setBusy(true)
+    const published: PublishedSystem = {
+      assetId: next.assetId, systemId: next.systemId, name: next.name, schemaCode: next.schemaCode, publishedAt: next.publishedAt,
+    }
+    void bindBusiness(published, current, selectedWorkspace, controller.signal).then((id) => {
       if (token !== navigation.current) { id?.release(); return }
       setSession(id); setBusy(false)
       if (id === undefined) setError(t('business.workspaceMissing'))
     }).catch(() => { if (token === navigation.current) { setBusy(false); setError(t('business.workspaceMissing')) } })
   }
-  const home = () => {
+  const clearSelection = () => {
     navigation.current++; association.current?.abort()
+    selection.current = null
     setSystem(null); setSession(undefined); setAI(false); setBusy(false); setError(undefined)
   }
+  const clearBuilderDraft = () => {
+    setDialog(undefined); setCreating(false); setName(''); setPurpose(''); setParent(''); setBuildError(false); setAuditPending(false)
+    setDesigning(false); setBuildGroup(''); setBuilding(false); buildOperation.current = undefined
+  }
+  const beginBuild = async () => {
+    if (building) return
+    setBuilding(true); setBuildError(false)
+    const scope = identity.current
+    if (buildOperation.current?.group !== buildGroup) buildOperation.current = { group: buildGroup, id: randomUUID() }
+    try {
+      const result = await createBuildIntent(buildGroup || null, buildOperation.current.id)
+      if (identity.current !== scope) return
+      if (!result.ok || !result.value.intentId) { setBuildError(true); return }
+      await startBuilder(parent, name.trim(), purpose.trim(), result.value.intentId)
+      if (identity.current === scope) { setCreating(false); buildOperation.current = undefined }
+    } catch (_error) { if (identity.current === scope) setBuildError(true) }
+    finally { if (identity.current === scope) setBuilding(false) }
+  }
+  const editForm = async (chosenWorkspace?: string) => {
+    if (system === null || building) return
+    const scope = identity.current
+    setBuilding(true); setBuildError(false)
+    try { await designBusiness(system.assetId, chosenWorkspace); if (identity.current === scope) setDesigning(false) }
+    catch (_error) { if (identity.current === scope) { setDesigning(true); setBuildError(true) } }
+    finally { if (identity.current === scope) setBuilding(false) }
+  }
   return <section className={css.workbench}>
-    <header className={css.workbenchHeader}><div>{system === null ? null : <div className={css.breadcrumb}><button type="button" onClick={home}>{t('panel.title')}</button><span>/</span><span>{system.name}</span></div>}<h1>{system?.name ?? t('panel.title')}</h1>{system === null ? <p className={css.hint}>{t('panel.subtitle')}</p> : null}</div><div>
-      {system === null ? <>{canAdmin ? <Button variant="ghost" onClick={manage}>{t('admin.title')}</Button> : null}{canBuild ? <Button variant="primary" icon={<IconPlusOutline16/>} title={builder ? undefined : t('business.switchBuilder')} onClick={() => { if (!builder) { enterBuilder(); return }; setCreating(true); setBuildError(false) }}>{t('business.new')}</Button> : null}<Button variant="ghost" onClick={back}>{t('panel.close')}</Button></> : <>
-        {builder ? <Button variant="outline" disabled={session === undefined || busy || building} onClick={() => { if (session === undefined) return; const w = workspaces.find(w => w.sessionIds.includes(session.sessionId)); if (w === undefined) return; setBuilding(true); void designBusiness(w.workspaceId).catch(() => { setBuildError(true) }).finally(() => { setBuilding(false) }) }}>{t('business.design')}</Button> : null}
-        <Button variant="outline" disabled={session === undefined || busy} aria-pressed={ai} onClick={() => { setAI(!ai) }}>{t(ai ? 'business.ai.close' : 'business.ai')}</Button></>}
+    <header className={css.workbenchHeader}><div><h1>{t('panel.title')}</h1><p className={css.hint}>{t('panel.subtitle')}</p></div><div className={css.directoryActions}>
+      {canAdmin ? <Button variant="ghost" onClick={manage}>{t('admin.title')}</Button> : null}
+      {builder ? <><Button variant="outline" onClick={() => { setDialog({ action: 'group.create', input: {} }) }}>{t('directory.newGroup')}</Button><Button variant="ghost" aria-pressed={archived} onClick={() => { clearSelection(); setArchived(!archived) }}>{t(archived ? 'directory.active' : 'directory.archived')}</Button></> : null}
+      {canBuild ? <Button variant="primary" icon={<IconPlusOutline16/>} title={builder ? undefined : t('business.switchBuilder')} onClick={() => { if (!builder) { enterBuilder(); return }; setCreating(true); setBuildGroup(system?.groupId ?? ''); setBuildError(false) }}>{t('directory.newForm')}</Button> : null}
+      <Button variant="ghost" onClick={() => { setAttempt(v => v + 1) }}>{t('directory.refresh')}</Button><Button variant="ghost" onClick={back}>{t('panel.close')}</Button>
     </div></header>
-    {system === null ? <div className={css.directory}>
-      <label className={css.searchBox}><IconSearchOutline16/><input aria-label={t('business.search')} placeholder={t('business.search')} value={query} onChange={(e) => { setQuery(e.target.value) }}/></label>
-      {error === undefined ? null : <ReadFailure error={error} copy={t} onRetry={() => { setAttempt(v => v + 1) }}/>}
-      <div className={css.directoryTable}><table><thead><tr>{['business.name', 'business.contents', 'business.status', 'business.actions'].map(key => <th key={key}>{t(key as 'business.name')}</th>)}</tr></thead><tbody>{systems.filter(s => s.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())).map(s => <tr key={s.systemId}><td><div className={css.businessName}><span className={css.businessChip}><BusinessIcon size={24}/></span><div><strong>{s.name}</strong><p className={css.hint}>{t('systems.hint')}</p></div></div></td><td>{t('business.formCount')}</td><td><span className={css.published}>{t('business.published')}</span></td><td><Button variant="outline" onClick={() => { enter(s) }}>{t('business.enter')}</Button></td></tr>)}</tbody></table></div>
-      {!systems.length && error === undefined ? <p className={css.empty}>{t('systems.empty')}</p> : null}
-    </div> : <div className={css.workbenchBody} data-ai-open={ai || undefined}>
-      <aside className={css.resourceDirectory} aria-label={t('business.pages')}>
-        <label className={css.searchBox}><IconSearchOutline16/><input aria-label={t('business.searchPages')} placeholder={t('business.searchPages')} value={pageQuery} onChange={(e) => { setPageQuery(e.target.value) }}/></label>
-        {formName.toLocaleLowerCase().includes(pageQuery.toLocaleLowerCase()) ? <Button className={css.resourceActive} variant="ghost" onClick={() => { setAddress(businessAddress(system.assetId, 'records')) }}>{formName}</Button> : null}
-      </aside>
-      {busy ? <p role="status">{t('business.connecting')}</p> : session === undefined ? <div className={css.primaryBusiness}>
-        <div className={css.association}><p className={css.hint}>{error}</p><label>{t('business.workspace')}<select className={css.control} aria-label={t('business.workspace')} value={workspaceId} onChange={(e) => { if (e.target.value) enter(system, e.target.value) }}><option value="">{t('business.workspace.choose')}</option>{workspaces.map(w => <option key={w.workspaceId} value={w.workspaceId}>{w.title}</option>)}</select></label></div>
-        <StandaloneBusiness t={t} useStore={useStore} actions={actions} address={address} navigate={setAddress}/>
-      </div> : <SessionProvider session={session}>
-        <div className={css.primaryBusiness}>{renderSlot('kvvi.business.session', { address, navigate: setAddress })}</div>
-        {ai ? <aside className={css.assistantPane} aria-label={t('business.ai')}><div className={css.assistantHeading}><strong>{t('business.ai')}</strong><Button variant="ghost" onClick={() => { setAI(false) }}>{t('business.ai.close')}</Button></div>{renderSlot('kvvi.business.session', { address, navigate: setAddress, assistant: true })}</aside> : null}
-      </SessionProvider>}
-    </div>}
+    {error !== undefined && (system === null || error.startsWith('KVVI_')) ? <ReadFailure error={error} copy={t} onRetry={() => { setAttempt(v => v + 1) }}/> : null}
+    {auditPending ? <p role="status" className={css.notice}>{t('directory.auditPending')}</p> : null}
+    <div className={css.workbenchBody} data-ai-open={ai || undefined}>
+      <BusinessDirectory {...directory} {...(system === null ? {} : { selectedAssetId: system.assetId })}
+        query={query} builder={builder} collapsed={collapsed} copy={t}
+        onQuery={setQuery} onSelect={enter} onCollapse={actions.collapse} onManage={(action, group) => {
+          setDialog({ action, input: { target: group.groupId, name: group.name, expectedVersion: group.version } })
+        }}/>
+      <div className={css.businessWorkspace}>
+        {system !== null ? <div className={css.formManagement}><strong>{system.name}</strong><div>
+          {builder ? <>{!archived ? <Button variant="ghost" onClick={() => { setDialog({ action: 'form.move', input: { target: system.assetId, expectedVersion: system.version, groupId: system.groupId } }) }}>{t('directory.move')}</Button> : null}<Button variant="ghost" onClick={() => { setDialog({ action: archived ? 'form.restore' : 'form.archive', input: { target: system.assetId, expectedVersion: system.version } }) }}>{t(archived ? 'directory.restore' : 'directory.archive')}</Button></> : null}
+          {!archived ? <>
+            {builder ? <Button variant="outline" disabled={busy || building} onClick={() => { void editForm() }}>{t('business.design')}</Button> : null}
+            <Button variant="outline" disabled={session === undefined || busy} aria-pressed={ai} onClick={() => { setAI(!ai) }}>{t(ai ? 'business.ai.close' : 'business.ai')}</Button></> : null}
+        </div></div> : null}
+        <div className={css.businessWorkspaceBody}>
+          {loading ? <p role="status">{t('panel.loading')}</p> : system === null ? <p className={css.empty}>{t('directory.empty')}</p> : archived ? <p className={css.empty}>{t('directory.archivedHint')}</p> : !system.actions.length ? <p className={css.empty}>{t('directory.managementOnly')}</p> : busy ? <p role="status">{t('business.connecting')}</p> : session === undefined ? <div className={css.primaryBusiness}>
+            <div className={css.association}><p className={css.hint}>{error}</p><label>{t('business.workspace')}<select className={css.control} aria-label={t('business.workspace')} value={workspaceId} onChange={(e) => { if (e.target.value) enter(system, e.target.value) }}><option value="">{t('business.workspace.choose')}</option>{workspaces.map(w => <option key={w.workspaceId} value={w.workspaceId}>{w.title}</option>)}</select></label></div>
+            <StandaloneBusiness t={t} useStore={useStore} actions={actions} address={address} navigate={setAddress}/>
+          </div> : <SessionProvider session={session}>
+            <div className={css.primaryBusiness}>{renderSlot('kvvi.business.session', { identity: identity.current, address, navigate: setAddress })}</div>
+            {ai ? <aside className={css.assistantPane} aria-label={t('business.ai')}><div className={css.assistantHeading}><strong>{t('business.ai')}</strong><Button variant="ghost" onClick={() => { setAI(false) }}>{t('business.ai.close')}</Button></div>{renderSlot('kvvi.business.session', { identity: identity.current, address, navigate: setAddress, assistant: true })}</aside> : null}
+          </SessionProvider>}
+        </div></div>
+    </div>
+    {dialog ? <BusinessDirectoryDialogs dialog={dialog} groups={directory.groups} copy={t} onClose={() => { setDialog(undefined) }}
+      onCommitted={(pending) => { setAuditPending(pending); setDialog(undefined); setAttempt(v => v + 1) }}
+      onConflict={() => { setAttempt(v => v + 1) }}/> : null}
     {buildError && !creating ? <p role="alert" className={css.notice}>{t('business.buildFailed')}</p> : null}
+    {designing ? <Modal open title={t('business.design')} closeLabel={t('panel.close')} onClose={() => { if (!building) setDesigning(false) }}>
+      <p>{t('business.editWorkspaceHint')}</p>
+      <label className={css.field}>{t('business.workspace')}<select className={css.control} value={workspaceId} onChange={(e) => { setWorkspaceId(e.target.value) }}><option value="">{t('business.workspace.choose')}</option>{workspaces.map(w => <option key={w.workspaceId} value={w.workspaceId}>{w.title}</option>)}</select></label>
+      <Button variant="primary" disabled={building || !workspaceId} onClick={() => { void editForm(workspaceId) }}>{t('business.design')}</Button>
+    </Modal> : null}
     {creating ? <Modal open title={t('business.new')} closeLabel={t('panel.close')} onClose={() => { if (!building) setCreating(false) }}>
       <p className={css.hint}>{t('business.buildHint')}</p>
       {buildError ? <p role="alert">{t('business.buildFailed')}</p> : null}
       <label className={css.field}>{t('business.name')}<input className={css.control} value={name} onChange={(e) => { setName(e.target.value) }} maxLength={80}/></label>
       <label className={css.field}>{t('business.purpose')}<textarea className={css.control} value={purpose} onChange={(e) => { setPurpose(e.target.value) }}/></label>
+      <label className={css.field}>{t('business.buildGroup')}<select className={css.control} value={buildGroup} disabled={building} onChange={(e) => { setBuildGroup(e.target.value) }}><option value="">{t('directory.ungrouped')}</option>{directory.groups.map(g => <option key={g.groupId} value={g.groupId}>{g.name}</option>)}</select></label>
       <label className={css.field}>{t('business.folder')}<input className={css.control} value={parent} readOnly/></label>
       <Button variant="outline" disabled={building} onClick={() => { void pickDirectory().then((path) => { if (path !== null) setParent(path) }).catch(() => { setBuildError(true) }) }}>{t('business.chooseFolder')}</Button>
-      <div className={css.formActions}><Button variant="primary" disabled={building || !name.trim() || !purpose.trim() || !parent || /[\\/]/u.test(name)} onClick={() => { setBuilding(true); setBuildError(false); void startBuilder(parent, name.trim(), purpose.trim()).catch(() => { setBuildError(true) }).finally(() => { setBuilding(false) }) }}>{t('business.startBuild')}</Button></div>
+      <div className={css.formActions}><Button variant="primary" disabled={building || !name.trim() || !purpose.trim() || !parent || /[\\/]/u.test(name)} onClick={() => { void beginBuild() }}>{t('business.startBuild')}</Button></div>
     </Modal> : null}
   </section>
 }
@@ -157,10 +230,13 @@ export interface BusinessSessionInjected {
 }
 export type BusinessSessionProps = PropsRuntime<'kvvi.business.session'> & PropsLocale<'kvviPanel'> & PropsStore<ReturnType<typeof createBusinessStore>> & PropsRenderFactories & InjectFace<BusinessSessionInjected>
 export function BusinessSession({ address, navigate, assistant, ...props }: BusinessSessionProps) {
+  const authenticated = props.useStore(state => state.identity)
+  useEffect(() => { props.actions.identify(props.identity) }, [props.identity, props.actions])
   const lifetime = useRef(new AbortController())
   const currentAddress = useRef(address)
   currentAddress.current = address
   useEffect(() => { const controller = lifetime.current; return () => { controller.abort() } }, [])
+  if (authenticated !== props.identity) return null
   return assistant ? <BusinessAssistant {...props} address={address}/> : <>
     <BusinessActivity {...props} afterWrite={() => {}}/>
     <BusinessContent {...props} address={address} signal={lifetime.current.signal} presentation="workbench"

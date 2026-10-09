@@ -8,6 +8,7 @@
     "src"
   ],
   "references": [
+    { "path": "../../util/crypto" },
     { "path": "../../api/gateway/tsconfig.client.json" },
     { "path": "../../api/workspace-files/tsconfig.client.json" },
     {
