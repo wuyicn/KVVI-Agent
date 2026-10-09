@@ -15,6 +15,7 @@ import { randomUUID } from 'node:crypto'
 import pg from 'pg'
 import { dsns, pool, closeAll } from '../src/db.mjs'
 import { hashPassword } from '../src/identity.mjs'
+import { assertTestTarget } from './test-target.mjs'
 
 // 测试用：允许在临时路径生成开发密钥（生产环境缺私钥必须起不来）。
 process.env.KVVI_DEV_KEYS ??= '1'
@@ -55,6 +56,9 @@ export const PASSWORD = 'kvvi-test-password'
 
 /** 重建三个库并灌入固定装置。**每次测试运行都重建**：残留数据会让负向测试失去意义。 */
 export async function resetDatabase() {
+  const overrides = Object.fromEntries(Object.entries(process.env)
+    .filter(([key]) => key.startsWith('KVVI_ADMIN_DSN_')))
+  assertTestTarget({ ...dsns(), ...overrides }, process.env.KVVI_TEST_CLUSTER_MARKER)
   await closeAll()
   execFileSync('node', [resolve(HERE, '..', 'src', 'migrate.mjs')],
     { env: { ...process.env, KVVI_RESET: '1' }, stdio: 'pipe' })

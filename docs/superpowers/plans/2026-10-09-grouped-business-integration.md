@@ -40,7 +40,7 @@
 
 执行前按 using-git-worktrees 流程确认隔离方式。根仓库与嵌套 DSH 仓库分别记录 Git 状态；不得覆盖未提交用户改动，不向远端推送。推荐一个实施者连续开发，完工后独立审查，避免多个实施者同时写同一仓库。
 
-## 任务 1 安全测试环境与增量数据结构
+## Task 1 安全测试环境与增量数据结构
 
 **Files:** 新建 `services/platform/sql/31-business-directory.sql`、`services/platform/tests/business-directory.test.mjs`、`services/platform/tests/test-target.test.mjs`、`services/platform/tests/test-target.mjs`；修改 `services/platform/src/sql-manifest.mjs`、`services/platform/src/migrate.mjs`、`services/platform/tests/harness.mjs`。
 
@@ -54,7 +54,7 @@
 - [ ] 验证迁移重复执行不变、非 reset 迁移前后记录标识/数量/摘要一致，启动 schema 自检识别新增迁移。运行目标测试及 `tests/schema-guard.test.mjs`。
 - [ ] 提交本任务文件，记录临时集群路径、端口和生命周期，不记录凭证。
 
-## 任务 2 公司目录服务与搭建者管理 API
+## Task 2 公司目录服务与搭建者管理 API
 
 **Files:** 新建 `services/platform/src/business-directory.mjs`、`business-directory-api.mjs`、`business-directory-audit.mjs`，以及 `tests/business-directory-api.test.mjs`、`tests/business-directory-audit.test.mjs`；修改 `src/api-router.mjs`、`src/request-refs.mjs`、`src/server.mjs`。扩充任务 1 的目录测试。
 
@@ -83,7 +83,7 @@ HTTP 路由固定为：
 - [ ] 验证断开审计库后目录写入仍有持久待投递记录、重启后可补投；网络重发不重复建组；归组与删除分组并发不会留下悬空引用。运行目标测试及 `tests/api-router.test.mjs`、`tests/identifier-gate.test.mjs`。
 - [ ] 提交本任务文件，附路由与权限矩阵。
 
-## 任务 3 共用归档守卫和记录并发保护
+## Task 3 共用归档守卫和记录并发保护
 
 **Files:** 新建 `services/platform/src/business-lifecycle.mjs`、`services/platform/tests/business-lifecycle.test.mjs`；修改 `src/refs.mjs`、`src/workflow.mjs`、`src/commands.mjs`、`src/system-api.mjs`、`src/runtime-projection.mjs` 及任务 2 模块。扩充 `tests/ui-agent-e2e.test.mjs`、`tests/system-fields.test.mjs`。
 
@@ -96,7 +96,7 @@ HTTP 路由固定为：
 - [ ] 验证归档后旧链接不能写、恢复后仍遵守只读/字段隐藏权限、跨公司行为不泄露状态、目录或生命周期查询故障拒绝放行。运行目标测试及 `tests/system-api.test.mjs tests/permissions.test.mjs tests/workflow.test.mjs tests/publish-runtime-e2e.test.mjs`。
 - [ ] 提交本任务文件；记录逐入口覆盖表，未覆盖入口不得部署。
 
-## 任务 4 正式分组工作台与安全导航
+## Task 4 正式分组工作台与安全导航
 
 **Files:** 新建 `vendor/dsh/packages/client/kvvi-panel/src/client/business-directory-api.ts`、`BusinessDirectory.tsx`、`BusinessDirectoryDialogs.tsx`、`tests/business-directory.spec.tsx`；修改同包 `BusinessPage.tsx`、`business-store.ts`、`business.module.css`、`locales.ts`、`ReadFailure.tsx`、`tests/business-entry.spec.tsx` 和 `tests/business-assembly.spec.tsx`。
 
@@ -109,7 +109,7 @@ HTTP 路由固定为：
 - [ ] 运行 kvvi-panel 全部测试，检查中英文文案、默认 AI 收起、工作区会话及表单切换回归。用构建后的应用验证布局，不以源码截图替代。
 - [ ] 在 DSH 仓库提交本任务文件；镜像统一在任务 6 导出。
 
-## 任务 5 新增编辑表单衔接真实搭建发布
+## Task 5 新增编辑表单衔接真实搭建发布
 
 **Files:** 修改 `vendor/dsh/packages/client/kvvi-panel/src/client/index.ts`、`BusinessPage.tsx`、`business-binding.ts`、`locales.ts`，以及 `services/platform/src/publish-api.mjs`；新增 `services/platform/src/business-build-intents.mjs`、`services/platform/sql/32-business-build-intents.sql`、`services/platform/tests/business-build-intents.test.mjs`、`vendor/dsh/packages/client/kvvi-panel/tests/business-build.spec.tsx`；登记迁移。
 
@@ -123,7 +123,7 @@ HTTP 路由固定为：
 - [ ] 验证编辑草稿不改变员工正在使用的已发布版本、仅归组不触发发布、归档期间新发布不自动恢复、生成或发布失败可重试。若 AI 产物缺少必要契约，显示真实错误，不能用假成功或自动授权补齐。
 - [ ] 提交本任务文件，更新 kvvi-panel README 中的真实功能范围。
 
-## 任务 6 组合回归和可重建交付
+## Task 6 组合回归和可重建交付
 
 **Files:** 修改 `vendor/dsh/apps/web/tests/kvvi-business.e2e.ts`、`vendor/dsh/packages/client/kvvi-panel/README.md`、`forks/dsh/改造点清单.md`；通过现有工具更新 `forks/dsh/变更` 和 `forks/dsh/改造点指纹.json`；新建 `交付/证据/统一业务分组接入-2026-10-09/验证.md`。
 
@@ -135,7 +135,7 @@ HTTP 路由固定为：
 - [ ] DSH 提交后登记准确改造文件，运行 `python3 工具/g2_改造点.py --manifest`、`python3 工具/fork.py --export`；以 `mktemp -d` 创建本次专用重建目录，运行 `python3 工具/fork.py --rebuild --into <本次目录> --upstream local` 和 `python3 工具/fork.py --verify --into <本次目录>`。
 - [ ] 提交根仓库镜像及证据，核对仅包含本次相关文件，不夹带未跟踪的原型目录。不向远端推送或合并未经要求的分支。
 
-## 任务 7 备份后部署到 7500 并现场验收
+## Task 7 备份后部署到 7500 并现场验收
 
 **Files:** 更新 `docs/本地联测-Codex.md`、`交付/证据/统一业务分组接入-2026-10-09/验证.md`；不将口令、DSN 或敏感记录写入证据。
 

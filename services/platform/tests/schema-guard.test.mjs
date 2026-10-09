@@ -116,21 +116,35 @@ describe('没料到的错误不许把进程带走', () => {
   test('撞上「关系不存在」→ 500，而且服务还活着', async () => {
     // ⚠️ 把一张真表改名，让**真实的路由**撞上**真实的**「关系不存在」。
     //    这就是出事时的那一类错误，而 mock 会绕过出问题的那一层。
-    await adminQuery('kvvi_platform', 'ALTER TABLE role_members RENAME TO role_members_guard_test')
+    // 身份检查依赖 role_members；改 policies 才能真正进入业务处理器。
+    await adminQuery('kvvi_platform', 'ALTER TABLE policies RENAME TO policies_guard_test')
     let broken = null
     try {
       broken = await api('GET', '/api/v1/admin/roles', alice)
     } finally {
       await adminQuery('kvvi_platform',
-                       'ALTER TABLE role_members_guard_test RENAME TO role_members')
+                       'ALTER TABLE policies_guard_test RENAME TO policies')
     }
 
     assert.equal(broken.status, 500)
     assert.equal(broken.body?.error, 'KVVI_INTERNAL_ERROR')
     // 回给调用方的只有稳定错误码，不带任何内部细节。
-    assert.equal(JSON.stringify(broken.body).includes('role_members'), false)
+    assert.equal(JSON.stringify(broken.body).includes('policies'), false)
     // ★ 关键那一句：进程还在。
     assert.equal(child.exitCode, null, '一个数据库错误把平台进程带走了')
+  })
+
+  test('身份依赖不可用 → 503，不放行业务请求，进程仍存活', async () => {
+    await adminQuery('kvvi_platform', 'ALTER TABLE role_members RENAME TO role_members_guard_test')
+    let broken
+    try {
+      broken = await api('GET', '/api/v1/admin/roles', alice)
+    } finally {
+      await adminQuery('kvvi_platform', 'ALTER TABLE role_members_guard_test RENAME TO role_members')
+    }
+    assert.equal(broken.status, 503)
+    assert.equal(broken.body?.error, 'KVVI_IDENTITY_UNAVAILABLE')
+    assert.equal(child.exitCode, null)
   })
 
   test('出错之后服务照常工作', async () => {
@@ -141,11 +155,10 @@ describe('没料到的错误不许把进程带走', () => {
     assert.equal(roles.status, 200)
   })
 
-  test('响应已经开始写之后再出错 → 断开连接，不改状态码', () => {
+  test.skip('响应已经开始写之后再出错 → 断开连接，不改状态码（尚无稳定装置）', () => {
     // 这条在 HTTP 层不好稳定触发（要一个中途抛错的流式响应），
     // 而它是同一段代码里的另一条分支 —— **如实记下它没有被覆盖**，
     // 而不是用一个假装覆盖了它的用例把它记成绿的。
-    assert.ok(true)
   })
 })
 
