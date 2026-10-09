@@ -30,6 +30,8 @@ import { adminRoutes } from './admin-api.mjs'
 import { publishRoutes } from './publish-api.mjs'
 import { brandingRoutes } from './branding-api.mjs'
 import { directoryRoutes } from './business-directory-api.mjs'
+import { buildIntentRoutes } from './business-build-intents.mjs'
+import { DirectoryError } from './business-directory.mjs'
 import { FormArchivedError } from './business-lifecycle.mjs'
 import { loadSession } from './identity.mjs'
 import { verifyRuntimeContextHeaders } from './runtime-auth.mjs'
@@ -276,6 +278,7 @@ export async function handleApi({ method, path, query, body, headers, loadSessio
       return { status: error.status, body: { error: error.code, problems: error.problems } }
     }
     if(error instanceof FormArchivedError) return {status:409,body:{error:error.code}}
+    if(error instanceof DirectoryError) return {status:error.code==='KVVI_BUILDER_REQUIRED'?403:error.code==='KVVI_DIRECTORY_NOT_FOUND'?404:error.code==='KVVI_DIRECTORY_VERSION_CONFLICT'?409:400,body:{error:error.code}}
     throw error
   }
 }
@@ -288,6 +291,7 @@ async function dispatch(routes) {
   //    表现是每一个管理接口都回 404，而 404 看起来像「端点没写」。
   const resolved = routes.path || '/'
   if (/^\/business-(directory|groups|forms)(\/|$)/u.test(resolved)) return directoryRoutes(routes)
+  if (/^\/business-build-intents(\/|$)/u.test(resolved)) return buildIntentRoutes(routes)
 
   // ⚠️ 交给 `adminRoutes` 的是**去掉 `/admin` 之后**的路径。传整条路径的话，
   //    它的 `parts[0]` 是 `'admin'`，于是每一个分支都落到兜底 404 ——

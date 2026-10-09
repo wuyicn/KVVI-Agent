@@ -28,12 +28,14 @@
  *     它只能是所有者的动作。
  */
 import { createHash } from 'node:crypto'
-import { pool } from './db.mjs'
+import { pool, withTransaction } from './db.mjs'
 import { latestContract } from './contracts.mjs'
 import { compilePermissionSpec, CompileError } from './policy-compile.mjs'
 import { PublishError, buildDiffReport, submitDraft, approveDraft, publishDraft, writePolicies }
   from './publish.mjs'
 import { holdsPlatformRole, isPlatformAdmin } from './authorization.mjs'
+import { bindBuildIntent } from './business-build-intents.mjs'
+import { requireDirectoryBuilder } from './business-directory.mjs'
 
 /** 发布要的六份契约。与 `runtime-projection.REQUIRED_CONTRACTS` 同源。 */
 export const PUBLISH_CONTRACTS = Object.freeze([
@@ -119,6 +121,7 @@ export async function publishSubmit({ session, payload }) {
       { gateway: session.gateway })
   }
   const assetId = payload?.assetId
+  if(payload?.buildIntentId!==undefined) await requireDirectoryBuilder(session)
   if (typeof assetId !== 'string' || assetId === '') {
     return fail(400, 'KVVI_ASSET_ID_REQUIRED')
   }
@@ -140,6 +143,7 @@ export async function publishSubmit({ session, payload }) {
   try {
     draft = await submitDraft({
       ctx,
+      afterInsert: payload?.buildIntentId===undefined?undefined:(client,draftId)=>bindBuildIntent(client,session,{intentId:payload.buildIntentId,draftId}),
       change,
       diffReport: prepared.diffReport,
       // §9.8.1 的聚合差分不变量：本版没有独立求值器（`goal` 那一侧同样记着
@@ -182,6 +186,7 @@ export async function publishSubmit({ session, payload }) {
             AND status IN ('DRAFT', 'AWAITING_APPROVAL') LIMIT 1`,
         [session.companyId, digestOf(change)])
       if (rows.length === 1) {
+        if(payload?.buildIntentId!==undefined) await withTransaction('platform',c=>bindBuildIntent(c,session,{intentId:payload.buildIntentId,draftId:rows[0].draft_id}))
         return { status: 200, body: {
           draftId: rows[0].draft_id, status: rows[0].status,
           reused: true, error: 'KVVI_DRAFT_ALREADY_OPEN',

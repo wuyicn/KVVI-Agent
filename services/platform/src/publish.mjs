@@ -124,7 +124,7 @@ export async function writePolicies({ client, companyId, rows }) {
  * @param {object} input 入参
  * @returns {Promise<object>} 草案
  */
-export async function submitDraft({ ctx, change, diffReport, invariant, payload = null }) {
+export async function submitDraft({ ctx, change, diffReport, invariant, payload = null, afterInsert }) {
   if (!diffReport || !diffReport.faces || diffReport.faces.length < DIFF_FACES.length) {
     await appendDenial({
       companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
@@ -148,7 +148,8 @@ export async function submitDraft({ ctx, change, diffReport, invariant, payload 
 
   const draftId = randomUUID()
   const changeDigest = digestOf(change)
-  await pool('platform').query(
+  await withTransaction('platform',async client=>{
+  await client.query(
     // ★ `payload` 是**要发布的内容本身**（编译好的策略行、系统代号、契约内容）。
     //   提交时存下来，发布时只认它 —— 审批人不必、也无法重新提供内容。
     //   只留摘要证明不了「发出去的是批过的那一份」：摘要是单向的。
@@ -158,6 +159,8 @@ export async function submitDraft({ ctx, change, diffReport, invariant, payload 
     [draftId, ctx.companyId, ctx.userId, changeDigest,
      JSON.stringify(diffReport), JSON.stringify(invariant ?? {}),
      JSON.stringify(payload ?? {})])
+  if(afterInsert) await afterInsert(client,draftId)
+  })
   await append({
     companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
     gateway: ctx.gateway, sessionId: ctx.sessionId,
@@ -299,6 +302,7 @@ export async function publishDraft({
                published_at = EXCLUDED.published_at`,
         [randomUUID(), draft.company_id, system.assetId, system.name,
          system.schemaCode, rec.rows[0].record_id])
+      await client.query("UPDATE business_build_intents SET state='PENDING',version=version+1 WHERE company_id=$1 AND draft_id=$2 AND asset_id=$3 AND state='BOUND'",[draft.company_id,draftId,system.assetId])
     }
     // ★ 契约内容与发布记录**同事务**。
     //

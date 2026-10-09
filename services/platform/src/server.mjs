@@ -28,13 +28,17 @@ import { isApiPath, handleApi } from './api-router.mjs'
 import { bootstrapRoutes } from './bootstrap.mjs'
 import { pool } from './db.mjs'
 import { schemaDelta } from './sql-manifest.mjs'
-import { flushDirectoryAudit, directoryAuditPending } from './business-directory-audit.mjs'
+import { directoryAuditPending } from './business-directory-audit.mjs'
+import { retryDirectoryJobs, buildIntentsPending } from './business-build-intents.mjs'
 
 let directoryAuditRunning=false
 const directoryAuditTimer=setInterval(async()=>{
   if(directoryAuditRunning) return
   directoryAuditRunning=true
-  try { await flushDirectoryAudit({limit:20}) }
+  try {
+    const outcomes=await retryDirectoryJobs()
+    if(outcomes.some(r=>r.status==='rejected')) console.error(JSON.stringify({event:'directory-background-retry-unavailable'}))
+  }
   catch { console.error(JSON.stringify({event:'directory-audit-retry-unavailable'})) }
   finally { directoryAuditRunning=false }
 }, 10000)
@@ -329,6 +333,7 @@ async function handleRequest(req, res) {
       schemaExtra: (await schemaState()).extra.length,
       schemaReadable: (await schemaState()).error === null,
       directoryAuditPending: await directoryAuditPending().catch(()=>null),
+      businessBuildPending: await buildIntentsPending().catch(()=>null),
     })
   }
 
