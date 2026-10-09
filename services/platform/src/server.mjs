@@ -28,6 +28,17 @@ import { isApiPath, handleApi } from './api-router.mjs'
 import { bootstrapRoutes } from './bootstrap.mjs'
 import { pool } from './db.mjs'
 import { schemaDelta } from './sql-manifest.mjs'
+import { flushDirectoryAudit, directoryAuditPending } from './business-directory-audit.mjs'
+
+let directoryAuditRunning=false
+const directoryAuditTimer=setInterval(async()=>{
+  if(directoryAuditRunning) return
+  directoryAuditRunning=true
+  try { await flushDirectoryAudit({limit:20}) }
+  catch { console.error(JSON.stringify({event:'directory-audit-retry-unavailable'})) }
+  finally { directoryAuditRunning=false }
+}, 10000)
+directoryAuditTimer.unref()
 
 const PORT = Number(process.env.KVVI_PLATFORM_PORT ?? 7400)
 const HOST = process.env.KVVI_PLATFORM_HOST ?? '0.0.0.0'
@@ -317,6 +328,7 @@ async function handleRequest(req, res) {
       schemaBehind: (await schemaState()).behind.length,
       schemaExtra: (await schemaState()).extra.length,
       schemaReadable: (await schemaState()).error === null,
+      directoryAuditPending: await directoryAuditPending().catch(()=>null),
     })
   }
 
@@ -665,6 +677,7 @@ const SHUTDOWN_GRACE_MS = Number(process.env.KVVI_SHUTDOWN_GRACE_MS ?? 5000)
 
 for (const signal of ['SIGTERM', 'SIGINT']) {
   process.on(signal, () => {
+    clearInterval(directoryAuditTimer)
     console.log(JSON.stringify({ event: 'platform-service-down', signal }))
     server.close(() => process.exit(0))
     // 空闲连接先放掉：它们本来就没有请求在飞，等它们没有意义。

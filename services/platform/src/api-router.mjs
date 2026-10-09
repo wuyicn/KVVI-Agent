@@ -29,6 +29,7 @@ import { systemRoutes } from './system-api.mjs'
 import { adminRoutes } from './admin-api.mjs'
 import { publishRoutes } from './publish-api.mjs'
 import { brandingRoutes } from './branding-api.mjs'
+import { directoryRoutes } from './business-directory-api.mjs'
 import { loadSession } from './identity.mjs'
 import { verifyRuntimeContextHeaders } from './runtime-auth.mjs'
 import { FieldRuleError } from './field-rules.mjs'
@@ -257,7 +258,7 @@ export async function handleApi({ method, path, query, body, headers, loadSessio
   // ⚠️ `headers` 要一路传下去：幂等键**只认请求头** ——
   //    放进请求体它就成了一条模型可见的参数，而「重发不产生第二次效果」
   //    这条判据不该由模型决定。
-  const routes = { method, path: rest, payload, session, headers: headers ?? {} }
+  const routes = { method, path: rest, query, payload, session, headers: headers ?? {} }
   // ⚠️ **字段约束不满足 → 400，不是 500。**
   //
   // 校验发生在唯一的写入点（`refs.mjs`），所以它抛出来的错误会经过这里。
@@ -284,6 +285,7 @@ async function dispatch(routes) {
   //    在这里再切一次前缀，会把 `/admin/members` 切成 `bers` ——
   //    表现是每一个管理接口都回 404，而 404 看起来像「端点没写」。
   const resolved = routes.path || '/'
+  if (/^\/business-(directory|groups|forms)(\/|$)/u.test(resolved)) return directoryRoutes(routes)
 
   // ⚠️ 交给 `adminRoutes` 的是**去掉 `/admin` 之后**的路径。传整条路径的话，
   //    它的 `parts[0]` 是 `'admin'`，于是每一个分支都落到兜底 404 ——
