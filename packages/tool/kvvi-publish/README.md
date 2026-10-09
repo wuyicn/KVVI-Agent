@@ -36,6 +36,11 @@ Mount it in a builder preset with the platform's URL and the shared runtime-cont
 
 The tool takes the system code, an optional display name, and an optional workspace-relative contracts directory (default `契约`). It reads the six contracts, refuses when any is missing, and posts one draft. The workspace comes from the session (`session.header.cwd`) — the same source the file and shell tools use, so the tool and the builder's other tools always agree on which directory is being built.
 
+For a new form started in Business, pass the supplied `buildIntentId` unchanged.
+The platform validates its company, creator and draft, then groups the form only
+after owner-approved publication. Existing-form edits omit this argument. A draft
+receipt does not claim that publication or grouping has completed.
+
 ### Why the confirmation gate is part of this package
 
 Submitting is not reversible from the builder's side: the draft enters the channel and the owner sees it. The gate returns `ask` for `publish_submit` and delegates every other tool unchanged. `ask` fails closed when no answerer is composed, so an unattended run cannot submit silently — which is the behavior this step needs. Scoping the gate to one tool is deliberate: a gate that covers everything teaches users to approve without reading.

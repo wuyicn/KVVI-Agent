@@ -346,6 +346,10 @@ export function apply(ctx: Context, config: Config): void {
         description: '系统代号（`assetId`）。员工与所有者按这个代号看到系统。',
       },
       name: { type: 'string', description: '系统显示名。缺省用平台已有的名字。' },
+      buildIntentId: {
+        type: 'string',
+        description: '新建表单时给定的搭建意图编号，原样传回。用于发布后归入用户选择的分组；编辑已有表单时不传。',
+      },
       contractsDir: {
         type: 'string',
         description: '契约目录，相对工作区。缺省 `契约`。',
@@ -380,6 +384,7 @@ export function apply(ctx: Context, config: Config): void {
         throw new Error(`KVVI_PUBLISH_CONTRACTS_INCOMPLETE: 缺 ${missing.join('、')}（在 ${dir}）`)
       }
       const body: Record<string, unknown> = { assetId: args.system, contracts }
+      if (args.buildIntentId !== undefined) body['buildIntentId'] = args.buildIntentId
       if (args.name !== undefined && args.name !== '') body['name'] = args.name
       const result = await request<DraftResponse>(context(), 'POST', '/publish/drafts', body)
       if (!result.ok) throw new Error(refusalMessage(result))

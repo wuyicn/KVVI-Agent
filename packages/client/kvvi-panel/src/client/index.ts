@@ -24,7 +24,8 @@ import { businessAddress, businessDefinition, BUSINESS_TAB_ID } from './business
 import { createBusinessStore } from './business-store.ts'
 import { en, NS, zh, type KvviKey } from './locales.ts'
 import { readEntrance } from './api.ts'
-import { businessFromHint, parseBusinessHint, type BusinessHint } from './business-binding.ts'
+import { businessFromHint, editWorkspace, parseBusinessHint, type BusinessHint } from './business-binding.ts'
+import { loadDirectory } from './business-directory-api.ts'
 
 declare module '@deepseek-ai/dsh-api-session-controller/client' {
   interface SessionReferenceSourceMap { kvviBusiness: unknown }
@@ -121,7 +122,7 @@ export function apply(ctx: ClientContext): void {
     inject: (): BusinessPageInjected => ({
       enterBuilder: () => { globalThis.location.assign('/kvvi/builder/login') },
       pickDirectory: () => ctx.uiWorkspace.pickDirectory(),
-      startBuilder: async (parent, name, purpose) => {
+      startBuilder: async (parent, name, purpose, intentId) => {
         const entrance = await readEntrance()
         if (!entrance.ok || entrance.value.gateway !== 'BUILDER') throw new Error('KVVI_NOT_ALLOWED')
         const path = await ctx.uiWorkspace.createDirectory(parent, name)
@@ -132,18 +133,38 @@ export function apply(ctx: ClientContext): void {
           const { session } = await reference.ready
           ctx.uiWorkspace.openSession(id)
           const text = `请搭建业务“${name}”。需求：${purpose}。先确认表单与业务流程，再按搭建规范生成，发布前交给我检查。`
+            + `本次搭建意图编号为 ${intentId}，提交 publish_submit 时将它原样填入 buildIntentId。`
+            + '请将确认的资产代号写入工作区 .kvvi-system.json 的 assetId 字段。不得自行审批或发布。'
           const submission = session.beginSubmission({ mode: 'queue', text, attachments: [] })
           const result = await session.prompt([{ type: 'text', text }], 'queue', undefined, submission.requestId)
           if (!result.ok) throw result.error
         } finally { reference.release() }
       },
-      designBusiness: async (workspaceId) => {
+      designBusiness: async (assetId, explicitWorkspace) => {
         const entrance = await readEntrance()
         if (!entrance.ok || entrance.value.gateway !== 'BUILDER') throw new Error('KVVI_NOT_ALLOWED')
+        const directory = await loadDirectory({ archived: false })
+        if (!directory.ok || !directory.value.forms.some(f => f.assetId === assetId)) throw new Error('KVVI_NOT_ALLOWED')
+        const controller = new AbortController()
+        const candidates = await Promise.all(ctx.workspaces.list.getSnapshot().items.map(async w => ({
+          workspaceId: w.workspaceId,
+          hint: w.sessionIds[0] === undefined ? { kind: 'unavailable' } as const : await readHint(w.sessionIds[0], controller.signal),
+        })))
+        const workspaceId = editWorkspace(candidates, assetId, explicitWorkspace)
+        if (workspaceId === undefined) throw new Error('KVVI_WORKSPACE_REQUIRED')
         const workspace = ctx.workspaces.list.getSnapshot().items.find(item => item.workspaceId === workspaceId)
         if (workspace === undefined) throw new Error('KVVI_BAD_REQUEST')
         const id = await ctx.sessions.create({ workspaceId: workspace.workspaceId })
-        ctx.uiWorkspace.openSession(id)
+        const reference = ctx.sessions.retain(id, { source: 'kvviBusiness' })
+        try {
+          const { session } = await reference.ready
+          ctx.uiWorkspace.openSession(id)
+          const text = `请协助编辑现有表单，资产代号为 ${assetId}。先检查本工作区契约是否属于这个资产，不一致时停止并请我确认。`
+            + '只修改草稿，不改员工正在使用的已发布版本；提交前交给我检查，仍由所有者审批发布。'
+          const submission = session.beginSubmission({ mode: 'queue', text, attachments: [] })
+          const result = await session.prompt([{ type: 'text', text }], 'queue', undefined, submission.requestId)
+          if (!result.ok) throw result.error
+        } finally { reference.release() }
       },
       back: () => { ctx.layout.selectPanel(null) },
       manage: () => { globalThis.dispatchEvent(new Event(KVVI_OPEN_EVENT)) },

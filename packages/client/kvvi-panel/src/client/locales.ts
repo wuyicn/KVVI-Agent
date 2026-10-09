@@ -18,6 +18,8 @@ export const QUERY_UNSUPPORTED = 'KVVI_TABLE_QUERY_UNSUPPORTED'
 
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
+  'business.buildGroup': '所属分组',
+  'business.editWorkspaceHint': '未找到可确认归属的工作区，请明确选择。若工作区已绑定其他表单，将拒绝打开。',
   'directory.newGroup': '新增分组',
   'directory.newForm': '新增表单',
   'directory.ungrouped': '未分组',
@@ -287,6 +289,8 @@ export const zh = {
 
 /** English dictionary, key-identical to the Chinese source of truth. */
 export const en: Record<KvviKey, string> = {
+  'business.buildGroup': 'Target group',
+  'business.editWorkspaceHint': 'No verified workspace association was found. Choose explicitly. A workspace bound to another form is refused.',
   'directory.newGroup': 'New group',
   'directory.newForm': 'New form',
   'directory.ungrouped': 'Ungrouped',

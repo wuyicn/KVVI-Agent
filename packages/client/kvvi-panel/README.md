@@ -104,8 +104,16 @@ creation. Active `gateway=BUILDER` is still required by every builder callback;
 discovery never grants tools or creates resources in USER mode. Starting a business
 collects its name, requirements and parent folder; the original Host directory,
 Workspace and Session APIs create its builder workspace and send its first request.
+The selected group is stored in a server build intent before opening the original
+builder conversation. Its logged request gives the intent ID to `publish_submit`;
+the platform binds it to the submitted draft, without approving it. Owner-approved
+publication queues durable initial placement. A deleted group falls back to
+Ungrouped; existing manual placement and archived state win over delayed placement.
 It is listed as a published business only after the actual publish flow succeeds.
-Design form opens a new builder conversation in the explicitly bound workspace.
+Design form resolves a unique matching `.kvvi-system.json` asset marker, never a
+workspace title. Otherwise it requires an explicit unmarked workspace selection;
+unreadable and mismatching markers refuse. The new conversation edits a draft, not
+the employee's currently published version, and still requires owner approval.
 No prototype role switch, fake AI reply, sample records or client-only publish state
 is imported. Dashboards/reports and permanent record deletion are not exposed by the directory controls.
 

@@ -1,5 +1,6 @@
 /** Business data takes the main area; the original Conversation is an optional assistant. */
 import { useEffect, useRef, useState } from 'react'
+import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
 import type { InjectFace, PropsLocale, PropsRenderFactories, PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ComposerBlock } from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -10,7 +11,7 @@ import type { SessionReference } from '@deepseek-ai/dsh-api-session-controller/c
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { Button, Modal, IconPlusOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { adminCapabilities, readEntrance, loadRuntime } from './api.ts'
-import { loadDirectory, type BusinessForm, type Directory } from './business-directory-api.ts'
+import { createBuildIntent, loadDirectory, type BusinessForm, type Directory } from './business-directory-api.ts'
 import { BusinessDirectory } from './BusinessDirectory.tsx'
 import { BusinessDirectoryDialogs, type DirectoryDialog } from './BusinessDirectoryDialogs.tsx'
 import type { PublishedSystem } from './api.ts'
@@ -24,8 +25,8 @@ import css from './business.module.css'
 export interface BusinessPageInjected {
   enterBuilder: () => void
   pickDirectory: () => Promise<string | null>
-  startBuilder: (parent: string, name: string, purpose: string) => Promise<void>
-  designBusiness: (workspaceId: string) => Promise<void>
+  startBuilder: (parent: string, name: string, purpose: string, intentId: string) => Promise<void>
+  designBusiness: (assetId: string, workspaceId?: string) => Promise<void>
   back: () => void
   manage: () => void
   bindBusiness: (
@@ -60,6 +61,9 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
   const [parent, setParent] = useState('')
   const [building, setBuilding] = useState(false)
   const [buildError, setBuildError] = useState(false)
+  const [buildGroup, setBuildGroup] = useState('')
+  const [designing, setDesigning] = useState(false)
+  const buildOperation = useRef<{ group: string; id: string }>()
   const collapsed = useStore(s => s.collapsed)
   const selection = useRef<BusinessForm | null>(null)
   const identity = useRef('')
@@ -128,12 +132,35 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
   }
   const clearBuilderDraft = () => {
     setDialog(undefined); setCreating(false); setName(''); setPurpose(''); setParent(''); setBuildError(false); setAuditPending(false)
+    setDesigning(false); setBuildGroup(''); setBuilding(false); buildOperation.current = undefined
+  }
+  const beginBuild = async () => {
+    if (building) return
+    setBuilding(true); setBuildError(false)
+    const scope = identity.current
+    if (buildOperation.current?.group !== buildGroup) buildOperation.current = { group: buildGroup, id: randomUUID() }
+    try {
+      const result = await createBuildIntent(buildGroup || null, buildOperation.current.id)
+      if (identity.current !== scope) return
+      if (!result.ok || !result.value.intentId) { setBuildError(true); return }
+      await startBuilder(parent, name.trim(), purpose.trim(), result.value.intentId)
+      if (identity.current === scope) { setCreating(false); buildOperation.current = undefined }
+    } catch (_error) { if (identity.current === scope) setBuildError(true) }
+    finally { if (identity.current === scope) setBuilding(false) }
+  }
+  const editForm = async (chosenWorkspace?: string) => {
+    if (system === null || building) return
+    const scope = identity.current
+    setBuilding(true); setBuildError(false)
+    try { await designBusiness(system.assetId, chosenWorkspace); if (identity.current === scope) setDesigning(false) }
+    catch (_error) { if (identity.current === scope) { setDesigning(true); setBuildError(true) } }
+    finally { if (identity.current === scope) setBuilding(false) }
   }
   return <section className={css.workbench}>
     <header className={css.workbenchHeader}><div><h1>{t('panel.title')}</h1><p className={css.hint}>{t('panel.subtitle')}</p></div><div className={css.directoryActions}>
       {canAdmin ? <Button variant="ghost" onClick={manage}>{t('admin.title')}</Button> : null}
       {builder ? <><Button variant="outline" onClick={() => { setDialog({ action: 'group.create', input: {} }) }}>{t('directory.newGroup')}</Button><Button variant="ghost" aria-pressed={archived} onClick={() => { clearSelection(); setArchived(!archived) }}>{t(archived ? 'directory.active' : 'directory.archived')}</Button></> : null}
-      {canBuild ? <Button variant="primary" icon={<IconPlusOutline16/>} title={builder ? undefined : t('business.switchBuilder')} onClick={() => { if (!builder) { enterBuilder(); return }; setCreating(true); setBuildError(false) }}>{t('directory.newForm')}</Button> : null}
+      {canBuild ? <Button variant="primary" icon={<IconPlusOutline16/>} title={builder ? undefined : t('business.switchBuilder')} onClick={() => { if (!builder) { enterBuilder(); return }; setCreating(true); setBuildGroup(system?.groupId ?? ''); setBuildError(false) }}>{t('directory.newForm')}</Button> : null}
       <Button variant="ghost" onClick={() => { setAttempt(v => v + 1) }}>{t('directory.refresh')}</Button><Button variant="ghost" onClick={back}>{t('panel.close')}</Button>
     </div></header>
     {error !== undefined && (system === null || error.startsWith('KVVI_')) ? <ReadFailure error={error} copy={t} onRetry={() => { setAttempt(v => v + 1) }}/> : null}
@@ -148,7 +175,7 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
         {system !== null ? <div className={css.formManagement}><strong>{system.name}</strong><div>
           {builder ? <>{!archived ? <Button variant="ghost" onClick={() => { setDialog({ action: 'form.move', input: { target: system.assetId, expectedVersion: system.version, groupId: system.groupId } }) }}>{t('directory.move')}</Button> : null}<Button variant="ghost" onClick={() => { setDialog({ action: archived ? 'form.restore' : 'form.archive', input: { target: system.assetId, expectedVersion: system.version } }) }}>{t(archived ? 'directory.restore' : 'directory.archive')}</Button></> : null}
           {!archived ? <>
-            {builder ? <Button variant="outline" disabled={session === undefined || busy || building} onClick={() => { if (session === undefined) return; const w = workspaces.find(w => w.sessionIds.includes(session.sessionId)); if (w === undefined) return; setBuilding(true); void designBusiness(w.workspaceId).catch(() => { setBuildError(true) }).finally(() => { setBuilding(false) }) }}>{t('business.design')}</Button> : null}
+            {builder ? <Button variant="outline" disabled={busy || building} onClick={() => { void editForm() }}>{t('business.design')}</Button> : null}
             <Button variant="outline" disabled={session === undefined || busy} aria-pressed={ai} onClick={() => { setAI(!ai) }}>{t(ai ? 'business.ai.close' : 'business.ai')}</Button></> : null}
         </div></div> : null}
         <div className={css.businessWorkspaceBody}>
@@ -165,14 +192,20 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
       onCommitted={(pending) => { setAuditPending(pending); setDialog(undefined); setAttempt(v => v + 1) }}
       onConflict={() => { setAttempt(v => v + 1) }}/> : null}
     {buildError && !creating ? <p role="alert" className={css.notice}>{t('business.buildFailed')}</p> : null}
+    {designing ? <Modal open title={t('business.design')} closeLabel={t('panel.close')} onClose={() => { if (!building) setDesigning(false) }}>
+      <p>{t('business.editWorkspaceHint')}</p>
+      <label className={css.field}>{t('business.workspace')}<select className={css.control} value={workspaceId} onChange={(e) => { setWorkspaceId(e.target.value) }}><option value="">{t('business.workspace.choose')}</option>{workspaces.map(w => <option key={w.workspaceId} value={w.workspaceId}>{w.title}</option>)}</select></label>
+      <Button variant="primary" disabled={building || !workspaceId} onClick={() => { void editForm(workspaceId) }}>{t('business.design')}</Button>
+    </Modal> : null}
     {creating ? <Modal open title={t('business.new')} closeLabel={t('panel.close')} onClose={() => { if (!building) setCreating(false) }}>
       <p className={css.hint}>{t('business.buildHint')}</p>
       {buildError ? <p role="alert">{t('business.buildFailed')}</p> : null}
       <label className={css.field}>{t('business.name')}<input className={css.control} value={name} onChange={(e) => { setName(e.target.value) }} maxLength={80}/></label>
       <label className={css.field}>{t('business.purpose')}<textarea className={css.control} value={purpose} onChange={(e) => { setPurpose(e.target.value) }}/></label>
+      <label className={css.field}>{t('business.buildGroup')}<select className={css.control} value={buildGroup} disabled={building} onChange={(e) => { setBuildGroup(e.target.value) }}><option value="">{t('directory.ungrouped')}</option>{directory.groups.map(g => <option key={g.groupId} value={g.groupId}>{g.name}</option>)}</select></label>
       <label className={css.field}>{t('business.folder')}<input className={css.control} value={parent} readOnly/></label>
       <Button variant="outline" disabled={building} onClick={() => { void pickDirectory().then((path) => { if (path !== null) setParent(path) }).catch(() => { setBuildError(true) }) }}>{t('business.chooseFolder')}</Button>
-      <div className={css.formActions}><Button variant="primary" disabled={building || !name.trim() || !purpose.trim() || !parent || /[\\/]/u.test(name)} onClick={() => { setBuilding(true); setBuildError(false); void startBuilder(parent, name.trim(), purpose.trim()).catch(() => { setBuildError(true) }).finally(() => { setBuilding(false) }) }}>{t('business.startBuild')}</Button></div>
+      <div className={css.formActions}><Button variant="primary" disabled={building || !name.trim() || !purpose.trim() || !parent || /[\\/]/u.test(name)} onClick={() => { void beginBuild() }}>{t('business.startBuild')}</Button></div>
     </Modal> : null}
   </section>
 }

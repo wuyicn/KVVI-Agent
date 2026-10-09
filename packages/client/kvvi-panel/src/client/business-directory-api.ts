@@ -10,6 +10,11 @@ export interface BusinessForm extends PublishedSystem {
 export interface Directory { groups: BusinessGroup[]; forms: BusinessForm[] }
 export type DirectoryAction = 'group.create' | 'group.rename' | 'group.delete' | 'form.move' | 'form.archive' | 'form.restore'
 export interface DirectoryInput { target?: string; expectedVersion?: number; name?: string; groupId?: string | null; confirmed?: boolean }
+/** @param groupId - intended company group. @param operationId - stable retry identifier. @returns a server-owned build intention. */
+export function createBuildIntent(groupId: string | null, operationId: string) {
+  return request<{ intentId: string; version: number }>('POST', '/business-build-intents', { groupId }, undefined, undefined,
+    { 'Idempotency-Key': operationId })
+}
 /** @param options - archive filter and request lifetime. @returns server-owned company directory. */
 export async function loadDirectory(
   { archived = false, signal }: { archived?: boolean; signal?: AbortSignal },

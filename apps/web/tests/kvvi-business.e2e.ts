@@ -6,6 +6,36 @@ import { chromium } from 'playwright'
 import { expect, it } from 'vitest'
 import { launchWebScaffold, watchConsole } from './scaffold.ts'
 import { newEnglishPage } from './support.ts'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
+import type {} from '@deepseek-ai/dsh-tools'
+
+it('loads the publish tool with its build-intent schema and refuses unattended submission', async () => {
+  const folder = await mkdtemp(join(tmpdir(), 'kvvi-publish-composition-'))
+  const overlay = join(folder, 'publish.yml')
+  await writeFile(overlay, `- insert:
+    - id: kvvi-mode-router
+      name: '@deepseek-ai/dsh-host-kvvi-mode-router'
+      config:
+        secret: test-composition-secret
+    - id: kvvi-publish
+      name: '@deepseek-ai/dsh-tool-kvvi-publish'
+      config:
+        platformUrl: http://127.0.0.1:1
+        contextSecret: test-composition-secret
+`)
+  const scaffold = await launchWebScaffold({ extraOverlayPath: overlay })
+  try {
+    const schema = scaffold.ctx.tools.schemas().find(tool => tool.name === 'publish_submit')
+    expect(schema).toBeDefined()
+    expect(JSON.stringify(schema)).toContain('buildIntentId')
+    const result = await scaffold.ctx.tools.execute({
+      callId: ToolCallId('unattended-publish'), name: 'publish_submit', arguments: { system: 'new_form' },
+      signal: new AbortController().signal,
+    })
+    expect(result.isError).toBe(true)
+    expect(JSON.stringify(result)).not.toContain('KVVI_PLATFORM_UNREACHABLE')
+  } finally { await scaffold.close(); await rm(folder, { recursive: true, force: true }) }
+}, 120_000)
 
 it('renders the Harness business layout and submits through the authorized record API', async () => {
   const folder = await mkdtemp(join(tmpdir(), 'kvvi-business-fixture-'))

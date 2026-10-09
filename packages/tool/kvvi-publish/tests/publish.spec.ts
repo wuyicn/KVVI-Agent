@@ -17,7 +17,9 @@
  * 这里做的是**同一组向量**：与 `kvvi-business/tests/tools.spec.ts` 的
  * `contextHeaders` 用例用同一份期望值，漂移会在两边同时红。
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import type { Context } from '@deepseek-ai/cordis'
+import type { ToolDefinition, ToolRunContext } from '@deepseek-ai/dsh-tools'
 import { createHmac } from 'node:crypto'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -25,7 +27,7 @@ import { join } from 'node:path'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { ModeContext } from '@deepseek-ai/dsh-host-kvvi-mode-router'
 import { contextHeaders, refusalMessage, request } from '../src/client.ts'
-import { contractFiles, readContracts, resolveContractsDir, CONTRACT_TYPES } from '../src/index.ts'
+import { apply, contractFiles, readContracts, resolveContractsDir, CONTRACT_TYPES } from '../src/index.ts'
 
 // ⚠️ 显式标类型：`gateway` 让对象字面量推断成 `string`，而签名函数要的是那个
 //    窄联合（`'BUILDER' | 'USER'`）—— 不标的话这一行会变成一个类型错误，
@@ -38,6 +40,28 @@ const MODE: Pick<ModeContext, 'sessionId' | 'userId' | 'companyId' | 'gateway'> 
 }
 const SECRET = 'shared-runtime-secret'
 const NOW = 1_790_000_000_000
+
+it('passes a server build intent through the actual publish tool without approving the draft', async () => {
+  const root = tree(Object.fromEntries(['business-schema', 'view-schema', 'workflow-spec',
+    'permission-spec', '工具', '搭建命令'].map(t => [`契约/${t}.json`, '{}'])))
+  let tool: ToolDefinition | undefined
+  const calls: { url: string; body: unknown }[] = []
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit) => {
+    calls.push({ url, body: JSON.parse(String(init.body)) })
+    return Response.json({ draftId: 'draft-from-platform', status: 'AWAITING_APPROVAL' })
+  }))
+  try {
+    apply({ tools: { register: (value: ToolDefinition) => { tool = value } },
+      kvviModeRouter: { requireMode: () => MODE }, on: () => {},
+    } as unknown as Context, { platformUrl: 'http://platform.invalid', contextSecret: SECRET })
+    const result = await tool!.execute({ system: 'new_form', buildIntentId: '11111111-1111-4111-8111-111111111111' },
+      { agent: agentWithCwd(root) } as ToolRunContext)
+    expect(result).toMatchObject({ draftId: 'draft-from-platform', status: 'AWAITING_APPROVAL' })
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.url).toBe('http://platform.invalid/api/v1/publish/drafts')
+    expect(calls[0]?.body).toMatchObject({ assetId: 'new_form', buildIntentId: '11111111-1111-4111-8111-111111111111' })
+  } finally { vi.unstubAllGlobals(); rmSync(root, { recursive: true, force: true }) }
+})
 
 /** 一个只带 cwd 的会话桩 —— 工具只从它取工作区。 */
 function agentWithCwd(cwd: string | undefined): Agent {
