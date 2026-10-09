@@ -102,7 +102,11 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
   useEffect(() => {
     const refresh = () => { setAttempt(v => v + 1) }
     globalThis.addEventListener('focus', refresh)
-    return () => { globalThis.removeEventListener('focus', refresh) }
+    globalThis.addEventListener('kvvi-business-directory-refresh', refresh)
+    return () => {
+      globalThis.removeEventListener('focus', refresh)
+      globalThis.removeEventListener('kvvi-business-directory-refresh', refresh)
+    }
   }, [])
   useEffect(() => () => { navigation.current++; association.current?.abort() }, [])
   useEffect(() => () => { session?.release() }, [session])

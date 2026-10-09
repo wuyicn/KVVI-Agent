@@ -34,7 +34,7 @@ it('mounts records and the original embedded AI under the matching business sess
     'subagents/list': { ok: true, value: { entries: [], parentAvailable: true } },
     'commands/list': { ok: true, value: [] },
     'skills/list': { ok: true, value: { skills: [] } },
-    'workspaceFiles/read': { ok: false, error: { code: 'workspace-file/not-found', message: 'Missing' } },
+    'workspaceFiles/read': { ok: true, value: { text: '{"assetId":"customer"}', eof: true, lines: 1, offset: 1, absolutePath: '/客户登记系统/.kvvi-system.json', version: '1' } },
     'session/list': { ok: true, value: { items: [{ sessionId: 's1', cwd: '/客户登记系统', updatedAt: 1, running: false, blank: true }] } },
   } })
   mock.stream('workspace/follow', (_args, stream) => {
@@ -144,13 +144,14 @@ it('uses the same record layout and explicitly binds differently named business 
     'commands/list': { ok: true, value: [] },
     'skills/list': { ok: true, value: { skills: [] } },
     'workspaceFiles/read': { ok: false, error: { code: 'workspace-file/not-found', message: 'Missing' } },
+    'session/create': { ok: true, value: { sessionId: 's2' } },
     'session/list': { ok: true, value: { items: [{ sessionId: 's1', cwd: '/客户登记系统', updatedAt: 1, running: false, blank: true }] } },
   } })
   mock.stream('workspace/follow', (_args, stream) => {
     stream.push({ type: 'baseline', value: { items: [{ workspaceId: 'w1', title: '客户登记系统', path: '/客户登记系统', sessionIds: ['s1'], createdAt: '', updatedAt: '' }], archivedSessionIds: [] } })
   })
   mock.stream('session/follow', (_args, stream) => {
-    stream.push({ type: 'snapshot', header: { version: 3, id: 's1', createdAt: 0, isSeeded: false }, cursor: -1, records: [], hasMore: false, projections: { asOfSeq: -1, values: {} }, assistantStream: { revision: 0 } })
+    stream.push({ type: 'snapshot', header: { version: 3, id: 's2', createdAt: 0, isSeeded: false }, cursor: -1, records: [], hasMore: false, projections: { asOfSeq: -1, values: {} }, assistantStream: { revision: 0 } })
   })
   const client = await start()
   fireEvent.click(await screen.findByRole('button', { name: 'Business' }))
@@ -159,7 +160,8 @@ it('uses the same record layout and explicitly binds differently named business 
   fireEvent.change(screen.getByRole('combobox', { name: 'AI conversation workspace' }), { target: { value: 'w1' } })
   const ai = await screen.findByRole('button', { name: 'AI assistant' })
   await vi.waitFor(() => expect(ai).toHaveProperty('disabled', false))
-  expect(client.ctx.sessions.list.getSnapshot().byId['s1' as SessionId]?.retainedBy.kvviBusiness).toBe(1)
+  expect(client.ctx.sessions.list.getSnapshot().byId['s1' as SessionId]?.retainedBy.kvviBusiness ?? 0).toBe(0)
+  expect(client.ctx.sessions.list.getSnapshot().byId['s2' as SessionId]?.retainedBy.kvviBusiness).toBe(1)
   fireEvent.click(ai)
   await screen.findByRole('complementary', { name: 'AI assistant' })
   expect(document.querySelector('[data-slot="kvvi.business.session"] [contenteditable]')).not.toBeNull()

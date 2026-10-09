@@ -49,6 +49,12 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
   const [formError, setFormError] = useState<string | undefined>()
   const live = useRef(true)
   const writing = useRef(false)
+  useEffect(() => {
+    if (write?.error !== 'KVVI_FORM_ARCHIVED') return
+    setDialog(false); setProjection(null); setPage(null); setDetail(null); setAllowedFields(null)
+    setError('KVVI_FORM_ARCHIVED')
+    globalThis.dispatchEvent(new Event('kvvi-business-directory-refresh'))
+  }, [write?.error])
   useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   useEffect(() => {
     const controller = new AbortController()
@@ -94,7 +100,7 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
   const view = projection?.views[assetId]
   const open = (next: 'form' | 'records') => { openResource(businessAddress(assetId, next)) }
   const create = (data: Record<string, string>) => {
-    if (writing.current || busy || allowedFields === null) return
+    if (writing.current || busy || allowedFields === null || error === 'KVVI_FORM_ARCHIVED') return
     const submittedDraft = { ...draft }
     writing.current = true; actions.begin(address); setError(undefined)
     void createRecord(assetId, data).then((result) => {
@@ -117,6 +123,10 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
   const form = view === undefined ? <p role="alert">{t('system.unrunnable', { detail: 'KVVI_RUNTIME_CONTRACT_INCOMPLETE' })}</p> :
     <KvviFormView spec={view} copy={t} context={fieldContextOf((model?.fields ?? []).filter(field => allowedFields?.some(visible => visible.field_code === field.field_code)).map(field => ({ ...field, type_config: { ...field.type_config, options: allowedFields?.find(visible => visible.field_code === field.field_code)?.options ?? [] } })), Object.fromEntries((model?.fields ?? []).map(field => [field.field_code, allowedFields?.some(visible => visible.field_code === field.field_code) === true ? 'VISIBLE' : 'HIDDEN'])))} values={draft ?? {}}
       onValuesChange={(values) => { actions.change(assetId, values) }} onSubmit={create} busy={busy} />
+  if (error === 'KVVI_FORM_ARCHIVED') return <ReadFailure error={error} copy={t} onRetry={() => {
+    actions.finish(address, { busy: false }, false, identity)
+    setAttempt(a => a + 1)
+  }}/>
   return <section className={css.dockBody}>
     <header className={css.systemHeading}><h2 className={css.sectionTitle}>{view?.name ?? model?.name ?? projection?.system.name ?? t('panel.loading')}</h2></header>
     {presentation === 'dock' ? <nav className={css.viewTabs} aria-label={t('panel.aria')}>

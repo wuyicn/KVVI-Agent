@@ -3,6 +3,22 @@ import type { PublishedSystem } from './api.ts'
 
 export type BusinessHint = { kind: 'absent' } | { kind: 'unavailable' } | { kind: 'selected'; assetId: string }
 
+/** @param candidates - authorized markers. @param systems - full visible catalogue.
+ * @param assetId - current form. @param explicit - selected workspace, never overriding a conflicting marker.
+ * @returns one unambiguous workspace; unmarked explicit choices require a fresh business session.
+ */
+export function businessWorkspace<T extends { workspaceId: string; title: string; hint: BusinessHint }>(
+  candidates: readonly T[], systems: readonly PublishedSystem[], assetId: string, explicit?: string,
+): T | undefined {
+  const matches = candidates.filter((c) => {
+    if (explicit !== undefined && c.workspaceId !== explicit) return false
+    if (c.hint.kind === 'unavailable') return false
+    if (explicit !== undefined && c.hint.kind === 'absent') return true
+    return businessFromHint(systems, c.title, c.hint)?.assetId === assetId
+  })
+  return matches.length === 1 ? matches[0] : undefined
+}
+
 /**
  * @param candidates - workspaces and their authorized marker reads.
  * @param assetId - published form being edited.

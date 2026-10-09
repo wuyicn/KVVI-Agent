@@ -24,8 +24,11 @@ import { businessAddress, businessDefinition, BUSINESS_TAB_ID } from './business
 import { createBusinessStore } from './business-store.ts'
 import { en, NS, zh, type KvviKey } from './locales.ts'
 import { readEntrance } from './api.ts'
-import { businessFromHint, editWorkspace, parseBusinessHint, type BusinessHint } from './business-binding.ts'
+import { businessFromHint, businessWorkspace, editWorkspace, parseBusinessHint, type BusinessHint } from './business-binding.ts'
 import { loadDirectory } from './business-directory-api.ts'
+import { createBuilderStarter } from './builder-start.ts'
+import type { SubmissionHandle } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
 declare module '@deepseek-ai/dsh-api-session-controller/client' {
   interface SessionReferenceSourceMap { kvviBusiness: unknown }
@@ -87,6 +90,27 @@ export function apply(ctx: ClientContext): void {
     if (!result.ok) return { kind: result.error.code === 'workspace-file/not-found' ? 'absent' : 'unavailable' }
     return parseBusinessHint(result.value.text, result.value.eof)
   }
+  const submissions = new Map<string, SubmissionHandle>()
+  const sessionAssets = new Map<SessionId, string>()
+  const startBuilder = createBuilderStarter({
+    createDirectory: (parent, name) => ctx.uiWorkspace.createDirectory(parent, name),
+    createWorkspace: path => ctx.workspaces.create({ path }),
+    createSession: workspace => ctx.sessions.create({ workspaceId: workspace.workspaceId }),
+    send: async (id, text, operation) => {
+      const reference = ctx.sessions.retain(id, { source: 'kvviBusiness' })
+      try {
+        const { session } = await reference.ready
+        ctx.uiWorkspace.openSession(id)
+        let submission = submissions.get(operation)
+        if (submission === undefined) {
+          submission = session.beginSubmission({ mode: 'queue', text, attachments: [] })
+          submissions.set(operation, submission)
+        }
+        const result = await session.prompt([{ type: 'text', text }], 'queue', undefined, submission.requestId)
+        if (!result.ok) throw result.error
+      } finally { reference.release() }
+    },
+  })
   const panelId = 'kvvi-business' as MainPanelId
   ctx.effect(() => ctx.sidebarRightTabs.register(businessDefinition(t)), 'kvvi-panel: business resource type')
   const store = createBusinessStore()
@@ -125,20 +149,7 @@ export function apply(ctx: ClientContext): void {
       startBuilder: async (parent, name, purpose, intentId) => {
         const entrance = await readEntrance()
         if (!entrance.ok || entrance.value.gateway !== 'BUILDER') throw new Error('KVVI_NOT_ALLOWED')
-        const path = await ctx.uiWorkspace.createDirectory(parent, name)
-        const workspace = await ctx.workspaces.create({ path })
-        const id = await ctx.sessions.create({ workspaceId: workspace.workspaceId })
-        const reference = ctx.sessions.retain(id, { source: 'kvviBusiness' })
-        try {
-          const { session } = await reference.ready
-          ctx.uiWorkspace.openSession(id)
-          const text = `请搭建业务“${name}”。需求：${purpose}。先确认表单与业务流程，再按搭建规范生成，发布前交给我检查。`
-            + `本次搭建意图编号为 ${intentId}，提交 publish_submit 时将它原样填入 buildIntentId。`
-            + '请将确认的资产代号写入工作区 .kvvi-system.json 的 assetId 字段。不得自行审批或发布。'
-          const submission = session.beginSubmission({ mode: 'queue', text, attachments: [] })
-          const result = await session.prompt([{ type: 'text', text }], 'queue', undefined, submission.requestId)
-          if (!result.ok) throw result.error
-        } finally { reference.release() }
+        await startBuilder(parent, name, purpose, intentId)
       },
       designBusiness: async (assetId, explicitWorkspace) => {
         const entrance = await readEntrance()
@@ -169,19 +180,25 @@ export function apply(ctx: ClientContext): void {
       back: () => { ctx.layout.selectPanel(null) },
       manage: () => { globalThis.dispatchEvent(new Event(KVVI_OPEN_EVENT)) },
       bindBusiness: async (system, current, workspaceId, signal) => {
-        const candidates = ctx.workspaces.list.getSnapshot().items
-        const matches = workspaceId === undefined ? (await Promise.all(candidates.map(async (workspace) => {
-          const representative = current !== undefined && workspace.sessionIds.includes(current) ? current : workspace.sessionIds[0]
-          const hint = representative === undefined ? { kind: 'absent' } as const : await readHint(representative, signal)
-          return businessFromHint([system], workspace.title, hint) === undefined ? undefined : workspace
-        }))).filter(workspace => workspace !== undefined) : candidates.filter(workspace => workspace.workspaceId === workspaceId)
+        const directory = await loadDirectory({ signal })
+        if (!directory.ok) return undefined
+        const candidates = await Promise.all(ctx.workspaces.list.getSnapshot().items.map(async (workspace) => {
+          const representative = workspace.sessionIds[0]
+          const hint = representative === undefined ? { kind: 'unavailable' } as const : await readHint(representative, signal)
+          return { ...workspace, hint }
+        }))
         signal.throwIfAborted()
-        if (matches.length !== 1) return undefined
-        const workspace = matches[0]
+        const workspace = businessWorkspace(candidates, directory.value.forms, system.assetId, workspaceId)
         if (workspace === undefined) return undefined
-        const id = current !== undefined && workspace.sessionIds.includes(current)
-          ? current : await ctx.uiWorkspace.connectWorkspace(workspace.workspaceId)
+        const known = workspace.sessionIds.find(id => sessionAssets.get(id) === system.assetId)
+        const chosen = current !== undefined && workspace.sessionIds.includes(current) ? current
+          : known ?? (workspace.hint.kind === 'selected' ? workspace.sessionIds[0] : undefined)
+        // An unmarked workspace never adopts an unrelated conversation or its unsent draft.
+        const reuse = chosen !== undefined && (sessionAssets.get(chosen) === system.assetId
+          || workspace.hint.kind === 'selected' && !sessionAssets.has(chosen))
+        const id = reuse ? chosen : await ctx.sessions.create({ workspaceId: workspace.workspaceId })
         signal.throwIfAborted()
+        sessionAssets.set(id, system.assetId)
         const reference = ctx.sessions.retain(id, { source: 'kvviBusiness', signal })
         try { await reference.ready; signal.throwIfAborted(); return reference } catch (error) { reference.release(); throw error }
       },

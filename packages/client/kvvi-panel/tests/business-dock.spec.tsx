@@ -12,6 +12,27 @@ import { zh } from '../src/client/locales.ts'
 const t = ((key: string, params?: Record<string, unknown>) => ((zh as Record<string,string>)[key] ?? key).replace(/\{(\w+)\}/gu, (_, name: string) => String(params?.[name] ?? ''))) as BusinessBodyProps['t']
 const runtime = { system: { name: '客户登记', assetId: 'customer' }, models: { customer: { fields: [{ field_code:'name', label:'名称' }] } }, views: { customer: { view_type:'FORM', componentsTree:[{ id:'root',componentName:'FormPage',children:[{ id:'f',componentName:'ShortTextField',props:{ fieldBinding:{ fieldRef:'name' } } }] }] } }, workflows:{} }
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+it('leaves editing on an archived write refusal and retains the unsaved draft', async () => {
+  const refresh = vi.fn()
+  globalThis.addEventListener('kvvi-business-directory-refresh', refresh)
+  vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => Promise.resolve(Response.json(
+    init?.method === 'POST' ? { error: 'KVVI_FORM_ARCHIVED' } : url.endsWith('/fields') ? { fields: runtime.models.customer.fields } : runtime,
+    { status: init?.method === 'POST' ? 409 : 200 },
+  ))))
+  try {
+    const b = body(businessAddress('customer', 'form')); render(<BusinessBody {...b.props}/>)
+    fireEvent.change(await screen.findByLabelText('name'), { target: { value: 'unsaved' } })
+    fireEvent.click(screen.getByRole('button', { name: '弹窗填写' }))
+    fireEvent.submit(screen.getByLabelText('name').closest('form')!)
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(screen.queryByLabelText('name')).toBeNull()
+    expect(b.store.getSnapshot().drafts.customer?.name).toBe('unsaved')
+    expect(screen.getByText(zh['read.archived'])).toBeTruthy()
+    expect(refresh).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('button', { name: zh['read.retry'] }))
+    expect(await screen.findByLabelText('name')).toHaveProperty('value', 'unsaved')
+  } finally { globalThis.removeEventListener('kvvi-business-directory-refresh', refresh) }
+})
 function body(address: string) {
   const store = createBusinessStore().create()
   const openResource = vi.fn()
