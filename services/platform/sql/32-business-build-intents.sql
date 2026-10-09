@@ -2,6 +2,7 @@ BEGIN;
 CREATE TABLE business_build_intents (
   company_id uuid NOT NULL,
   intent_id uuid NOT NULL,
+  directory_operation_id uuid NOT NULL DEFAULT gen_random_uuid() UNIQUE,
   creator_id uuid NOT NULL,
   session_id uuid NOT NULL,
   group_id uuid,

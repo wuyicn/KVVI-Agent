@@ -148,9 +148,10 @@ async function systemRuntime(ctx, assetId) {
  * @returns {Promise<{status: number, body: object}>}
  */
 async function systemFields(ctx, assetId) {
-  if (!await canAct(ctx.companyId, ctx.userId, 'FORM', assetId, 'read')) {
+  if (!await canAct(ctx.companyId, ctx.userId, 'FORM', assetId, 'read')
+    && !await canAct(ctx.companyId, ctx.userId, 'FORM', assetId, 'create')) {
     return { status: 403, body: { error: 'KVVI_NOT_ALLOWED',
-      detail: `没有 ${assetId} 的 read 动作权限` } }
+      detail: `没有 ${assetId} 的 read 或 create 动作权限` } }
   }
   // 与写入点**读同一份**已发布模型（`refs.mjs` 的 `publishedBusinessModel`）：
   // 清单里列出的字段，必须正是写入时不会判「未声明」的那些。

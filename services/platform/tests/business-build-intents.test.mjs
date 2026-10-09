@@ -84,7 +84,7 @@ test('compensation recovers when grouping committed but its platform receipt did
   await initialisePublishedForm(row)
   const {flushBuildIntents}=await import('../src/business-build-intents.mjs')
   await flushBuildIntents()
-  const receipts=await directoryTransaction(A.company,c=>c.query('SELECT * FROM business_directory_operations WHERE operation_id=$1',[i.intentId]))
+  const receipts=await directoryTransaction(A.company,c=>c.query('SELECT * FROM business_directory_operations WHERE operation_id=$1',[row.directory_operation_id]))
   assert.equal(receipts.rows.length,1)
   assert.equal((await api(f.builder,'GET',`/business-build-intents/${i.intentId}`)).body.state,'DONE')
 })

@@ -8,21 +8,19 @@ const publicIntent=row=>({intentId:row.intent_id,version:row.version,state:row.s
 export async function createBuildIntent(ctx,{groupId=null,operationId}={}) {
   await requireDirectoryBuilder(ctx)
   if(!uuid(operationId)||(groupId!==null&&!uuid(groupId))) fail('KVVI_DIRECTORY_INVALID')
-  return withTransaction('platform',async c=>{
-    await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',['build-intent:'+ctx.companyId+':'+operationId])
-    const existing=(await c.query('SELECT * FROM business_build_intents WHERE company_id=$1 AND intent_id=$2',[ctx.companyId,operationId])).rows[0]
-    if(existing) {
-      if(existing.creator_id!==ctx.userId||existing.group_id!==groupId) fail('KVVI_DIRECTORY_VERSION_CONFLICT')
-      return publicIntent(existing)
-    }
-    // A later deletion is handled by compensation; replay does not revalidate the old group.
-    if(groupId!==null) await directoryTransaction(ctx.companyId,async b=>{
-      if(!(await b.query('SELECT 1 FROM business_groups WHERE company_id=$1 AND group_id=$2',[ctx.companyId,groupId])).rows.length) fail('KVVI_DIRECTORY_NOT_FOUND')
-    })
-    await c.query('INSERT INTO business_build_intents(company_id,intent_id,creator_id,session_id,group_id) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING',[ctx.companyId,operationId,ctx.userId,ctx.sessionId,groupId])
-    const row=(await c.query('SELECT * FROM business_build_intents WHERE company_id=$1 AND intent_id=$2',[ctx.companyId,operationId])).rows[0]
+  // Do not hold a platform connection while waiting on business: directory writers use the reverse path.
+  const existing=(await pool('platform').query('SELECT * FROM business_build_intents WHERE company_id=$1 AND intent_id=$2',[ctx.companyId,operationId])).rows[0]
+  const replay=row=>{
     if(row.creator_id!==ctx.userId||row.group_id!==groupId) fail('KVVI_DIRECTORY_VERSION_CONFLICT')
     return publicIntent(row)
+  }
+  if(existing) return replay(existing)
+  if(groupId!==null) await directoryTransaction(ctx.companyId,async c=>{
+    if(!(await c.query('SELECT 1 FROM business_groups WHERE company_id=$1 AND group_id=$2',[ctx.companyId,groupId])).rows.length) fail('KVVI_DIRECTORY_NOT_FOUND')
+  })
+  return withTransaction('platform',async c=>{
+    await c.query('INSERT INTO business_build_intents(company_id,intent_id,creator_id,session_id,group_id) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING',[ctx.companyId,operationId,ctx.userId,ctx.sessionId,groupId])
+    return replay((await c.query('SELECT * FROM business_build_intents WHERE company_id=$1 AND intent_id=$2',[ctx.companyId,operationId])).rows[0])
   })
 }
 
@@ -52,21 +50,18 @@ export async function attachBuildIntent(ctx,input) {
 /** Only persisted, published intentions may perform initial placement. Never reuses an expired browser session. */
 export async function flushBuildIntents({limit=20}={}) {
   if(!Number.isSafeInteger(limit)||limit<1||limit>100) throw new TypeError('invalid limit')
+  // Release platform resources before taking a business transaction. PENDING cannot rebind;
+  // concurrent workers deduplicate in the durable business receipt, then compare-and-set DONE.
+  const {rows}=await pool('platform').query(`SELECT i.* FROM business_build_intents i
+    JOIN publish_drafts d ON d.draft_id=i.draft_id AND d.company_id=i.company_id
+    WHERE i.state='PENDING' AND d.status='PUBLISHED' AND d.payload->>'assetId'=i.asset_id
+    AND EXISTS(SELECT 1 FROM systems s WHERE s.company_id=i.company_id AND s.asset_id=i.asset_id)
+    ORDER BY i.created_at LIMIT $1`,[limit])
   let delivered=0
-  for(let n=0;n<limit;n++) {
-    const found=await withTransaction('platform',async c=>{
-      const row=(await c.query(`SELECT i.* FROM business_build_intents i
-        JOIN publish_drafts d ON d.draft_id=i.draft_id AND d.company_id=i.company_id
-        WHERE i.state='PENDING' AND d.status='PUBLISHED' AND d.payload->>'assetId'=i.asset_id
-        AND EXISTS(SELECT 1 FROM systems s WHERE s.company_id=i.company_id AND s.asset_id=i.asset_id)
-        ORDER BY i.created_at LIMIT 1 FOR UPDATE OF i SKIP LOCKED`)).rows[0]
-      if(!row) return false
-      const result=await initialisePublishedForm(row)
-      await c.query("UPDATE business_build_intents SET state='DONE',result=$3,version=version+1 WHERE company_id=$1 AND intent_id=$2",[row.company_id,row.intent_id,result])
-      return true
-    })
-    if(!found) break
-    delivered++
+  for(const row of rows) {
+    const result=await initialisePublishedForm(row)
+    const updated=await pool('platform').query("UPDATE business_build_intents SET state='DONE',result=$3,version=version+1 WHERE company_id=$1 AND intent_id=$2 AND state='PENDING' AND draft_id=$4",[row.company_id,row.intent_id,result,row.draft_id])
+    delivered+=updated.rowCount
   }
   return {delivered}
 }

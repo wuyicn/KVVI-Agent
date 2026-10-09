@@ -32,20 +32,23 @@ export async function directoryTransaction(companyId, fn) {
 }
 const groupOf=r=>({groupId:r.group_id,name:r.name,position:r.position,version:r.version})
 
-/** Internal publication compensation; caller locks a validated PENDING published intent in the platform DB. */
+/** Internal compensation from a validated, immutable PENDING published intent; no platform connection held. */
 export async function initialisePublishedForm(intent) {
-  const {company_id:companyId,intent_id:operationId,asset_id:assetId,group_id:requested,creator_id:actorId,session_id:sessionId}=intent
+  const {company_id:companyId,directory_operation_id:operationId,asset_id:assetId,group_id:requested,creator_id:actorId,session_id:sessionId}=intent
+  const digest=digestOf({intentId:intent.intent_id,operationId,actorId,assetId,groupId:requested})
   return directoryTransaction(companyId,async c=>{
     await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',['directory:'+companyId])
-    const old=(await c.query('SELECT result FROM business_directory_operations WHERE company_id=$1 AND operation_id=$2',[companyId,operationId])).rows[0]
-    if(old) return old.result
+    const old=(await c.query('SELECT * FROM business_directory_operations WHERE company_id=$1 AND operation_id=$2',[companyId,operationId])).rows[0]
+    if(old) {
+      if(old.action!=='publish.assign'||old.actor_id!==actorId||old.request_digest!==digest) fail('KVVI_DIRECTORY_VERSION_CONFLICT')
+      return old.result
+    }
     await lockFormLifecycle(c,companyId,assetId,'read')
     const meta=(await c.query('SELECT * FROM business_form_directory WHERE company_id=$1 AND asset_id=$2',[companyId,assetId])).rows[0]
     const groupExists=requested===null||(await c.query('SELECT 1 FROM business_groups WHERE company_id=$1 AND group_id=$2',[companyId,requested])).rows.length>0
     const groupId=meta?meta.group_id:groupExists?requested:null
     if(!meta) await c.query('INSERT INTO business_form_directory(company_id,asset_id,group_id) VALUES($1,$2,$3)',[companyId,assetId,groupId])
     const result={assetId,groupId,version:meta?.version??1,reason:meta?'KVVI_DIRECTORY_ALREADY_MANAGED':groupExists?null:'KVVI_GROUP_REMOVED'}
-    const digest=digestOf({operationId,assetId,groupId:requested})
     const audit={companyId,actorKind:'USER',actorId,gateway:'BUILDER',sessionId,action:'directory.publish.assign',resourceKind:'DIRECTORY_OPERATION',resourceId:operationId,outcome:'ALLOW',paramsDigest:digest,resultDigest:digestOf(result)}
     await c.query('INSERT INTO business_directory_operations(company_id,operation_id,actor_id,action,request_digest,result,audit_payload) VALUES($1,$2,$3,$4,$5,$6,$7)',[companyId,operationId,actorId,'publish.assign',digest,result,audit])
     return result
