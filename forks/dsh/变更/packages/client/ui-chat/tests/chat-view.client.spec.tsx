@@ -207,6 +207,13 @@ function emptySessions() {
   return bindSnapshotSelector(store)
 }
 
+function businessSessions(preset: string) {
+  return bindSnapshotSelector(createSnapshotStore<SessionListState>({
+    ids: [SID], byId: { [SID]: { projectionValues: { agentPreset: preset } } } as SessionListState['byId'],
+    phase: 'ready', subagentsByParent: {}, jobsBySession: {},
+  }))
+}
+
 function emptyWorkspaces() {
   const store = createSnapshotStore<WorkspaceSnapshot>({
     items: [], archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
@@ -2142,6 +2149,78 @@ describe('ChatView', () => {
     expect(view.getByTestId('tool-seat-r1')).toBeTruthy()
     expect(h.toolOwners[0]?.block).toMatchObject({ callId: 'r1', argsRaw: '{"command":"cmd-r1"}' })
     expect(view.getByRole('status').textContent).toBe('深度求索中...')
+  })
+
+  it.each(['kvvi-builder', 'kvvi-worker'])('keeps %s conversation business-facing during a running turn', (preset) => {
+    const h = makeHarness({
+      nodes: [user(1, '修改联系电话'), context(2, 'internal tenant_id'), reasoningAssistant(3, 'Inspect schema'), assistant(4, '请确认是否设为必填。')],
+      runningCalls: [runningCall('r1')],
+    }, { running: true })
+    h.props.useSessions = businessSessions(preset)
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.getByText('修改联系电话')).toBeTruthy()
+    expect(view.getByText('请确认是否设为必填。')).toBeTruthy()
+    expect(view.queryByText('internal tenant_id')).toBeNull()
+    expect(view.queryByText('Inspect schema')).toBeNull()
+    expect(view.queryByTestId('tool-seat-r1')).toBeNull()
+    expect(view.getByRole('status').textContent).toBe('正在处理…')
+  })
+
+  it('shows business failures without raw codes or claiming that changes were not saved', () => {
+    const failed = { ...toolResult(3, 'failure'), isError: true, content: [{ type: 'text' as const, text: 'Error: KVVI_NOT_ALLOWED: tenant_id=internal' }] }
+    const h = makeHarness({ nodes: [user(1, '修改'), failed, turnError(4)] })
+    h.props.useSessions = businessSessions('kvvi-worker')
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.getByText('你没有执行此操作的权限，请联系管理员。')).toBeTruthy()
+    expect(view.getByText('本次处理未能完成，请稍后重试；如有修改，请先核对结果。')).toBeTruthy()
+    expect(view.container.textContent).not.toMatch(/KVVI_NOT_ALLOWED|plugin exploded|cmd-failure/)
+  })
+
+  it('keeps a nested failure visible even when its outer call completed successfully', () => {
+    const nested = { ...toolResult(3, 'inner'), isError: true }
+    const outer = { ...toolResult(4, 'outer', 'code'), subCalls: [nested] }
+    const h = makeHarness({ nodes: [outer, assistant(5, '其他检查已完成。')] })
+    h.props.useSessions = businessSessions('kvvi-builder')
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.getByText('有一步操作未完成，请以最终处理结果为准；如有修改，请先核对结果。')).toBeTruthy()
+    expect(view.getByText('其他检查已完成。')).toBeTruthy()
+  })
+
+  it.each([
+    ['Error: KVVI_NOT_ALLOWED (HTTP 403)', '你没有执行此操作的权限，请联系管理员。'],
+    ['Error: KVVI_RECORD_NOT_FOUND: internal key', '未找到对应内容，请确认选择是否正确。'],
+  ])('classifies the producer error %s without leaking its details', (text, expected) => {
+    const failed = { ...toolResult(3, 'failure'), isError: true, content: [{ type: 'text' as const, text }] }
+    const h = makeHarness({ nodes: [failed] })
+    h.props.useSessions = businessSessions('kvvi-worker')
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.getByText(expected)).toBeTruthy()
+    expect(view.container.textContent).not.toMatch(/KVVI_|HTTP|internal key/)
+  })
+
+  it('renders the generated edit request as business copy while retaining ordinary user text', () => {
+    const text = '请协助编辑现有表单，资产代号为 customer。先检查本工作区契约是否属于这个资产，不一致时停止并请我确认。只修改草稿，不改员工正在使用的已发布版本；提交前交给我检查，仍由所有者审批发布。'
+    const h = makeHarness({ nodes: [user(1, text), user(2, '产品编码为 API-001，不要改动。')] })
+    h.props.useSessions = businessSessions('kvvi-builder')
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.container.textContent).not.toMatch(/资产代号|customer|契约/)
+    expect(view.getByText('请协助修改这张表单。只修改草稿，不影响员工正在使用的版本；提交前交给我检查，仍由所有者审批发布。')).toBeTruthy()
+    expect(view.getByText('产品编码为 API-001，不要改动。')).toBeTruthy()
+  })
+
+  it('replaces the thinking clock with the actual pending interaction and resumes afterwards', () => {
+    const h = makeHarness({}, { running: true })
+    h.props.useSessions = businessSessions('kvvi-builder')
+    const status = createSnapshotStore<SessionStatusSnapshot>(new Map([[SID, {
+      running: true, completionUnread: false,
+      pendingInteraction: { kind: 'question', key: 'q1', sessionId: SID } as never,
+    }]]))
+    h.props.useSessionStatus = bindSnapshotSelector(status)
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.getByRole('status').textContent).toBe('等待你回答')
+    expect(view.container.textContent).not.toContain('深度求索')
+    act(() => { status.set(new Map([[SID, { running: true, completionUnread: false, pendingInteraction: undefined }]])) })
+    expect(view.getByRole('status').textContent).toBe('正在处理…')
   })
 
   it('keeps the Tool renderer mounted when a running call settles into log order', () => {

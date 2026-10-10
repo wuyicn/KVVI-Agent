@@ -69,7 +69,7 @@
         - text: 复制
     - listitem:
       - 'button "设为默认: KVVI 搭建引擎"':
-        - text: KVVI 搭建引擎 内置 KVVI 搭建引擎模式。通过自然语言描述业务需求，生成含表单、审批流、数据看板与接口契约的业务系统原型，并以 MetaSchema 为唯一真理源交付。
+        - text: KVVI 搭建引擎 内置 用日常语言描述业务需求，协助搭建表单、审批流程和数据看板。修改先保存为草稿，确认并审批后再发布。
         - code: kvvi-builder
       - 'button "查看: KVVI 搭建引擎"':
         - img
@@ -79,7 +79,7 @@
         - text: 复制
     - listitem:
       - 'button "设为默认: KVVI 工作模式"':
-        - text: KVVI 工作模式 内置 KVVI 工作模式。员工在已搭建完成的业务系统内，用自然语言查数据、办业务；不具备任何搭建能力，操作受系统既定的权限、数据范围与状态机约束。
+        - text: KVVI 工作模式 内置 用日常语言查数据、办业务，只能查看和操作你有权限的内容。
         - code: kvvi-worker
       - 'button "查看: KVVI 工作模式"':
         - img
