@@ -22,7 +22,8 @@ function cardDescription(description: string | undefined, fallback: string): str
  * @param props - durable file metadata, Sidebar preview, Host capabilities, gesture status, and localized copy.
  * @returns the file card and its anchored action menu.
  */
-export function PresentedFileCard({ file, cwd, phase, host, onPreview, onAction, t }: {
+export function PresentedFileCard({ file, cwd, phase, host, onPreview, onAction, t, businessConversation }: {
+  businessConversation?: boolean | undefined
   file: PresentedPath
   cwd: string | undefined
   phase: PresentedOpenPhase | undefined
@@ -42,6 +43,7 @@ export function PresentedFileCard({ file, cwd, phase, host, onPreview, onAction,
     onAction(action)
   }
   const name = basename(file.path)
+  const accessibleName = businessConversation ? name : file.path
   const metadata = fileExtension(name).toUpperCase() || t('presented.file')
   const status = phase === undefined
     ? cardDescription(file.description, metadata)
@@ -49,8 +51,8 @@ export function PresentedFileCard({ file, cwd, phase, host, onPreview, onAction,
       : reveal === 'directory' && phase === 'revealing' ? 'presented.directoryOpening'
         : reveal === 'directory' && phase === 'revealError' ? 'presented.directoryError' : `presented.${phase}`)
   return <div className={css.file} data-presented-file>
-    <button type="button" className={css.cardPreview} title={resolveWorkspacePath(cwd, file.path)}
-      aria-label={t('presented.previewCard', { name: file.path })} onClick={onPreview} />
+    <button type="button" className={css.cardPreview} title={businessConversation ? name : resolveWorkspacePath(cwd, file.path)}
+      aria-label={t('presented.previewCard', { name: accessibleName })} onClick={onPreview} />
     <span className={css.fileIcon}><FileTypeIcon path={file.path} size={20} /></span>
     <div className={css.fileBody}>
       <div className={css.details}>
@@ -63,12 +65,12 @@ export function PresentedFileCard({ file, cwd, phase, host, onPreview, onAction,
       </div>
       <div className={css.split}>
         <button ref={previewRef} type="button" className={css.open}
-          aria-label={t('presented.previewButton', { name: file.path })}
+          aria-label={t('presented.previewButton', { name: accessibleName })}
           onClick={onPreview}>{t('presented.action')}</button>
         <Menu className={css.menuAnchor} open={menuOpen && !menuDisabled} autoFocus portal align="end" onClose={() => { setMenuOpen(false) }}
           anchor={<button type="button" className={css.chevron} disabled={menuDisabled}
             aria-haspopup="menu" aria-expanded={menuOpen && !menuDisabled}
-            aria-label={t('presented.more', { name: file.path })}
+            aria-label={t('presented.more', { name: accessibleName })}
             onClick={() => { setMenuOpen(value => !value) }}>
             <IconChevronDownOutline14 size={11} />
           </button>}

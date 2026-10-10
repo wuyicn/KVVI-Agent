@@ -31,6 +31,8 @@ The shipped Web `standard`, `ptc`, and `cordis` presets include [explicit file d
 
 ### What a preset gives a session
 
+The KVVI builder and worker personas require plain Chinese business language for replies, questions, options, failures, and confirmations, including owner sessions. They preserve permission and publishing boundaries while keeping implementation details out of ordinary replies. These are model instructions, not an output filter; historical replies remain unchanged and live model compliance still needs acceptance testing.
+
 A session composed from a preset runs the plugins that preset's `agent.cordis.yml` names: its tools, prompt sections, and skills. Sessions joined to the same preset share one installed composition, and each session's state stays separate. A child agent (subagent) joins its parent's composition, so it sees the same tools and prompt sections as the agent that spawned it.
 
 The presets you can choose from come from three sources: the presets shipped inside this package under `presets/`, configured roots, and your own presets under `<dshHome>/.agent-presets`. The picker shows each preset's display name and description; a preset whose composition cannot load is listed with the reason rather than hidden, so you can see what to fix or delete.

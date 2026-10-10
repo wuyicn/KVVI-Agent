@@ -39,8 +39,9 @@ export interface DeliverablesInjected {
  * @returns matched announcement and deliveries, or null for a turn with neither.
  */
 export function selectDeliverables(owner: TurnTailOwnerProps): DeliverablesMatch | null {
-  const changes = changesForClosing(owner)
-  const presented = presentedForClosing(owner)
+  const changes = owner.businessConversation ? null : changesForClosing(owner)
+  const presented = presentedForClosing(owner).filter(file => !owner.businessConversation
+    || /\.(?:pdf|docx?|xlsx?|csv|pptx?|png|jpe?g|webp|gif|mp4|mp3|wav)$/iu.test(file.path))
   return changes === null && presented.length === 0 ? null : { changes, presented }
 }
 
@@ -63,8 +64,8 @@ export function DeliverablesTail(props: PropsRuntime<'conversation.chat.turnTail
  */
 export function Deliverables({
   matched, openFile, t, sessionId, useSessions, openPresented, openChangesReview, usePresentedOpen, usePresentedHost,
-  useChangesSummary, reloadPresentedHost, loadChangesSummary,
-}: Pick<TurnTailOwnerProps, 'openFile'> & {
+  useChangesSummary, reloadPresentedHost, loadChangesSummary, businessConversation,
+}: Pick<TurnTailOwnerProps, 'openFile' | 'businessConversation'> & {
   matched: DeliverablesMatch
 } & PropsLocale<typeof NS> & Pick<SessionStandardProps, 'sessionId'> & Pick<GlobalStandardProps, 'useSessions'> & InjectFace<DeliverablesInjected>) {
   const [expanded, setExpanded] = useState(false)
@@ -100,6 +101,7 @@ export function Deliverables({
       {host !== null && host !== 'error' && !host.available && <span className={css.hostStatus}>{t('presented.unavailable')}</span>}
       <div className={css.presented} data-presented-files-row data-single={matched.presented.length === 1 ? true : undefined}>
         {presented.map(file => <PresentedFileCard key={`${file.seq}:${file.index}`} file={file} cwd={cwd}
+          businessConversation={businessConversation}
           phase={states[presentedFileUrl(sessionId, file.seq, file.index)]}
           host={host === 'error' ? null : host} t={t}
           onPreview={() => { openFile(file.path) }}

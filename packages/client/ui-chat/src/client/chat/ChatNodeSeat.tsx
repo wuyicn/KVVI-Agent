@@ -7,6 +7,7 @@ import { TURN_PROCESS_INDEPENDENT_KINDS } from '../contract/turn-process.ts'
 import { storedTurnProcessEntry } from '../stores.ts'
 import { useSearchableHidden } from './searchable-hidden.ts'
 import css from './ChatView.module.css'
+import { businessNodeNotice, isBusinessHiddenNode } from './business-presentation.ts'
 
 interface ChatNodeSeatProps extends ChatNodeOwnerProps {
   readonly nodeKey: string
@@ -37,7 +38,7 @@ function turnOf(node: ChatNode | undefined): number | undefined {
 /** Subscribe, apply Turn-process visibility, and dispatch one stable Context key. */
 export const ChatNodeSeat = memo(function ChatNodeSeat({
   nodeKey, useChatNode, useChatNodeProcess, historyIncomplete, compactTranscript,
-  cwd, openFile, openSkill, inspectCall, forkAt,
+  cwd, openFile, openSkill, inspectCall, forkAt, businessConversation,
   loadImage, renderMessageImages, fileMentions, useStore, actions, renderSlot, t,
 }: ChatNodeSeatProps) {
   const node = useChatNode(nodeKey)
@@ -61,7 +62,7 @@ export const ChatNodeSeat = memo(function ChatNodeSeat({
   }, [actions, processSpec])
   const processWindowReady = processSpec !== undefined
     && processPresentation !== undefined
-    && compactTranscript
+    && compactTranscript && !businessConversation
     && processSpec.answerAnchorSeq !== null
     && processPresentation.turn === processSpec.turn
     && processPresentation.turnClosed
@@ -112,11 +113,15 @@ export const ChatNodeSeat = memo(function ChatNodeSeat({
       renderMessageImages,
       fileMentions,
       turnProcess,
+      businessConversation,
     }, [
     node, cwd, openFile, openSkill, inspectCall, forkAt,
-    loadImage, renderMessageImages, fileMentions, turnProcess,
+    loadImage, renderMessageImages, fileMentions, turnProcess, businessConversation,
   ])
   if (routedNode === undefined || owner === null) return null
+  if (businessConversation && isBusinessHiddenNode(routedNode.kind)) return null
+  const businessNotice = businessConversation ? businessNodeNotice(routedNode) : undefined
+  if (businessConversation && routedNode.kind === 'tool-call' && businessNotice === undefined) return null
   const turnData = turnDataOf(routedNode)
   // Runtime dispatch owns the correlation: every Node's discriminant is the
   // keyed-slot entry passed alongside that same Node. TypeScript does not
@@ -134,7 +139,7 @@ export const ChatNodeSeat = memo(function ChatNodeSeat({
       data-turn-process-hidden={processHidden || undefined}
       data-turn-process-answer={compactAnswer || undefined}
     >
-      {renderSlot('conversation.chat.node', routedOwner, {
+      {businessNotice !== undefined ? <div role="status">{t(businessNotice)}</div> : renderSlot('conversation.chat.node', routedOwner, {
         entryKey: routedNode.kind,
         hookContext: turnData,
         fallback: (

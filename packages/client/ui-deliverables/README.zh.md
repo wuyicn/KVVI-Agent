@@ -27,6 +27,8 @@ kind: "package-reference"
 
 与 `ui-conversation` 和 Host 侧的 [workspace-changes](../../deliverables/workspace-changes/README.zh.md) 插件一起挂载本插件；已完成轮次随即以改动文件卡片收尾，位于收尾消息正文与其动作页脚之间。没有可提供的摘要时——本轮没有改动任何文件、该插件被组合出去，或该轮之后 Host 重启过——卡片不出现，只保留交付卡片与正文链接；工作区不在 git 仓库内时摘要只列文件工具的编辑。
 
+KVVI 业务对话不显示改动文件卡片和实现文件交付。显式声明的 PDF、Office、CSV、图片、音频和视频交付仍可使用；卡片标题和无障碍标签只显示文件名，打开文件的操作仍使用原始路径。已记录的交付声明保持不变。
+
 <a id="explicit-deliveries"></a>
 ### 显式交付
 

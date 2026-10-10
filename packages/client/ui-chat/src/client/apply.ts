@@ -28,7 +28,7 @@ import { EMPTY_CHAT_SNAPSHOT } from './contract/snapshot.ts'
 import { ApprovalCommand } from './chat/ApprovalCommand.tsx'
 import { ChatView } from './chat/ChatView.tsx'
 import { registerChatNodeRenderers } from './chat/register-node-renderers.ts'
-import { StatsPills } from './chat/StatsPills.tsx'
+import { SessionStatsPills } from './chat/StatsPills.tsx'
 import { registerConversationNodes } from './conversation-nodes/register.ts'
 import { en, NS, zh } from './locale.ts'
 import { TranscriptViewRow, type TranscriptViewRowInjected } from './settings/TranscriptViewRow.tsx'
@@ -179,7 +179,7 @@ export function apply(ctx: Context): void {
   ctx.slots.inject('conversation.composer.dock', () =>
     ctx.slots.register({
       name: 'conversation.composer.dock', id: 'stats', order: 0, locale: NS,
-    }, StatsPills))
+    }, SessionStatsPills))
 
   ctx.slots.inject('conversation.approval.detail', () =>
     ctx.slots.register({ name: 'conversation.approval.detail' }, ApprovalCommand))

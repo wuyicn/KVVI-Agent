@@ -5,6 +5,6 @@
   - menuitem "PTC mode Full coding agent without the workflow tool; other tools are exposed through the PTC mode SDK so the model can combine multi-step operations in one TypeScript program."
   - menuitem "Minimal mode Single-tool coding agent with a persistent shell."
   - menuitem "Creator mode Built for creating custom agent presets, with all Standard mode capabilities plus runtime inspection, persistent plugin management, and preset-authoring guidance."
-  - menuitem "KVVI 搭建引擎 KVVI 搭建引擎模式。通过自然语言描述业务需求，生成含表单、审批流、数据看板与接口契约的业务系统原型，并以 MetaSchema 为唯一真理源交付。"
-  - menuitem "KVVI 工作模式 KVVI 工作模式。员工在已搭建完成的业务系统内，用自然语言查数据、办业务；不具备任何搭建能力，操作受系统既定的权限、数据范围与状态机约束。"
+  - menuitem "KVVI 搭建引擎 用日常语言描述业务需求，协助搭建表单、审批流程和数据看板。修改先保存为草稿，确认并审批后再发布。"
+  - menuitem "KVVI 工作模式 用日常语言查数据、办业务，只能查看和操作你有权限的内容。"
   - menuitem "Refusing mode Resolves, then refuses to start."

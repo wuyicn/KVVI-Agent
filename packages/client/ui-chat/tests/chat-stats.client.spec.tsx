@@ -8,7 +8,9 @@ import type {
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { en as commonEn } from '@deepseek-ai/dsh-client-locale/src/locales/en.ts'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
-import { StatsPills, deriveStats, formatDuration, type StatsPillsProps } from '../src/client/chat/StatsPills.tsx'
+import { StatsPills, SessionStatsPills, deriveStats, formatDuration, type StatsPillsProps } from '../src/client/chat/StatsPills.tsx'
+import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import { formatTokens } from '../src/client/chat/token-format.ts'
 import { en, zh } from '../src/client/locale.ts'
 import { chatSnapshotFixture } from './chat-snapshot-fixture.client.ts'
@@ -126,6 +128,13 @@ describe('formatters', () => {
 })
 
 describe('StatsPills', () => {
+  it.each(['kvvi-builder', 'kvvi-worker'])('omits diagnostic statistics for %s', (preset) => {
+    const { source } = makeSource({ nodes: [assistant(1, 1)] })
+    const sessionId = SessionId('business-stats')
+    const state = { ids: [sessionId], byId: { [sessionId]: { projectionValues: { agentPreset: preset } } } } as SessionListState
+    const view = render(<SessionStatsPills {...props(source)} sessionId={sessionId} useSessions={selector => selector(state)} />)
+    expect(view.container.textContent).toBe('')
+  })
   const USAGE = { uncachedInputTokens: 10, outputTokens: 5, cacheReadTokens: 90, cacheWriteTokens: 0 }
 
   /** A whole-log sessionStats value: zeros plus overrides. */

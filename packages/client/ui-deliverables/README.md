@@ -27,6 +27,8 @@ This package renders the changed-files card a finished turn ends with — the fi
 
 Mount this plugin alongside `ui-conversation` and the Host [workspace-changes](../../deliverables/workspace-changes/README.md) plugin; a finished turn then ends with the changed-files card between the closing message's body and its action footer. Without a served summary — a turn that changed no file, the plugin composed out, or a Host restarted since the turn ran — the card is absent and only deliveries and prose links remain; outside a git repository the summary lists file-tool edits only.
 
+KVVI business conversations omit the changed-files card and implementation-file deliveries. Explicit PDF, Office, CSV, image, audio, and video deliveries remain available; card titles and accessible labels use only the basename while file-opening actions retain the original path. Recorded declarations are unchanged.
+
 <a id="explicit-deliveries"></a>
 ### Explicit deliveries
 

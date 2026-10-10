@@ -9,7 +9,7 @@ import { memo, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { IconDatabaseOutline16, IconGaugeOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { UseProjection } from '@deepseek-ai/dsh-api-session-controller/client'
-import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
+import type { GlobalStandardProps, SessionStandardProps, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: merges the sessionStats key into SessionProjectionMap for useProjection.
 import type {} from '@deepseek-ai/dsh-session-stats/client'
 import type { TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client'
@@ -126,6 +126,17 @@ export interface StatsPillsProps {
   useProjection: UseProjection
   /** The owning dock's locale seat. */
   t: ChatViewSlotProps['t']
+}
+
+/**
+ * Keep model accounting out of KVVI business conversations.
+ * @param props - the session dock's hooks and localized copy.
+ * @returns diagnostic pills only for non-business sessions.
+ */
+export function SessionStatsPills(props: StatsPillsProps & Pick<GlobalStandardProps, 'useSessions'> & Pick<SessionStandardProps, 'sessionId'>) {
+  const preset = props.useSessions(state => state.byId[props.sessionId]?.projectionValues?.agentPreset)
+  if (preset === 'kvvi-builder' || preset === 'kvvi-worker') return null
+  return <StatsPills {...props} />
 }
 
 function exactCount(value: number, t: ChatViewSlotProps['t']): string {

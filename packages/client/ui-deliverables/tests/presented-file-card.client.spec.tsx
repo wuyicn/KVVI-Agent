@@ -17,6 +17,14 @@ const props = () => ({
   t: makeTranslate(en),
 })
 
+it('business delivery keeps the download usable without exposing its internal directory', () => {
+  const p = props()
+  const view = render(<PresentedFileCard {...p} businessConversation />)
+  expect(view.container.innerHTML).not.toContain('out/report.pdf')
+  fireEvent.click(view.getByRole('button', { name: 'Open report.pdf in sidebar' }))
+  expect(p.onPreview).toHaveBeenCalledTimes(1)
+})
+
 it.each([
   ['finder', 'Show in Finder'], ['explorer', 'Show in File Explorer'], ['directory', 'Open containing folder'],
 ] as const)('uses the Host %s action and closes the menu after selection', (fileManager, label) => {

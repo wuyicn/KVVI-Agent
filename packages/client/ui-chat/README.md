@@ -15,6 +15,7 @@ File-mention providers receive the viewed Session ID with the closing-turn owner
 ## Table of Contents
 
 - [Reference previews](#reference-previews)
+- [KVVI business conversations](#kvvi-business-conversations)
 - [System prompt row](#system-prompt-row)
 - [Turn token usage](#turn-token-usage)
 - [Completed-turn footer](#completed-turn-footer)
@@ -32,6 +33,11 @@ File-mention providers receive the viewed Session ID with the closing-turn owner
 Chat supplies file and HTTP(S) navigation through one `MarkdownDelegateProvider` around its node list. Assistant Markdown file links open in the right Sidebar after the message settles, including references to unmodified files. Relative paths resolve in the viewed Session's workspace; absolute paths retain the same Session's filesystem access. `#L24` and `#L24-L30` navigate to the first specified line and reuse an existing file tab. Missing files show the preview's error state.
 
 HTTP(S) links in Assistant Markdown open a new right-Sidebar Browser tab on ordinary clicks when that type is registered, or the system browser otherwise; modified clicks retain the native external-link behavior. Sent file references and skills confirmed by the message’s logged invocation also open in the right Sidebar. File paths use the viewed Session; skill names resolve through its current input-trigger source. Both use the prose file-link dotted underline on hover or focus. Sessions, directories, and command labels remain non-navigating references.
+
+<a id="kvvi-business-conversations"></a>
+## KVVI business conversations
+
+Sessions using `kvvi-builder` or `kvvi-worker` omit diagnostic nodes, reasoning, successful tool payloads, changed source files, and token statistics from Chat, including live turns. Business replies, images, questions, confirmations, and localized failure notices remain visible. A pending question or approval replaces the running indicator. The two generated builder-request templates display business wording without changing their recorded input. Ordinary user text and assistant prose remain verbatim; historical technical prose is not rewritten. Raw events and Trajectory remain unchanged. This is a presentation rule, not authorization or a guarantee of model compliance.
 
 <a id="system-prompt-row"></a>
 ## System prompt row

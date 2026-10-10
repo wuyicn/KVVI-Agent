@@ -166,7 +166,8 @@ function runningTurnStartTime(timeline: ConversationTimelineSnapshot): number | 
 }
 
 /** Turn-level model activity label retained across first-token, tool, and streaming phases. */
-function TurnStatus({ startTime, t }: {
+function TurnStatus({ startTime, businessConversation, t }: {
+  businessConversation?: boolean | undefined
   /** The running turn's logged `turn/start` time; null falls back to mount
    *  time when that boundary is outside the window. */
   startTime: number | null
@@ -191,8 +192,8 @@ function TurnStatus({ startTime, t }: {
   const showClock = elapsedMs >= 15_000
   return (
     <div className={css.turnStatus} role="status" aria-live="polite">
-      {t('chat.deepDiving')}
-      {showClock && (
+      {t(businessConversation ? 'chat.processing' : 'chat.deepDiving')}
+      {showClock && !businessConversation && (
         <span className={css.turnStatusClock} aria-hidden>
           {formatRunDuration(elapsedMs, t)}
         </span>
@@ -218,7 +219,7 @@ const ChatNodeList = memo(function ChatNodeList({ order, ...seatProps }: ChatNod
 export function ChatView({
   useSession, useChat, useChatNode, useChatNodeProcess, useSessions, useStore, actions, renderSlot,
   sessionId, openFile, openSkill, openExternalLink, loadOlder, loadThrough, loadImage, openView, chatScroll, forkAt, fileMentions,
-  useTranscriptView, useProjection, t,
+  useTranscriptView, useProjection, useSessionStatus, t,
 }: ChatViewSlotProps) {
   const order = useChat(s => s.order)
   const nodeStore = useChat(s => s.nodes)
@@ -237,6 +238,11 @@ export function ChatView({
   const inbox = useProjection('inbox') as unknown as InboxState | undefined
   // Workspace root off the session list row: path summaries display relative to it.
   const cwd = useSessions(s => s.byId[sessionId]?.cwd)
+  const businessConversation = useSessions((s) => {
+    const preset = s.byId[sessionId]?.projectionValues?.agentPreset
+    return preset === 'kvvi-builder' || preset === 'kvvi-worker'
+  })
+  const pendingKind = useSessionStatus<string | undefined>(s => s.get(sessionId)?.pendingInteraction?.kind)
   const running = useSession(s => s.running)
   const openState = useSession(s => s.openState)
   const openError = useSession(s => s.openError)
@@ -772,7 +778,7 @@ export function ChatView({
           {openState === 'loading' && <div className={css.hint}>{t('chat.loadingHistory')}</div>}
           {openState === 'error' && openError !== null && (
             <div className={css.openError}>
-              {t('chat.loadError', { message: openError.message, code: openError.code })}
+              {businessConversation ? t('chat.historyUnavailable') : t('chat.loadError', { message: openError.message, code: openError.code })}
             </div>
           )}
           {hasMore && (
@@ -789,6 +795,7 @@ export function ChatView({
               useChatNodeProcess={useChatNodeProcess}
               historyIncomplete={hasMore}
               compactTranscript={compactTranscript}
+              businessConversation={businessConversation}
               useStore={useStore}
               actions={actions}
               cwd={cwd}
@@ -808,11 +815,14 @@ export function ChatView({
               double-render the same wait. */}
           {/* Turn-level loading signal: rides the whole running turn (first-token
               wait, tool execution, streaming) so it never flickers per step. */}
-          {running && <TurnStatus startTime={runningTurnStart} t={t} />}
+          {businessConversation && pendingKind !== undefined
+            ? <div className={css.turnStatus} role="status" aria-live="polite">{t(pendingKind === 'question' ? 'chat.waitingAnswer' : 'chat.waitingConfirmation')}</div>
+            : running && <TurnStatus startTime={runningTurnStart} businessConversation={businessConversation} t={t} />}
           {pendingSteering.map(item => (
             <PendingSteeringBubble
               key={item.id}
               content={item.content}
+              businessConversation={businessConversation}
               renderMessageImages={renderMessageImages}
               t={t}
             />
@@ -821,6 +831,7 @@ export function ChatView({
             <PendingSubmissionBubble
               key={submission.requestId}
               submission={submission}
+              businessConversation={businessConversation}
               renderMessageImages={renderMessageImages}
               t={t}
             />

@@ -109,6 +109,18 @@ function tailOwner(
   return { seq, openFile, turn: turnLocation(turn, data) }
 }
 
+it('business conversations omit implementation changes and keep explicit business documents', () => {
+  const owner = tailOwner({
+    produced: [],
+    presented: [
+      { seq: 2, index: 0, path: 'contracts/form.json' },
+      { seq: 2, index: 1, path: 'exports/customers.xlsx' },
+    ],
+  }, 4)
+  expect(selectDeliverables({ ...owner, businessConversation: true })?.presented.map(file => file.path))
+    .toEqual(['exports/customers.xlsx'])
+})
+
 interface TimelineSnapshot {
   readonly timeline: ConversationTimelineSnapshot
 }

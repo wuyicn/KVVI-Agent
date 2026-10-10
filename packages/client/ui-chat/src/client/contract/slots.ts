@@ -38,6 +38,8 @@ export interface OpenFileOptions {
 
 /** Owner currency of the completed-Turn extension chain. */
 export interface TurnTailOwnerProps {
+  /** Business-only deliveries omit implementation files and diagnostics. */
+  businessConversation?: boolean | undefined
   turn: TurnLocation
   seq: number
   openFile: (path: string) => void
@@ -78,6 +80,8 @@ export interface ChatNodeTurnDataInjected {
 
 /** Stable owner currency delivered to a keyed Chat renderer. */
 export interface ChatNodeOwnerProps {
+  /** Business conversation omits developer diagnostics without changing the log. */
+  businessConversation?: boolean | undefined
   cwd?: string | undefined
   /** Open the current source file of a skill referenced by a sent message. */
   openSkill: (name: string) => void
