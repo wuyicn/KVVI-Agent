@@ -117,7 +117,7 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
     })
   }
   const failure = readError !== undefined ? <ReadFailure error={readError} copy={t} onRetry={() => { setAttempt(a => a + 1) }} /> : write?.error === undefined ? null : <div role="alert" className={css.notice}>
-    <p>{t(write.error === 'KVVI_NOT_ALLOWED' ? 'form.denied' : (write.fields?.length ?? 0) > 0 ? 'form.fixFields' : 'form.writeFailed', { fields: (write.fields ?? []).map(code => model?.fields?.find(field => field.field_code === code)?.label ?? code).join('、') })}</p>
+    <p>{t(write.error === 'KVVI_FIELD_DUPLICATE' ? 'form.duplicate' : write.error === 'KVVI_UNIQUE_PUBLICATION_PENDING' ? 'form.rulesUpdating' : write.error === 'KVVI_NOT_ALLOWED' ? 'form.denied' : (write.fields?.length ?? 0) > 0 ? 'form.fixFields' : 'form.writeFailed', { fields: (write.fields ?? []).map(code => model?.fields?.find(field => field.field_code === code)?.label ?? code).join('、') })}</p>
     <details><summary>{t('form.diagnostics')}</summary><code>{write.error}</code></details>
   </div>
   const form = view === undefined ? <p role="alert">{t('system.unrunnable', { detail: 'KVVI_RUNTIME_CONTRACT_INCOMPLETE' })}</p> :

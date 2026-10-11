@@ -36,6 +36,8 @@ import type { Copy } from './FormView.tsx'
 
 /** Server refusal codes this page knows how to explain. */
 const REFUSAL_KEYS: Record<string, string> = {
+  KVVI_UNIQUE_EXISTING_DUPLICATES: 'publish.refused.duplicates',
+  KVVI_UNIQUE_PUBLICATION_PENDING: 'form.rulesUpdating',
   KVVI_SELF_APPROVAL_FORBIDDEN: 'publish.refused.selfApproval',
   KVVI_APPROVAL_DIGEST_MISMATCH: 'publish.refused.digest',
   KVVI_NOT_OWNER: 'publish.refused.notOwner',

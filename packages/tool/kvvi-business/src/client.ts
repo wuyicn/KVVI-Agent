@@ -210,6 +210,13 @@ function describeProblem(problem: CallProblem): string {
  */
 export function refusalMessage(failure: CallFailure): string {
   const parts: string[] = [failure.code]
+  const guidance: Record<string, string> = {
+    KVVI_FIELD_DUPLICATE: '填写的内容与已有记录重复，请让用户检查不允许重复的项目后修改，不要原样重试，也不要查询或展示无权查看的记录。',
+    KVVI_UNIQUE_PUBLICATION_PENDING: '表单规则正在发布，暂时不能保存。请联系所有者完成发布后重试。',
+    KVVI_UNIQUE_RULE_INVALID: '不允许重复的规则设置不完整，请让搭建者检查后重新发布。',
+  }
+  const hint = guidance[failure.code]
+  if (hint !== undefined) parts.push(hint)
   if (failure.detail !== undefined) parts.push(failure.detail)
   if (failure.problems !== undefined && failure.problems.length > 0) {
     parts.push(failure.problems.map(describeProblem).join('; '))

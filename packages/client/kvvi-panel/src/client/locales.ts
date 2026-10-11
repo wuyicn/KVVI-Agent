@@ -138,6 +138,9 @@ export const zh = {
   'form.denied': '你暂无提交权限，请联系管理员。',
   'form.fixFields': '请检查并补全：{fields}',
   'form.writeFailed': '未提交成功，请稍后再试。',
+  'form.duplicate': '填写的内容与已有记录重复，请检查不允许重复的项目后修改。',
+  'form.rulesUpdating': '表单规则正在发布，暂时不能保存。请联系所有者完成发布后重试。',
+  'publish.refused.duplicates': '已有记录存在重复，请先处理重复数据，再发布“不允许重复”规则。原有数据未删除。',
   'form.diagnostics': '查看错误详情',
   'form.readonly': '只读',
 
@@ -410,6 +413,9 @@ export const en: Record<KvviKey, string> = {
   'form.denied': 'You do not have permission to submit. Contact your administrator.',
   'form.fixFields': 'Check and complete: {fields}',
   'form.writeFailed': 'Submission failed. Try again later.',
+  'form.duplicate': 'These values duplicate an existing record. Check the fields that must be unique and change your input.',
+  'form.rulesUpdating': 'Form rules are being published. Ask an owner to complete publication before saving again.',
+  'publish.refused.duplicates': 'Existing records contain duplicates. Correct them before publishing the uniqueness rule. No existing data was deleted.',
   'form.diagnostics': 'Error details',
   'form.readonly': 'Read-only',
 

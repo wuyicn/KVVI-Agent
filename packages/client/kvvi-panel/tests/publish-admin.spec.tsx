@@ -63,6 +63,15 @@ function platform(overrides: Record<string, { status: number; body: unknown }> =
 }
 
 describe('KvviPublishAdmin', () => {
+  it('explains existing duplicates when publishing a uniqueness rule', async () => {
+    platform({
+      'GET /publish/drafts': { status: 200, body: { items: [{ ...DRAFT, status: 'APPROVED' }] } },
+      'POST /publish/drafts/d-1/publish': { status: 409, body: { error: 'KVVI_UNIQUE_EXISTING_DUPLICATES' } },
+    })
+    render(<KvviPublishAdmin copy={copy} />)
+    fireEvent.click(await screen.findByText('发布'))
+    expect(await screen.findByText('已有记录存在重复，请先处理重复数据，再发布“不允许重复”规则。原有数据未删除。')).toBeTruthy()
+  })
   it('lists the drafts with their proposer and status', async () => {
     platform()
     render(<KvviPublishAdmin copy={copy} />)

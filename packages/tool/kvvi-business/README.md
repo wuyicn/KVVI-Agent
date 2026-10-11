@@ -8,6 +8,8 @@ Eight tools reach the model in the `kvvi-worker` preset. Each is one HTTP call i
 
 The package also prepares current published system rules through the scoped system-prompt assembly hook. The persona that explains the mode lives in the preset. Descriptions are written for the model's decision, not for a human reader: they say which code means "re-read and decide" and which means "this is a rule, not a missing permission".
 
+Duplicate-write refusals ask the model to explain the business correction, not retry the same values or search for inaccessible records. An unfinished rule publication directs the user to the owner. The platform owns enforcement; these explanations grant no additional data access.
+
 Results render the schema-validated canonical value as JSON into model-visible text, including visible record values, field labels, enum options, workflow destinations and row versions. The platform remains responsible for filtering rows and field values. Record tools remove HIDDEN entries from the returned visibility map before creating the canonical value, so hidden field names reach neither model-visible text nor callers of the tool service. VISIBLE, READONLY and MASKED entries and already masked data are preserved. `system_list` projects only names and codes from the company catalogue, discarding publication metadata. The employee persona presents business results and keeps internal metadata out of ordinary replies.
 
 Token cost is one tool schema per tool, eight schemas total, with flat argument objects. No package-level cache is added. Rendered results remain in normal conversation history and contribute to subsequent context and KV-cache usage; record_list may return up to 50 rows. Prefer record_get when a record reference is known.

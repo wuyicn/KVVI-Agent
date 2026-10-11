@@ -39,6 +39,12 @@ const FIELDS = [
   { field_code: 'amount', label: '金额', type: 'money' },
 ]
 
+it('explains duplicate editing as a business correction without exposing an error code', () => {
+  render(<KvviRecordDetail copy={t} fields={FIELDS} record={{ recordId: 'r1', rowVersion: 1, data: { title: '已登记' }, fieldVisibility: { title: 'VISIBLE' } }}
+    onSave={noop} onBack={noop} error="KVVI_FIELD_DUPLICATE" />)
+  expect(screen.getByRole('alert').textContent).toBe('填写的内容与已有记录重复，请检查不允许重复的项目后修改。')
+})
+
 describe('记录列表', () => {
   it('搜索只查看有权限显示的字段，并保持表头与每行列数一致', () => {
     const { container } = render(<KvviListView copy={t} fields={FIELDS} fieldVisibility={{ amount: 'HIDDEN' }}
