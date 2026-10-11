@@ -1,5 +1,5 @@
 {
-  "count": 220,
+  "count": 225,
   "files": {
     "apps/cli/package.json": {
       "sha256": "3a80bdf6c7da3ace285b256accb233212e9991c0335b0a1dd2c489815595801d",
@@ -239,7 +239,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/README.md": {
-      "sha256": "75c6f8e9e17d8148b338bcf1299878d23f282719044fb302feeb5fcdf85905c7",
+      "sha256": "f2d52b0ed47b91f8813e9d768a7127662a34806d36a6dd85fedac2c98cf335b5",
       "status": "A"
     },
     "packages/client/kvvi-panel/package.json": {
@@ -279,7 +279,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/BusinessPage.tsx": {
-      "sha256": "0109f541b4f4a9c612c463e21e16e130d5d8357cc3dcef02e1f7de70e83b71c6",
+      "sha256": "ca99074078d4d43f6d2bb667dcfcfc51b0f4bc83b690f4aff6a5512a5579569a",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/FormView.tsx": {
@@ -355,7 +355,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/index.ts": {
-      "sha256": "43b65461ba7f5e40255ef4d1857284b7852b6cd25e2fb15e622b87bf2d66b5f0",
+      "sha256": "ffaf0da5d48650fed2e913b362ef3a0b58c2bcc9c034cf9f8855415aae09051a",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/locales.ts": {
@@ -387,7 +387,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-assembly.spec.tsx": {
-      "sha256": "bbd5bf2d1e1bf30a89e78cf59f1192778ac7b8b6c5d218ead1bae45f19eafff3",
+      "sha256": "24c8944f094ff1d4d3b506c7811bcfac5a0f00661d5d146e10db97aa44dde617",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-binding.client.spec.ts": {
@@ -407,7 +407,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-entry.spec.tsx": {
-      "sha256": "c0febc7064858b913cf02f6df8f986d9500a8204bdf4fc93721b1d0817d38ab3",
+      "sha256": "b16f72724c822a2997459820614c6eba412e565ce41a3b3919fbb074043774f6",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-header.spec.tsx": {
@@ -697,6 +697,31 @@
       "status": "M",
       "upstream_baseline_sha256": "cd48aa5feb060159a98bf82694d1f7cc9b6a7677544045a39feaeaf7215c35b7"
     },
+    "packages/client/ui-workspace/README.md": {
+      "sha256": "f7bf504b8a21d656b9d9d1a2ec4af1b619f33260a49d9fe8d1b3e5945ab2a543",
+      "status": "M",
+      "upstream_baseline_sha256": "6c49601515474372d11f71654fb0f7b7a444c106bb117e9e4ebbc7231a629b10"
+    },
+    "packages/client/ui-workspace/src/client/navigation.ts": {
+      "sha256": "34d07874ce756ff644db7e13629f318d19a9e410afd8256a4c5485126b490879",
+      "status": "M",
+      "upstream_baseline_sha256": "adcd1b07a58a85f6f36972861e1c50d4a5f7d96c8d698ef51e2c21d2846661fc"
+    },
+    "packages/client/ui-workspace/tests/host-home-staleness.client.spec.tsx": {
+      "sha256": "3df13d79e2ea5bb490e628ccd4f5f18384225038b144a9f38586b0571a950b73",
+      "status": "M",
+      "upstream_baseline_sha256": "ca326aec10c251de85eaf6555b5d9fcc5919e85b777fbbe66724958aeb4fcb11"
+    },
+    "packages/client/ui-workspace/tests/rename-assembly.client.spec.tsx": {
+      "sha256": "4045271ea58855b8e9ff1a97060176f03799f8d6bfe525252a396c335c0ffdd8",
+      "status": "M",
+      "upstream_baseline_sha256": "fd1047537008ab84255afc4e905d6dc227f9234f5f1ab5e21d84a78bc5e134ee"
+    },
+    "packages/client/ui-workspace/tests/workspaces-service.client.spec.ts": {
+      "sha256": "c2693740064bba4744e91dd38a0ae6361ef6f1daa78d5dee54cc312e119b6a31",
+      "status": "M",
+      "upstream_baseline_sha256": "9127b59a0e6a601fbea6f174824025535ec5a3e234d3aa0c5b86bd7db3052cf2"
+    },
     "packages/extensions/cordis-client-runner/src/client/slot-catalog.ts": {
       "sha256": "91e2b6044e729ac025e37b55c68707994cfc5e25fb4858867bc8090184e17f5c",
       "status": "M",
@@ -978,7 +1003,7 @@
       "upstream_baseline_sha256": "568b5f6d7d94f9a7d02040ea309ab858e8d2d47c9c5f68a9236a48268ed50d03"
     }
   },
-  "fork_head": "4970ef50de3265263f29468b8fe65e6b095ab5e0",
+  "fork_head": "46d089782b49f6470988b33b215dba810eb0eaeb",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "e6a559b1550f5bee359cffc514f6a498710d0697"

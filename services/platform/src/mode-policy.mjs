@@ -9,16 +9,16 @@ import { holdsPlatformRole } from './authorization.mjs'
 const BUILDER = 'BUILDER'
 
 /** 返回账号在指定公司内可进入的模式，顺序固定便于 UI 与测试消费。 */
-export async function allowedGateways(companyId, userId) {
-  const member = await pool('platform').query(
+export async function allowedGateways(companyId, userId, client = pool('platform')) {
+  const member = await client.query(
     'SELECT 1 FROM memberships WHERE company_id = $1 AND user_id = $2',
     [companyId, userId])
   if (member.rows.length !== 1) return []
 
-  if (await holdsPlatformRole(companyId, userId, 'owner')) {
+  if (await holdsPlatformRole(companyId, userId, 'owner', client)) {
     return ['USER', BUILDER]
   }
-  const grant = await pool('platform').query(
+  const grant = await client.query(
     `SELECT 1 FROM platform_mode_grants
       WHERE company_id = $1 AND user_id = $2 AND gateway = 'BUILDER'`,
     [companyId, userId])

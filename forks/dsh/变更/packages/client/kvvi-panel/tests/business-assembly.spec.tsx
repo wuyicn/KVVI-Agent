@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { afterEach, expect, vi } from 'vitest'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { ClientRoster, createClientTest, webApp } from '@deepseek-ai/dsh-client-test-runtime/src/assembly/index.ts'
 const roster=ClientRoster.of([...webApp.rows,{ name:'@deepseek-ai/dsh-client-kvvi-panel',inject:['@deepseek-ai/dsh-client-ui-renderer','@deepseek-ai/dsh-client-ui-slots'],immediately:false }])
@@ -11,6 +11,47 @@ Range.prototype.getBoundingClientRect = () => ({
   top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}),
 })
 afterEach(()=>vi.unstubAllGlobals())
+it('requests authenticated Builder entry from the loaded plugin, then resumes New form without a login page', async ({ start, mock }) => {
+  const navigate = vi.fn()
+  vi.stubGlobal('location', Object.assign(new URL(location.href), { assign: navigate }))
+  const fetcher = vi.fn(async (input: string | URL | Request) => Response.json(String(input).endsWith('/auth/enter-builder')
+    ? { gateway: 'BUILDER', sessionId: 'builder' }
+    : { groups: [], forms: [], items: [], gateway: 'USER', allowedGateways: ['USER', 'BUILDER'], companyId: 'c', userId: 'u', sessionId: 'login', role: null }))
+  vi.stubGlobal('fetch', fetcher)
+  mock.load({ unary: { 'settings/mutate': { ok: true, value: null }, 'llm/listProviders': { ok: true, value: [] }, 'llm/listConfigurableProviders': { ok: true, value: [] } } })
+  await start()
+  fireEvent.click(await screen.findByRole('button', { name: 'Business' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'New form' }))
+  await vi.waitFor(() => expect(navigate).toHaveBeenCalledExactlyOnceWith('/?kvvi-new-form=1'))
+  expect(fetcher).toHaveBeenCalledWith('/auth/enter-builder', expect.objectContaining({ method: 'POST', body: '{}', headers: expect.objectContaining({ 'x-kvvi-builder-intent': '1' }) }))
+}, 60_000)
+it('returns from the authenticated transition directly to the New business dialog', async ({ start, mock }) => {
+  history.replaceState(null, '', '/?kvvi-new-form=1')
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json({ groups: [], forms: [], items: [], gateway: 'BUILDER', companyId: 'c', userId: 'u', sessionId: 'builder', role: null })))
+  mock.load({ unary: { 'settings/mutate': { ok: true, value: null }, 'llm/listProviders': { ok: true, value: [] }, 'llm/listConfigurableProviders': { ok: true, value: [] },
+    'session/list': { ok: true, value: { items: [{ sessionId: 'previous', cwd: '/existing', updatedAt: 1, running: false, blank: true }] } },
+    'subagents/list': { ok: true, value: { entries: [], parentAvailable: true } },
+  } })
+  let loadExistingWorkspace: (() => void) | undefined
+  mock.stream('workspace/follow', (_args, stream) => {
+    loadExistingWorkspace = () => stream.push({ type: 'baseline', value: { items: [{ workspaceId: 'existing', title: 'Existing business', path: '/existing', sessionIds: ['previous'], createdAt: '', updatedAt: '' }], archivedSessionIds: [] } })
+  })
+  mock.stream('session/follow', (_args, stream) => {
+    stream.push({ type: 'snapshot', header: { version: 3, id: 'previous', createdAt: 0, isSeeded: false }, cursor: -1, records: [], hasMore: false, projections: { asOfSeq: -1, values: {} }, assistantStream: { revision: 0 } })
+  })
+  const client = await start()
+  await screen.findByRole('dialog', { name: 'New business' })
+  await vi.waitFor(() => expect(loadExistingWorkspace).toBeTypeOf('function'))
+  await act(async () => { loadExistingWorkspace!() })
+  await vi.waitFor(() => expect(client.ctx.workspaces.list.getSnapshot().phase).toBe('ready'))
+  expect(screen.getByRole('dialog', { name: 'New business' })).toBeTruthy()
+  expect(location.search).toBe('')
+  fireEvent.click(within(screen.getByRole('dialog', { name: 'New business' })).getByRole('button', { name: 'Close' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Business' }))
+  await screen.findByRole('button', { name: 'New form' })
+  expect(screen.queryByRole('dialog', { name: 'New business' })).toBeNull()
+}, 60_000)
 it('starts an unnamed managed business through the loaded plugin and recovers a concurrent title conflict', async ({ start, mock }) => {
   const intent = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
   const fetcher = vi.fn(async (input: string | URL | Request) => { const url = String(input); return Response.json(

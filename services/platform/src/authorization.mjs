@@ -429,11 +429,11 @@ export const PLATFORM_ROLE_CODES = Object.freeze(['owner', 'admin'])
  * @param {string} roleCode `owner` 或 `admin`
  * @returns {Promise<boolean>} 是否持有
  */
-export async function holdsPlatformRole(companyId, userId, roleCode) {
+export async function holdsPlatformRole(companyId, userId, roleCode, client = pool('platform')) {
   if (!PLATFORM_ROLE_CODES.includes(roleCode)) {
     throw new Error(`KVVI_NOT_A_PLATFORM_ROLE: ${roleCode}`)
   }
-  const { rows } = await pool('platform').query(
+  const { rows } = await client.query(
     `SELECT 1 FROM roles r
        JOIN role_members rm ON rm.role_id = r.role_id
       WHERE r.company_id = $1 AND r.role_code = $2 AND rm.user_id = $3

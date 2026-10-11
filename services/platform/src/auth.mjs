@@ -133,6 +133,46 @@ function actorToken(req) {
 export async function handleAuth({ method, path, body, headers }) {
   const fake = { headers }
 
+  // Browser-only entry: identity comes exclusively from the current session.
+  // The custom header requires a same-origin script (no CORS permission is offered).
+  if (path === '/auth/enter-builder' && method === 'POST') {
+    if (headers['x-kvvi-builder-intent'] !== '1'
+        || (headers['sec-fetch-site'] && headers['sec-fetch-site'] !== 'same-origin')) {
+      return { status: 403, body: { error: 'KVVI_NOT_ALLOWED' } }
+    }
+    if (body !== null && (typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length)) {
+      return { status: 400, body: { error: 'KVVI_SUBJECT_FIELDS_FORBIDDEN' } }
+    }
+    const outcome = await verifyBrowserCredential(presentedCredential({ headers }))
+    if (!outcome.ctx) return { status: 401, body: { error: outcome.code, relogin: true } }
+    const ctx = outcome.ctx
+    if (!(await gatewaysFor(ctx.companyId, ctx.userId)).includes('BUILDER')) {
+      await appendDenial({ ...ctx, actorKind: 'USER', actorId: ctx.userId,
+        action: 'auth.enterBuilder', reason: 'KVVI_BUILDER_ACCESS_REQUIRED' })
+      return { status: 403, body: { error: 'KVVI_BUILDER_ACCESS_REQUIRED' } }
+    }
+    let sessionId = ctx.sessionId
+    if (ctx.gateway !== 'BUILDER') {
+      try {
+        const session = await createSession({ userId: ctx.userId, companyId: ctx.companyId,
+          gateway: 'BUILDER', sourceSessionId: ctx.sessionId })
+        sessionId = session.sessionId
+      } catch (error) {
+        const code = error?.message
+        if (code === 'KVVI_BUILDER_ACCESS_REQUIRED') return { status: 403, body: { error: code } }
+        if (['KVVI_SESSION_ENDED', 'KVVI_AUTHORIZATION_CHANGED', 'KVVI_ACCOUNT_NOT_ACTIVE', 'KVVI_NOT_A_MEMBER'].includes(code)) {
+          return { status: 401, body: { error: code, relogin: true } }
+        }
+        throw error
+      }
+    }
+    const credential = await issueBrowserCredential(sessionId)
+    await append({ companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
+      gateway: 'BUILDER', sessionId, action: 'auth.enterBuilder', outcome: 'ALLOW',
+      paramsDigest: digestOf({ sourceSessionId: ctx.sessionId }) })
+    return { status: 200, body: { ...credential, sessionId, gateway: 'BUILDER' } }
+  }
+
   // ── ① 登录 ──────────────────────────────────────────────────────
   if (path === '/auth/login' && method === 'POST') {
     const { login, password, companyId, requestedGateway = 'USER' } = body ?? {}

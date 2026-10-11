@@ -63,6 +63,29 @@ const post = (path, body, headers = {}) => fetch(`${BASE}${path}`, {
 })
 
 describe('锚点⑥ 认证端点在平台服务进程内闭合（§4.6.5）', () => {
+  test('新建表单：真实 HTTP 换发 HttpOnly 搭建会话，不重新索要口令或泄露凭据', async () => {
+    const login = await post('/auth/login', { login: 'alice', password: PASSWORD, companyId: A.company })
+    const source = await login.json()
+    const headers = { cookie: `kvvi-session=${source.credential}`, 'x-kvvi-builder-intent': '1' }
+    const response = await post('/auth/enter-builder', {}, headers)
+    assert.equal(response.status, 200)
+    assert.equal(response.headers.get('x-kvvi-process'), 'platform-service')
+    const result = await response.json()
+    assert.equal(result.gateway, 'BUILDER')
+    assert.equal(Object.hasOwn(result, 'credential'), false)
+    const cookie = response.headers.get('set-cookie')
+    assert.match(cookie, /HttpOnly/u)
+    assert.match(cookie, /SameSite=Strict/u)
+    const state = await fetch(`${BASE}/auth/session`, { headers: { cookie: cookie.split(';')[0] } })
+    assert.equal((await state.json()).gateway, 'BUILDER')
+    assert.equal((await post('/auth/enter-builder', {}, { ...headers, 'sec-fetch-site': 'cross-site' })).status, 403)
+    assert.equal((await fetch(`${BASE}/auth/enter-builder`, { headers })).status, 405)
+    const employee = await (await post('/auth/login', { login: 'bob', password: PASSWORD })).json()
+    const denied = await post('/auth/enter-builder', {}, { ...headers, cookie: `kvvi-session=${employee.credential}` })
+    assert.equal(denied.status, 403)
+    assert.equal(denied.headers.get('set-cookie'), null)
+  })
+
   test('普通员工伪造 BUILDER 意图会被服务端拒绝', async () => {
     const r = await post('/auth/login', {
       login: 'bob', password: PASSWORD, companyId: A.company,

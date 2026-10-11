@@ -103,7 +103,7 @@ const PENDING = {
 //    实际是「这条路径根本没人处理」。实测就这么撞过一次：
 //    单元测试直接调 `handleAuth`，绕过了路由，于是怎么测都是绿的。
 const USER_AUTH_PATHS = new Set(['/auth/login', '/auth/logout', '/auth/session',
-  '/auth/renew'])
+  '/auth/renew', '/auth/enter-builder'])
 
 /**
  * 一次性首次初始化的令牌。安装时生成，写在配置文件（0600）里。
@@ -560,6 +560,14 @@ async function handleRequest(req, res) {
     }
     const out = await handleAuth({ method, path, body, headers: req.headers })
     if (out === null) return send(res, 405, { ok: false, error: 'method_not_allowed', path })
+    if (path === '/auth/enter-builder' && out.status === 200) {
+      const { credential, expiresAt, ...publicResult } = out.body
+      return send(res, 200, publicResult, {
+        'set-cookie': sessionCookie(credential,
+          Math.max(0, expiresAt - Math.floor(Date.now() / 1000) + SESSION_COOKIE_SKEW_SECONDS), expiresAt),
+        'cache-control': 'no-store',
+      })
+    }
     return send(res, out.status, out.body)
   }
 

@@ -101,12 +101,13 @@ export function gatewaysFor(companyId, userId) {
  * @param {string} input.userId 账号
  * @param {string} input.companyId 选定公司
  * @param {'USER'|'BUILDER'} input.gateway 模式
+ * @param {string} [input.sourceSessionId] 已认证的浏览器会话；进入搭建模式时重新核验。
  * @returns {Promise<object>} 会话
  */
-export async function createSession({ userId, companyId, gateway }) {
+export async function createSession({ userId, companyId, gateway, sourceSessionId }) {
   return withTransaction('platform', async (client) => {
     const user = await client.query(
-      'SELECT status, authz_version FROM users WHERE user_id = $1', [userId])
+      'SELECT status, authz_version FROM users WHERE user_id = $1 FOR SHARE', [userId])
     if (user.rows.length !== 1) throw new Error('KVVI_NO_SUCH_USER')
     if (user.rows[0].status !== 'ACTIVE') throw new Error('KVVI_ACCOUNT_NOT_ACTIVE')
 
@@ -114,6 +115,18 @@ export async function createSession({ userId, companyId, gateway }) {
       `SELECT m.dept_id, m.shop_id FROM memberships m
         WHERE m.company_id = $1 AND m.user_id = $2`, [companyId, userId])
     if (member.rows.length !== 1) throw new Error('KVVI_NOT_A_MEMBER')
+
+    if (sourceSessionId !== undefined) {
+      const source = await client.query(
+        `SELECT state, authz_version FROM sessions
+          WHERE session_id = $1 AND user_id = $2 AND company_id = $3 FOR SHARE`,
+        [sourceSessionId, userId, companyId])
+      if (source.rows[0]?.state !== 'ACTIVE') throw new Error('KVVI_SESSION_ENDED')
+      if (source.rows[0].authz_version !== user.rows[0].authz_version) throw new Error('KVVI_AUTHORIZATION_CHANGED')
+      if (gateway !== 'BUILDER' || !(await allowedGateways(companyId, userId, client)).includes('BUILDER')) {
+        throw new Error('KVVI_BUILDER_ACCESS_REQUIRED')
+      }
+    }
 
     const sessionId = randomUUID()
     await client.query(
