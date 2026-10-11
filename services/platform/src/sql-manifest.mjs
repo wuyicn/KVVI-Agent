@@ -41,7 +41,7 @@ export const MIGRATIONS = Object.freeze({
     '32-business-build-intents.sql',
   ]),
   // ⚠️ 业务库的迁移**同样按顺序**：26 依赖 20 建出来的 `business_records`。
-  kvvi_business: Object.freeze(['20-business.sql', '26-record-workflow-version.sql', '31-business-directory.sql']),
+  kvvi_business: Object.freeze(['20-business.sql', '26-record-workflow-version.sql', '31-business-directory.sql', '33-field-uniqueness.sql']),
   kvvi_audit: Object.freeze(['30-audit.sql']),
 })
 

@@ -139,7 +139,7 @@ export function KvviRecordDetail({
       {error === undefined ? null : (
         <p role="alert" style={{ fontSize: 12.5, marginBottom: 8 }}>
           {conflictRowVersion === undefined
-            ? copy('detail.failed', { detail: error })
+            ? copy(error === 'KVVI_FIELD_DUPLICATE' ? 'form.duplicate' : error === 'KVVI_UNIQUE_PUBLICATION_PENDING' ? 'form.rulesUpdating' : 'detail.failed', { detail: error })
             : copy('detail.conflict', { currentRowVersion: String(conflictRowVersion) })}
         </p>
       )}

@@ -59,6 +59,8 @@ The tree is validated **completely** before anything is drawn, so a contract eit
 
 ## Data sources
 
+Duplicate create and edit refusals preserve the input and ask the user to correct unique fields without revealing the conflicting record. Publication refuses existing duplicates without deleting records. An unfinished rule publication temporarily blocks saving and directs the user to the owner; uniqueness decisions remain server-owned.
+
 | Panel view | Endpoint |
 |---|---|
 | Grouped forms | `GET /api/v1/business-directory` |

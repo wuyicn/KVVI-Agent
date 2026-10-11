@@ -25,6 +25,7 @@ import { pool, closeAll } from '../src/db.mjs'
 import { A, resetDatabase, grantBaseline, grantPlatformRole, makeSession } from './harness.mjs'
 import { submitDraft, approveDraft, publishDraft, DIFF_FACES } from '../src/publish.mjs'
 import { handleApi } from '../src/api-router.mjs'
+import { runtimeContextHeaders } from '../src/runtime-auth.mjs'
 
 /** 本文件专用的系统代号，与别的测试互不干扰。 */
 const ASSET = 'e2e_request'
@@ -216,6 +217,41 @@ before(async () => {
                         'permission-spec', 'tool-spec', 'app-model-command'], '通用事项登记')
 })
 after(closeAll)
+
+test('browser and signed AI routes share duplicate enforcement and retain the original record', async () => {
+  const asset = 'unique_api_route'
+  await publish(asset, ['business-schema', 'view-schema', 'workflow-spec', 'permission-spec', 'tool-spec', 'app-model-command'], '查重测试', {
+    'business-schema': { ...model(asset), indexes: [{ index_code: 'unique_title', kind: 'UNIQUE', fields: ['title'] }] },
+  })
+  const path = `/api/v1/systems/${asset}/records`
+  const a = await api('POST', path, employee, { data: { title: '已有标题' } })
+  assert.equal(a.status, 201, JSON.stringify(a.body))
+  const duplicate = await api('POST', path, employee, { data: { title: '已有标题' } })
+  assert.equal(duplicate.status, 409)
+  assert.equal(duplicate.body.error, 'KVVI_FIELD_DUPLICATE')
+  assert.equal(duplicate.body.message, '填写的内容与已有记录重复，请检查不允许重复的项目后修改。')
+  const secret = 'isolated-unique-runtime-test'
+  const previous = process.env.KVVI_INTERNAL_TOKEN
+  process.env.KVVI_INTERNAL_TOKEN = secret
+  const runtimeApi = (method, url, body) => handleApi({ method, path: url, query: '', body: JSON.stringify(body),
+    headers: runtimeContextHeaders(employee.ctx, secret) })
+  try {
+    const aiDuplicate = await runtimeApi('POST', path, { data: { title: '已有标题' } })
+    assert.equal(aiDuplicate.status, 409, JSON.stringify(aiDuplicate.body))
+    assert.equal(aiDuplicate.body.error, 'KVVI_FIELD_DUPLICATE')
+    const b = await runtimeApi('POST', path, { data: { title: '不同标题' } })
+    assert.equal(b.status, 201, JSON.stringify(b.body))
+    const edited = await runtimeApi('PATCH', `${path}/${b.body.recordId}`, { data: { title: '已有标题' }, rowVersion: b.body.rowVersion })
+    assert.equal(edited.status, 409, JSON.stringify(edited.body))
+    const selfEdit = await api('PATCH', `${path}/${a.body.recordId}`, employee, { data: { title: '已有标题' }, rowVersion: a.body.rowVersion })
+    assert.equal(selfEdit.status, 200, JSON.stringify(selfEdit.body))
+    const saved = await api('GET', `${path}/${b.body.recordId}`, employee)
+    assert.equal(saved.body.data.title, '不同标题')
+  } finally {
+    if (previous === undefined) delete process.env.KVVI_INTERNAL_TOKEN
+    else process.env.KVVI_INTERNAL_TOKEN = previous
+  }
+})
 
 describe('阶段九 · G7 端到端', () => {
   test('① 契约不全的系统跑不起来，而且说得出缺哪一份', async () => {

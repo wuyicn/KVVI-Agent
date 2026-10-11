@@ -114,6 +114,16 @@ async function execute(name: string, args: Record<string, unknown>) {
 }
 
 describe('employee tools through real Loader and signed platform transport', () => {
+  it('explains duplicate refusal without retrying the write or exposing another record', async () => {
+    status = 409
+    response = { error: 'KVVI_FIELD_DUPLICATE', problems: [] }
+    await boot()
+    const result = await execute('record_create', { system: 'customer', data: { customer_name: '重复客户' } })
+    expect(result.isError).toBe(true)
+    expect(JSON.stringify(result.content)).toContain('已有记录重复')
+    expect(JSON.stringify(result.content)).not.toContain(RECORD.recordId)
+    expect(requests).toHaveLength(1)
+  })
   it.each([
     ['record_schema', { system: 'customer' }, FIELDS, '/systems/customer/fields', 'GET'],
     ['record_list', { system: 'customer' }, { items: [ROW], fieldVisibility }, '/systems/customer/records', 'GET'],

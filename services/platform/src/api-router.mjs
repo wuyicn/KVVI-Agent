@@ -275,7 +275,13 @@ export async function handleApi({ method, path, query, body, headers, loadSessio
     return await dispatch(routes)
   } catch (error) {
     if (error instanceof FieldRuleError) {
-      return { status: error.status, body: { error: error.code, problems: error.problems } }
+      const message = {
+        KVVI_FIELD_DUPLICATE: '填写的内容与已有记录重复，请检查不允许重复的项目后修改。',
+        KVVI_UNIQUE_EXISTING_DUPLICATES: '已有记录存在重复，请先处理重复数据，再发布“不允许重复”规则。原有数据未删除。',
+        KVVI_UNIQUE_PUBLICATION_PENDING: '表单规则正在发布，暂时不能保存。请联系所有者完成发布后重试。',
+        KVVI_UNIQUE_RULE_INVALID: '不允许重复的规则设置不完整，请让搭建者检查后重新发布。',
+      }[error.code]
+      return { status: error.status, body: { error: error.code, problems: error.problems, ...(message ? { message } : {}) } }
     }
     if(error instanceof FormArchivedError) return {status:409,body:{error:error.code}}
     if(error instanceof DirectoryError) return {status:error.code==='KVVI_BUILDER_REQUIRED'?403:error.code==='KVVI_DIRECTORY_NOT_FOUND'?404:error.code==='KVVI_DIRECTORY_VERSION_CONFLICT'?409:400,body:{error:error.code}}

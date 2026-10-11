@@ -301,22 +301,11 @@ export async function publishCommit({ session, draftId, payload }) {
     // ★ **策略的写入不在这里** —— 见 `publish.mjs` 的 `writePolicies`。
     //   写策略的 SQL 只能有一处，而那一处是 `publish.mjs`；
     //   `工具/check_publish_channel.py` 静态盯着这件事（§9.6.3）。
-    apply: async () => {
-      const client = await pool('platform').connect()
-      try {
-        await client.query('BEGIN')
-        const written = await writePolicies({
-          // 公司**只来自会话** —— 调用方传的 companyId 在路由那一层就被剥掉了。
-          client, companyId: session.companyId, rows: prepared.rows,
-        })
-        await client.query('COMMIT')
-        return { ...written, notEnforced: prepared.notEnforced.length }
-      } catch (error) {
-        await client.query('ROLLBACK').catch(() => undefined)
-        throw error
-      } finally {
-        client.release()
-      }
+    apply: async ({ client }) => {
+      const written = await writePolicies({
+        client, companyId: session.companyId, rows: prepared.rows,
+      })
+      return { ...written, notEnforced: prepared.notEnforced.length }
     },
     system: {
       assetId,

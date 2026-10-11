@@ -24,6 +24,7 @@ import { latestContract } from './contracts.mjs'
 import { assertFieldValues } from './field-rules.mjs'
 import { applyScopeGucs, fieldVisibility, requiredFields } from './authorization.mjs'
 import { nextRecordNo } from './record-no.mjs'
+import { lockUniqueFields, assertUniqueFields, assertUniquePublicationReady } from './unique-fields.mjs'
 
 export class KvviRefError extends Error {
   constructor(code, detail = '') {
@@ -205,25 +206,22 @@ async function visibleFieldCodes(ctx, model) {
 }
 
 export async function createRecord(ctx, scope, input) {
-  // ★ **契约声明的字段约束在这里执行。**
-  //
-  // 为什么在这一层而不是 API 适配器里：记录有四个写入点
-  // （产品 API、命令执行器、访客链路、流程迁移）。只在一个适配器里检查，
-  // 另外三个就是绕过口 —— 「换个调用方就能跳过」的东西不叫约束。
-  const model = await publishedBusinessModel(ctx.companyId, input.schemaCode)
-  if (model !== null) {
-    assertFieldValues({
-      model, operation: 'create', data: input.data ?? {},
-      // 权限层的必填**只用在同一件事上**：建这条记录时你得把它填上。
-      // 取并集交给 `checkFieldValues`，这里不替模型层下结论。
-      requiredFields: await requiredFields(ctx.companyId, ctx.userId),
-      declaredFields: await visibleFieldCodes(ctx, model),
-    })
-  }
   return withTransaction('business', async (client) => {
     await applyScopeGucs(client, scope)
     await lockFormLifecycle(client,ctx.companyId,input.schemaCode,'write')
     await assertFormActive(client,ctx.companyId,input.schemaCode)
+    await lockUniqueFields(client, ctx.companyId, input.schemaCode)
+    // All product and agent writes validate the model read under the form lock.
+    const model = await publishedBusinessModel(ctx.companyId, input.schemaCode)
+    await assertUniquePublicationReady(client, ctx.companyId, input.schemaCode, model)
+    if (model !== null) {
+      assertFieldValues({
+        model, operation: 'create', data: input.data ?? {},
+        requiredFields: await requiredFields(ctx.companyId, ctx.userId),
+        declaredFields: await visibleFieldCodes(ctx, model),
+      })
+    }
+    await assertUniqueFields(client, ctx.companyId, input.schemaCode, model, input.data ?? {})
     // ★ 单号缺省时**由本函数生成**，不留给调用方。
     //
     // `record_no` 是 NOT NULL 且有唯一约束；此前没有任何地方生成它，
@@ -265,25 +263,29 @@ export async function createRecord(ctx, scope, input) {
  * @returns {Promise<{recordId: string, rowVersion: number}|null>} 结果
  */
 export async function updateRecord(ctx, scope, logical, patch) {
-  // 补丁里带的**字段值**要过同一套约束（`CREATE_ONLY` / `SYSTEM` 的字段不能改）。
-  // `patch.state` 不走这里 —— 它不是模型字段，是流程迁移写的那一列。
-  if (patch?.data !== undefined && Object.keys(patch.data).length > 0) {
-    const model = await publishedBusinessModel(ctx.companyId, logical.schemaCode)
-    if (model !== null) {
-      assertFieldValues({
-        model, operation: 'update', data: patch.data,
-        declaredFields: await visibleFieldCodes(ctx, model),
-      })
-    }
-  }
   const handle = buildHandle(ctx, logical)
   return withTransaction('business', async (client) => {
     await applyScopeGucs(client, scope)
-    // Generic commands only carry a record ID. Resolve its real schema under RLS.
     const existing=(await client.query('SELECT schema_code FROM business_records WHERE company_id=$1 AND record_id=$2',[handle.companyId,handle.id])).rows[0]
     if(!existing) return null
     await lockFormLifecycle(client,handle.companyId,existing.schema_code,'write')
     await assertFormActive(client,handle.companyId,existing.schema_code)
+    await lockUniqueFields(client, handle.companyId, existing.schema_code)
+    const current = (await client.query('SELECT data,row_version FROM business_records WHERE company_id=$1 AND record_id=$2 FOR UPDATE', [handle.companyId, handle.id])).rows[0]
+    if (!current || (patch.rowVersion != null && Number(current.row_version) !== patch.rowVersion)) return null
+    const model = await publishedBusinessModel(ctx.companyId, existing.schema_code)
+    await assertUniquePublicationReady(client, ctx.companyId, existing.schema_code, model)
+    // Field mutability applies to the patch; uniqueness applies to the merged record.
+    if (patch?.data !== undefined && Object.keys(patch.data).length > 0) {
+      if (model !== null) {
+        assertFieldValues({
+          model, operation: 'update', data: patch.data,
+          declaredFields: await visibleFieldCodes(ctx, model),
+        })
+      }
+    }
+    await assertUniqueFields(client, handle.companyId, existing.schema_code, model,
+      { ...current.data, ...(patch.data ?? {}) }, handle.id)
     const { rows } = await client.query(
       `UPDATE business_records
           SET data = data || $3::jsonb,

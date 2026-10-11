@@ -23,9 +23,10 @@
  */
 import { createHash, randomUUID } from 'node:crypto'
 import { pool, withTransaction } from './db.mjs'
-import { recordContracts } from './contracts.mjs'
+import { recordContracts, latestContract } from './contracts.mjs'
 import { append, appendDenial } from './audit.mjs'
 import { checkSelfApproval, isPlatformAdmin, checkGateway } from './authorization.mjs'
+import { lockUniqueFields, assertUniqueFields, stageUniquePublication } from './unique-fields.mjs'
 
 export class PublishError extends Error {
   constructor(code, detail = {}) {
@@ -242,7 +243,7 @@ export async function approveDraft({ ctx, draftId, decision, opinion = null, cha
  * @param {object} input 入参
  * @param {object} input.ctx 调用上下文
  * @param {string} input.draftId 草案
- * @param {(input: object) => Promise<object>} input.apply 应用变更的回调
+ * @param {(input: object) => Promise<object>} input.apply Receives the active platform transaction as `client`; database writes must use it without committing or releasing it.
  * @param {object} [input.system] 本次发布**产出的业务系统**：
  *   `{ assetId, name, schemaCode }`。缺省时不登记 —— 但那样工作台的
  *   「我的系统」列不出这一项，所以正常路径必须给。
@@ -274,57 +275,77 @@ export async function publishDraft({
   const diffDigest = digestOf(draft.diff_report)
   if (!draft.approved_by) return refuse('KVVI_NO_APPROVER')
 
-  const applied = await apply({ draft, diffDigest })
-  await withTransaction('platform', async (client) => {
-    await client.query(
-      `UPDATE publish_drafts SET status = 'PUBLISHED', published_at = now()
-        WHERE draft_id = $1`, [draftId])
-    const rec = await client.query(
-      `INSERT INTO publish_records (draft_id, company_id, change_digest,
-         approved_by, published_by, diff_digest)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       RETURNING record_id`,
-      [draftId, draft.company_id, draft.change_digest, draft.approved_by,
-       ctx.userId, diffDigest])
-    // ★ 与发布**同事务**登记业务系统。
-    //
-    // 分两次写会留下一个窗口：「发布记录在、系统不在」或反过来 ——
-    // 而这两件事在语义上是一件事。放在同一个事务里，要么都有、要么都没有。
-    if (system !== null) {
-      await client.query(
-        `INSERT INTO systems (system_id, company_id, asset_id, name, schema_code,
-           published_record, published_at)
-         VALUES ($1,$2,$3,$4,$5,$6, now())
-         ON CONFLICT (company_id, asset_id) DO UPDATE
-           SET name = EXCLUDED.name,
-               schema_code = EXCLUDED.schema_code,
-               published_record = EXCLUDED.published_record,
-               published_at = EXCLUDED.published_at`,
-        [randomUUID(), draft.company_id, system.assetId, system.name,
-         system.schemaCode, rec.rows[0].record_id])
-      await client.query("UPDATE business_build_intents SET state='PENDING',version=version+1 WHERE company_id=$1 AND draft_id=$2 AND asset_id=$3 AND state='BOUND'",[draft.company_id,draftId,system.assetId])
-    }
-    // ★ 契约内容与发布记录**同事务**。
-    //
-    // 契约内容是权限判定与界面渲染的输入。分开写会留下「发布了但内容没到」
-    // 的窗口 —— 那个窗口里员工能打开一个系统名却打不开界面，
-    // 而排查线索只有一条时序。
-    if (contracts.length > 0) {
-      await recordContracts(client, {
-        companyId: draft.company_id,
-        contracts,
-        publishedRecord: rec.rows[0].record_id,
-      })
+  const commit = async () => {
+    let applied
+    await withTransaction('platform', async (client) => {
+      const claimed = await client.query(
+        `UPDATE publish_drafts SET status = 'PUBLISHED', published_at = now()
+          WHERE draft_id = $1 AND status = 'APPROVED' RETURNING draft_id`, [draftId])
+      if (claimed.rowCount !== 1) throw new PublishError('KVVI_DRAFT_NOT_APPROVED')
+      // Permission replacement and model publication commit or roll back together.
+      applied = await apply({ draft, diffDigest, client })
+      const rec = await client.query(
+        `INSERT INTO publish_records (draft_id, company_id, change_digest,
+           approved_by, published_by, diff_digest)
+         VALUES ($1,$2,$3,$4,$5,$6)
+         RETURNING record_id`,
+        [draftId, draft.company_id, draft.change_digest, draft.approved_by,
+         ctx.userId, diffDigest])
+      // ★ 与发布**同事务**登记业务系统。
+      //
+      // 分两次写会留下一个窗口：「发布记录在、系统不在」或反过来 ——
+      // 而这两件事在语义上是一件事。放在同一个事务里，要么都有、要么都没有。
+      if (system !== null) {
+        await client.query(
+          `INSERT INTO systems (system_id, company_id, asset_id, name, schema_code,
+             published_record, published_at)
+           VALUES ($1,$2,$3,$4,$5,$6, now())
+           ON CONFLICT (company_id, asset_id) DO UPDATE
+             SET name = EXCLUDED.name,
+                 schema_code = EXCLUDED.schema_code,
+                 published_record = EXCLUDED.published_record,
+                 published_at = EXCLUDED.published_at`,
+          [randomUUID(), draft.company_id, system.assetId, system.name,
+           system.schemaCode, rec.rows[0].record_id])
+        await client.query("UPDATE business_build_intents SET state='PENDING',version=version+1 WHERE company_id=$1 AND draft_id=$2 AND asset_id=$3 AND state='BOUND'",[draft.company_id,draftId,system.assetId])
+      }
+      // ★ 契约内容与发布记录**同事务**。
+      //
+      // 契约内容是权限判定与界面渲染的输入。分开写会留下「发布了但内容没到」
+      // 的窗口 —— 那个窗口里员工能打开一个系统名却打不开界面，
+      // 而排查线索只有一条时序。
+      if (contracts.length > 0) {
+        await recordContracts(client, {
+          companyId: draft.company_id,
+          contracts,
+          publishedRecord: rec.rows[0].record_id,
+        })
+      }
+    })
+    await append({
+      companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
+      gateway: ctx.gateway, sessionId: ctx.sessionId,
+      action: 'publish.publish', outcome: 'ALLOW',
+      resourceKind: 'publish_draft', resourceId: draftId,
+      paramsDigest: diffDigest,
+    })
+    return { ok: true, status: 'PUBLISHED', diffDigest, applied }
+  }
+  const models = contracts.filter(c => c.contractType === 'business-schema')
+    .sort((a, b) => String(a.assetId).localeCompare(String(b.assetId)))
+  if (models.length === 0) return commit()
+  await withTransaction('business', async client => {
+    await client.query("SELECT set_config('kvvi.company_id',$1,true)", [ctx.companyId])
+    for (const c of models) {
+      await lockUniqueFields(client, ctx.companyId, c.assetId)
+      await assertUniqueFields(client, ctx.companyId, c.assetId, c.content)
+      const current = await latestContract(ctx.companyId, 'business-schema', c.assetId)
+      await stageUniquePublication(client, ctx.companyId, c.assetId, draftId, c.content, current?.content ?? null)
     }
   })
-  await append({
-    companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
-    gateway: ctx.gateway, sessionId: ctx.sessionId,
-    action: 'publish.publish', outcome: 'ALLOW',
-    resourceKind: 'publish_draft', resourceId: draftId,
-    paramsDigest: diffDigest,
-  })
-  return { ok: true, status: 'PUBLISHED', diffDigest, applied }
+  // A durable fence, rather than a live connection, protects the cross-database interval.
+  // An interrupted publication can resume the same approved draft; writers reconcile a committed model.
+  return commit()
 }
 
 /**
