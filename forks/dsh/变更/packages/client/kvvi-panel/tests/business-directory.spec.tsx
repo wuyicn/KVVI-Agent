@@ -88,7 +88,7 @@ it('clears drafts and an open builder dialog when the authenticated company chan
   const f = fixture(); render(<BusinessPage {...f.props}/>); await screen.findByLabelText('当前地址')
   act(() => { f.store.actions.change('customer', { private: 'old company draft' }) })
   fireEvent.click(screen.getByRole('button', { name: '新增表单' }))
-  fireEvent.change(screen.getByLabelText('业务需求'), { target: { value: 'private company requirements' } })
+  fireEvent.change(screen.getByLabelText('业务名称'), { target: { value: 'private company business' } })
   f.fetch.mockImplementation(async (url: string) => url === '/auth/session'
     ? Response.json({ gateway: 'USER', allowedGateways: ['USER'], companyId: 'c2', userId: 'u2', sessionId: 's2' })
     : Response.json({ groups: [], forms: [], role: null }))

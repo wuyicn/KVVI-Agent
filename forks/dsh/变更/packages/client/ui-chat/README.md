@@ -37,7 +37,7 @@ HTTP(S) links in Assistant Markdown open a new right-Sidebar Browser tab on ordi
 <a id="kvvi-business-conversations"></a>
 ## KVVI business conversations
 
-Sessions using `kvvi-builder` or `kvvi-worker` omit diagnostic nodes, reasoning, successful tool payloads, changed source files, and token statistics from Chat, including live turns. Business replies, images, questions, confirmations, and localized failure notices remain visible. A pending question or approval replaces the running indicator. The two generated builder-request templates display business wording without changing their recorded input. Ordinary user text and assistant prose remain verbatim; historical technical prose is not rewritten. Raw events and Trajectory remain unchanged. This is a presentation rule, not authorization or a guarantee of model compliance.
+Sessions using `kvvi-builder` or `kvvi-worker` omit diagnostic nodes, reasoning, successful tool payloads, changed source files, and token statistics from Chat, including live turns. Business replies, images, questions, confirmations, and localized failure notices remain visible. A pending question or approval replaces the running indicator. Generated edit, legacy-create and guided-create requests display business wording without changing their recorded input. Ordinary user text and assistant prose remain verbatim; historical technical prose is not rewritten. Raw events and Trajectory remain unchanged. This is a presentation rule, not authorization or a guarantee of model compliance.
 
 <a id="system-prompt-row"></a>
 ## System prompt row

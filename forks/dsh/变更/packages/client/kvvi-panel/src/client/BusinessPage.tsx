@@ -24,8 +24,7 @@ import { ReadFailure } from './ReadFailure.tsx'
 import css from './business.module.css'
 export interface BusinessPageInjected {
   enterBuilder: () => void
-  pickDirectory: () => Promise<string | null>
-  startBuilder: (parent: string, name: string, purpose: string, intentId: string) => Promise<void>
+  startBuilder: (name: string, intentId: string) => Promise<void>
   designBusiness: (assetId: string, workspaceId?: string) => Promise<void>
   back: () => void
   manage: () => void
@@ -35,7 +34,7 @@ export interface BusinessPageInjected {
 }
 export type BusinessPageProps = PropsRuntime<'main'> & PropsLocale<'kvviPanel'> & PropsStore<ReturnType<typeof createBusinessStore>> & PropsRenderSlots<'kvvi.business.session'> & PropsRenderFactories & BusinessPageInjected
 export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWorkspaces,
-  SessionProvider, renderSlot, useStore, actions, pickDirectory, startBuilder, designBusiness, enterBuilder }: BusinessPageProps) {
+  SessionProvider, renderSlot, useStore, actions, startBuilder, designBusiness, enterBuilder }: BusinessPageProps) {
   const current = useSessions(state => Object.values(state.byId).find(s => (s.retainedBy.mainView ?? 0) > 0)?.id)
   const workspaces = useWorkspaces(state => state.items)
   const [directory, setDirectory] = useState<Directory>({ groups: [], forms: [] })
@@ -57,13 +56,12 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
   const [canBuild, setCanBuild] = useState(false)
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
-  const [purpose, setPurpose] = useState('')
-  const [parent, setParent] = useState('')
   const [building, setBuilding] = useState(false)
   const [buildError, setBuildError] = useState(false)
   const [buildGroup, setBuildGroup] = useState('')
   const [designing, setDesigning] = useState(false)
-  const buildOperation = useRef<{ group: string; id: string }>()
+  const buildOperation = useRef<{ group: string; name: string; id: string }>()
+  const buildInFlight = useRef(false)
   const collapsed = useStore(s => s.collapsed)
   const selection = useRef<BusinessForm | null>(null)
   const identity = useRef('')
@@ -135,22 +133,25 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
     setSystem(null); setSession(undefined); setAI(false); setBusy(false); setError(undefined)
   }
   const clearBuilderDraft = () => {
-    setDialog(undefined); setCreating(false); setName(''); setPurpose(''); setParent(''); setBuildError(false); setAuditPending(false)
+    setDialog(undefined); setCreating(false); setName(''); setBuildError(false); setAuditPending(false)
     setDesigning(false); setBuildGroup(''); setBuilding(false); buildOperation.current = undefined
   }
   const beginBuild = async () => {
-    if (building) return
+    if (buildInFlight.current || building) return
+    buildInFlight.current = true
     setBuilding(true); setBuildError(false)
     const scope = identity.current
-    if (buildOperation.current?.group !== buildGroup) buildOperation.current = { group: buildGroup, id: randomUUID() }
+    if (buildOperation.current?.group !== buildGroup || buildOperation.current.name !== name.trim()) {
+      buildOperation.current = { group: buildGroup, name: name.trim(), id: randomUUID() }
+    }
     try {
       const result = await createBuildIntent(buildGroup || null, buildOperation.current.id)
       if (identity.current !== scope) return
       if (!result.ok || !result.value.intentId) { setBuildError(true); return }
-      await startBuilder(parent, name.trim(), purpose.trim(), result.value.intentId)
-      if (identity.current === scope) { setCreating(false); buildOperation.current = undefined }
+      await startBuilder(name.trim(), result.value.intentId)
+      if (identity.current === scope) { setCreating(false); setName(''); buildOperation.current = undefined }
     } catch (_error) { if (identity.current === scope) setBuildError(true) }
-    finally { if (identity.current === scope) setBuilding(false) }
+    finally { buildInFlight.current = false; if (identity.current === scope) setBuilding(false) }
   }
   const editForm = async (chosenWorkspace?: string) => {
     if (system === null || building) return
@@ -204,12 +205,9 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
     {creating ? <Modal open title={t('business.new')} closeLabel={t('panel.close')} onClose={() => { if (!building) setCreating(false) }}>
       <p className={css.hint}>{t('business.buildHint')}</p>
       {buildError ? <p role="alert">{t('business.buildFailed')}</p> : null}
-      <label className={css.field}>{t('business.name')}<input className={css.control} value={name} onChange={(e) => { setName(e.target.value) }} maxLength={80}/></label>
-      <label className={css.field}>{t('business.purpose')}<textarea className={css.control} value={purpose} onChange={(e) => { setPurpose(e.target.value) }}/></label>
+      <label className={css.field}>{t('business.name')}<input className={css.control} value={name} disabled={building} placeholder={t('business.nameOptional')} onChange={(e) => { setName(e.target.value) }} maxLength={80}/></label>
       <label className={css.field}>{t('business.buildGroup')}<select className={css.control} value={buildGroup} disabled={building} onChange={(e) => { setBuildGroup(e.target.value) }}><option value="">{t('directory.ungrouped')}</option>{directory.groups.map(g => <option key={g.groupId} value={g.groupId}>{g.name}</option>)}</select></label>
-      <label className={css.field}>{t('business.folder')}<input className={css.control} value={parent} readOnly/></label>
-      <Button variant="outline" disabled={building} onClick={() => { void pickDirectory().then((path) => { if (path !== null) setParent(path) }).catch(() => { setBuildError(true) }) }}>{t('business.chooseFolder')}</Button>
-      <div className={css.formActions}><Button variant="primary" disabled={building || !name.trim() || !purpose.trim() || !parent || /[\\/]/u.test(name)} onClick={() => { void beginBuild() }}>{t('business.startBuild')}</Button></div>
+      <div className={css.formActions}><Button variant="primary" disabled={building} onClick={() => { void beginBuild() }}>{t('business.startBuild')}</Button></div>
     </Modal> : null}
   </section>
 }

@@ -111,8 +111,10 @@ counts rather than claiming a tenant-wide total or inventing pagination.
 An eligible builder currently in USER mode enters the official builder login before
 creation. Active `gateway=BUILDER` is still required by every builder callback;
 discovery never grants tools or creates resources in USER mode. Starting a business
-collects its name, requirements and parent folder; the original Host directory,
-Workspace and Session APIs create its builder workspace and send its first request.
+accepts an optional name and group, with no folder picker or required requirements text.
+The Host allocates private storage under the configured runtime home; original
+Workspace and Session APIs open the builder conversation. AI first asks about the
+business, then confirms forms, fields and field types before generating a draft.
 The selected group is stored in a server build intent before opening the original
 builder conversation. Its logged request gives the intent ID to `publish_submit`;
 the platform binds it to the submitted draft, without approving it. Owner-approved
@@ -122,7 +124,8 @@ It is listed as a published business only after the actual publish flow succeeds
 Within the current page lifetime, a failed start retries only its unfinished
 directory, workspace, session or prompt step; prompt retries reuse the submission
 identity. Reloading the page does not recover this local setup checkpoint. Existing
-same-named folders are never adopted automatically.
+same-named businesses use distinct intent directories. Workspace title collisions
+receive a numbered suffix; concurrent conflicts retry without recreating storage.
 Design form resolves a unique matching `.kvvi-system.json` asset marker, never a
 workspace title. Otherwise it requires an explicit unmarked workspace selection;
 unreadable and mismatching markers refuse. The new conversation edits a draft, not

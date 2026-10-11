@@ -11,6 +11,49 @@ Range.prototype.getBoundingClientRect = () => ({
   top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}),
 })
 afterEach(()=>vi.unstubAllGlobals())
+it('starts an unnamed managed business through the loaded plugin and recovers a concurrent title conflict', async ({ start, mock }) => {
+  const intent = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  const fetcher = vi.fn(async (input: string | URL | Request) => { const url = String(input); return Response.json(
+    url.includes('/api/kvvi-business-directory/') ? { path: '/managed/' + intent }
+      : url.endsWith('/business-build-intents') ? { intentId: intent, version: 1 }
+        : { groups: [], forms: [], items: [], gateway: 'BUILDER', companyId: 'c', userId: 'u', sessionId: 'login', role: null },
+  ) })
+  vi.stubGlobal('fetch', fetcher)
+  const workspace = { workspaceId: 'managed', title: intent, path: '/managed/' + intent, sessionIds: [], createdAt: '', updatedAt: '' }
+  const rename = vi.fn().mockReturnValueOnce({ ok: false, error: { code: 'workspace/name-conflict', message: 'Already used' } })
+    .mockReturnValue({ ok: true, value: { workspace: { ...workspace, title: 'New business (2)' } } })
+  const prompt = vi.fn(() => ({ ok: true, value: {} }))
+  mock.load({ unary: {
+    'settings/mutate': { ok: true, value: null }, 'llm/listProviders': { ok: true, value: [] },
+    'llm/listConfigurableProviders': { ok: true, value: [] },
+    'subagents/list': { ok: true, value: { entries: [], parentAvailable: true } },
+    'commands/list': { ok: true, value: [] }, 'skills/list': { ok: true, value: { skills: [] } },
+    'terminal/list': { ok: true, value: [] },
+    'workspaceFiles/read': { ok: false, error: { code: 'workspace-file/not-found', message: 'Missing' } },
+    'workspace/create': { ok: true, value: { workspace, created: true } },
+    'workspace/rename': rename,
+    'session/create': { ok: true, value: { sessionId: 'build-session' } },
+    'session/prompt': prompt,
+  } })
+  mock.stream('session/follow', (_args, stream) => {
+    stream.push({ type: 'snapshot', header: { version: 3, id: 'build-session', cwd: workspace.path, createdAt: 0, isSeeded: false }, cursor: -1, records: [], hasMore: false, projections: { asOfSeq: -1, values: {} }, assistantStream: { revision: 0 } })
+  })
+  await start()
+  fireEvent.click(await screen.findByRole('button', { name: 'Business' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'New form' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Start building' }))
+  await vi.waitFor(() => expect(prompt, JSON.stringify(mock.log.unmatched())).toHaveBeenCalledOnce())
+  expect(rename).toHaveBeenCalledTimes(2)
+  expect(rename.mock.calls.map(call => call[0])).toEqual([
+    { workspaceId: 'managed', title: 'New business' },
+    { workspaceId: 'managed', title: 'New business (2)' },
+  ])
+  expect(JSON.stringify(prompt.mock.calls)).toContain('先问我想管理什么业务')
+  expect(JSON.stringify(prompt.mock.calls)).toContain(intent)
+  expect(fetcher.mock.calls.filter(([url]) => String(url).includes('/api/kvvi-business-directory/'))).toHaveLength(1)
+  expect(screen.queryByRole('dialog', { name: 'New business' })).toBeNull()
+  expect(document.querySelector('[data-slot="main.conversation"] [contenteditable]')).not.toBeNull()
+}, 60_000)
 it('boots the actual business slots alongside the original conversation without declaration collisions',async({ start,mock })=>{
   vi.stubGlobal('fetch',vi.fn(()=>Promise.resolve(new Response(JSON.stringify({ groups:[], forms:[], items:[], gateway:'USER', companyId:'c1', userId:'u1', sessionId:'login1', role:null,login:'test-user',companyName:'测试公司' })))))
   mock.load({ unary:{ 'settings/mutate':{ ok:true,value:null },'llm/listProviders':{ ok:true,value:[] },'llm/listConfigurableProviders':{ ok:true,value:[] } } })

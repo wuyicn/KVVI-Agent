@@ -39,20 +39,18 @@ it('offers New business to an authorized builder in USER mode and enters builder
   expect(startBuilder).not.toHaveBeenCalled()
   expect(screen.queryByRole('dialog')).toBeNull()
 })
-it('collects builder requirements inside Business before starting the real builder flow', async () => {
+it('lets the builder name a business and discuss requirements in the conversation', async () => {
   vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(Response.json(url.endsWith('/business-build-intents')
     ? { intentId: 'server-intent', version: 1 }
     : { ...directory, companyId: 'c1', userId: 'u1', sessionId: 'login1', gateway: 'BUILDER' }))))
   const startBuilder = vi.fn(async () => {})
-  render(<BusinessPage {...props()} {...{ startBuilder, pickDirectory: async () => '/workspaces' }}/>)
+  render(<BusinessPage {...props()} {...{ startBuilder }}/>)
   fireEvent.click(await screen.findByRole('button', { name: '新增表单' }))
-  expect(screen.getByRole('button', { name: '开始搭建' })).toHaveProperty('disabled', true)
+  expect(screen.getByRole('button', { name: '开始搭建' })).toHaveProperty('disabled', false)
   fireEvent.change(screen.getByLabelText('业务名称'), { target: { value: '访客登记' } })
-  fireEvent.change(screen.getByLabelText('业务需求'), { target: { value: '登记访客姓名和到访时间' } })
-  fireEvent.click(screen.getByRole('button', { name: '选择文件夹' }))
   await vi.waitFor(() => expect(screen.getByRole('button', { name: '开始搭建' })).toHaveProperty('disabled', false))
   fireEvent.click(screen.getByRole('button', { name: '开始搭建' }))
-  await vi.waitFor(() => expect(startBuilder).toHaveBeenCalledExactlyOnceWith('/workspaces', '访客登记', '登记访客姓名和到访时间', 'server-intent'))
+  await vi.waitFor(() => expect(startBuilder).toHaveBeenCalledExactlyOnceWith('访客登记', 'server-intent'))
 })
 it('invalidates every view of the same business after a write, without changing other businesses',()=>{
   const store=createBusinessStore().create();store.actions.invalidate('customer')

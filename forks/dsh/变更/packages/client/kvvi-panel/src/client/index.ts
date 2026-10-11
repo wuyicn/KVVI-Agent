@@ -23,7 +23,7 @@ import { BusinessBody } from './BusinessBody.tsx'
 import { businessAddress, businessDefinition, BUSINESS_TAB_ID } from './business-tabs.ts'
 import { createBusinessStore } from './business-store.ts'
 import { en, NS, zh, type KvviKey } from './locales.ts'
-import { readEntrance } from './api.ts'
+import { readEntrance, request } from './api.ts'
 import { businessFromHint, businessWorkspace, editWorkspace, parseBusinessHint, type BusinessHint } from './business-binding.ts'
 import { loadDirectory } from './business-directory-api.ts'
 import { createBuilderStarter } from './builder-start.ts'
@@ -51,7 +51,7 @@ const KVVI_PANEL_ID = '@deepseek-ai/dsh-client-kvvi-panel'
 const KVVI_SESSION_ID = '@deepseek-ai/dsh-client-kvvi-panel/session-banner'
 
 /** Services this browser half requires: the slot registry and the dictionary. */
-export const inject = ['slots', 'locale', 'layout', 'sidebarRight', 'sidebarRightTabs', 'uiWorkspace', 'sessions', 'workspaces', 'remote', 'remote.workspaceFiles', 'conversation']
+export const inject = ['slots', 'locale', 'layout', 'sidebarRight', 'sidebarRightTabs', 'uiWorkspace', 'sessions', 'workspaces', 'remote', 'remote.workspaceFiles', 'remote.workspace', 'conversation']
 
 /**
  * Register this package's dictionaries, sidebar entry and overlay.
@@ -93,8 +93,29 @@ export function apply(ctx: ClientContext): void {
   const submissions = new Map<string, SubmissionHandle>()
   const sessionAssets = new Map<SessionId, string>()
   const startBuilder = createBuilderStarter({
-    createDirectory: (parent, name) => ctx.uiWorkspace.createDirectory(parent, name),
-    createWorkspace: path => ctx.workspaces.create({ path }),
+    createDirectory: async (intentId) => {
+      const result = await request<{ path: string }>('POST', '/api/kvvi-business-directory/' + encodeURIComponent(intentId), undefined, undefined, '')
+      if (!result.ok) throw new Error(result.code)
+      if (typeof result.value.path !== 'string' || !result.value.path) throw new Error('KVVI_BAD_RESPONSE')
+      return result.value.path
+    },
+    createWorkspace: async (path, name) => {
+      const workspace = await ctx.workspaces.create({ path })
+      const titles = new Set(ctx.workspaces.list.getSnapshot().items.filter(w => w.workspaceId !== workspace.workspaceId).map(w => w.title))
+      const base = name || t('business.untitled')
+      let title = base, suffix = 2
+      while (titles.has(title)) title = `${base} (${String(suffix++)})`
+      // The Host owns title uniqueness; another client may win after our snapshot.
+      // Its Workspace feed publishes the accepted title to all clients.
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const result = await ctx.remote.workspace.rename({ workspaceId: workspace.workspaceId, title })
+        if (result.ok) return result.value.workspace
+        if (result.error.code !== 'workspace/name-conflict') throw new Error(result.error.code)
+        title = `${base} (${String(suffix++)})`
+        while (titles.has(title)) title = `${base} (${String(suffix++)})`
+      }
+      throw new Error('KVVI_BUILD_NAME_CONFLICT')
+    },
     createSession: workspace => ctx.sessions.create({ workspaceId: workspace.workspaceId }),
     send: async (id, text, operation) => {
       const reference = ctx.sessions.retain(id, { source: 'kvviBusiness' })
@@ -145,11 +166,10 @@ export function apply(ctx: ClientContext): void {
     children: { 'kvvi.business.session': { kind: 'single', scope: 'session' } },
     inject: (): BusinessPageInjected => ({
       enterBuilder: () => { globalThis.location.assign('/kvvi/builder/login') },
-      pickDirectory: () => ctx.uiWorkspace.pickDirectory(),
-      startBuilder: async (parent, name, purpose, intentId) => {
+      startBuilder: async (name, intentId) => {
         const entrance = await readEntrance()
         if (!entrance.ok || entrance.value.gateway !== 'BUILDER') throw new Error('KVVI_NOT_ALLOWED')
-        await startBuilder(parent, name, purpose, intentId)
+        await startBuilder(name, intentId)
       },
       designBusiness: async (assetId, explicitWorkspace) => {
         const entrance = await readEntrance()

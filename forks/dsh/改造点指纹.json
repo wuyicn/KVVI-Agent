@@ -1,5 +1,5 @@
 {
-  "count": 217,
+  "count": 220,
   "files": {
     "apps/cli/package.json": {
       "sha256": "3a80bdf6c7da3ace285b256accb233212e9991c0335b0a1dd2c489815595801d",
@@ -65,7 +65,7 @@
       "status": "A"
     },
     "apps/web/tests/kvvi-business.e2e.ts": {
-      "sha256": "6e348a755c2d6a1dd588b2967ee8ef8f84d618fa85a23ebd4784bcadee329954",
+      "sha256": "bd1e032b1a37ee029ae733a37b2e95fdcf691f3e85dd5e087578b9ea62f37118",
       "status": "A"
     },
     "apps/web/tests/onboarding-deepseek-config.e2e.ts": {
@@ -239,7 +239,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/README.md": {
-      "sha256": "a38f053e26bb9d9894024e67c63113a31f5f00f5f3c2d098b6824c6da6be9617",
+      "sha256": "055eeb547795de0e22c4cdcc4c1c627f086ee5d724d6991ca2945ae78ad2c0c1",
       "status": "A"
     },
     "packages/client/kvvi-panel/package.json": {
@@ -279,7 +279,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/BusinessPage.tsx": {
-      "sha256": "dad027aba66394e83784a07471c479a60f9fe0c0e5ab501e30bf98067feb9507",
+      "sha256": "0109f541b4f4a9c612c463e21e16e130d5d8357cc3dcef02e1f7de70e83b71c6",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/FormView.tsx": {
@@ -331,7 +331,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/builder-start.ts": {
-      "sha256": "3d7474b9b009c4ae24efc6424a3566b3b7d274502a1f05634537964bca49f0d2",
+      "sha256": "674edff888a73d9341248f360f4f9e218b41a199ac3ab1b22ce01dc223beb036",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/business-binding.ts": {
@@ -355,11 +355,11 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/index.ts": {
-      "sha256": "ad363c8e0b7bda268a334f2bbf6775be238739ea212c38d93d7cec9448d637f8",
+      "sha256": "43b65461ba7f5e40255ef4d1857284b7852b6cd25e2fb15e622b87bf2d66b5f0",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/locales.ts": {
-      "sha256": "fa39695fc5c1e6734d75070352ee6343184559a7b27a63dccd9a07718bca97b7",
+      "sha256": "d2dede427c2d48f923a731b0510dedf44e29f135e690b47772f49654357ee3da",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/registry.tsx": {
@@ -387,7 +387,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-assembly.spec.tsx": {
-      "sha256": "cae97790f492ee5c640bb007742aa23fa4b1239b9383795450363709f859c957",
+      "sha256": "bbd5bf2d1e1bf30a89e78cf59f1192778ac7b8b6c5d218ead1bae45f19eafff3",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-binding.client.spec.ts": {
@@ -395,11 +395,11 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-build.spec.tsx": {
-      "sha256": "55d7e13432256a9027f9cfc424c96d10a65c3b3e74a85f5c7c60b19162b1ba93",
+      "sha256": "2266b58454965ca41c5319dbd1e92140b2c0630ef3c31f2513397099a2aff7cf",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-directory.spec.tsx": {
-      "sha256": "91c1f9667717affcf2f387a505c988b0a3ed58fb5451f84651ad62846d163aa2",
+      "sha256": "8f87b97958a00d0c91b7f5b09efbb971d0480052e8f179825904390d9bd5779f",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-dock.spec.tsx": {
@@ -407,7 +407,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-entry.spec.tsx": {
-      "sha256": "ace1368022fce210123b41cf3198208b3e403ca34ace59f77fa62b27a5bc7d76",
+      "sha256": "c0febc7064858b913cf02f6df8f986d9500a8204bdf4fc93721b1d0817d38ab3",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-header.spec.tsx": {
@@ -451,17 +451,17 @@
       "status": "A"
     },
     "packages/client/ui-chat/README.i18n.yaml": {
-      "sha256": "f39d064351d1bf8db0b1a5c8026c96714281a469111982d4f1d564ea8110c052",
+      "sha256": "b1e76aae9afacb284063ce720c00e25292ddc427aa89b371bc880b5d442e5e0b",
       "status": "M",
       "upstream_baseline_sha256": "698b92c9b4772ab3393abdbd9047b02e882469d146ad5c77963fdb454488ce49"
     },
     "packages/client/ui-chat/README.md": {
-      "sha256": "332c37df4d17a6fd4fb2b86cc5e26d1843d4f6d5aed6375d6162d9ae43f4c924",
+      "sha256": "62b38aa630692ead47ad3ec4a905c31981ffba3fa3a7ae8f0ed4775cb8c20e50",
       "status": "M",
       "upstream_baseline_sha256": "c424b8ad5749dfbd3c723bc015815490b85934a406cfd2c6437a7c39841a771d"
     },
     "packages/client/ui-chat/README.zh.md": {
-      "sha256": "9588f1a99e2ceb88cd0d268f7d80ba0ac93b2b5b2a69343b12daba9f5ea8461d",
+      "sha256": "7cb3c0c36cf72c29a2791b0f7ecc8c5a3ca3f3ea923890f18c28a3658e0aa1b2",
       "status": "M",
       "upstream_baseline_sha256": "17a7277e9be5f4a5a647a1924deb08f495455601f00127f010d85bd76a7fd5d9"
     },
@@ -501,7 +501,7 @@
       "upstream_baseline_sha256": "c4c3884641f2d07bc424283a1f05cd24eec4d16708af5623660fe97b5284c9c6"
     },
     "packages/client/ui-chat/src/client/chat/business-presentation.ts": {
-      "sha256": "329c89ad053763a86a85338509da9176325ea4f195939bc40049b360f3c873ed",
+      "sha256": "2306151ba0dcb0257716c97f423024ba47537d056d1745f7ff2c505e3e8549b3",
       "status": "A"
     },
     "packages/client/ui-chat/src/client/contract/slots.ts": {
@@ -513,6 +513,10 @@
       "sha256": "e5fb878b0c04cebf66464824cfd027ff5871d036dcce7148c668058e4cd94a4f",
       "status": "M",
       "upstream_baseline_sha256": "13a92d6b32d32400d78b050d512da1b702895635572d1334a134d7e2a8acbd3e"
+    },
+    "packages/client/ui-chat/tests/business-request.client.spec.ts": {
+      "sha256": "a1c3bd480de198063794e12c5b485cdb841d8b75062d1ab1dca876b11d8accea",
+      "status": "A"
     },
     "packages/client/ui-chat/tests/chat-branch-tails.client.spec.tsx": {
       "sha256": "c2b33060f995c30d06cfb58cad8d663f66cf02365bbb1510ce6a361928e5f5c0",
@@ -699,15 +703,23 @@
       "upstream_baseline_sha256": "a6c4b0de211efa287a05b2538beb6a63517073f8a5dbb166e8cb0262854c4b34"
     },
     "packages/host/kvvi-mode-router/README.md": {
-      "sha256": "92a6687906703b28989151b49f006b475c46f103f554391606dcddb0885136a8",
+      "sha256": "25f76fc3be3cf6e36ed2843745595fa8a66de8211d196b2fe7fa817956a78f8c",
       "status": "A"
     },
     "packages/host/kvvi-mode-router/package.json": {
       "sha256": "eb3d20c2623cfa517cfd945043b519d94bbed8ed77b941839a4ba5a50d5b166c",
       "status": "A"
     },
+    "packages/host/kvvi-mode-router/src/business-directory.ts": {
+      "sha256": "26e38bef8a99fd33ba9541abb717e3a21c3a8efecb9e40d78d9d8afdc3ea584d",
+      "status": "A"
+    },
     "packages/host/kvvi-mode-router/src/index.ts": {
-      "sha256": "ef96c15f0d0c510ea3f85c1514e68cd6c2b2561d30316f21eba429f4cb45a9ab",
+      "sha256": "e57a0c5e97f32f2cd734e105fb57e837ceca1343b179901466631596fc03d502",
+      "status": "A"
+    },
+    "packages/host/kvvi-mode-router/tests/business-directory.spec.ts": {
+      "sha256": "9f69c44d764a7736dd72ddcd359768cadc8aeff192731b4f7a15650a7471b327",
       "status": "A"
     },
     "packages/host/kvvi-mode-router/tests/mode-router.spec.ts": {
@@ -966,7 +978,7 @@
       "upstream_baseline_sha256": "568b5f6d7d94f9a7d02040ea309ab858e8d2d47c9c5f68a9236a48268ed50d03"
     }
   },
-  "fork_head": "f2967e1d2e165b9a028a7308eac040bb61c7c991",
+  "fork_head": "ce47feadb1a290c854e76e4532b9e899d15b0571",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "e6a559b1550f5bee359cffc514f6a498710d0697"
