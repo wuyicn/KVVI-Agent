@@ -7,14 +7,14 @@ import type { ChatViewSlotProps } from '../contract/slots.ts'
 /**
  * @param text - unmodified logged input.
  * @param t - current conversation translator.
- * @returns business copy only for the two exact generated builder templates.
+ * @returns business copy only for the exact generated builder templates.
  */
 export function businessRequestText(text: string, t: ChatViewSlotProps['t']): string {
   if (/^请协助编辑现有表单，资产代号为 [\w.-]+。先检查本工作区契约是否属于这个资产，不一致时停止并请我确认。只修改草稿，不改员工正在使用的已发布版本；提交前交给我检查，仍由所有者审批发布。$/u.test(text)) {
     return t('business.editRequest')
   }
   const generated = new RegExp(
-    String.raw`^(请搭建业务“[^\n]+”。需求：[\s\S]*。先确认表单与业务流程，再按搭建规范生成，发布前交给我检查。)`
+    String.raw`^((?:请搭建业务“[^\n]+”。需求：[\s\S]*。先确认表单与业务流程，再按搭建规范生成，发布前交给我检查。|请和我一起搭建业务。暂定名称：[^\n]*。先问我想管理什么业务，再一起确认表单、需要的字段和字段类型。名称可以稍后确定，需求确认前不要生成；只用业务语言交流，发布前交给我检查。))`
     + String.raw`本次搭建意图编号为 [\w-]+，提交 publish_submit 时将它原样填入 buildIntentId。`
     + String.raw`请将确认的资产代号写入工作区 \.kvvi-system\.json 的 assetId 字段。不得自行审批或发布。$`, 'u',
   ).exec(text)?.[1]

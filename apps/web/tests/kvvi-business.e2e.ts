@@ -8,6 +8,7 @@ import { launchWebScaffold, watchConsole } from './scaffold.ts'
 import { newEnglishPage } from './support.ts'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-tools'
+import { signModeHeaders } from '../../../packages/host/kvvi-mode-router/src/index.ts'
 
 it('loads the publish tool with its build-intent schema and refuses unattended submission', async () => {
   const folder = await mkdtemp(join(tmpdir(), 'kvvi-publish-composition-'))
@@ -98,6 +99,10 @@ it('renders the Harness business layout and submits through the authorized recor
     await page.getByRole('button', { name: 'Business', exact: true }).click()
     await page.getByRole('button', { name: 'New form', exact: true }).click()
     await page.getByRole('dialog', { name: 'New business' }).waitFor()
+    expect(await page.getByLabel('Save location', { exact: true }).count()).toBe(0)
+    expect(await page.getByRole('button', { name: 'Choose folder', exact: true }).count()).toBe(0)
+    expect(await page.getByLabel('Requirements', { exact: true }).count()).toBe(0)
+    expect(await page.getByRole('button', { name: 'Start building', exact: true }).isEnabled()).toBe(true)
     await page.keyboard.press('Escape')
     await page.getByRole('button', { name: 'New group', exact: true }).click()
     await page.getByLabel('Group name', { exact: true }).fill('Sales team')
@@ -133,4 +138,25 @@ it('renders the Harness business layout and submits through the authorized recor
     await scaffold.close()
     await rm(folder, { recursive: true, force: true })
   }
+}, 120_000)
+
+it('allocates managed builder storage through the real authenticated HTTP composition', async () => {
+  const folder = await mkdtemp(join(tmpdir(), 'kvvi-managed-http-'))
+  const overlay = join(folder, 'ui.yml')
+  const secret = 'managed-builder-test'
+  await writeFile(overlay, `- insert:\n    - id: kvvi-mode-router\n      name: '@deepseek-ai/dsh-host-kvvi-mode-router'\n      config:\n        secret: ${secret}\n`)
+  const scaffold = await launchWebScaffold({ extraOverlayPath: overlay })
+  const path = '/api/kvvi-business-directory/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  const identity = { companyId: 'test-company', userId: 'test-builder', sessionId: 'test-login', gateway: 'BUILDER' as const }
+  try {
+    expect((await scaffold.hostFetch(path, { method: 'POST' })).status).toBe(401)
+    expect((await scaffold.hostFetch(path, { method: 'POST', headers: signModeHeaders({ ...identity, gateway: 'USER' }, secret) })).status).toBe(403)
+    const create = () => scaffold.hostFetch(path, { method: 'POST', headers: signModeHeaders(identity, secret) })
+    const first = await create()
+    expect(first.status).toBe(200)
+    const value = await first.json() as { path: string }
+    expect(value.path.startsWith(join(scaffold.harnessHome, 'business-workspaces'))).toBe(true)
+    expect(await (await create()).json()).toEqual(value)
+    expect((await scaffold.hostFetch(path, { headers: signModeHeaders(identity, secret) })).status).toBe(405)
+  } finally { await scaffold.close(); await rm(folder, { recursive: true, force: true }) }
 }, 120_000)

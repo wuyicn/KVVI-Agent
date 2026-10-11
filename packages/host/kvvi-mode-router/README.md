@@ -29,6 +29,10 @@ Token cost is zero from this package. It filters session lists and control strea
 
 `requireMode()` is the package's public read for everything else: the business tools call it to obtain the identity they sign with, and it throws `KVVI_RUNTIME_CONTEXT_REQUIRED` outside a bound request rather than falling back to an anonymous identity.
 
+## Managed business storage
+
+New-business starts use `POST /api/kvvi-business-directory/:intentId` after the original connection trust and signed-identity checks. Only `BUILDER` may allocate storage. The absolute, operator-configured `DSH_HOME` must exist; files live below `business-workspaces/<identity-hash>/<intent-uuid>`. Business names and browser-supplied paths do not select directories. An ownership marker permits retries, while links and unmarked existing leaves are refused. Allocation returns `403` for worker mode, `400` for an invalid UUID, or `503` when storage is unavailable. This creates draft storage only and does not approve or publish a business.
+
 ## Known Limitations and Deferred Work
 
 - **The session is bound by request, not by turn.** `requireMode()` reads an `AsyncLocalStorage` store set when the request entered. Work a session starts *after* the originating request has returned — a scheduled follow-up, a background job that resumes later — runs without that store and reads as `KVVI_RUNTIME_CONTEXT_REQUIRED`. Binding identity to the session itself is the fix, and it is deferred because it changes where the identity lives for every consumer.
