@@ -224,10 +224,15 @@ class UiWorkspaceService extends Service implements UiWorkspace {
 
   private watchNavigation(): () => void {
     let initial: 'waiting' | 'connecting' | 'done' = 'waiting'
+    const startupNavigation = this.ctx.layout.beginNavigation()
     const reconcile = (): void => {
       if (this.lifetime.signal.aborted) return
       if (this.clearArchivedCurrent()) return
       if (initial !== 'waiting') return
+      if (startupNavigation.aborted) {
+        initial = 'done'
+        return
+      }
       const workspace = this.workspaces.list.getSnapshot()
       const sessions = this.sessions.list.getSnapshot()
       if (workspace.phase !== 'ready' || sessions.phase !== 'ready') return
@@ -262,7 +267,7 @@ class UiWorkspaceService extends Service implements UiWorkspace {
       initial = 'connecting'
       void this.connectWorkspace(target).then(
         (sessionId) => {
-          if (this.mainReference === undefined) this.openSession(sessionId)
+          if (!startupNavigation.aborted && this.mainReference === undefined) this.openSession(sessionId)
         },
       ).then(
         () => { initial = 'done' },

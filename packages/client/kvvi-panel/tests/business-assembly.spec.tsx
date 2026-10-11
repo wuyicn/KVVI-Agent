@@ -28,9 +28,23 @@ it('requests authenticated Builder entry from the loaded plugin, then resumes Ne
 it('returns from the authenticated transition directly to the New business dialog', async ({ start, mock }) => {
   history.replaceState(null, '', '/?kvvi-new-form=1')
   vi.stubGlobal('fetch', vi.fn(async () => Response.json({ groups: [], forms: [], items: [], gateway: 'BUILDER', companyId: 'c', userId: 'u', sessionId: 'builder', role: null })))
-  mock.load({ unary: { 'settings/mutate': { ok: true, value: null }, 'llm/listProviders': { ok: true, value: [] }, 'llm/listConfigurableProviders': { ok: true, value: [] } } })
-  await start()
+  mock.load({ unary: { 'settings/mutate': { ok: true, value: null }, 'llm/listProviders': { ok: true, value: [] }, 'llm/listConfigurableProviders': { ok: true, value: [] },
+    'session/list': { ok: true, value: { items: [{ sessionId: 'previous', cwd: '/existing', updatedAt: 1, running: false, blank: true }] } },
+    'subagents/list': { ok: true, value: { entries: [], parentAvailable: true } },
+  } })
+  let loadExistingWorkspace: (() => void) | undefined
+  mock.stream('workspace/follow', (_args, stream) => {
+    loadExistingWorkspace = () => stream.push({ type: 'baseline', value: { items: [{ workspaceId: 'existing', title: 'Existing business', path: '/existing', sessionIds: ['previous'], createdAt: '', updatedAt: '' }], archivedSessionIds: [] } })
+  })
+  mock.stream('session/follow', (_args, stream) => {
+    stream.push({ type: 'snapshot', header: { version: 3, id: 'previous', createdAt: 0, isSeeded: false }, cursor: -1, records: [], hasMore: false, projections: { asOfSeq: -1, values: {} }, assistantStream: { revision: 0 } })
+  })
+  const client = await start()
   await screen.findByRole('dialog', { name: 'New business' })
+  await vi.waitFor(() => expect(loadExistingWorkspace).toBeTypeOf('function'))
+  await act(async () => { loadExistingWorkspace!() })
+  await vi.waitFor(() => expect(client.ctx.workspaces.list.getSnapshot().phase).toBe('ready'))
+  expect(screen.getByRole('dialog', { name: 'New business' })).toBeTruthy()
   expect(location.search).toBe('')
   fireEvent.click(within(screen.getByRole('dialog', { name: 'New business' })).getByRole('button', { name: 'Close' }))
   fireEvent.click(screen.getByRole('button', { name: 'Close' }))

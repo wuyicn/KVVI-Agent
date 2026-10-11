@@ -269,6 +269,32 @@ function bench(options: BenchOptions = {}) {
 }
 
 describe('UiWorkspaceService', () => {
+  it('does not restore a saved Session over a panel selected before the catalogs arrive', () => {
+    persistSelection({ sessionId: sid('saved') })
+    const b = bench()
+    b.layout.selectPanel('business' as MainPanelId)
+    b.workspaces.list.set(workspaceState([workspace('a', [sid('saved')])]))
+    b.sessions.list.set(sessionState([summary('saved')]))
+    expect(b.sessions.retain).not.toHaveBeenCalled()
+    expect(b.selectPanel).toHaveBeenCalledExactlyOnceWith('business')
+  })
+
+  it('does not open a startup-created Session over a later panel selection', async () => {
+    const created = Promise.withResolvers<SessionId>()
+    const b = bench({
+      workspaces: workspaceState([workspace('a')]),
+      configureSessions: (sessions) => { sessions.create.mockReturnValue(created.promise) },
+    })
+    b.sessions.list.set(sessionState())
+    expect(b.sessions.create).toHaveBeenCalledOnce()
+    b.layout.selectPanel('business' as MainPanelId)
+    created.resolve(sid('late'))
+    await created.promise
+    await Promise.resolve()
+    expect(b.sessions.retain).not.toHaveBeenCalled()
+    expect(b.selectPanel).toHaveBeenCalledExactlyOnceWith('business')
+  })
+
   it('retains an explicit main target before revealing its Conversation', () => {
     const b = bench()
     b.uiWorkspace.openSession(sid('target'))
