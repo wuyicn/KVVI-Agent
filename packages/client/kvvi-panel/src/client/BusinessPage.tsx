@@ -23,7 +23,8 @@ import type { createBusinessStore } from './business-store.ts'
 import { ReadFailure } from './ReadFailure.tsx'
 import css from './business.module.css'
 export interface BusinessPageInjected {
-  enterBuilder: () => void
+  enterBuilder: () => Promise<void>
+  consumeBuildResume?: () => boolean
   startBuilder: (name: string, intentId: string) => Promise<void>
   designBusiness: (assetId: string, workspaceId?: string) => Promise<void>
   back: () => void
@@ -34,7 +35,7 @@ export interface BusinessPageInjected {
 }
 export type BusinessPageProps = PropsRuntime<'main'> & PropsLocale<'kvviPanel'> & PropsStore<ReturnType<typeof createBusinessStore>> & PropsRenderSlots<'kvvi.business.session'> & PropsRenderFactories & BusinessPageInjected
 export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWorkspaces,
-  SessionProvider, renderSlot, useStore, actions, startBuilder, designBusiness, enterBuilder }: BusinessPageProps) {
+  SessionProvider, renderSlot, useStore, actions, startBuilder, designBusiness, enterBuilder, consumeBuildResume }: BusinessPageProps) {
   const current = useSessions(state => Object.values(state.byId).find(s => (s.retainedBy.mainView ?? 0) > 0)?.id)
   const workspaces = useWorkspaces(state => state.items)
   const [directory, setDirectory] = useState<Directory>({ groups: [], forms: [] })
@@ -62,6 +63,7 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
   const [designing, setDesigning] = useState(false)
   const buildOperation = useRef<{ group: string; name: string; id: string }>()
   const buildInFlight = useRef(false)
+  const [entering, setEntering] = useState(false)
   const collapsed = useStore(s => s.collapsed)
   const selection = useRef<BusinessForm | null>(null)
   const identity = useRef('')
@@ -88,6 +90,9 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
       setLoading(false)
       if (!result.ok) { clearSelection(); setDirectory({ groups: [], forms: [] }); setError(result.code); return }
       setDirectory(result.value)
+      if (activeBuilder && consumeBuildResume?.()) {
+        setCreating(true)
+      }
       const next = result.value.forms.find(f => f.assetId === selection.current?.assetId) ?? result.value.forms[0]
       if (next === undefined) clearSelection()
       else if (next.assetId !== selection.current?.assetId || next.archived !== selection.current.archived
@@ -153,6 +158,14 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
     } catch (_error) { if (identity.current === scope) setBuildError(true) }
     finally { buildInFlight.current = false; if (identity.current === scope) setBuilding(false) }
   }
+  const newForm = async () => {
+    if (entering) return
+    if (builder) { setCreating(true); setBuildGroup(system?.groupId ?? ''); setBuildError(false); return }
+    setEntering(true); setBuildError(false)
+    try { await enterBuilder() }
+    catch (_error) { setBuildError(true) }
+    finally { setEntering(false) }
+  }
   const editForm = async (chosenWorkspace?: string) => {
     if (system === null || building) return
     const scope = identity.current
@@ -165,7 +178,7 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
     <header className={css.workbenchHeader}><div><h1>{t('panel.title')}</h1><p className={css.hint}>{t('panel.subtitle')}</p></div><div className={css.directoryActions}>
       {canAdmin ? <Button variant="ghost" onClick={manage}>{t('admin.title')}</Button> : null}
       {builder ? <><Button variant="outline" onClick={() => { setDialog({ action: 'group.create', input: {} }) }}>{t('directory.newGroup')}</Button><Button variant="ghost" aria-pressed={archived} onClick={() => { clearSelection(); setArchived(!archived) }}>{t(archived ? 'directory.active' : 'directory.archived')}</Button></> : null}
-      {canBuild ? <Button variant="primary" icon={<IconPlusOutline16/>} title={builder ? undefined : t('business.switchBuilder')} onClick={() => { if (!builder) { enterBuilder(); return }; setCreating(true); setBuildGroup(system?.groupId ?? ''); setBuildError(false) }}>{t('directory.newForm')}</Button> : null}
+      {canBuild ? <Button variant="primary" icon={<IconPlusOutline16/>} disabled={entering} onClick={() => { void newForm() }}>{t('directory.newForm')}</Button> : null}
       <Button variant="ghost" onClick={() => { setAttempt(v => v + 1) }}>{t('directory.refresh')}</Button><Button variant="ghost" onClick={back}>{t('panel.close')}</Button>
     </div></header>
     {error !== undefined && (system === null || error.startsWith('KVVI_')) ? <ReadFailure error={error} copy={t} onRetry={() => { setAttempt(v => v + 1) }}/> : null}

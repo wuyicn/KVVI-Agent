@@ -30,13 +30,31 @@ it('opens the form directory directly and hides builder actions from employees',
   expect(screen.queryByRole('columnheader', { name: '业务名称' })).toBeNull()
   expect(screen.queryByRole('button', { name: '新增表单' })).toBeNull()
 })
-it('offers New business to an authorized builder in USER mode and enters builder login before any creation', async () => {
+it('offers New business to an authorized user and waits for the authenticated builder transition', async () => {
   vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ ...directory, companyId: 'c1', userId: 'u1', sessionId: 'login1', gateway: 'USER', allowedGateways: ['USER', 'BUILDER'] })))))
-  const enterBuilder = vi.fn(), startBuilder = vi.fn()
+  const enterBuilder = vi.fn(async () => {}), startBuilder = vi.fn()
   render(<BusinessPage {...props()} {...{ enterBuilder, startBuilder }}/>)
   fireEvent.click(await screen.findByRole('button', { name: '新增表单' }))
   expect(enterBuilder).toHaveBeenCalledOnce()
   expect(startBuilder).not.toHaveBeenCalled()
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
+it('shows a business-level failure instead of navigating away when builder entry fails', async () => {
+  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(Response.json({ ...directory, companyId: 'c1', userId: 'u1', sessionId: 'login1', gateway: 'USER', allowedGateways: ['USER', 'BUILDER'] }))))
+  render(<BusinessPage {...props()} enterBuilder={async () => { throw new Error('offline') }}/>)
+  fireEvent.click(await screen.findByRole('button', { name: '新增表单' }))
+  await screen.findByRole('alert')
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
+it('resumes New form only after the server confirms active Builder identity', async () => {
+  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(Response.json({ ...directory, companyId: 'c1', userId: 'u1', sessionId: 'builder1', gateway: 'BUILDER' }))))
+  render(<BusinessPage {...props()} consumeBuildResume={() => true}/>)
+  await screen.findByRole('button', { name: '开始搭建' })
+})
+it('a resume marker grants no Builder access to an employee', async () => {
+  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(Response.json({ ...directory, companyId: 'c1', userId: 'u1', sessionId: 'user1', gateway: 'USER' }))))
+  render(<BusinessPage {...props()} consumeBuildResume={() => true}/>)
+  await screen.findByRole('button', { name: '客户登记' })
   expect(screen.queryByRole('dialog')).toBeNull()
 })
 it('lets the builder name a business and discuss requirements in the conversation', async () => {

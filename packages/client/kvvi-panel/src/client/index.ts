@@ -133,6 +133,7 @@ export function apply(ctx: ClientContext): void {
     },
   })
   const panelId = 'kvvi-business' as MainPanelId
+  let resumeBuild = new URLSearchParams(globalThis.location.search).get('kvvi-new-form') === '1'
   ctx.effect(() => ctx.sidebarRightTabs.register(businessDefinition(t)), 'kvvi-panel: business resource type')
   const store = createBusinessStore()
   ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
@@ -165,7 +166,13 @@ export function apply(ctx: ClientContext): void {
     name: 'main', key: panelId, locale: NS, store: createBusinessStore(),
     children: { 'kvvi.business.session': { kind: 'single', scope: 'session' } },
     inject: (): BusinessPageInjected => ({
-      enterBuilder: () => { globalThis.location.assign('/kvvi/builder/login') },
+      consumeBuildResume: () => { const pending = resumeBuild; resumeBuild = false; return pending },
+      enterBuilder: async () => {
+        const result = await request('POST', '/auth/enter-builder', {}, undefined, '', { 'x-kvvi-builder-intent': '1' })
+        if (!result.ok) throw new Error(result.code)
+        // Reconnect the Host with the new authenticated identity before building.
+        globalThis.location.assign('/?kvvi-new-form=1')
+      },
       startBuilder: async (name, intentId) => {
         const entrance = await readEntrance()
         if (!entrance.ok || entrance.value.gateway !== 'BUILDER') throw new Error('KVVI_NOT_ALLOWED')
@@ -224,6 +231,15 @@ export function apply(ctx: ClientContext): void {
       },
     }),
   }, BusinessPage))
+
+  if (resumeBuild) {
+    ctx.effect(function* () {
+      ctx.layout.selectPanel(panelId)
+      const url = new URL(globalThis.location.href)
+      url.searchParams.delete('kvvi-new-form')
+      globalThis.history.replaceState(globalThis.history.state, '', url)
+    }, 'kvvi-panel: resume new form')
+  }
 
   ctx.slots.inject('kvvi.business.session', () => ctx.slots.register({
     name: 'kvvi.business.session', locale: NS, store,

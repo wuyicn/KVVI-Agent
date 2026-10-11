@@ -42,6 +42,8 @@ access; the platform still checks every read and write.
 
 The company directory comes from `/api/v1/business-directory`. Active builders create, rename and dissolve groups, move forms, and archive or restore forms through versioned, idempotent platform APIs. Dissolving a group retains its forms and records. Archiving retains data but stops ordinary use. Employees see only the server-filtered directory; create-only access opens the fill form without listing records. Group membership grants no record permission. Conflicts reload server metadata and require renewed confirmation. Company/login changes clear local drafts and management dialogs. No sample GAD records, fake role selector or instant-rule AI is imported; owner administration stays in the original overlay.
 
+An authorized user entering New form from work mode requests `/auth/enter-builder` with the current browser session. The platform rechecks eligibility in the same company and sets an HttpOnly Builder-session cookie; the client reloads to reconnect the Host and opens the creation dialog only after confirming Builder identity. Failed entry stays on the business page with a retry message. The return marker grants no permission, and existing work-mode sessions are not elevated.
+
 ## The closed renderer
 
 A published system carries one `view-schema`, whose `componentsTree` is **data**. The renderer draws it through one explicit table (`src/client/registry.tsx`) whose 23 keys are the names the platform's `COMPONENT_REGISTRY` declares, each with the same `viewTypes`. Everything else about a tree is refused:
