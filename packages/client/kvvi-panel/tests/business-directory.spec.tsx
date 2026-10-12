@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 import { useSyncExternalStore, type ReactNode } from 'react'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { BusinessPage, BusinessSession, type BusinessSessionProps, type BusinessPageProps } from '../src/client/BusinessPage.tsx'
 import { createBusinessStore } from '../src/client/business-store.ts'
 import { zh } from '../src/client/locales.ts'
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+beforeEach(() => {
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+})
 const form = (assetId = 'customer', actions = ['read']) => ({ assetId, systemId: assetId, name: assetId, schemaCode: assetId, publishedAt: '', groupId: 'g1' as string | null, archived: false, version: 0, actions })
 function fixture(gateway = 'BUILDER', forms = [form()]) {
   let groups = [{ groupId: 'g1', name: '客户管理', version: 1, position: 0 }]

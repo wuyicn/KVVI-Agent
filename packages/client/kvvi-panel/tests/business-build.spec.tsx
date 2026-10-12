@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { BusinessPage, type BusinessPageProps } from '../src/client/BusinessPage.tsx'
 import { createBusinessStore } from '../src/client/business-store.ts'
 import { zh } from '../src/client/locales.ts'
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+beforeEach(() => {
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+})
 it('creates a server intent for the chosen group before starting the real builder conversation', async () => {
   const calls: { url: string; body: unknown; key: string | null }[] = []
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {

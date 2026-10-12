@@ -44,6 +44,14 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
   const [address, setAddress] = useState('')
   const [query, setQuery] = useState('')
   const [ai, setAI] = useState(false)
+  const [aiMounted, setAIMounted] = useState(false)
+  const [aiWidth, setAIWidth] = useState(360)
+  const [availableWidth, setAvailableWidth] = useState(1040)
+  const workspaceBody = useRef<HTMLDivElement>(null)
+  const resizeStart = useRef<{ pointerId: number; x: number; width: number }>()
+  const maxAIWidth = Math.max(280, Math.min(680, availableWidth - 360))
+  const displayedAIWidth = Math.min(aiWidth, maxAIWidth)
+  const resizeAI = (width: number) => { setAIWidth(Math.max(280, Math.min(maxAIWidth, width))) }
   const [error, setError] = useState<string | undefined>()
   const [attempt, setAttempt] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -69,6 +77,15 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
   const identity = useRef('')
   const navigation = useRef(0)
   const association = useRef<AbortController | undefined>()
+  useEffect(() => {
+    const element = workspaceBody.current
+    if (element === null) return
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry !== undefined && entry.contentRect.width > 0) setAvailableWidth(entry.contentRect.width)
+    })
+    observer.observe(element)
+    return () => { observer.disconnect() }
+  }, [])
   useEffect(() => {
     const controller = new AbortController()
     setError(undefined); setLoading(true)
@@ -118,7 +135,7 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
     const controller = new AbortController()
     association.current = controller
     const token = ++navigation.current
-    selection.current = next; setSystem(next); setAI(false); setSession(undefined); setBusy(false); setError(undefined)
+    selection.current = next; setSystem(next); setAI(false); setAIMounted(false); setSession(undefined); setBusy(false); setError(undefined)
     setAddress(businessAddress(next.assetId, next.actions.includes('read') ? 'records' : 'form'))
     setWorkspaceId(selectedWorkspace ?? '')
     if (next.archived || !next.actions.length) return
@@ -135,7 +152,7 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
   const clearSelection = () => {
     navigation.current++; association.current?.abort()
     selection.current = null
-    setSystem(null); setSession(undefined); setAI(false); setBusy(false); setError(undefined)
+    setSystem(null); setSession(undefined); setAI(false); setAIMounted(false); setBusy(false); setError(undefined)
   }
   const clearBuilderDraft = () => {
     setDialog(undefined); setCreating(false); setName(''); setBuildError(false); setAuditPending(false)
@@ -194,15 +211,38 @@ export function BusinessPage({ t, back, manage, bindBusiness, useSessions, useWo
           {builder ? <>{!archived ? <Button variant="ghost" onClick={() => { setDialog({ action: 'form.move', input: { target: system.assetId, expectedVersion: system.version, groupId: system.groupId } }) }}>{t('directory.move')}</Button> : null}<Button variant="ghost" onClick={() => { setDialog({ action: archived ? 'form.restore' : 'form.archive', input: { target: system.assetId, expectedVersion: system.version } }) }}>{t(archived ? 'directory.restore' : 'directory.archive')}</Button></> : null}
           {!archived ? <>
             {builder ? <Button variant="outline" disabled={busy || building} onClick={() => { void editForm() }}>{t('business.design')}</Button> : null}
-            <Button variant="outline" disabled={session === undefined || busy} aria-pressed={ai} onClick={() => { setAI(!ai) }}>{t(ai ? 'business.ai.close' : 'business.ai')}</Button></> : null}
+            <Button variant="outline" disabled={session === undefined || busy} aria-pressed={ai} onClick={() => { setAIMounted(true); setAI(!ai) }}>{t(ai ? 'business.ai.close' : 'business.ai')}</Button></> : null}
         </div></div> : null}
-        <div className={css.businessWorkspaceBody}>
+        <div className={css.businessWorkspaceBody} ref={workspaceBody}>
           {loading ? <p role="status">{t('panel.loading')}</p> : system === null ? <p className={css.empty}>{t('directory.empty')}</p> : archived ? <p className={css.empty}>{t('directory.archivedHint')}</p> : !system.actions.length ? <p className={css.empty}>{t('directory.managementOnly')}</p> : busy ? <p role="status">{t('business.connecting')}</p> : session === undefined ? <div className={css.primaryBusiness}>
             <div className={css.association}><p className={css.hint}>{error}</p><label>{t('business.workspace')}<select className={css.control} aria-label={t('business.workspace')} value={workspaceId} onChange={(e) => { if (e.target.value) enter(system, e.target.value) }}><option value="">{t('business.workspace.choose')}</option>{workspaces.map(w => <option key={w.workspaceId} value={w.workspaceId}>{w.title}</option>)}</select></label></div>
             <StandaloneBusiness t={t} useStore={useStore} actions={actions} address={address} navigate={setAddress}/>
           </div> : <SessionProvider session={session}>
             <div className={css.primaryBusiness}>{renderSlot('kvvi.business.session', { identity: identity.current, address, navigate: setAddress })}</div>
-            {ai ? <aside className={css.assistantPane} aria-label={t('business.ai')}><div className={css.assistantHeading}><strong>{t('business.ai')}</strong><Button variant="ghost" onClick={() => { setAI(false) }}>{t('business.ai.close')}</Button></div>{renderSlot('kvvi.business.session', { identity: identity.current, address, navigate: setAddress, assistant: true })}</aside> : null}
+            {aiMounted ? <aside className={css.assistantPane} hidden={!ai} style={{ width: displayedAIWidth }} aria-label={t('business.ai')}>
+              <div className={css.assistantResize} role="separator" tabIndex={0}
+                aria-orientation="vertical" aria-label={t('business.ai.resize')}
+                aria-valuemin={280} aria-valuemax={maxAIWidth} aria-valuenow={displayedAIWidth}
+                onKeyDown={(event) => {
+                  const next = {
+                    ArrowLeft: displayedAIWidth + 40, ArrowRight: displayedAIWidth - 40, Home: 280, End: maxAIWidth,
+                  }[event.key]
+                  if (next === undefined) return
+                  event.preventDefault(); resizeAI(next)
+                }}
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return
+                  event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId)
+                  resizeStart.current = { pointerId: event.pointerId, x: event.clientX, width: displayedAIWidth }
+                }}
+                onPointerMove={(event) => {
+                  const start = resizeStart.current
+                  if (start?.pointerId === event.pointerId) resizeAI(start.width + start.x - event.clientX)
+                }}
+                onPointerUp={() => { resizeStart.current = undefined }}
+                onPointerCancel={() => { resizeStart.current = undefined }}
+                onLostPointerCapture={() => { resizeStart.current = undefined }}/>
+              <div className={css.assistantHeading}><strong>{t('business.ai')}</strong><Button variant="ghost" onClick={() => { setAI(false) }}>{t('business.ai.close')}</Button></div>{renderSlot('kvvi.business.session', { identity: identity.current, address, navigate: setAddress, assistant: true })}</aside> : null}
           </SessionProvider>}
         </div></div>
     </div>

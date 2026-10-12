@@ -1,12 +1,22 @@
 // @vitest-environment jsdom
 import type { ReactNode } from 'react'
 import type { ToolResultNode } from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { BusinessPage, type BusinessPageProps } from '../src/client/BusinessPage.tsx'
 import { zh } from '../src/client/locales.ts'
 import { createBusinessStore } from '../src/client/business-store.ts'
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+let reportWidth: (width: number) => void
+beforeEach(() => {
+  vi.stubGlobal('ResizeObserver', class {
+    constructor(callback: ResizeObserverCallback) {
+      reportWidth = width => callback([{ contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver)
+    }
+    observe() {}
+    disconnect() {}
+  })
+})
 const system = { assetId:'customer', systemId:'s1', name:'客户登记',schemaCode:'customer',publishedAt:'2026-10-08' }
 const directory = { groups: [], forms: [{ ...system, groupId: null, archived: false, version: 0, actions: ['read', 'create'] }] }
 function props() {
@@ -21,7 +31,50 @@ it('keeps business records in the main area and opens the original AI only on re
   expect(screen.queryByText('embedded-conversation')).toBeNull()
   fireEvent.click(screen.getByRole('button',{ name:'AI协助' }));await screen.findByText('embedded-conversation')
   expect(p.back).not.toHaveBeenCalled()
-  fireEvent.click(screen.getAllByRole('button',{ name:'收起AI协助' })[0]!);expect(screen.queryByText('embedded-conversation')).toBeNull()
+  const conversation = screen.getByText('embedded-conversation')
+  fireEvent.click(screen.getAllByRole('button',{ name:'收起AI协助' })[0]!)
+  expect(screen.queryByRole('complementary', { name: 'AI协助' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'AI协助' }))
+  expect(screen.getByText('embedded-conversation')).toBe(conversation)
+})
+it('resizes the right AI column with keyboard controls and retains width after closing', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json({ ...directory, gateway: 'USER', companyId: 'c1', userId: 'u1', sessionId: 'login1' })))
+  render(<BusinessPage {...props()}/>)
+  await screen.findByText('kvvi.business.session')
+  fireEvent.click(screen.getByRole('button', { name: 'AI协助' }))
+  const separator = screen.getByRole('separator', { name: '调整AI协助栏宽度' })
+  const pane = screen.getByRole('complementary', { name: 'AI协助' })
+  expect(pane.style.width).toBe('360px')
+  fireEvent.keyDown(separator, { key: 'ArrowLeft' })
+  expect(pane.style.width).toBe('400px')
+  fireEvent.keyDown(separator, { key: 'ArrowRight' })
+  expect(pane.style.width).toBe('360px')
+  fireEvent.keyDown(separator, { key: 'Home' })
+  expect(pane.style.width).toBe('280px')
+  fireEvent.keyDown(separator, { key: 'ArrowRight' })
+  expect(pane.style.width).toBe('280px')
+  fireEvent.click(screen.getAllByRole('button', { name: '收起AI协助' })[0]!)
+  fireEvent.click(screen.getByRole('button', { name: 'AI协助' }))
+  expect(screen.getByRole('complementary', { name: 'AI协助' }).style.width).toBe('280px')
+  fireEvent.keyDown(separator, { key: 'End' })
+  expect(pane.style.width).toBe('680px')
+  act(() => { reportWidth(800) })
+  expect(pane.style.width).toBe('440px')
+  fireEvent.keyDown(separator, { key: 'ArrowLeft' })
+  expect(pane.style.width).toBe('440px')
+  vi.stubGlobal('PointerEvent', class extends MouseEvent {
+    pointerId: number
+    constructor(type: string, init: PointerEventInit) { super(type, init); this.pointerId = init.pointerId ?? 1 }
+  })
+  separator.setPointerCapture = vi.fn()
+  fireEvent.pointerDown(separator, { pointerId: 1, clientX: 500, button: 0 })
+  fireEvent.pointerMove(separator, { pointerId: 2, clientX: 600 })
+  expect(pane.style.width).toBe('440px')
+  fireEvent.pointerMove(separator, { pointerId: 1, clientX: 560 })
+  expect(pane.style.width).toBe('380px')
+  fireEvent.pointerCancel(separator, { pointerId: 1 })
+  fireEvent.pointerMove(separator, { pointerId: 1, clientX: 600 })
+  expect(pane.style.width).toBe('380px')
 })
 it('opens the form directory directly and hides builder actions from employees', async () => {
   vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ ...directory, companyId: 'c1', userId: 'u1', sessionId: 'login1', gateway: 'USER' })))))

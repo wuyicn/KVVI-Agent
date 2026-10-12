@@ -211,7 +211,13 @@ it('uses the workspace business marker for a differently named published system 
   await screen.findByRole('button', { name: 'Ask about current form' })
   expect(await screen.findByRole('checkbox', { name: 'Select record: 001' })).toHaveProperty('checked', false)
   expect(client.ctx.sessions.list.getSnapshot().byId['s1' as SessionId]?.retainedBy.kvviBusiness).toBe(1)
+  const refreshedEditor = await screen.findByRole('textbox', { name: 'Ask about this form…' })
   fireEvent.click(screen.getAllByRole('button', { name: 'Close AI assistant' })[0]!)
+  expect(screen.queryByRole('textbox', { name: 'Ask about this form…' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'AI assistant' }))
+  expect(await screen.findByRole('textbox', { name: 'Ask about this form…' })).toBe(refreshedEditor)
+  expect(refreshedEditor.textContent).toContain(previousDraft)
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }))
 }, 60_000)
 
 it('uses the same record layout and explicitly binds differently named business and workspace', async ({ start, mock }) => {
