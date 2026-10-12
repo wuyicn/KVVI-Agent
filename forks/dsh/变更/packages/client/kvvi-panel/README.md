@@ -63,6 +63,8 @@ The tree is validated **completely** before anything is drawn, so a contract eit
 
 ## Data sources
 
+Managed unpublished drafts use a separate right-pane preview. The current builder can open the draft from the conversation header without sending a model turn. The preview reads only the supported registration layout from `GET /api/kvvi-builder-preview/:intentId`; it does not use published records. Trial values check required fields, supported types, text lengths and duplicate examples locally. They never create business records. The preview refreshes when the session running state changes or the builder requests an update. An unsuccessful refresh retains an explicit stale-preview warning. Full validation and permission confirmation remain pending, and submission is disabled. A source change resets trial values; examples are limited to the current mounted preview.
+
 Duplicate create and edit refusals preserve the input and ask the user to correct unique fields without revealing the conflicting record. Publication refuses existing duplicates without deleting records. An unfinished rule publication temporarily blocks saving and directs the user to the owner; uniqueness decisions remain server-owned.
 
 | Panel view | Endpoint |

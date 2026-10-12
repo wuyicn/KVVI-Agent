@@ -11,6 +11,51 @@ Range.prototype.getBoundingClientRect = () => ({
   top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}),
 })
 afterEach(()=>vi.unstubAllGlobals())
+it('opens the actual unpublished draft in the current conversation right pane without sending a model turn', async ({ start, mock }) => {
+  const intent = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  const path = '/home/business-workspaces/' + 'a'.repeat(64) + '/' + intent
+  const fetcher = vi.fn(async (url: string | URL | Request) => Response.json(String(url).includes('/kvvi-builder-preview/') ? {
+    intentId: intent, assetId: 'shop', digest: 'sha256:one', validation: 'not_checked', canSubmit: false,
+    model: { name: '店铺', fields: [{ field_code: 'name', label: '店铺名称', type: 'short_text', required: true }] },
+    view: { view_code: 'shop_form', name: '未发布店铺表单', view_type: 'FORM', componentsTree: [
+      { id: 'name', componentName: 'ShortTextField', props: { fieldBinding: { type: 'FieldRef', fieldRef: 'name' } } },
+    ] }, uniqueRules: [],
+  } : { gateway: 'BUILDER', companyId: 'c', userId: 'u', sessionId: 'login', items: [], groups: [], forms: [] }))
+  vi.stubGlobal('fetch', fetcher)
+  const prompt = vi.fn()
+  mock.load({ unary: {
+    'settings/mutate': { ok: true, value: null }, 'llm/listProviders': { ok: true, value: [] },
+    'llm/listConfigurableProviders': { ok: true, value: [] },
+    'subagents/list': { ok: true, value: { entries: [], parentAvailable: true } },
+    'commands/list': { ok: true, value: [] }, 'skills/list': { ok: true, value: { skills: [] } },
+    'workspaceFiles/read': { ok: false, error: { code: 'workspace-file/not-found', message: 'Missing' } },
+    'session/list': { ok: true, value: { items: [{ sessionId: 'draft-session', cwd: path, updatedAt: 1, running: false, blank: false }] } },
+    'session/create': { ok: true, value: { sessionId: 'draft-session' } },
+    'terminal/list': { ok: true, value: [] },
+    'session/prompt': prompt,
+  } })
+  mock.stream('workspace/follow', (_args, stream) => {
+    stream.push({ type: 'baseline', value: { items: [{ workspaceId: 'draft-workspace', title: '店铺', path, sessionIds: ['draft-session'], createdAt: '', updatedAt: '' }], archivedSessionIds: [] } })
+  })
+  mock.stream('session/follow', (_args, stream) => {
+    stream.push({ type: 'snapshot', header: { version: 3, id: 'draft-session', cwd: path, createdAt: 0, isSeeded: false }, cursor: 0, records: [{ seq: 0, type: 'message', message: { role: 'user', content: [{ type: 'text', text: '搭建店铺表单' }] } }], hasMore: false, projections: { asOfSeq: 0, values: {} }, assistantStream: { revision: 0 } })
+  })
+  const client = await start()
+  fireEvent.click(await screen.findByRole('button', { name: 'Business' }))
+  await screen.findByRole('button', { name: 'New form' })
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+  await vi.waitFor(() => expect(client.ctx.sessions.list.getSnapshot().byId['draft-session' as SessionId]).toBeDefined())
+  await act(async () => { client.ctx.uiWorkspace.openSession('draft-session' as SessionId) })
+  await vi.waitFor(() => expect(fetcher.mock.calls.some(([url]) => String(url).includes('/kvvi-builder-preview/')), JSON.stringify(fetcher.mock.calls) + '\n' + document.body.textContent).toBe(true))
+  const heading = await screen.findByRole('heading', { name: '未发布店铺表单' })
+  expect(heading.closest('[data-slot="sidebar.right.pane.tab"]')).not.toBeNull()
+  expect(screen.getByRole('button', { name: 'Confirm submission' })).toHaveProperty('disabled', true)
+  fireEvent.change(screen.getByLabelText('name'), { target: { value: '试填店铺' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Check trial values' }))
+  await screen.findByText(/Trial values passed/u)
+  expect(prompt).not.toHaveBeenCalled()
+  expect(fetcher.mock.calls.some(([url]) => /\/records|\/publish/u.test(String(url)))).toBe(false)
+}, 60_000)
 it('requests authenticated Builder entry from the loaded plugin, then resumes New form without a login page', async ({ start, mock }) => {
   const navigate = vi.fn()
   vi.stubGlobal('location', Object.assign(new URL(location.href), { assign: navigate }))

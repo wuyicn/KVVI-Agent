@@ -6,6 +6,7 @@ import type { Duplex } from 'node:stream'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { managedBusinessDirectory } from './business-directory.ts'
+import { readManagedDraft } from './builder-preview.ts'
 
 export type KvviGateway = 'USER' | 'BUILDER'
 export type KvviPreset = 'kvvi-worker' | 'kvvi-builder'
@@ -430,6 +431,22 @@ export class KvviModeRouter extends Service {
         response.writeHead(401, { 'content-type': 'application/json; charset=utf-8' })
         response.end(JSON.stringify({ error: error instanceof Error
           ? error.message : 'KVVI_RUNTIME_CONTEXT_INVALID' }))
+        return
+      }
+      const previewPrefix = '/api/kvvi-builder-preview/'
+      if (request.url?.startsWith(previewPrefix)) {
+        let status = 200
+        let body: object
+        try {
+          if (request.method !== 'GET') { status = 405; body = { error: 'KVVI_METHOD_NOT_ALLOWED' } }
+          else body = readManagedDraft(process.env.DSH_HOME, mode, request.url.slice(previewPrefix.length))
+        } catch (error) {
+          const code = error instanceof Error ? error.message : 'KVVI_PREVIEW_UNAVAILABLE'
+          status = code === 'KVVI_BUILDER_REQUIRED' ? 403 : code === 'KVVI_BUILD_INVALID' ? 400 : 422
+          body = { error: code }
+        }
+        response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+        response.end(JSON.stringify(body))
         return
       }
       const prefix = '/api/kvvi-business-directory/'
