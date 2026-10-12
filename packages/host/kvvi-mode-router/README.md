@@ -35,6 +35,8 @@ New-business starts use `POST /api/kvvi-business-directory/:intentId` after the 
 
 ## Known Limitations and Deferred Work
 
+- **Draft preview is not publication validation.** `GET /api/kvvi-builder-preview/:intentId` serves an inert projection of the fixed six-file registration layout from the authenticated builder's managed directory. It verifies the company/asset binding, ownership marker and supported controls; linked, missing, oversized, changing or unsupported files fail closed. It allocates no storage and returns no permission policies. Its digest identifies the read content, not an approved revision. Every result is `validation: not_checked` and `canSubmit: false`.
+
 - **The session is bound by request, not by turn.** `requireMode()` reads an `AsyncLocalStorage` store set when the request entered. Work a session starts *after* the originating request has returned — a scheduled follow-up, a background job that resumes later — runs without that store and reads as `KVVI_RUNTIME_CONTEXT_REQUIRED`. Binding identity to the session itself is the fix, and it is deferred because it changes where the identity lives for every consumer.
 - **Server-side session fork is refused, not implemented.** `KVVI_SESSION_FORK_DISABLED` stands until a fork target can be named safely by the server; a client-supplied target id cannot be trusted to stay inside the caller's namespace.
 - **Preset pinning is per-request, not per-session-record.** A preset cannot change mid-session, but the guarantee is enforced by this wrapper rather than by a field on the session row, so a caller that bypasses the wrapper would bypass it too.

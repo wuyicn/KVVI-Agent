@@ -6,7 +6,7 @@
  * The runtime knows a session, not a company. Every question this panel asks —
  * which systems exist here, what this employee may read, which fields are
  * masked — is a tenant question, and the platform is the only process that can
- * answer it. The runtime is asked nothing.
+ * answer it. The runtime serves only the separately authenticated managed-draft preview.
  *
  * ── Same origin, on purpose ─────────────────────────────────────────────────
  *

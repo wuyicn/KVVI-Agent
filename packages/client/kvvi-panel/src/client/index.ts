@@ -18,6 +18,8 @@ import type {} from '@deepseek-ai/dsh-api-workspace-files/client'
 import { BusinessPage, BusinessIcon, BusinessSession, type BusinessPageInjected, type BusinessSessionInjected } from './BusinessPage.tsx'
 import { AccountArea } from './AccountArea.tsx'
 import { BusinessHeader } from './BusinessHeader.tsx'
+import { BuilderPreviewEntry } from './BuilderPreviewEntry.tsx'
+import { BuilderPreviewBody, previewAddress } from './BuilderPreview.tsx'
 import { BusinessActivity } from './BusinessActivity.tsx'
 import { BusinessBody } from './BusinessBody.tsx'
 import { businessAddress, businessDefinition, BUSINESS_TAB_ID } from './business-tabs.ts'
@@ -136,6 +138,20 @@ export function apply(ctx: ClientContext): void {
   let resumeBuild = new URLSearchParams(globalThis.location.search).get('kvvi-new-form') === '1'
   ctx.effect(() => ctx.sidebarRightTabs.register(businessDefinition(t)), 'kvvi-panel: business resource type')
   const store = createBusinessStore()
+  const previewTab = KVVI_PANEL_ID + '/draft-preview'
+  ctx.effect(() => ctx.sidebarRightTabs.register({
+    id: previewTab, kind: 'kvvi-draft', patterns: ['dsh-resource://kvvi-draft/**'], priority: 'builtin',
+    canOpen: address =>
+      /^dsh-resource:\/\/kvvi-draft\/[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/u.test(address),
+    title: () => t('preview.title'),
+  }), 'kvvi-panel: draft preview resource')
+  ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+    name: 'sidebar.right.pane.tab', key: previewTab, locale: NS, store: createBusinessStore(),
+  }, BuilderPreviewBody))
+  ctx.slots.inject('conversation.session.header.actions', () => ctx.slots.register({
+    name: 'conversation.session.header.actions', id: previewTab, locale: NS,
+    inject: sessionId => ({ openPreview: (intentId: string) => { ctx.sidebarRight.openResourceIn(sessionId, previewAddress(intentId)) } }),
+  }, BuilderPreviewEntry))
   ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
     name: 'sidebar.right.pane.tab', key: BUSINESS_TAB_ID, locale: NS, store,
   }, BusinessBody))
