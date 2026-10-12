@@ -2178,6 +2178,15 @@ describe('ChatView', () => {
     expect(hidden[101]?.blocks).toEqual([{ kind: 'reasoning', text: 'internal work' }])
   })
 
+  it.each(['kvvi-builder', 'kvvi-worker'])('keeps the stopped notice for %s when canceled before visible text', (preset) => {
+    const h = makeHarness({ nodes: [user(1, '搭建登记表'), { ...reasoningAssistant(2, 'internal work'), interrupted: true }] })
+    h.props.useSessions = businessSessions(preset)
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.container.querySelectorAll('[data-chat-flow-kind="assistant-step"]')).toHaveLength(1)
+    expect(view.getByText('已停止')).toBeTruthy()
+    expect(view.queryByText('internal work')).toBeNull()
+  })
+
   it('shows business failures without raw codes or claiming that changes were not saved', () => {
     const failed = { ...toolResult(3, 'failure'), isError: true, content: [{ type: 'text' as const, text: 'Error: KVVI_NOT_ALLOWED: tenant_id=internal' }] }
     const h = makeHarness({ nodes: [user(1, '修改'), failed, turnError(4)] })

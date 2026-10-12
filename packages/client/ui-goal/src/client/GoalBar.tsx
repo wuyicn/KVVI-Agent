@@ -24,6 +24,8 @@ export interface GoalBarProps extends GoalBarActions {
   goal: GoalSnapshot | null | undefined
   /** Process-local continuation activation; absent while the live read is pending. */
   activation?: GoalActivation
+  /** Business sessions show a task summary, not model-authored internal objectives. */
+  businessConversation?: boolean
 }
 
 /** Strip label keys per visible phase; complete goals render nothing. */
@@ -39,7 +41,7 @@ function activeLabel(activation: GoalActivation | undefined, t: TranslateNS<'goa
   return t(PHASE_LABELS.active)
 }
 
-export function GoalBar({ goal, activation, onEdit, onPause, onResume, onClear, t }: GoalBarProps & PropsLocale<'goal'>) {
+export function GoalBar({ goal, activation, businessConversation, onEdit, onPause, onResume, onClear, t }: GoalBarProps & PropsLocale<'goal'>) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [pending, setPending] = useState(false)
@@ -66,9 +68,9 @@ export function GoalBar({ goal, activation, onEdit, onPause, onResume, onClear, 
     const result = await action()
     pendingRef.current = false
     setPending(false)
-    if (!result.ok) setActionError(`${result.error.message} (${result.error.code})`)
+    if (!result.ok) setActionError(businessConversation ? t('business.actionFailed') : `${result.error.message} (${result.error.code})`)
     return result
-  }, [])
+  }, [businessConversation, t])
 
   const handleEdit = useCallback(async () => {
     const trimmed = draft.trim()
@@ -131,7 +133,7 @@ export function GoalBar({ goal, activation, onEdit, onPause, onResume, onClear, 
     )
   }
 
-  const title = goal.phase === 'blocked' ? goal.blockedReason?.message : undefined
+  const title = !businessConversation && goal.phase === 'blocked' ? goal.blockedReason?.message : undefined
   const label = goal.phase === 'active' ? activeLabel(activation, t) : t(PHASE_LABELS[goal.phase])
   const showResume = goal.phase === 'paused'
     || (goal.phase === 'active' && activation === 'disarmed')
@@ -140,7 +142,7 @@ export function GoalBar({ goal, activation, onEdit, onPause, onResume, onClear, 
       <div className={css.bar} title={title}>
         <span className={css.goalGlyph}><IconGoalOutline16 size={14} /></span>
         <span className={css.label}>{label}</span>
-        <span className={css.objective}>{goal.objective}</span>
+        <span className={css.objective}>{businessConversation ? t('business.objective') : goal.objective}</span>
         {actionError !== null && <span className={css.error} role="alert">{actionError}</span>}
         <div className={css.actions}>
           {goal.phase === 'active' && activation === 'armed' && (
@@ -157,7 +159,7 @@ export function GoalBar({ goal, activation, onEdit, onPause, onResume, onClear, 
               </button>
             </Tooltip>
           )}
-          <Tooltip label={t('action.edit')} side="bottom" delayMs={500}>
+          {!businessConversation && <Tooltip label={t('action.edit')} side="bottom" delayMs={500}>
             <button
               type="button"
               className={css.iconBtn}
@@ -167,7 +169,7 @@ export function GoalBar({ goal, activation, onEdit, onPause, onResume, onClear, 
             >
               <IconEditOutline16 size={14} />
             </button>
-          </Tooltip>
+          </Tooltip>}
           <Tooltip label={t('action.clear')} side="bottom" delayMs={500}>
             <button type="button" className={css.iconBtn} disabled={pending} onClick={() => { void handleClear(goal.id) }} aria-label={t('action.clear')}>
               <IconTrashOutline16 size={14} />
@@ -187,8 +189,12 @@ export type GoalDockProps =
 
 /** Dock adapter: overlays process-local activation on the durable goal projection. */
 export function GoalDock({
-  useProjection, useGoalActivation, onEdit, onPause, onResume, onClear, t,
+  useProjection, useGoalActivation, useSessions, sessionId, onEdit, onPause, onResume, onClear, t,
 }: GoalDockProps) {
+  const businessConversation = useSessions((s) => {
+    const preset = s.byId[sessionId]?.projectionValues?.agentPreset
+    return preset === 'kvvi-builder' || preset === 'kvvi-worker'
+  })
   const projection = useProjection('goal')
   const goal = projection === undefined || projection === null ? projection : projection.goal
   const goalId = goal?.id
@@ -200,6 +206,7 @@ export function GoalDock({
   return (
     <GoalBar
       goal={goal}
+      businessConversation={businessConversation}
       {...activation === undefined ? {} : { activation }}
       onEdit={onEdit}
       onPause={onPause}

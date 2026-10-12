@@ -289,7 +289,7 @@ describe('GoalDock adapter', () => {
     }
     const t = makeTranslate(zh, commonZh)
     const dockProps = (up: () => GoalProjection | null | undefined) =>
-      ({ useProjection: up, useGoalActivation, ...actions, t }) as unknown as Parameters<typeof GoalDock>[0]
+      ({ useProjection: up, useGoalActivation, useSessions: (select: (s: { byId: object }) => unknown) => select({ byId: {} }), sessionId: sid('s1'), ...actions, t }) as unknown as Parameters<typeof GoalDock>[0]
     const shown = render(<GoalDock {...dockProps(useProjection)} />)
     expect(shown.getByText('Ship it')).toBeTruthy()
     cleanup()
@@ -315,7 +315,7 @@ describe('GoalDock adapter', () => {
       onClear: () => Promise.resolve({ ok: true, value: undefined }),
     }
     const t = makeTranslate(zh, commonZh)
-    const props = { useProjection, useGoalActivation, ...actions, t } as unknown as Parameters<typeof GoalDock>[0]
+    const props = { useProjection, useGoalActivation, useSessions: (select: (s: { byId: object }) => unknown) => select({ byId: {} }), sessionId: sid('s1'), ...actions, t } as unknown as Parameters<typeof GoalDock>[0]
     const rendered = render(<GoalDock {...props} />)
     expect(rendered.getByText('未运行的目标')).toBeTruthy()
     expect(screen.getByRole('button', { name: '恢复目标' })).toBeTruthy()

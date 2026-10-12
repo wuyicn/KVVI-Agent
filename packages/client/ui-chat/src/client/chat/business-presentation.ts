@@ -18,7 +18,7 @@ export function businessVisibleBlocks(blocks: ChatNode<'assistant-step'>['data']
  */
 export function hasBusinessVisibleContent(node: ChatNode): boolean {
   if (isBusinessHiddenNode(node.kind)) return false
-  if (node.kind === 'assistant-step') return businessVisibleBlocks(node.data.blocks).length > 0
+  if (node.kind === 'assistant-step') return node.data.status === 'interrupted' || businessVisibleBlocks(node.data.blocks).length > 0
   if (node.kind === 'tool-call') return businessNodeNotice(node) !== undefined
   return true
 }

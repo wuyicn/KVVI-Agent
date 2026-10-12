@@ -89,3 +89,5 @@ None.
 </details>
 
 **Runtime invariant:** No companion is published. There is a single GoalBar dock registration whose disposal is proven by the HMR-safety spec — durable state arrives on the goal projection, process-local activation arrives through the entry's private hook source, and that source subscribes only while the framework hook observes it.
+
+KVVI builder and worker sessions show a business task summary and localized action failures instead of raw objectives and diagnostics. Pause, resume and clear remain available; requirement changes belong in the conversation, not the internal-objective editor. Stored goals are unchanged by presentation.

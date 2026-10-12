@@ -34,6 +34,18 @@ function makeActions() {
 }
 
 describe('GoalBar', () => {
+  it('keeps internal objectives and failure details out of business controls without changing the goal', async () => {
+    const actions = makeActions()
+    actions.onResume.mockResolvedValue({ ok: false, error: new RemoteError('gateway/internal', 'SQL secret-path', {}) })
+    const goal = makeGoal({ phase: 'paused', objective: '生成契约 /private/internal.json' })
+    render(<GoalBar goal={goal} businessConversation {...actions} t={t} />)
+    expect(screen.queryByText(goal.objective)).toBeNull()
+    expect(screen.queryByRole('button', { name: '编辑目标' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '恢复目标' }))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).not.toMatch(/SQL|gateway\/internal|secret-path/))
+    expect(goal.objective).toBe('生成契约 /private/internal.json')
+  })
+
   it('renders nothing while loading, absent, or when the goal is complete', () => {
     const actions = makeActions()
     const loading = render(<GoalBar goal={undefined} {...actions} t={t} />)

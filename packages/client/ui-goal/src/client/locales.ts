@@ -2,6 +2,8 @@
 
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
+  'business.objective': '按已确认的需求继续处理，可在对话中补充或修改。',
+  'business.actionFailed': '操作未完成，请稍后重试。',
   'phase.active': '进行中的目标',
   'phase.active.disarmed': '未运行的目标',
   'phase.paused': '已暂停的目标',
@@ -21,6 +23,8 @@ export type GoalKey = keyof typeof zh
 
 /** English dictionary, checked complete against the zh key set. */
 export const en = {
+  'business.objective': 'Continue the agreed task. Add or change requirements in the conversation.',
+  'business.actionFailed': 'The action could not be completed. Please try again.',
   'phase.active': 'Ongoing Goal',
   'phase.active.disarmed': 'Inactive Goal',
   'phase.paused': 'Paused Goal',
