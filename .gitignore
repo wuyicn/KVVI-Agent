@@ -80,3 +80,7 @@ tools/meta-schema/node/node_modules/
 # Isolated implementation worktrees and execution ledgers
 .worktrees/
 .superpowers/
+
+# Rebuildable prototype output and local pre-edit copies (source stays tracked).
+/docs/ui/*/prototype/dist/
+/docs/ui/*/prototype/backups/

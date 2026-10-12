@@ -1,0 +1,122 @@
+/* One type scale for all business, conversation, permission and dialog views. */
+:root {
+  --font-family: "PingFang SC", -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif;
+  --font-caption: 12px;
+  --font-small: 13px;
+  --font-control: 14px;
+  --font-body: 16px;
+  --font-section: 22px;
+  --font-card: 20px;
+  --font-page: 28px;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-heading: 600;
+  --text-secondary: #65758d;
+  --text-hint: #718198;
+  --muted: var(--text-secondary);
+  font-family: var(--font-family);
+  font-synthesis: none;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+body { font-size: var(--font-body); font-weight: var(--weight-regular); line-height: 1.65; }
+button, input, select, textarea { font-family: inherit; }
+button { font-size: var(--font-control); font-weight: var(--weight-medium); line-height: 1.5; }
+input, select, textarea { font-size: var(--font-body); font-weight: var(--weight-regular); line-height: 1.5; }
+p, textarea { line-height: 1.75; }
+strong, b { font-weight: var(--weight-heading); }
+h1 { font-size: var(--font-page); font-weight: var(--weight-heading); line-height: 1.4; }
+h2 { font-size: var(--font-section); font-weight: var(--weight-heading); line-height: 1.4; }
+h3 { font-size: var(--font-body); font-weight: var(--weight-heading); line-height: 1.5; }
+.small { font-size: var(--font-control); }
+.tiny { font-size: var(--font-small); }
+.eyebrow, .mode-label, .nav-heading { font-size: var(--font-small); line-height: 1.5; color: var(--text-secondary); }
+.eyebrow { font-weight: var(--weight-regular); }
+.nav-heading { font-weight: var(--weight-medium); }
+.brand { font-size: var(--font-card); line-height: 1.4; }
+.brand strong { font-weight: var(--weight-heading); }
+.new-button, .business-nav { font-size: var(--font-body); }
+.business-nav { font-weight: var(--weight-medium); line-height: 1.5; }
+.nested-history button, .sidebar-bottom > button { font-size: var(--font-control); line-height: 1.5; font-weight: var(--weight-regular); }
+.nested-history button { color: var(--text-secondary); }
+.nav-status, .badge, .status, .tag, .count { font-size: var(--font-caption); line-height: 1.5; font-weight: var(--weight-medium); }
+.sidebar-note { font-size: var(--font-small); line-height: 1.75; color: var(--text-secondary); }
+.profile > div, .profile strong { font-size: var(--font-control); font-weight: var(--weight-medium); line-height: 1.5; }
+.profile > div > span { font-size: var(--font-small); color: var(--text-secondary); font-weight: var(--weight-regular); }
+.breadcrumbs { font-size: var(--font-control); }
+.breadcrumbs strong { font-size: var(--font-body); font-weight: var(--weight-heading); }
+.header-actions button, .company { font-size: var(--font-control); line-height: 1.5; }
+.company, .breadcrumbs > span:first-child { color: var(--text-secondary); }
+.section-heading h2, .preview-top h2, .employee-chat .section-heading h2 { font-size: var(--font-section); }
+.form-heading h2 { font-size: var(--font-card); }
+.context-label, .form-heading p { font-size: var(--font-small); line-height: 1.6; color: var(--text-secondary); }
+.user-message, .assistant-message, .employee-chat .user-message, .employee-chat .assistant-message { font-size: var(--font-body); line-height: 1.75; }
+.assistant-message p { line-height: 1.75; }
+.assistant-message p.small, .employee-chat .assistant-message .small { font-size: var(--font-small); }
+.result-card > div { font-size: var(--font-control); line-height: 1.65; }
+.suggestion h3 { font-size: var(--font-control); font-weight: var(--weight-medium); }
+.suggestion p { font-size: var(--font-small); }
+.quick-actions button { font-size: var(--font-small); line-height: 1.5; }
+.composer textarea, .employee-chat .composer textarea { font-size: var(--font-body); line-height: 1.75; height: 86px; }
+.composer-bottom > span, .composer-wrap > .tiny { font-size: var(--font-small); line-height: 1.5; color: var(--text-hint); }
+.tablist button { font-size: var(--font-control); line-height: 1.5; font-weight: var(--weight-medium); }
+.tablist button.active { font-weight: var(--weight-heading); }
+.fields label, .employee-form .fields label { font-size: var(--font-control); font-weight: var(--weight-medium); line-height: 1.5; }
+.field-label { display: flex; align-items: center; gap: 5px; }
+.required { font-size: var(--font-control); font-weight: var(--weight-medium); position: static; margin: 0; }
+.fields input, .fields select, .fields textarea, .employee-form .fields input, .employee-form .fields select, .employee-form .fields textarea { font-size: var(--font-body); line-height: 1.5; min-height: 46px; }
+.fields { gap: 22px 18px; }
+.form-footer button { font-size: var(--font-control); }
+.form-footer > .tiny { font-size: var(--font-small); line-height: 1.6; }
+.permission-summary strong, .permission-summary span, .preview-note { font-size: var(--font-small); line-height: 1.75; }
+.permission-summary strong { font-weight: var(--weight-medium); }
+.permission-summary span, .preview-note, .access-footnote, .notice { color: var(--text-hint); }
+.text-button, .inline-action { font-size: var(--font-small); line-height: 1.5; }
+.role-select, .role-select select, .permission-line, .permission-line > strong, .scope, .scope select { font-size: var(--font-control); line-height: 1.6; }
+.permission-line > strong { font-weight: var(--weight-medium); }
+.notice, .access-footnote { font-size: var(--font-small); line-height: 1.7; }
+.check-row strong { font-size: var(--font-control); font-weight: var(--weight-medium); }
+.check-row span { font-size: var(--font-small); color: var(--text-secondary); }
+.record-title button { font-size: var(--font-control); }
+.record-row strong { font-size: var(--font-body); font-weight: var(--weight-medium); }
+.record-row div > span { font-size: var(--font-small); color: var(--text-secondary); }
+.members button { font-size: var(--font-control); }
+.members .tiny { font-size: var(--font-caption); }
+.admin-detail h3 { font-size: var(--font-body); font-weight: var(--weight-heading); }
+.denied-page h1 { font-size: var(--font-page); }
+.denied-page p { font-size: var(--font-control); line-height: 1.8; color: var(--text-secondary); }
+.access-details > div, .denied-page > button { font-size: var(--font-control); }
+.access-details strong { font-weight: var(--weight-medium); }
+.modal p, .modal label, .modal-actions button, .publish-summary, details { font-size: var(--font-control); line-height: 1.7; }
+.publish-summary strong { font-weight: var(--weight-medium); }
+.demo-notice, .toast { font-size: var(--font-small); line-height: 1.65; }
+.prototype-bar, .prototype-bar > span, .demo-tabs button { font-size: var(--font-caption); line-height: 1.5; }
+.prototype-bar { height: 44px; }
+.app-shell { height: calc(100dvh - 44px); min-height: 0; }
+input::placeholder, textarea::placeholder { color: var(--text-hint); }
+@media (max-width: 1160px) {
+  .brand { font-size: 17px; }
+  .section-heading h2, .preview-top h2, .employee-chat .section-heading h2 { font-size: var(--font-card); }
+}
+@media (max-width: 900px) {
+  .builder-layout .composer textarea { height: 76px; }
+  .builder-layout > .chat { height: 550px; min-height: 550px; }
+  .employee-chat { height: 520px; min-height: 520px; }
+}
+@media (max-width: 600px) {
+  :root { --font-page: 24px; --font-section: 20px; }
+  .new-button, .business-nav { font-size: var(--font-caption); }
+  .brand { font-size: var(--font-control); }
+  .header-actions button { font-size: var(--font-small); }
+  .quick-actions button, .builder-layout .quick-actions button { font-size: var(--font-caption); }
+  .composer-bottom > span { font-size: var(--font-caption); }
+  .form-footer button { font-size: var(--font-small); }
+  .prototype-bar { height: auto; min-height: 64px; flex-wrap: wrap; align-content: center; justify-content: center; row-gap: 4px; padding: 6px; }
+  .prototype-bar > span { width: 100%; justify-content: center; }
+  .demo-tabs button { padding: 5px 9px; }
+  .app-shell { height: calc(100dvh - 64px); }
+}
+@media (max-width: 600px) {
+  .new-button { padding: 8px 0; min-height: 44px; white-space: nowrap; }
+  .business-nav span:not(.nav-status) { max-width: 2em; margin-inline: auto; text-align: center; line-height: 1.6; }
+}

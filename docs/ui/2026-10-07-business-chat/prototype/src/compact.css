@@ -1,0 +1,49 @@
+/* Keep business content visible while preserving the approved type scale. */
+.main-header { height: 64px; }
+.chat .section-heading, .preview-top { padding: 18px 26px; min-height: 64px; }
+.section-heading h2, .preview-top h2, .employee-chat .section-heading h2 { font-size: 20px; }
+.chat .section-heading { flex-direction: row; align-items: center; }
+.chat-content { padding: 0 26px 16px; }
+.user-message { margin-top: 8px; margin-bottom: 20px; padding: 12px 16px; }
+.assistant-message { margin-top: 12px; margin-bottom: 18px; }
+.result-card { margin-top: 10px; padding: 10px 12px; }
+.result-card > div { padding: 3px 0; }
+.tablist button { padding-top: 10px; padding-bottom: 12px; }
+.preview-body { padding-top: 16px; }
+.form-card { padding: 20px; }
+.form-heading { margin-bottom: 18px; }
+.fields { gap: 16px 18px; }
+.field-item { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.field-edit { display: flex; justify-content: space-between; border: 0; background: none; padding: 0; border-radius: 4px; min-height: 22px; font-size: 14px; font-weight: 500; }
+.field-edit > svg { color: #8094b1; }
+.field-edit:hover { color: #0066ff; background: #edf4ff; }
+.field-item > label { margin: 0; }
+.form-footer { padding-top: 16px; margin-top: 18px; }
+.permission-summary { margin-top: 16px; }
+.preview-note { margin-top: 12px; }
+.composer-wrap { padding-top: 12px; padding-bottom: 12px; }
+.composer textarea { height: 72px; }
+.composer-wrap > .tiny { margin-top: 7px; }
+.modal label { margin-top: 18px; margin-bottom: 18px; }
+.modal .editor-required { flex-direction: row; align-items: center; gap: 9px; }
+.editor-required input { width: 18px; height: 18px; accent-color: #0066ff; }
+.field-error { font-size: 13px; color: #bc4242; background: #fff5f5; padding: 10px 12px; border-radius: 7px; }
+.modal { max-height: calc(100dvh - 40px); overflow: auto; }
+@media (min-width: 1600px) { .main-header { height: 68px; } }
+@media (max-width: 1160px) { .chat .section-heading, .preview-top { padding: 16px 20px; } .chat-content { padding-inline: 20px; } }
+@media (max-width: 900px) {
+ .main-header { height: auto; min-height: 64px; }
+ .builder-layout > .chat { height: 490px; min-height: 490px; }
+ .chat .section-heading { flex-direction: row; }
+ .preview-panel { min-height: 0; }
+}
+@media (max-width: 600px) {
+ .main-header { padding: 12px 15px; }
+ .chat .section-heading, .preview-top { padding: 16px 17px; gap: 8px; }
+ .chat .section-heading h2, .preview-top h2 { font-size: 18px; }
+ .context-label { font-size: 12px; }
+ .builder-layout > .chat { height: 480px; min-height: 480px; }
+ .fields { gap: 18px; }
+ .field-edit { min-height: 32px; }
+ .modal { padding: 25px; }
+}
