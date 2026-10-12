@@ -6,6 +6,8 @@
 
 ## 完成状态观察
 
+KVVI 移除了上游内测声明。构建产物测试夹具显式声明初次供应商配置需要的供应商列表响应，并继续拒绝未匹配的 Remote 请求。启动验收通过 hero 插槽锚点定位实际呈现的标题和标记；安装元数据与 Office 预览提示采用明确的 KVVI 期望。
+
 依赖状态的用例使用 Workspace、接纳、附件和模型流屏障，区分可见中间状态与已完成操作。详情关闭等待框架过渡结束；归档验证为 seed Session 设置显式标题，并跨重载跟踪该身份。参见 [CI fixture 同步决策](../../../.agents/notes/implemented/testing/2026-09-08-ci-completion-observations.zh.md)。
 
 ## 这些是 Host 面的测试

@@ -1,5 +1,5 @@
 {
-  "count": 130,
+  "count": 137,
   "files": {
     "apps/cli/package.json": {
       "sha256": "3a80bdf6c7da3ace285b256accb233212e9991c0335b0a1dd2c489815595801d",
@@ -12,14 +12,29 @@
       "upstream_baseline_sha256": "9b54d57eea00f2fdd1affe6e7999a4209a515755f12ac1a3299da2d55e178d4c"
     },
     "apps/web/tests/README.md": {
-      "sha256": "8c0b026a9f69a451e8693dd687a75bd421978a2ffa075488ef90839e845e034a",
+      "sha256": "60a5145e449ef0d7402401a1ac234bd4470e584d8c0984e447900c6cb9e55cbc",
       "status": "M",
       "upstream_baseline_sha256": "f616c8748b74806d1c54e944361096f6621f9c0fdf14f6481416d26dc5ab39dd"
     },
     "apps/web/tests/README.zh.md": {
-      "sha256": "9431cd1c329bbc1763beee6fb52cb6c330df77226b2b2a6b4aeb697dcd2f31a1",
+      "sha256": "61198f570fcd039c96ba1bf49870865d306a423cfc0a170e7a8d2e4b60f4747c",
       "status": "M",
       "upstream_baseline_sha256": "ec340d2de4ad43e3d37cd8fa54fd8cb7a35bae4cdb08be8c84599a79541071d9"
+    },
+    "apps/web/tests/assembled-remote.ts": {
+      "sha256": "50a46419b713b910ca963edf814c74327f94ff6ac9c58bc11509ddd279a8d1bf",
+      "status": "M",
+      "upstream_baseline_sha256": "e5bfa0b6a01f112c0d1b79e91dc44922a588549c7399123177c645dd8f852177"
+    },
+    "apps/web/tests/built-boot.expected.e2e.ts": {
+      "sha256": "4e465265bebae55526df49ef89eb59dc4fbd149f09829b0a9c99aafa792c190d",
+      "status": "M",
+      "upstream_baseline_sha256": "4d86bbda7bd5e3937b3b9fe281cf84f270e9d8681ad051964314b2a5f79b91b8"
+    },
+    "apps/web/tests/document-preview.e2e.ts": {
+      "sha256": "081360054d7e66c5e3b6955dc15bb2aa617abcd8b201918fb6eacb97ad233e64",
+      "status": "M",
+      "upstream_baseline_sha256": "a91a3c875d1f40b8f1be97f2a767c624a74c427beb75a10d6e404b5f48fe06c8"
     },
     "apps/web/tests/expected/agent-preset-authoring/created.expected.md": {
       "sha256": "24123acf9f6bed8f8bd8644526141b3db114030d613e2c676cdb7819ab7917d5",
@@ -50,6 +65,16 @@
       "status": "M",
       "upstream_baseline_sha256": "5493a9815320e8260ec4d3143b1e0f241236cba258b22a6ac2a833cbde7bbb77"
     },
+    "apps/web/tests/preview-boot.e2e.ts": {
+      "sha256": "d95dad09f9f6b7c2c50205a4aee94b43b920b71411b824220dc6300992d806a1",
+      "status": "M",
+      "upstream_baseline_sha256": "84c2faf6f5bc52c86c843c85e713aaacefb26036c7479474e479f79a76a8772b"
+    },
+    "apps/web/tests/pwa-manifest.e2e.ts": {
+      "sha256": "3d0ccf618ae117774198b49720b4fd7defc1595bf5d0ee0880b21ae02f3418bf",
+      "status": "M",
+      "upstream_baseline_sha256": "e3f875952d86dbfa155c5f1e2985719659b1a7604e7f4e46e4032fa1f5fe920b"
+    },
     "apps/web/tests/remote-welcome.e2e.ts": {
       "sha256": "",
       "status": "D"
@@ -58,6 +83,11 @@
       "sha256": "45aafa8b318358f67087d2af00163680f6e4632c0fefb6d2215428cffe0a59e5",
       "status": "M",
       "upstream_baseline_sha256": "a95d817f7d0528c1507375a5efaa949cc5e9a4e92338c150102ab96205e2433d"
+    },
+    "apps/web/tests/startup-auto-selection.e2e.ts": {
+      "sha256": "12fb54d58ec822163eb4e3afade36ed7337514944b13629e85b0f2b7835a22e1",
+      "status": "M",
+      "upstream_baseline_sha256": "094fccc6f61df067665b2f19119d711739036f02cf3894fa4729c0abdc8b093e"
     },
     "apps/web/tsconfig.json": {
       "sha256": "6ae0e7791cb1b0ae431f54b5ff2508291354f7ff8703722e8176a668a6928013",
@@ -543,6 +573,11 @@
       "status": "M",
       "upstream_baseline_sha256": "72523ca50bd34e3e21d07c82e1cedfdb91b17e1bcd83006c645e8dc6e0786fe0"
     },
+    "snapshots/web/document-preview/document.expected.md": {
+      "sha256": "c75b8127acd1f92b43515de88b46b05ed09c460fec24f09fede72f63fef37ad3",
+      "status": "M",
+      "upstream_baseline_sha256": "0b508119d9158806fb4b2aa9d37520d334f18b4e35af7b1cd298cc26965e9677"
+    },
     "tsconfig.base.json": {
       "sha256": "8b1947d95f8b6196c2f1eb206029eb1b44115a5e53124893230876c6d82efe76",
       "status": "M",
@@ -564,7 +599,7 @@
       "upstream_baseline_sha256": "568b5f6d7d94f9a7d02040ea309ab858e8d2d47c9c5f68a9236a48268ed50d03"
     }
   },
-  "fork_head": "0e52dcc3b24527e13aefba3c5e9e9c6a715e91b8",
+  "fork_head": "22407d2aa4a9fb436861a6158ec4d15d41e09397",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "e6a559b1550f5bee359cffc514f6a498710d0697"

@@ -6,6 +6,8 @@ These tests boot the real web composition in-process and drive it with a real Ch
 
 ## Completion observations
 
+KVVI omits the upstream internal-testing notice. Built-client fixtures declare the provider-list responses needed by initial provider setup and keep unmatched Remote requests fatal. Startup acceptance uses the hero slot anchors to address the painted title and mark; install metadata and Office-preview guidance have explicit KVVI expectations.
+
 State-sensitive cases use Workspace, admission, attachment, and model-stream barriers to separate visible intermediate states from completed operations. Details close waits for frame transitions; archive verification assigns an explicit title to the seeded Session and follows that identity across reload. See the [CI fixture synchronization decision](../../../.agents/notes/implemented/testing/2026-09-08-ci-completion-observations.md).
 
 ## These are Host-face tests

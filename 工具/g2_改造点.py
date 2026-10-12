@@ -7,6 +7,9 @@ G2 改造点校验器 —— PRD §7.5.3「未登记不得合并」的机械执�
   用 git 现算 fork 相对基线的全部改动，与 forks/dsh/改造点清单.md 的登记比对。
     · 有改动但没登记  → 报「未登记」，退出码 1
     · 登记了但没这个改动 → 报「登记失效」，退出码 1
+  指纹校验要求保留文件的摘要一致，登记删除的路径不存在；恢复删除路径同样失败。
+
+指纹删除回归：python3 工具/test_g2_fingerprint.py
 
 它不做什么（重要）：
   · 不判断改动「对不对」—— 只判断「有没有登记」
@@ -255,7 +258,8 @@ def verify_fingerprint() -> int:
     if not os.path.exists(FINGERPRINT):
         print('%s✗ 指纹文件不存在，先跑 --manifest%s' % (C_BAD, C_OFF))
         return 1
-    doc = json.load(open(FINGERPRINT, encoding='utf-8'))
+    with open(FINGERPRINT, encoding='utf-8') as source:
+        doc = json.load(source)
 
     head_now = git('rev-parse', 'HEAD').strip()
     bad = []
@@ -264,6 +268,10 @@ def verify_fingerprint() -> int:
         bad.append(('fork HEAD 变了', doc['fork_head'], head_now))
 
     for path, entry in sorted(doc['files'].items()):
+        if entry['status'] == 'D':
+            if os.path.lexists(os.path.join(DSH, path)):
+                bad.append((path, '路径已删除', '路径仍存在'))
+            continue
         now = sha256_of(None, path)
         if not now:
             bad.append((path, entry['sha256'][:12], '文件不存在'))
