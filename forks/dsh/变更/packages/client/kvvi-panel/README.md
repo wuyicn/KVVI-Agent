@@ -29,6 +29,8 @@ Workspaces retain the original main Conversation and its session navigation. A n
 
 The main business renderer, workspace resources and write observer share one session-scoped store handle. Successful writes invalidate the asset's visible records/details. Main-page navigation also checks the address captured when submitting so a late result does not pull a user back from a different page. The data renderer does not subscribe to token-by-token Conversation snapshots.
 
+Auxiliary content stays on the right: business resources beside the main Conversation, and AI beside business records. The business AI column opens on request and supports pointer resizing or Left/Right and Home/End keys. Its width fits the available workspace. Closing it retains the mounted conversation and unsent input; switching forms releases the previous occurrence. On small screens the assistant overlays the business area and closes through its header action. This layout does not generate draft previews or submit approval requests.
+
 Business-to-workspace association first checks the asset marker. Without a marker,
 automatic association requires a unique legacy title match across the full visible
 form catalogue. Explicit selection cannot override a conflicting or unreadable
