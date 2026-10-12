@@ -104,3 +104,5 @@ None.
 **Runtime invariant:** No companion is published. Conversation and Slot registration enforce Chat target consistency.
 
 Connection failures (`TIMEOUT` and `TRANSPORT`) use short localized guidance in retry details and terminal notices. Provider diagnostics remain in the durable session; terminal notices hide these two network codes.
+
+KVVI business conversations omit assistant rows containing only background blocks or whitespace, including their layout spacing and scroll anchors. Streaming text and image replies appear when present; failure notices and pending questions remain visible. Raw events are unchanged.

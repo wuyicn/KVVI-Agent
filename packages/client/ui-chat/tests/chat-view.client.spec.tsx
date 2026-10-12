@@ -2166,6 +2166,18 @@ describe('ChatView', () => {
     expect(view.getByRole('status').textContent).toBe('正在处理…')
   })
 
+  it.each(['kvvi-builder', 'kvvi-worker'])('omits 102 empty process seats for %s and admits later visible text', (preset) => {
+    const hidden = Array.from({ length: 102 }, (_, index) => reasoningAssistant(index + 2, 'internal work', 1, index + 1))
+    const h = makeHarness({ nodes: [user(1, '搭建登记表'), ...hidden, assistant(105, '  \n ', 1, 104)] }, { running: true })
+    h.props.useSessions = businessSessions(preset)
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.container.querySelectorAll('[data-chat-flow-kind="assistant-step"]')).toHaveLength(0)
+    act(() => { h.set({ nodes: [user(1, '搭建登记表'), ...hidden.slice(0, 101), assistant(103, '请确认表单。', 1, 102)] }) })
+    expect(view.container.querySelectorAll('[data-chat-flow-kind="assistant-step"]')).toHaveLength(1)
+    expect(view.getByText('请确认表单。')).toBeTruthy()
+    expect(hidden[101]?.blocks).toEqual([{ kind: 'reasoning', text: 'internal work' }])
+  })
+
   it('shows business failures without raw codes or claiming that changes were not saved', () => {
     const failed = { ...toolResult(3, 'failure'), isError: true, content: [{ type: 'text' as const, text: 'Error: KVVI_NOT_ALLOWED: tenant_id=internal' }] }
     const h = makeHarness({ nodes: [user(1, '修改'), failed, turnError(4)] })
