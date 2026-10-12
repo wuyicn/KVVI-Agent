@@ -1,0 +1,63 @@
+/* Fusion review layer: keeps the existing Harness navigation and dock runtime. */
+.hub-frame,.hub-dialog{font-family:"PingFang SC",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#202938}
+.hub-frame small,.hub-muted,.hub-home-header p,.hub-breadcrumb,.hub-table-footer{color:#697586}
+.hub-frame .primary,.hub-dialog .primary{background:#1767ed;border-color:#1767ed}
+.hub-global{background:#f6f8fb}.hub-global nav button.active{background:#e7effe;color:#1767ed}
+.hub-home-header h1,.hub-business-header h1{font-size:26px;letter-spacing:-.5px}
+.hub-home-body{max-width:1600px;width:100%;align-self:center}
+.hub-system-row{padding-block:23px}.hub-system-table-head{padding-block:15px}
+.hub-system-name strong{font-size:16px}.hub-system-name small{line-height:1.5}
+.hub-work-content{padding:28px}.hub-content-heading{margin-bottom:24px}
+.hub-records-table td,.hub-records-table th{font-size:14px;padding-block:18px}
+.hub-frame button{min-height:36px}.hub-table-tools>.primary{min-height:42px}
+.fusion-eyebrow{display:block;font-size:12px;font-weight:500;letter-spacing:.4px;color:#64748b;margin-bottom:8px}
+.fusion-mode{display:inline-flex;white-space:nowrap;align-items:center;padding:5px 10px;border-radius:6px;background:#edf3ff;color:#2563c4;font-size:12px;font-weight:500}
+.fusion-workspace-title{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.hub-workspace-conversation>header{height:auto;min-height:80px;padding:18px 26px;gap:16px;flex-wrap:wrap}
+.hub-workspace-conversation>header>div:last-child{gap:8px;flex-wrap:wrap}
+.hub-workspace-tabs{display:flex;align-items:center;gap:22px;height:44px}
+.hub-workspace-tabs>span{height:44px;display:flex;align-items:center;color:#1767ed;border-bottom:2px solid #1767ed;font-size:14px}
+.hub-workspace-tabs small{font-size:12px;color:#697586}
+.hub-workspace-hero{text-align:left;max-width:640px;margin:auto}
+.hub-workspace-hero h1{font-size:28px;line-height:1.5;margin-top:22px}
+.hub-workspace-hero p{color:#64748b;line-height:1.8;font-size:15px}
+.fusion-quick-actions{display:flex;gap:12px;flex-wrap:wrap;margin:26px 0 20px}
+.fusion-quick-actions button{padding:12px 16px;border-color:#dce5f5;color:#2761b4}
+.hub-workspace-composer form{border-radius:12px;box-shadow:none}
+.hub-workspace-composer textarea{line-height:1.7}
+.hub-frame .dock-business-content{padding:24px 20px}
+.hub-context{background:#f5f8ff;border:0;padding:16px}.hub-messages .hub-user-message{font-size:15px}
+.hub-ai-message{line-height:1.8}.hub-chat-input textarea{font-size:15px;line-height:1.7}
+.hub-chat-input:focus-within{outline:2px solid #a4c4fa;outline-offset:1px}
+.fusion-fields{display:grid;grid-template-columns:1fr 1fr;gap:22px 20px;margin-top:26px}
+.fusion-fields label{display:flex;flex-direction:column;gap:10px;min-width:0;color:#263244;font-size:14px;font-weight:500}
+.fusion-fields label>span{display:flex;align-items:center;gap:6px}.fusion-fields em{font-style:normal;color:#cf3949}
+.fusion-fields .fusion-full{grid-column:1/-1}
+.fusion-fields input,.fusion-fields textarea,.fusion-fields select{width:100%;min-width:0;box-sizing:border-box;border:1px solid #d9e1ec;background:#fff;border-radius:8px;padding:12px;font:400 16px/1.5 "PingFang SC",sans-serif;color:#263244;min-height:46px}
+.fusion-fields input:disabled,.fusion-fields textarea:disabled,.fusion-fields select:disabled,.fusion-fields input:read-only{background:#f7f9fc;color:#68768a;opacity:1}
+.fusion-fields textarea{min-height:104px;resize:vertical}.fusion-fields label>small{font-size:12px;line-height:1.6;font-weight:400;color:#697586}
+.fusion-fields :is(input,textarea,select):focus-visible{outline:2px solid #82b0fa;outline-offset:2px}
+.fusion-hint{display:flex;align-items:center;gap:8px;color:#697586;font-size:12px;line-height:1.7;font-weight:400}
+.fusion-preview h2{font-size:23px}.fusion-preview .fusion-fields{display:flex;flex-direction:column;gap:20px}
+.fusion-preview .fusion-hint{margin:24px 0 16px}.fusion-preview>button{width:100%}
+.fusion-dialog{width:min(1120px,calc(100vw - 48px));padding:0;max-height:calc(100dvh - 56px);display:flex;flex-direction:column;overflow:hidden}
+.fusion-dialog>header{padding:22px 28px;margin:0;border-bottom:1px solid #e9edf3;flex-shrink:0}
+.fusion-dialog>header h2{font-size:23px}.fusion-editor{display:grid;grid-template-columns:minmax(0,1fr) 330px;min-height:0;overflow:auto;flex:1}
+.fusion-editor>section{padding:28px 32px}.fusion-editor>aside{padding:28px 22px;border-left:1px solid #e9edf3;display:flex;flex-direction:column;min-height:460px}
+.fusion-editor h3{font-size:19px;margin:0;display:flex;align-items:center;gap:9px}.fusion-editor>aside>.fusion-hint{padding:12px;background:#f1f6ff;border-radius:8px;margin:18px 0}
+.fusion-editor .hub-assistant{flex:1;height:auto}.fusion-editor .hub-chat-input{margin-top:20px}.fusion-editor .hub-messages{min-height:80px}
+.fusion-form-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.fusion-form-heading p{color:#697586;font-size:14px;margin:10px 0 0}
+.fusion-dialog>.hub-dialog-actions{padding:18px 28px;margin:0;border-top:1px solid #e9edf3;flex-shrink:0;align-items:center;background:white;flex-wrap:wrap}
+.fusion-dialog>.hub-dialog-actions>.fusion-hint{margin-right:auto}.fusion-dialog>.hub-dialog-actions button{padding:11px 18px}
+.fusion-dialog>.hub-error{padding:10px 28px;margin:0;background:#fff4f4}
+.fusion-dialog .hub-chat-input textarea{border:0;padding:0;background:transparent;box-shadow:none}
+@media(max-width:1100px){.hub-work-content{padding:20px}.hub-workspace-conversation>header{padding:14px 20px}.hub-workspace-hero h1{font-size:24px}.fusion-editor{grid-template-columns:minmax(0,1fr) 280px}.fusion-editor>section{padding:24px}.fusion-editor>aside{padding:24px 18px}}
+@media(max-width:780px){.fusion-dialog{width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}.fusion-editor{display:block}.fusion-editor>aside{border-left:0;border-top:1px solid #e9edf3;min-height:350px}.fusion-fields{grid-template-columns:1fr}.fusion-fields .fusion-full{grid-column:auto}.hub-workspace-tabs small{display:none}.hub-workspace-conversation>header{gap:10px}.hub-workspace-hero h1{font-size:21px}.hub-workspace-messages{padding:24px 20px}.fusion-dialog>.hub-dialog-actions{padding:14px}.fusion-dialog>.hub-dialog-actions>.fusion-hint{width:100%}}
+.hub-business-switch{display:inline-flex;align-items:center;gap:4px;color:#65738a}
+.hub-business-switch select{appearance:none;border:0;background:transparent;color:inherit;font:inherit;padding:4px 0;max-width:220px;cursor:pointer}
+.hub-business-switch select:focus-visible{outline:2px solid #82b0fa;outline-offset:3px}
+.hub-business-header .hub-form-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.hub-business-header .hub-form-actions .hub-danger{color:#be4753}
+@media(max-width:1100px){.hub-business-header{gap:16px;flex-wrap:wrap}.hub-business-header .hub-form-actions{justify-content:flex-start}.hub-business-header .hub-form-actions button{padding:9px 12px}}
+.hub-group-row{display:flex;align-items:center;min-width:0}.hub-group-row>.hub-resource{flex:1;min-width:0}.hub-group-row .hub-resource span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hub-group-row .hub-group-more{padding:5px;border:0;background:transparent;color:#8b97a9}.hub-group-row .hub-menu{left:0;right:auto;min-width:180px;z-index:30}.hub-group-empty{display:block;padding:8px 14px;color:#94a0b1}.hub-ungrouped>small{display:block;padding:18px 12px 8px;color:#8895a8}.hub-business-header>.hub-form-actions{align-items:center}.hub-business-header>div>p{font-size:13px;margin:10px 0 0}
+.hub-group-row .hub-menu{left:auto;right:0;min-width:0;width:158px;box-sizing:border-box}.hub-group-row .hub-menu button{white-space:normal;text-align:left;font-size:12px}

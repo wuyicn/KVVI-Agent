@@ -1,0 +1,1 @@
+KVVI logo: exact production outline from forks/dsh/变更/packages/client/kvvi-brand/src/client/Brand.tsx, KVVI_MARK_PATH. No new logo drawn. Icons: lucide-react.
