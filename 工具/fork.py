@@ -46,10 +46,9 @@
 ## ⚠️ 上游来源：默认用**本地**副本
 
 `--upstream local`（默认）从 `vendor/dsh` 自己的 git 对象里导出基线提交的干净副本 ——
-**不需要网络**。`--upstream git` 从 GitHub 克隆。
-
-**本机当前无法访问 GitHub**（`git ls-remote` 超时），所以本次演练走的是 local 路径。
-`git` 路径**未演练**，见 N23。
+**不需要网络**。`--upstream git` 从本仓库的 `vendor-dsh` 分支取得源码，
+再检出指纹清单固定的导入基线。该基线是 KVVI 自己的导入提交，不在官方 DSH 仓库里；
+分支仅提供 Git 对象，重建仍使用固定提交加登记的变更，不使用分支最新代码。
 
 用法：
 
@@ -225,8 +224,9 @@ def pristine(upstream: str, into: str) -> bool:
     m = manifest()
     base = m['upstream_merge_base']
     if upstream == 'git':
-        url = 'https://github.com/deepseek-ai/deepseek-harness.git'
-        r = sh('git clone --quiet %s %s' % (url, into), timeout=3600)
+        url = 'https://github.com/wuyicn/KVVI-Agent.git'
+        r = sh('git clone --quiet --single-branch --branch vendor-dsh %s %s'
+               % (url, into), timeout=3600)
         if r.returncode != 0:
             print('%s✗ 从上游克隆失败：%s%s' % (C_BAD, r.stderr.strip()[:200], C_OFF))
             return False

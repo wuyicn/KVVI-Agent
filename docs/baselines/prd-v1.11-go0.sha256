@@ -1,0 +1,10 @@
+# PRD v1.11 / Go-0 frozen source bindings.
+# Restored verbatim from contracts/契约资产清单.sha256 at
+# e7d5d78dc7cb820ee4f00f4bf05c0408bbd105b7; not regenerated from current files.
+d517617a0c500713897e7d6c88b5894d4c802e6362ecf68631ba88776750993b  docs/PRD-AI无代码平台设计-v1.11.md
+bc9887e59d04119f87945e2a198fd52030fe8ce90110cd99dfeaf3a7f304e950  protocol/kvvi-json-c14n/v1/EVIDENCE_SETS.md
+0e80c05a5f38f7c3e2afbf810b466ada99f25dfd6ac581dde06a0f61cfdb76fc  protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/README.md
+e725d654ea2e7f81ea04ba00277eefee1fefbe7519730858ff8763106c88d002  protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/node/kvvi-json-c14n.mjs
+010dacdfbefbc62bbeb76903c02127043dfa33d074b91f14aa6b1891c126d059  protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/python/kvvi_json_c14n.py
+824db464b714bebbffdcbaad2fcc4957497471aae38bfce29bb91a206d2a1fa2  protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/tests/test_conformance.py
+1a58aff79f9372937a999655d1c2937a6589e492f9eb987366bf4ea81f71b0b9  protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/vectors.json
