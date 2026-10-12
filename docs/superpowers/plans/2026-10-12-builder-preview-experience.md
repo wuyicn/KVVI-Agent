@@ -89,11 +89,11 @@
 - [ ] 注册工具并切换标准登记表的 persona/技能到固定能力；权限未确认保留 needs_input。旧草稿导入只读取 mode router 已授权当前工作区内明确归属的契约，路径穿越、符号链接逃逸和缺份全部拒绝，不遍历任意目录。
 - [ ] 重跑服务、路由、工具测试；实录标准场景不得出现 bash 环境探查、安装依赖或直连数据库。提交 root 与 nested 各自改动。
 
-## Task 5 左侧预览右侧对话
+## Task 5 左侧对话右侧预览
 
 **Files:** 新增 `vendor/dsh/packages/client/kvvi-panel/src/client/BuilderWorkspace.tsx`、`BuilderPreview.tsx`、`builder-draft-api.ts`、`builder-workspace.module.css`；修改 `index.ts`、`locales.ts`，复用 `FormView.tsx` 与原会话 slot。新增 `tests/builder-preview.spec.tsx`、`builder-workspace-assembly.spec.tsx`。
 
-**Interfaces:** `builder-draft-api` 提供 `read(intentId,signal)`、`prepare(intentId,input,signal)`，返回 Task 4 的 BuildSnapshot。`BuilderPreview` 只消费 preview 和本地试填状态，无正式 record 写入依赖。宽屏预览占主区约 60%、对话约 40%；不足 900px 改为页签切换。
+**Interfaces:** `builder-draft-api` 提供 `read(intentId,signal)`、`prepare(intentId,input,signal)`，返回 Task 4 的 BuildSnapshot。`BuilderPreview` 只消费 preview 和本地试填状态，无正式 record 写入依赖。宽屏对话为主区，业务预览位于最右侧栏；不足 900px 改为页签切换。
 
 - [ ] 写失败测试：真实 fixture 的八字段控件可试填；字段变更高亮；权限待确认阻止提交；非法组件显示错误而非空白。spy 验证试填不触发任何正式记录端点。
 - [ ] 写迟到结果测试：加载 A 时切换 B，A 的结果不得出现；公司/账号切换清除预览与试填；失败保留旧草稿并标注检查未完成；刷新恢复服务端状态。
@@ -132,7 +132,7 @@
 ### 2026-10-12 实施检查点（非完成验收）
 
 - 已提交 DSH 第一批展示修复：`11b1cd8` 移除业务空步骤外层；`2b226bb` 业务目标摘要与中断提示保留。界面回归 6412 通过、1 跳过，完整构建通过。
-- 7506 新入口 `http://127.0.0.1:7506/?builder-preview` 是独立交互演示：左侧试填、右侧修改示例、固定确认。20 项原型测试及 4 项打包测试通过；浏览器已检查修改、确认、继续修改和窄屏页签。未连接真实 AI 或审批。
+- 7506 新入口 `http://127.0.0.1:7506/?builder-preview` 是独立交互演示：左侧对话、右侧试填与固定确认（已按用户后续口误更正）。20 项原型测试及 4 项打包测试通过；浏览器已检查修改、确认、继续修改和窄屏页签。未连接真实 AI 或审批。
 - 因现有完整检查的上下文仍要求 `fixture=true` 与测试资产，不能直接拿测试上下文证明生产草稿合格。先交付布局评审，正式验证适配、草稿版本和确认提交继续按 Tasks 3/4/6 实施，不能降级为结构检查后直接提交。
 - Task 1 尚待 7500 实机验收；Task 2 部分完成；Task 5 仅布局演示。其余任务未完成，7500 未重启或切换，用户店铺草稿未提交或发布。布局确认前不启用正式新工作台。
 - 独立切片复审提出中断提示不可消失，已先红后绿修正；全计划最终复审仍待后续实现完成。
