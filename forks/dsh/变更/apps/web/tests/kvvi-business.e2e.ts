@@ -57,7 +57,12 @@ it('renders the Harness business layout and submits through the authorized recor
     const groups: { groupId: string; name: string; position: number; version: number }[] = []
     let archived = false
     await page.route('**/auth/session', route => route.fulfill({ json: { gateway, allowedGateways: ['USER', 'BUILDER'], companyId: 'fixture-company', userId: 'fixture-user', sessionId: 'fixture-login', login: 'fixture-builder', companyName: 'UI test' } }))
-    await page.route('**/kvvi/builder/login', route => route.fulfill({ contentType: 'text/html', body: '<h1>Builder login</h1>' }))
+    await page.route('**/auth/enter-builder', async (route) => {
+      expect(route.request().method()).toBe('POST')
+      expect(route.request().headers()['x-kvvi-builder-intent']).toBe('1')
+      gateway = 'BUILDER'
+      await route.fulfill({ json: { gateway, sessionId: 'fixture-builder-session' } })
+    })
     await page.route('**/api/v1/**', async (route) => {
       const request = route.request()
       const path = new URL(request.url()).pathname
@@ -92,13 +97,9 @@ it('renders the Harness business layout and submits through the authorized recor
     expect(await page.getByRole('button', { name: 'Open business', exact: true }).count()).toBe(0)
     expect(await page.getByRole('button', { name: 'New group', exact: true }).count()).toBe(0)
     await page.getByRole('button', { name: 'New form', exact: true }).click()
-    await page.waitForURL('**/kvvi/builder/login')
-    expect(creates).toBe(0)
-    gateway = 'BUILDER'
-    await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
-    await page.getByRole('button', { name: 'Business', exact: true }).click()
-    await page.getByRole('button', { name: 'New form', exact: true }).click()
     await page.getByRole('dialog', { name: 'New business' }).waitFor()
+    expect(new URL(page.url()).pathname).toBe('/')
+    expect(creates).toBe(0)
     expect(await page.getByLabel('Save location', { exact: true }).count()).toBe(0)
     expect(await page.getByRole('button', { name: 'Choose folder', exact: true }).count()).toBe(0)
     expect(await page.getByLabel('Requirements', { exact: true }).count()).toBe(0)

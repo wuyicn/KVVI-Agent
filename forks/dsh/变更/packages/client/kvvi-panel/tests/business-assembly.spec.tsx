@@ -136,6 +136,7 @@ it('mounts records and the original embedded AI under the matching business sess
   await screen.findByRole('complementary', { name: 'AI assistant' })
   expect(document.querySelector('[data-slot="kvvi.business.session"] [contenteditable]')).not.toBeNull()
   fireEvent.click(screen.getAllByRole('button', { name: 'Close AI assistant' })[0]!)
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }))
 }, 60_000)
 
 it('releases an opening business session when closing Business before the first stream frame', async ({ start, mock }) => {
@@ -256,4 +257,5 @@ it('uses the same record layout and explicitly binds differently named business 
   await screen.findByRole('complementary', { name: 'AI assistant' })
   expect(document.querySelector('[data-slot="kvvi.business.session"] [contenteditable]')).not.toBeNull()
   fireEvent.click(screen.getAllByRole('button', { name: 'Close AI assistant' })[0]!)
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }))
 }, 60_000)
