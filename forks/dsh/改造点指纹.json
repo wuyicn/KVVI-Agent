@@ -1,5 +1,5 @@
 {
-  "count": 225,
+  "count": 233,
   "files": {
     "apps/cli/package.json": {
       "sha256": "3a80bdf6c7da3ace285b256accb233212e9991c0335b0a1dd2c489815595801d",
@@ -451,17 +451,17 @@
       "status": "A"
     },
     "packages/client/ui-chat/README.i18n.yaml": {
-      "sha256": "b1e76aae9afacb284063ce720c00e25292ddc427aa89b371bc880b5d442e5e0b",
+      "sha256": "f957c74cf3ab24dfad306c598d5ced31b386b9f54992c9af35314ea150f8657c",
       "status": "M",
       "upstream_baseline_sha256": "698b92c9b4772ab3393abdbd9047b02e882469d146ad5c77963fdb454488ce49"
     },
     "packages/client/ui-chat/README.md": {
-      "sha256": "62b38aa630692ead47ad3ec4a905c31981ffba3fa3a7ae8f0ed4775cb8c20e50",
+      "sha256": "6d3022a80cf75b8b263d8eba74f33279e32b7009c6b412a2a5158e87b5ae5693",
       "status": "M",
       "upstream_baseline_sha256": "c424b8ad5749dfbd3c723bc015815490b85934a406cfd2c6437a7c39841a771d"
     },
     "packages/client/ui-chat/README.zh.md": {
-      "sha256": "7cb3c0c36cf72c29a2791b0f7ecc8c5a3ca3f3ea923890f18c28a3658e0aa1b2",
+      "sha256": "4d873f6539134722f6b622b7dcde330a8f076755655d0b6d5602f5e3ea04bacd",
       "status": "M",
       "upstream_baseline_sha256": "17a7277e9be5f4a5a647a1924deb08f495455601f00127f010d85bd76a7fd5d9"
     },
@@ -471,12 +471,12 @@
       "upstream_baseline_sha256": "3fe2f86199fd26c7fc75e38477bdf305a98d0e4ccbe393577b345cb35de9a7f4"
     },
     "packages/client/ui-chat/src/client/chat/AssistantNodeView.tsx": {
-      "sha256": "d5aac2046cd1210ce995fab03dc2b095ab856146348489d0a5909ff412faf324",
+      "sha256": "3c41b21c1cd7f987bc9d99c63c9e113b5570eed7d0fd58dd98f5d51d1ecddaea",
       "status": "M",
       "upstream_baseline_sha256": "315e5112b78a3da86417f55778cf26a204acd0eee984a762dcc87bd900f2e718"
     },
     "packages/client/ui-chat/src/client/chat/ChatNodeSeat.tsx": {
-      "sha256": "e5b614c760705356bfaa1ab60904ba96293d658e4395bc1610966e1a36948806",
+      "sha256": "c43f6e18cf871e3ffefe18d2100b452e23b3f8fdc0a6dd8387b4277cb2b78540",
       "status": "M",
       "upstream_baseline_sha256": "d9c2bc4b5832d1de6db9d63e1571e7808f6bdd09fbea9de044308c38c7d734f9"
     },
@@ -501,7 +501,7 @@
       "upstream_baseline_sha256": "c4c3884641f2d07bc424283a1f05cd24eec4d16708af5623660fe97b5284c9c6"
     },
     "packages/client/ui-chat/src/client/chat/business-presentation.ts": {
-      "sha256": "2306151ba0dcb0257716c97f423024ba47537d056d1745f7ff2c505e3e8549b3",
+      "sha256": "a0281ce45c654a8d5938bcff0ac28a9c6db1d2361bf7829ff8e6b76ef9fc6414",
       "status": "A"
     },
     "packages/client/ui-chat/src/client/contract/slots.ts": {
@@ -518,6 +518,10 @@
       "sha256": "a1c3bd480de198063794e12c5b485cdb841d8b75062d1ab1dca876b11d8accea",
       "status": "A"
     },
+    "packages/client/ui-chat/tests/business-visible-content.client.spec.ts": {
+      "sha256": "b8122d2d1095300826257f89efa3c674d9e90a1ecf508a32be81618d29875a3e",
+      "status": "A"
+    },
     "packages/client/ui-chat/tests/chat-branch-tails.client.spec.tsx": {
       "sha256": "c2b33060f995c30d06cfb58cad8d663f66cf02365bbb1510ce6a361928e5f5c0",
       "status": "M",
@@ -529,7 +533,7 @@
       "upstream_baseline_sha256": "5a97547a6e3c7fdbb70e1e490d7e7cd44b1574f32214a7e990cbc6539af61452"
     },
     "packages/client/ui-chat/tests/chat-view.client.spec.tsx": {
-      "sha256": "b5d02ea0092922b8f258bc780a7d9f28ea8efb77fb1b3a862a77e4e1b872692a",
+      "sha256": "7543fd2927c15077869dd3c6e9c04735d4d324a6fd21795c19e87243037eceea",
       "status": "M",
       "upstream_baseline_sha256": "dfce711ca2118a55cd99e2c16143999875cc7ac6073d8b2e995a4c4f1221e7a1"
     },
@@ -602,6 +606,41 @@
       "sha256": "0a950bd95505121e8071a79b75c16a1420ef9d627162ca9597c8fffbd1781398",
       "status": "M",
       "upstream_baseline_sha256": "a961b23f3432ad8a88bf144e73d51bdd4027c8ec272cdbfc93c6436c21b849a0"
+    },
+    "packages/client/ui-goal/README.i18n.yaml": {
+      "sha256": "3b9211c31fdfb772a0aad3008a5ccb7af88519271a5ca1c4b02f68b89e82a532",
+      "status": "M",
+      "upstream_baseline_sha256": "66a249f09e6916cbcb8fb19bb4cdfc0d9679ed459afdeb044c73b9873c52706c"
+    },
+    "packages/client/ui-goal/README.md": {
+      "sha256": "be129f5feaa8b5ca53150515717680a9f22c41005b6fe03711681361a7fe1901",
+      "status": "M",
+      "upstream_baseline_sha256": "3615cd9877c45876f9649bb5826248865858ba68cddc86c7c1c3cf15934c591f"
+    },
+    "packages/client/ui-goal/README.zh.md": {
+      "sha256": "54025bddf71be8168c801a1c2a2ca42b2751b61cab8e35607b8986c80e1147a1",
+      "status": "M",
+      "upstream_baseline_sha256": "29bdd0fdb6fc7f857086538fa3295d2610ecd8d59062c84d9fa963ae3af19331"
+    },
+    "packages/client/ui-goal/src/client/GoalBar.tsx": {
+      "sha256": "8a27ac0350b7f6f6f1d64117274501fb69e08b93228b701dcf73eeed539e920a",
+      "status": "M",
+      "upstream_baseline_sha256": "fcd9ec77f6e40cf4220a883f276d59be5641768a606ff128a5aa209222a637fa"
+    },
+    "packages/client/ui-goal/src/client/locales.ts": {
+      "sha256": "60a4325c2cb1f3f1d5247d2a22ed1442c0e1820e99fc49882465d0ca4e03b924",
+      "status": "M",
+      "upstream_baseline_sha256": "0290788022b4d546dff24e4889756487457d008c8a8f8eb3a9d5463ea99e1957"
+    },
+    "packages/client/ui-goal/tests/browser-plugin.client.spec.tsx": {
+      "sha256": "a38312a4399fb8f58ceafe20aba4e756addb1974ea72b977132dc2be50fc2192",
+      "status": "M",
+      "upstream_baseline_sha256": "f5a476cbdec8ce4bc50b98a088614b195771343ac349a74a133f31be474f80cc"
+    },
+    "packages/client/ui-goal/tests/goalbar.client.spec.tsx": {
+      "sha256": "3ffa68e0699ff2a353652f623a6c16f112f0bec169c3f21dc22c6007d2ef8e90",
+      "status": "M",
+      "upstream_baseline_sha256": "df8ed4742a6d3dcc1e92fc9ad00523c18a5a72efff21973f803104a018307633"
     },
     "packages/client/ui-plugin-manager/src/client/locales.ts": {
       "sha256": "3903a0de3349ac8d0c81b83d3a536634b44f2fd2badc6b4b768dc0414de9e562",
@@ -1003,7 +1042,7 @@
       "upstream_baseline_sha256": "568b5f6d7d94f9a7d02040ea309ab858e8d2d47c9c5f68a9236a48268ed50d03"
     }
   },
-  "fork_head": "46d089782b49f6470988b33b215dba810eb0eaeb",
+  "fork_head": "2b226bbe201c450ca74ca2d7a7a74f3548932a4e",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "e6a559b1550f5bee359cffc514f6a498710d0697"

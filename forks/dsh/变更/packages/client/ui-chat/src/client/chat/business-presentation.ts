@@ -5,6 +5,25 @@ import type { ChatKey } from '../locale.ts'
 import type { ChatViewSlotProps } from '../contract/slots.ts'
 
 /**
+ * @param blocks - unmodified assistant output blocks.
+ * @returns business-visible content; whitespace and background work have no seat.
+ */
+export function businessVisibleBlocks(blocks: ChatNode<'assistant-step'>['data']['blocks']) {
+  return blocks.filter(block => block.kind === 'image' || (block.kind === 'text' && block.text.trim().length > 0))
+}
+
+/**
+ * @param node - one projected chat node.
+ * @returns whether this node has a business presentation, including failures.
+ */
+export function hasBusinessVisibleContent(node: ChatNode): boolean {
+  if (isBusinessHiddenNode(node.kind)) return false
+  if (node.kind === 'assistant-step') return node.data.status === 'interrupted' || businessVisibleBlocks(node.data.blocks).length > 0
+  if (node.kind === 'tool-call') return businessNodeNotice(node) !== undefined
+  return true
+}
+
+/**
  * @param text - unmodified logged input.
  * @param t - current conversation translator.
  * @returns business copy only for the exact generated builder templates.

@@ -7,7 +7,7 @@ import { TURN_PROCESS_INDEPENDENT_KINDS } from '../contract/turn-process.ts'
 import { storedTurnProcessEntry } from '../stores.ts'
 import { useSearchableHidden } from './searchable-hidden.ts'
 import css from './ChatView.module.css'
-import { businessNodeNotice, isBusinessHiddenNode } from './business-presentation.ts'
+import { businessNodeNotice, hasBusinessVisibleContent } from './business-presentation.ts'
 
 interface ChatNodeSeatProps extends ChatNodeOwnerProps {
   readonly nodeKey: string
@@ -119,9 +119,8 @@ export const ChatNodeSeat = memo(function ChatNodeSeat({
     loadImage, renderMessageImages, fileMentions, turnProcess, businessConversation,
   ])
   if (routedNode === undefined || owner === null) return null
-  if (businessConversation && isBusinessHiddenNode(routedNode.kind)) return null
+  if (businessConversation && !hasBusinessVisibleContent(routedNode)) return null
   const businessNotice = businessConversation ? businessNodeNotice(routedNode) : undefined
-  if (businessConversation && routedNode.kind === 'tool-call' && businessNotice === undefined) return null
   const turnData = turnDataOf(routedNode)
   // Runtime dispatch owns the correlation: every Node's discriminant is the
   // keyed-slot entry passed alongside that same Node. TypeScript does not

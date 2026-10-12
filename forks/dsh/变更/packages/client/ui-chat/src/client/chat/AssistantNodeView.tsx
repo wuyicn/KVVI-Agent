@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo } from 'react'
 import type { ChatNodeViewProps, TurnTailOwnerProps } from '../contract/slots.ts'
 import { AssistantMarkdown } from './AssistantMarkdown.tsx'
+import { businessVisibleBlocks } from './business-presentation.ts'
 
 /** Streaming, settled, and interrupted Assistant states share one keyed renderer instance. */
 export const AssistantNodeView = memo(function AssistantNodeView({
@@ -28,7 +29,7 @@ export const AssistantNodeView = memo(function AssistantNodeView({
   const revealProcess = useCallback(() => { turnProcess?.setOpen(true) }, [turnProcess])
   return (
     <AssistantMarkdown
-      blocks={businessConversation ? data.blocks.filter(block => block.kind === 'text' || block.kind === 'image') : data.blocks}
+      blocks={businessConversation ? businessVisibleBlocks(data.blocks) : data.blocks}
       streaming={data.status === 'running'}
       interrupted={data.status === 'interrupted'}
       renderMessageImages={renderMessageImages}
