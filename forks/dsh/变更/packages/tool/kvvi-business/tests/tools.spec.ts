@@ -21,11 +21,19 @@
  * compares the bytes — the same shape the stage-8 checker uses for the mode
  * headers.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createHmac } from 'node:crypto'
+import { Context } from '@deepseek-ai/cordis'
+import type { Agent } from '@deepseek-ai/dsh-agent'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
+import { Session, SessionId } from '@deepseek-ai/dsh-session'
+import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import ToolRuntime from '@deepseek-ai/dsh-tools'
+import ApprovalService, { type ApprovalOutcome, type ApprovalRequest } from '@deepseek-ai/dsh-user-approval'
+import type { KvviModeRouter, ModeContext } from '@deepseek-ai/dsh-host-kvvi-mode-router'
 import { contextHeaders, request, refusalMessage } from '../src/client.ts'
 import type { CallContext } from '../src/client.ts'
-import { assertNoIdentityFields } from '../src/index.ts'
+import { apply, assertNoIdentityFields } from '../src/index.ts'
 
 const MODE = {
   sessionId: '11111111-1111-4111-8111-111111111111',
@@ -234,5 +242,163 @@ describe('工具集', () => {
     const uses = source.match(/description: RECORD_REF/gu)?.length ?? 0
     expect(uses).toBe(4)
     expect(source).not.toMatch(/description: 'The record id\.'/u)
+  })
+})
+
+describe('流程操作的一次性确认', () => {
+  const contexts: Context[] = []
+  const input = () => ({ system: 'leave', id: 'record-1', action: 'approve', rowVersion: 7 })
+
+  afterEach(async () => {
+    for (const ctx of contexts.splice(0)) await ctx.fiber.dispose()
+    vi.unstubAllGlobals()
+  })
+
+  async function setup(withApproval = true) {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    if (withApproval) await ctx.plugin(ApprovalService, { policy: 'ask' })
+    let mode: ModeContext = { ...MODE, preset: 'kvvi-worker', issuedAt: Date.now() }
+    ctx.provide('kvviModeRouter', { requireMode: () => mode } as unknown as KvviModeRouter)
+    await ctx.plugin({ name: 'kvvi-business', inject: ['tools', 'kvviModeRouter'], apply }, {
+      platformUrl: 'http://platform.test', contextSecret: SECRET,
+    })
+    const session = Session.create(SessionId('worker-confirmation-test'))
+    session.append('turn/start', { turn: 1 })
+    const agent = { session } as unknown as Agent
+    const fake = recorder(200, { recordId: 'record-1', from: 'pending', state: 'approved', rowVersion: 8 })
+    vi.stubGlobal('fetch', fake.fetchImpl)
+    const run = (args = input(), callId = 'confirm-1') => ctx.tools.execute({
+      name: 'workflow_act', arguments: args, agent,
+      callId: ToolCallId(callId), signal: new AbortController().signal,
+    })
+    return { ctx, fake, run, agent, changeIdentity: () => {
+      mode = { ...mode, sessionId: '44444444-4444-4444-8444-444444444444' }
+    } }
+  }
+
+  it('没有确认服务时拒绝，不能向平台发出状态迁移', async () => {
+    const { run, fake } = await setup(false)
+    expect(await run()).toMatchObject({ isError: true })
+    expect(fake.calls).toHaveLength(0)
+  })
+
+  it('没有应答者时拒绝，不能把无人确认当作批准', async () => {
+    const { run, fake } = await setup()
+    expect(await run()).toMatchObject({ isError: true })
+    expect(fake.calls).toHaveLength(0)
+  })
+
+  it('允许调用的策略 hook 不能绕过执行器内的确认', async () => {
+    const { ctx, run, fake } = await setup()
+    ctx.on('tools/pre-execute', async () => ({ kind: 'allow' }))
+    expect(await run()).toMatchObject({ isError: true })
+    expect(fake.calls).toHaveLength(0)
+  })
+
+  it('等待用户确认期间中止调用，不接受迟到的批准', async () => {
+    const { ctx, agent, fake } = await setup()
+    const controller = new AbortController()
+    ctx.on('approval/request', () => {
+      controller.abort()
+      return Promise.resolve<ApprovalOutcome>('allowed-once')
+    })
+    expect(await ctx.tools.execute({
+      name: 'workflow_act', arguments: input(), agent,
+      callId: ToolCallId('cancel-confirmation'), signal: controller.signal,
+    })).toMatchObject({ isError: true })
+    expect(fake.calls).toHaveLength(0)
+  })
+
+  it.each<ApprovalOutcome>(['rejected', 'cancelled'])('%s 不触发业务请求', async outcome => {
+    const { ctx, run, fake } = await setup()
+    ctx.on('approval/request', () => Promise.resolve(outcome))
+    expect(await run()).toMatchObject({ isError: true })
+    expect(fake.calls).toHaveLength(0)
+  })
+
+  it('批准仅针对一次调用，并展示准确参数和身份', async () => {
+    const { ctx, run, fake, agent } = await setup()
+    const seen: ApprovalRequest[] = []
+    ctx.on('approval/request', req => {
+      seen.push(req)
+      return Promise.resolve<ApprovalOutcome>(seen.length === 1 ? 'allowed-once' : 'rejected')
+    })
+    expect(await run()).toMatchObject({ isError: false })
+    expect(await run(input(), 'confirm-2')).toMatchObject({ isError: true })
+    expect(seen).toHaveLength(2)
+    expect(seen[0]).toMatchObject({ agent, toolName: 'workflow_act', callId: 'confirm-1' })
+    for (const value of ['leave', 'record-1', 'approve', '7', MODE.companyId, MODE.userId]) {
+      expect(seen[0]?.reason).toContain(value)
+    }
+    expect(fake.calls).toHaveLength(1)
+    expect(JSON.parse(fake.calls[0]?.init.body as string)).toEqual({ action: 'approve', rowVersion: 7 })
+  })
+
+  it('批准过程中改变调用者参数，不得改变被执行的记录和版本', async () => {
+    const { ctx, run, fake } = await setup()
+    const args = input()
+    ctx.on('approval/request', req => {
+      expect(req.reason).toContain('record-1')
+      args.id = 'record-2'
+      args.action = 'reject'
+      args.rowVersion = 99
+      return Promise.resolve<ApprovalOutcome>('allowed-once')
+    })
+    expect(await run(args)).toMatchObject({ isError: false })
+    expect(fake.calls).toHaveLength(1)
+    expect(fake.calls[0]?.url).toBe('http://platform.test/api/v1/systems/leave/records/record-1/transitions')
+    expect(JSON.parse(fake.calls[0]?.init.body as string)).toEqual({ action: 'approve', rowVersion: 7 })
+  })
+
+  it('批准不能让另一份身份执行请求', async () => {
+    const { ctx, run, fake, changeIdentity } = await setup()
+    ctx.on('approval/request', () => {
+      changeIdentity()
+      return Promise.resolve<ApprovalOutcome>('allowed-once')
+    })
+    expect(await run()).toMatchObject({ isError: true })
+    expect(fake.calls).toHaveLength(0)
+  })
+
+  it('平台拒绝版本冲突后返回错误，不自动再次写入', async () => {
+    const { ctx, run } = await setup()
+    let asks = 0
+    ctx.on('approval/request', () => {
+      asks++
+      return Promise.resolve<ApprovalOutcome>('allowed-once')
+    })
+    const stale = recorder(409, { error: 'KVVI_ROW_VERSION_CONFLICT' })
+    vi.stubGlobal('fetch', stale.fetchImpl)
+    const result = await run()
+    expect(asks).toBe(1)
+    expect(result).toMatchObject({ isError: true })
+    expect(JSON.stringify(result)).toContain('KVVI_ROW_VERSION_CONFLICT')
+    expect(stale.calls).toHaveLength(1)
+  })
+
+  it('查询可执行动作不要求确认', async () => {
+    const { ctx, agent } = await setup()
+    const answerer = vi.fn(() => Promise.resolve<ApprovalOutcome>('rejected'))
+    ctx.on('approval/request', answerer)
+    const read = recorder(200, { recordId: 'record-1', state: 'pending', actions: [] })
+    vi.stubGlobal('fetch', read.fetchImpl)
+    expect(await ctx.tools.execute({
+      name: 'workflow_available_actions', arguments: { system: 'leave', id: 'record-1' }, agent,
+      callId: ToolCallId('read-actions'), signal: new AbortController().signal,
+    })).toMatchObject({ isError: false })
+    expect(answerer).not.toHaveBeenCalled()
+    expect(read.calls).toHaveLength(1)
+  })
+
+  it('工具插件卸载后，不再保留业务工具注册', async () => {
+    const { ctx } = await setup()
+    expect(ctx.tools.get('workflow_act')).toBeDefined()
+    const runtime = ctx.registry.get(apply)
+    expect(runtime).toBeDefined()
+    for (const fiber of [...(runtime?.fibers ?? [])]) await fiber.dispose()
+    expect(ctx.tools.get('workflow_act')).toBeUndefined()
   })
 })

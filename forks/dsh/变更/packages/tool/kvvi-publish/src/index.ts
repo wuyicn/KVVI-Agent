@@ -29,7 +29,7 @@
  * @module @deepseek-ai/dsh-tool-kvvi-publish
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { basename, join, relative, resolve, sep } from 'node:path'
+import { join, relative, resolve, sep } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
@@ -221,6 +221,8 @@ export function scanContractTree(tree: string): {
     }
   }
   walk(tree)
+  // 两侧都按完整路径排序，跨目录的工具装订顺序也必须一致。
+  for (const paths of Object.values(out)) paths.sort()
   return { found: out, skipped }
 }
 
@@ -235,17 +237,25 @@ export function contractFiles(tree: string): Record<string, string[]> {
 }
 
 /**
- * 读出六份契约，并说明装订时丢下了什么。
+ * 读出六类契约；多份非工具契约拒绝装订。
  *
  * 装订约定与 `工具/发布脚手架.py` 的 `read_contracts` 一致 —— 两处必须同源，
  * 否则同一次构建经由 CLI 与经由 Agent 会发上去**不同的东西**。
  *
  * @param tree - 契约目录。
- * @returns `{contracts, notes}`；`notes` 里逐条写出「用了哪份、丢下了什么」，
- *   末尾再逐条写出「整目录跳过了哪些」—— 后者也是丢掉的东西，只是丢在目录粒度上。
+ * @returns `{contracts, notes}`；注记说明缺份、多工具装订及整目录排除。
+ * @throws 多份非工具契约时，含类型与全部相对路径的 `KVVI_CONTRACT_MULTIPLE_UNSUPPORTED`。
  */
 export function readContracts(tree: string): { contracts: Record<string, unknown>; notes: string[] } {
   const { found, skipped } = scanContractTree(tree)
+  // 当前存储每类只容一份；在读取内容与 HTTP 提交前拒绝会丢失的发布。
+  for (const type of CONTRACT_TYPES) {
+    const paths = found[type] ?? []
+    if (type !== 'tool-spec' && paths.length > 1) {
+      throw new Error(`KVVI_CONTRACT_MULTIPLE_UNSUPPORTED: ${type}：`
+        + paths.map(path => relativeOf(tree, path)).join('、'))
+    }
+  }
   const contracts: Record<string, unknown> = {}
   const notes: string[] = []
   for (const type of CONTRACT_TYPES) {
@@ -254,25 +264,14 @@ export function readContracts(tree: string): { contracts: Record<string, unknown
       notes.push(`✗ ${type}：目录里找不到对应的文件`)
       continue
     }
-    if (paths.length === 1 || type === 'tool-spec') {
-      if (type === 'tool-spec' && paths.length > 1) {
-        contracts[type] = { tools: paths.map(p => JSON.parse(readFileSync(p, 'utf8')) as unknown) }
-        notes.push(`⚠ tool-spec：${String(paths.length)} 份单工具契约，按 {tools: [...]} 装订`)
-      } else {
-        contracts[type] = JSON.parse(readFileSync(paths[0] ?? '', 'utf8')) as unknown
-      }
-      continue
+    if (type === 'tool-spec' && paths.length > 1) {
+      contracts[type] = { tools: paths.map(p => JSON.parse(readFileSync(p, 'utf8')) as unknown) }
+      notes.push(`⚠ tool-spec：${String(paths.length)} 份单工具契约，按 {tools: [...]} 装订`)
+    } else {
+      contracts[type] = JSON.parse(readFileSync(paths[0] ?? '', 'utf8')) as unknown
     }
-    contracts[type] = JSON.parse(readFileSync(paths[0] ?? '', 'utf8')) as unknown
-    notes.push(`⚠ ${type}：找到 ${String(paths.length)} 份，用了 ${basename(paths[0] ?? '')}，`
-      + `**其余 ${String(paths.length - 1)} 份平台没有位置放**`)
-    // ⚠️ **丢下的每一份都点名。** 只说「其余 N 份没位置放」的话，
-    //    搭建者没法把「丢的是哪一张视图」告诉用户 —— 而那正是这条注记的用处。
-    //    与 CLI 脚手架逐条打印的粒度一致。
-    for (const extra of paths.slice(1)) notes.push(`      丢下的：${relativeOf(tree, extra)}`)
   }
-  // ⚠️ 整目录跳过也逐条说。它们和上面「丢下的」是同一件事 —— 目录里**有什么没发上去** ——
-  //    只是粒度是目录而不是文件。分开报的理由是粒度和理由都不同，不是因为它更次要。
+  // 整目录排除继续逐条说明，让搭建者知道夹具、片段与隐藏目录未进入发布。
   for (const dir of skipped) {
     notes.push(`⚠ 整目录跳过：${dir.path}（${String(dir.files)} 个 .json）`
       + ` —— ${dir.reason}`)
@@ -337,7 +336,7 @@ export function apply(ctx: Context, config: Config): void {
     name: 'publish_submit',
     description: '提交一次发布：把工作区里的六份契约交给平台，形成一张**待所有者审批**的发布草案。'
       + '这一步之后草案就进了通道，所有者会看到它；改内容要重新提交一版。'
-      + '调用前先把「将提交哪六份、装订时丢下了什么」讲给用户，得到明确的确认再调 —— '
+      + '调用前先把「将提交哪六类契约、排除了哪些非发布目录」讲给用户，得到明确的确认再调 —— '
       + '本工具还会弹一次确认面板，不要在没跟用户说过的情况下直接调。'
       + '**只提交，不审批、不发布**：那是所有者的动作（§9.6.1，提交人不能批自己那一份）。',
     parameters: {

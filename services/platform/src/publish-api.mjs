@@ -135,6 +135,12 @@ export async function publishSubmit({ session, payload }) {
 
   const ctx = { ...session }
   const change = { assetId, contracts: Object.keys(payload.contracts).sort(),
+    // 草案复用与人工审批必须绑定全部发布内容，不能只比较权限策略。
+    contentDigest: digestOf({
+      contracts: payload.contracts,
+      name: payload?.name ?? assetId,
+      schemaCode: payload?.schemaCode ?? assetId,
+    }),
     policyDigest: JSON.stringify(prepared.rows) }
   let draft
   try {

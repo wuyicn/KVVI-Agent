@@ -84,6 +84,52 @@ describe('入口：谁能提交', () => {
     assert.deepEqual(out.body.notEnforced, [])
   })
 
+  test('相同完整发布内容重交时复用同一份草案', async () => {
+    const assetId = nextAsset()
+    const first = await submitAs({ ...builder.ctx }, assetId)
+    const again = await submitAs({ ...builder.ctx }, assetId)
+    assert.equal(first.status, 201)
+    assert.equal(again.status, 200)
+    assert.equal(again.body.reused, true)
+    assert.equal(again.body.draftId, first.body.draftId)
+    assert.equal(again.body.changeDigest, first.body.changeDigest)
+  })
+
+  test('视图内容变化不能复用旧草案，审批摘要必须覆盖实际契约', async () => {
+    const assetId = nextAsset()
+    const first = await submitAs({ ...builder.ctx }, assetId)
+    const contracts = CONTRACTS()
+    contracts['view-schema'].componentsTree = [{ id: 'form-root', componentName: 'FormPage' }]
+    const revised = await publishSubmit({ session: { ...builder.ctx }, payload: { assetId, contracts } })
+    assert.equal(first.status, 201)
+    assert.equal(revised.status, 201)
+    assert.notEqual(revised.body.draftId, first.body.draftId)
+    assert.notEqual(revised.body.changeDigest, first.body.changeDigest)
+    const { rows } = await pool('platform').query(
+      'SELECT payload FROM publish_drafts WHERE draft_id = $1', [revised.body.draftId])
+    assert.deepEqual(rows[0].payload.contracts['view-schema'], contracts['view-schema'])
+  })
+
+  test('业务模型变化不能复用只含旧字段的草案', async () => {
+    const assetId = nextAsset()
+    const first = await submitAs({ ...builder.ctx }, assetId)
+    const contracts = CONTRACTS()
+    contracts['business-schema'].fields = [{ field_code: 'title', label: '标题', type: 'short_text' }]
+    const revised = await publishSubmit({ session: { ...builder.ctx }, payload: { assetId, contracts } })
+    assert.equal(revised.status, 201)
+    assert.notEqual(revised.body.changeDigest, first.body.changeDigest)
+  })
+
+  test('系统显示名和 schemaCode 变化必须形成新的发布内容摘要', async () => {
+    const assetId = nextAsset()
+    const first = await submitAs({ ...builder.ctx }, assetId)
+    const revised = await publishSubmit({ session: { ...builder.ctx }, payload: {
+      assetId, name: '新的显示名', schemaCode: 'new-schema-code', contracts: CONTRACTS(),
+    } })
+    assert.equal(revised.status, 201)
+    assert.notEqual(revised.body.changeDigest, first.body.changeDigest)
+  })
+
   test('★ 员工会话提交 → 403，且指名要的是搭建者会话', async () => {
     const out = await submitAs({ ...employee.ctx }, nextAsset())
     assert.equal(out.status, 403)

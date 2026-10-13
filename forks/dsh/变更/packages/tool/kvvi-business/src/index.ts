@@ -47,6 +47,7 @@ import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type {} from '@deepseek-ai/dsh-host-kvvi-mode-router'
+import type {} from '@deepseek-ai/dsh-user-approval'
 import { refusalMessage, request } from './client.ts'
 import type { CallContext, CallResult } from './client.ts'
 
@@ -458,7 +459,9 @@ export function apply(ctx: Context, config: Config): void {
     description: 'Move a KVVI record through one workflow transition. `action` must come from '
       + '`workflow_available_actions`. The platform refuses anything the published contract does '
       + 'not allow, including approving a request you submitted yourself '
-      + '(`KVVI_SELF_APPROVAL_FORBIDDEN`) — that is a rule, not a missing permission.',
+      + '(`KVVI_SELF_APPROVAL_FORBIDDEN`) — that is a rule, not a missing permission. '
+      + 'Every transition requires the user to confirm the exact record, action and version '
+      + 'before it runs. A prior confirmation does not authorize another call.',
     parameters: {
       system: { type: 'string', required: true, description: 'The system code (`assetId`).' },
       id: { type: 'string', required: true, description: RECORD_REF },
@@ -486,14 +489,38 @@ export function apply(ctx: Context, config: Config): void {
         type: 'text', text: `Moved from ${value.from} to ${value.state}.`,
       }],
     },
-    execute: args => call(async c => request<{
-      recordId: string
-      from: string
-      state: string
-      rowVersion: number
-    }>(c, 'POST',
-      `/systems/${encodeURIComponent(args.system)}/records/${encodeURIComponent(args.id)}/transitions`,
-      { action: args.action, rowVersion: args.rowVersion })),
+    execute: async (args, exec) => {
+      // Confirmation is enforced in the executor; an allow hook cannot bypass it.
+      const operation = Object.freeze({ ...args })
+      const identity = Object.freeze({ ...contextFor().mode })
+      const approval = ctx.get('approval')
+      if (approval === undefined || exec.agent === undefined) {
+        throw new Error('KVVI_CONFIRMATION_UNAVAILABLE')
+      }
+      const outcome = await approval.request({
+        agent: exec.agent, toolName: exec.name, callId: exec.callId, signal: exec.signal,
+        reason: `确认流程变更：系统=${operation.system}，记录=${operation.id}，`
+          + `动作=${operation.action}，版本=${String(operation.rowVersion)}。`
+          + `企业=${identity.companyId}，用户=${identity.userId}。`,
+      })
+      if (outcome !== 'allowed-once') {
+        throw new Error(`KVVI_CONFIRMATION_${outcome.toUpperCase()}`)
+      }
+      exec.signal.throwIfAborted()
+      const current = contextFor().mode
+      if (current.sessionId !== identity.sessionId || current.userId !== identity.userId
+        || current.companyId !== identity.companyId || current.gateway !== identity.gateway) {
+        throw new Error('KVVI_CONFIRMATION_CONTEXT_CHANGED')
+      }
+      return await call(async c => request<{
+        recordId: string
+        from: string
+        state: string
+        rowVersion: number
+      }>(c, 'POST',
+        `/systems/${encodeURIComponent(operation.system)}/records/${encodeURIComponent(operation.id)}/transitions`,
+        { action: operation.action, rowVersion: operation.rowVersion }))
+    },
     presentCall: args => ({ card: 'generic', title: `${args.action} on ${args.id}`, kind: 'edit' }),
   }))
 }

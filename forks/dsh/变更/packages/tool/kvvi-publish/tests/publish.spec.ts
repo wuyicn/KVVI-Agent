@@ -7,7 +7,7 @@
  * |---|---|---|
  * | 1 | 签名头的格式与平台验证器一致 | 工具对谁都认证不上，而失败长得像 401 |
  * | 2 | 读出的六份契约**与 CLI 脚手架同一套装订** | 同一份构建经 Agent 发与经 CLI 发，上去的是两份不同的东西 |
- * | 3 | 装订丢下的东西**逐条报出来** | 「少了一张视图」在发布成功里看不出来，在员工那儿也看不出来 |
+ * | 3 | 多份非工具契约**拒绝提交并点名** | 发布成功却少了一张视图 |
  * | 4 | 契约目录**只能在工作区内** | 模型给一个 `/etc` 进来，这个有读文件权限的工具就会去读系统目录 |
  * | 5 | 缺一份就**不发** | 发上去一个不构成可运行系统的版本，员工打开是空的 |
  *
@@ -17,7 +17,9 @@
  * 这里做的是**同一组向量**：与 `kvvi-business/tests/tools.spec.ts` 的
  * `contextHeaders` 用例用同一份期望值，漂移会在两边同时红。
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import type { Context } from '@deepseek-ai/cordis'
+import type { ToolDefinition, ToolRunContext } from '@deepseek-ai/dsh-tools'
 import { createHmac } from 'node:crypto'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -25,7 +27,7 @@ import { join } from 'node:path'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { ModeContext } from '@deepseek-ai/dsh-host-kvvi-mode-router'
 import { contextHeaders, refusalMessage, request } from '../src/client.ts'
-import { contractFiles, readContracts, resolveContractsDir, CONTRACT_TYPES } from '../src/index.ts'
+import { apply, contractFiles, readContracts, resolveContractsDir, CONTRACT_TYPES } from '../src/index.ts'
 
 // ⚠️ 显式标类型：`gateway` 让对象字面量推断成 `string`，而签名函数要的是那个
 //    窄联合（`'BUILDER' | 'USER'`）—— 不标的话这一行会变成一个类型错误，
@@ -53,6 +55,29 @@ function tree(files: Record<string, string>): string {
     writeFileSync(path, body, 'utf8')
   }
   return root
+}
+
+/** 每类一份、可以提交的目录输入。 */
+function completeFiles(): Record<string, string> {
+  return {
+    '契约/01-business-schema.json': '{}',
+    '契约/02-view-schema.json': '{}',
+    '契约/03-workflow-spec.json': '{}',
+    '契约/04-permission-spec.json': '{}',
+    '契约/05-工具/a.json': '{"tool_code":"a"}',
+    '契约/06-搭建命令.json': '{}',
+  }
+}
+
+/** 捕获真实注册定义；执行其 defineTool 参数校验与生产 execute。 */
+function publishTool(): ToolDefinition {
+  const registered: ToolDefinition[] = []
+  apply({
+    tools: { register: (tool: ToolDefinition) => { registered.push(tool) } },
+    kvviModeRouter: { requireMode: () => MODE },
+    on: () => {},
+  } as unknown as Context, { platformUrl: 'http://platform.test', contextSecret: SECRET })
+  return registered[0]!
 }
 
 describe('签名头：与另一侧同一组向量', () => {
@@ -126,27 +151,20 @@ describe('契约装订：与 CLI 脚手架同一套', () => {
     }
   })
 
-  it('★ 两类里多出来的那份：用了哪张、丢下了什么，逐条报出来', () => {
-    const root = tree({
-      '契约/01-x-business-schema.json': '{}',
-      '契约/02-表单-view-schema.json': '{"which":"form"}',
-      '契约/03-列表-view-schema.json': '{"which":"list"}',
-      '契约/04-x-workflow-spec.json': '{}',
-      '契约/05-x-permission-spec.json': '{}',
-      '契约/06-x-工具.json': '{}',
-      '契约/07-x-搭建命令.json': '{}',
-    })
-    try {
-      const { contracts, notes } = readContracts(root)
-      // 平台每类只存一份 —— 必须挑一份，并说清挑了哪份。
-      expect(contracts['view-schema']).toEqual({ which: 'form' })
-      const dropped = notes.join('\n')
-      expect(dropped).toContain('找到 2 份')
-      expect(dropped).toContain('03-列表-view-schema.json')
-    } finally {
-      rmSync(root, { recursive: true, force: true })
-    }
-  })
+  it.each(CONTRACT_TYPES.filter(type => type !== 'tool-spec'))(
+    '多份 %s 拒绝装订，并点名每个文件', type => {
+      const hint = type === 'app-model-command' ? '搭建命令' : type
+      const files = [`契约/01-${hint}.json`, `契约/子目录/02-${hint}.json`]
+      const root = tree(Object.fromEntries(files.map(file => [file, '{}'])))
+      try {
+        expect(() => readContracts(root)).toThrow(
+          `KVVI_CONTRACT_MULTIPLE_UNSUPPORTED: ${type}：${files.join('、')}`,
+        )
+      } finally {
+        rmSync(root, { recursive: true, force: true })
+      }
+    },
+  )
 
   it('★ 整目录跳过的也要报出来：跳了哪个目录、里面几份', () => {
     // 从前这里是直接 `continue`：`06-工具/schemas/` 被整块丢掉，
@@ -180,6 +198,64 @@ describe('契约装订：与 CLI 脚手架同一套', () => {
       expect(Object.keys(contracts)).toEqual(['business-schema'])
       expect(notes.filter(n => n.startsWith('✗'))).toHaveLength(5)
     } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('提交入口完整性', () => {
+  it.each(CONTRACT_TYPES.filter(type => type !== 'tool-spec'))(
+    '多份 %s 在 HTTP 提交之前拒绝', async type => {
+      const files = completeFiles()
+      const hint = type === 'app-model-command' ? '搭建命令' : type
+      files[`契约/重复/extra-${hint}.json`] = '{}'
+      const root = tree(files)
+      const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ draftId: 'draft-1' })))
+      vi.stubGlobal('fetch', fetchImpl)
+      try {
+        await expect(publishTool().execute({ system: 'customer' }, {
+          agent: agentWithCwd(root),
+        } as ToolRunContext)).rejects.toThrow(`KVVI_CONTRACT_MULTIPLE_UNSUPPORTED: ${type}`)
+        expect(fetchImpl).not.toHaveBeenCalled()
+      } finally {
+        vi.unstubAllGlobals()
+        rmSync(root, { recursive: true, force: true })
+      }
+    },
+  )
+
+  it('缺份拒绝 HTTP 提交', async () => {
+    const root = tree({ '契约/01-business-schema.json': '{}' })
+    const fetchImpl = vi.fn()
+    vi.stubGlobal('fetch', fetchImpl)
+    try {
+      await expect(publishTool().execute({ system: 'customer' }, {
+        agent: agentWithCwd(root),
+      } as ToolRunContext)).rejects.toThrow('KVVI_PUBLISH_CONTRACTS_INCOMPLETE')
+      expect(fetchImpl).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllGlobals()
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('有效提交完整携带所有工具与六类契约', async () => {
+    const root = tree({ ...completeFiles(), '契约/05-工具/b.json': '{"tool_code":"b"}' })
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ draftId: 'draft-1' })))
+    vi.stubGlobal('fetch', fetchImpl)
+    try {
+      const result = await publishTool().execute({ system: 'customer' }, {
+        agent: agentWithCwd(root),
+      } as ToolRunContext)
+      expect(result).toMatchObject({ draftId: 'draft-1', status: 'AWAITING_APPROVAL' })
+      expect(fetchImpl).toHaveBeenCalledTimes(1)
+      const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit]
+      expect(url).toBe('http://platform.test/api/v1/publish/drafts')
+      const body = JSON.parse(init.body as string) as { contracts: Record<string, unknown> }
+      expect(Object.keys(body.contracts)).toEqual([...CONTRACT_TYPES])
+      expect(body.contracts['tool-spec']).toEqual({ tools: [{ tool_code: 'a' }, { tool_code: 'b' }] })
+    } finally {
+      vi.unstubAllGlobals()
       rmSync(root, { recursive: true, force: true })
     }
   })

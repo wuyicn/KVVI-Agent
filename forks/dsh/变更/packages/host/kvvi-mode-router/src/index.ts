@@ -5,6 +5,9 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Duplex } from 'node:stream'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
+import type { Agent } from '@deepseek-ai/dsh-agent'
+import type {} from '@deepseek-ai/dsh-tools'
+import type {} from '@deepseek-ai/dsh-user-approval'
 
 export type KvviGateway = 'USER' | 'BUILDER'
 export type KvviPreset = 'kvvi-worker' | 'kvvi-builder'
@@ -411,7 +414,12 @@ export class KvviModeRouter extends Service {
   static Config: z<Config> = z.object({ secret: z.string().required() })
 
   private readonly current = new AsyncLocalStorage<ModeContext>()
+  private readonly executing = new AsyncLocalStorage<Agent>()
   private readonly ownership = new RuntimeOwnership()
+  private readonly agents = new WeakMap<Agent, {
+    readonly session: Agent['session']
+    readonly mode: ModeContext
+  }>()
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'kvviModeRouter')
@@ -457,6 +465,25 @@ export class KvviModeRouter extends Service {
       const mode = this.requireMode()
       return projectRuntimeFrame(endpoint, await next(), mode, this.ownership)
     })
+
+    // Agent creation is awaited before queued goal work can begin. Only an
+    // authenticated creation/resume can mint this process-local association.
+    ctx.on('agent/created', ({ agent }) => {
+      const mode = this.current.getStore()
+      if (mode === undefined) return
+      assertOwnedSessionId(agent.id, mode)
+      if (agent.session.id !== agent.id) throw new Error('KVVI_SESSION_ACCESS_DENIED')
+      assertPresetAllowed(agent.session.header.agentPreset ?? '', mode.preset)
+      this.agents.set(agent, { session: agent.session, mode: Object.freeze({ ...mode }) })
+    }, { global: true, prepend: true })
+    ctx.on('agent/disposed', ({ agent }) => { this.agents.delete(agent) }, { global: true })
+    ctx.on('tools/pre-execute', (exec, next) => this.withAgentMode(exec.agent, next),
+      { global: true, prepend: true })
+    ctx.on('tools/execute', (exec, next) => this.withAgentMode(exec.agent, next),
+      { global: true, prepend: true })
+    // Approval is dispatched after the pre-execute waterfall has returned.
+    ctx.on('approval/request', (request, next) => this.withAgentMode(request.agent, next),
+      { global: true, prepend: true })
 
     const sessionController = ctx.sessionController
     const originalCreate = sessionController.create.bind(sessionController)
@@ -524,7 +551,37 @@ export class KvviModeRouter extends Service {
   requireMode(): ModeContext {
     const mode = this.current.getStore()
     if (mode === undefined) throw new Error('KVVI_RUNTIME_CONTEXT_REQUIRED')
+    const agent = this.executing.getStore()
+    if (agent !== undefined) {
+      const binding = this.agents.get(agent)
+      if (binding === undefined) throw new Error('KVVI_RUNTIME_CONTEXT_REQUIRED')
+      if (binding.mode !== mode || agent.session !== binding.session
+        || agent.id !== binding.session.id) {
+        throw new Error('KVVI_SESSION_ACCESS_DENIED')
+      }
+      assertOwnedSessionId(agent.id, mode)
+    }
     return mode
+  }
+
+  private withAgentMode<T>(agent: Agent | undefined, next: () => Promise<T>): Promise<T> {
+    if (agent === undefined) throw new Error('KVVI_RUNTIME_CONTEXT_REQUIRED')
+    const binding = this.agents.get(agent)
+    if (binding === undefined) throw new Error('KVVI_RUNTIME_CONTEXT_REQUIRED')
+    if (agent.session !== binding.session || agent.id !== binding.session.id) {
+      throw new Error('KVVI_SESSION_ACCESS_DENIED')
+    }
+    const { mode } = binding
+    assertOwnedSessionId(agent.id, mode)
+    const caller = this.current.getStore()
+    if (caller !== undefined && (caller.sessionId !== mode.sessionId
+      || caller.companyId !== mode.companyId || caller.userId !== mode.userId
+      || caller.gateway !== mode.gateway || caller.preset !== mode.preset)) {
+      throw new Error('KVVI_SESSION_ACCESS_DENIED')
+    }
+    // Always sign with the originally verified platform session, never the
+    // current request's session. The platform still validates every operation.
+    return this.executing.run(agent, () => this.current.run(mode, next))
   }
 }
 

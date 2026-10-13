@@ -34,7 +34,7 @@ Mount it in a builder preset with the platform's URL and the shared runtime-cont
     contextSecret: !!js process.env.KVVI_INTERNAL_TOKEN ?? ''
 ```
 
-The tool takes the system code, an optional display name, and an optional workspace-relative contracts directory (default `契约`). It reads the six contracts, refuses when any is missing, and posts one draft. The workspace comes from the session (`session.header.cwd`) — the same source the file and shell tools use, so the tool and the builder's other tools always agree on which directory is being built.
+The tool takes the system code, an optional display name, and an optional workspace-relative contracts directory (default `契约`). It reads the six contract types, refuses when any is missing or any non-tool type has multiple files, and posts one complete draft. The workspace comes from the session (`session.header.cwd`) — the same source the file and shell tools use, so the tool and the builder's other tools always agree on which directory is being built.
 
 ### Why the confirmation gate is part of this package
 
@@ -54,19 +54,19 @@ The second half already existed. The first half did not: the builder's administr
 
 This package is the one place that satisfies both constraints at once: it runs inside the runtime, so it holds the workspace; and it submits under this session's `BUILDER` identity, so it cannot approve what it submits.
 
-Contract binding follows `工具/发布脚手架.py`'s `read_contracts` exactly — one contract per type, `tool-spec` bound as `{tools: [...]}`, and every dropped file reported back in `notes`. Two bindings of one build would let the same workspace publish different content depending on which entry was used.
+Contract binding follows `工具/发布脚手架.py`'s `read_contracts`: one file per non-tool type, multiple `tool-spec` files fully bound as `{tools: [...]}` in sorted path order, and excluded fixture/schema/hidden directories reported in `notes`. Multiple files of any non-tool type raise `KVVI_CONTRACT_MULTIPLE_UNSUPPORTED`, naming the type and all relative filenames before any HTTP submission. Two bindings of one build would let the same workspace publish different content depending on which entry was used.
 
 <a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
-- **The platform stores one contract per (type, system).** A real build has two views and seven tool files; whichever ones the binder drops are reported, not carried. Resolving this needs a storage shape decision in the platform, not a change here.
+- **The platform stores one contract per (type, system).** Multiple non-tool files, including two views or duplicate business models, block submission. Multiple tool files are carried in full through the existing `{tools: [...]}` convention. Supporting multiple non-tool assets requires a platform storage change.
 - **No dry run.** The tool submits or fails; there is no "show me the diff first" argument. The confirmation panel shows the reason, not the derived diff — an approver-facing diff exists only after submission.
 - **No submit for a partial system.** All six contracts must be present; a builder working on one of them has no way to send it alone.
 
 <a id="model-experience"></a>
 ## Model Experience
 
-The model gets one tool, `publish_submit`, whose description states that it submits but does not approve, and that the user must be told what will be sent before it is called. On success it sees the draft id, its status, whether an open draft for the same change was reused, the platform's change summary, and the binder's notes about what it dropped; on refusal it sees the platform's own code, never a paraphrase.
+The model gets one tool, `publish_submit`, whose description states that it submits but does not approve, and that the user must be told what will be sent before it is called. On success it sees the draft id, its status, whether an open draft for the same change was reused, the platform's change summary, and the binder's notes about aggregation and excluded directories. Duplicate non-tool contracts produce `KVVI_CONTRACT_MULTIPLE_UNSUPPORTED` with their type and filenames; platform refusals retain the platform's own code.
 
 ## Dev Note
 

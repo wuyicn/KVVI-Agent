@@ -6,7 +6,9 @@ Model-facing business tools over a deployed KVVI company's platform API.
 
 Seven tools reach the model in the `kvvi-worker` preset. Each is one HTTP call into the customer's own platform service under the signed-in employee's identity, so the tool result is exactly what that employee would see in the panel — the same row scope, the same field visibility, the same refusals. `record_schema` reads the structure rather than the data: the field codes a payload must use, which of them are required, and what an enum accepts.
 
-The tools are the only thing this package contributes. They add no prompt section, no session event, and no system instruction; the persona that explains what the mode is lives in the preset. Descriptions are written for the model's decision, not for a human reader: they say which code means "re-read and decide" and which means "this is a rule, not a missing permission".
+Every `workflow_act` asks the signed-in employee to confirm that one system, record, action, and `rowVersion` before sending the platform request. The executor snapshots those parameters and the employee identity; a changed identity, rejection, cancellation, or missing approval answerer prevents execution. Confirmation is requested inside the executor, so an allowing pre-execute hook cannot bypass it. The Approval service records the question and one-shot outcome in the Agent session. A second call needs a new confirmation; the platform still checks live permissions, workflow legality, and record version after confirmation.
+
+The package registers business tools and uses the existing Approval service for workflow confirmation. It defines no prompt section, new session event, or system instruction; the persona that explains the mode lives in the preset. Descriptions are written for the model's decision: they say which code means "re-read and decide" and which means "this is a rule, not a missing permission".
 
 Token cost is one tool schema per tool, seven schemas total, with flat argument objects. Nothing here caches or re-sends business data between calls, so no tool result affects the KV cache beyond the turn that produced it.
 
@@ -29,7 +31,7 @@ Neither has a working default. An empty `contextSecret` throws `KVVI_RUNTIME_CON
 | `record_create` | yes | Flat `data` map of field code to value. |
 | `record_update` | yes | `rowVersion` required; a stale one is `KVVI_ROW_VERSION_CONFLICT`. |
 | `workflow_available_actions` | no | Contract and flow permissions already applied; an empty list means no legal next step. |
-| `workflow_act` | yes | `action` must come from `workflow_available_actions`; `rowVersion` required. |
+| `workflow_act` | yes | `action` must come from `workflow_available_actions`; `rowVersion` required; each state change requires one-shot user confirmation. |
 
 ## Identity
 
@@ -42,6 +44,8 @@ The four record tools take `id`, and it accepts **either** the record's id **or*
 The argument descriptions spell this out because the model cannot infer it: `record_create` returns `recordNo` while `record_get` and `record_list` return `recordId`, and a model holding only the number has no way to learn that the number is accepted. An earlier incident ended with a record number pasted into an id lookup, an internal-error answer, and the model concluding the record was unreadable to its session.
 
 ## Known Limitations and Deferred Work
+
+- **Confirmation currently covers all workflow state changes.** Reads and single-record creation/field updates keep their existing behavior. The package offers no bulk, deletion, or external payment tool, and this change does not add those capabilities or a second business risk classifier. A deployment without an Approval service/answerer cannot execute workflow transitions through the Agent.
 
 - **`aggregate_read` is not registered.** The platform serves no aggregate endpoint, and §9.8.1 requires that whoever sees an aggregate can see every constituent row, so a total cannot be computed from a filtered page. Registering a tool that refuses every call would cost a tool slot and train the model to retry something it can never complete.
 - **The platform URL and secret come from the environment**, so a deployment that forgets one gets a load failure rather than a degraded tool. That is deliberate; the empty secret is the load-time assertion.
