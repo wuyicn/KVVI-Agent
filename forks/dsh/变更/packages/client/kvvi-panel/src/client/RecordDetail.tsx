@@ -19,6 +19,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { ModelField, RecordView } from './api.ts'
 import type { Copy } from './FormView.tsx'
+import { coerceValue, displayString } from './values.ts'
 
 /** Props the record detail accepts. */
 export interface KvviRecordDetailProps {
@@ -27,7 +28,7 @@ export interface KvviRecordDetailProps {
   readonly fields: readonly ModelField[] | undefined
   /** Workflow states, so the state value shows its label rather than its code. */
   readonly stateLabel?: string
-  readonly onSave: (data: Record<string, string>, rowVersion: number) => void
+  readonly onSave: (data: Record<string, unknown>, rowVersion: number) => void
   readonly onBack: () => void
   readonly busy?: boolean
   readonly saved?: boolean
@@ -167,12 +168,22 @@ export function KvviRecordDetail({
         disabled={busy === true}
         onClick={() => {
           if (busy === true) return
-          const data: Record<string, string> = {}
+          const data: Record<string, unknown> = {}
           for (const field of shown) {
             // A masked field is displayed as a mask. Posting the mask back would
             // store the mask as the value, so it is left out of the payload.
             if (['MASKED', 'READONLY'].includes(record.fieldVisibility[field.field_code] ?? 'VISIBLE')) continue
-            data[field.field_code] = values[field.field_code] ?? ''
+            // A CREATE_ONLY or SYSTEM field cannot change after creation, so it
+            // is left out of an update rather than re-posted unchanged (acceptance U3).
+            const policy = field.write_policy ?? 'MUTABLE'
+            if (policy === 'CREATE_ONLY' || policy === 'SYSTEM') continue
+            const str = values[field.field_code] ?? ''
+            const original = record.data[field.field_code]
+            // Unchanged keeps the original value and its type; a changed input is
+            // coerced from the string back to the field's type (acceptance U2).
+            data[field.field_code] = str === displayString(original)
+              ? original
+              : coerceValue(field.type, str)
           }
           onSave(data, record.rowVersion)
         }}

@@ -24,7 +24,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
-  createRecord, getRecord, listRecords, listSystems, loadRuntime, updateRecord,
+  createRecord, getRecord, listRecords, listSystems, loadRuntime, readFormFields, updateRecord,
 } from './api.ts'
 import type { PublishedSystem, RecordRow, RecordView, RuntimeProjection } from './api.ts'
 import type { Copy } from './FormView.tsx'
@@ -77,6 +77,7 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
 
   const [rows, setRows] = useState<readonly RecordRow[]>([])
   const [visibility, setVisibility] = useState<Readonly<Record<string, string>>>({})
+  const [formModes, setFormModes] = useState<Readonly<Record<string, string>>>({})
   const [listError, setListError] = useState<string | undefined>(undefined)
 
   const [detail, setDetail] = useState<RecordView | null>(null)
@@ -132,6 +133,28 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
     refreshRows()
   }, [open, tab, refreshRows])
 
+  // The form's field visibility does not come from the records list: an empty
+  // system has no rows, so `listRecords` returns an empty `fieldVisibility` and a
+  // `HIDDEN` field would render as visible on first open (acceptance U1). The
+  // `/fields` endpoint answers "which fields may this session see" without any
+  // records, so it is the form's source of truth.
+  useEffect(() => {
+    if (open === null || tab !== 'form' || projection === null) return undefined
+    const controller = new AbortController()
+    const modelFields = projection.models[open.assetId]?.fields
+    void readFormFields(open.assetId, controller.signal).then((result) => {
+      if (controller.signal.aborted) return
+      if (!result.ok) return
+      const visible = new Set(result.value.fields.map(field => field.field_code))
+      const modes: Record<string, string> = {}
+      for (const field of modelFields ?? []) {
+        modes[field.field_code] = visible.has(field.field_code) ? 'VISIBLE' : 'HIDDEN'
+      }
+      setFormModes(modes)
+    })
+    return () => { controller.abort() }
+  }, [open, tab, projection])
+
   const openRecord = (recordId: string): void => {
     if (open === null) return
     setDetailError(undefined)
@@ -146,7 +169,7 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
   const model = projection === null || open === null ? undefined : projection.models[open.assetId]
   const view = projection === null || open === null ? undefined : projection.views[open.assetId]
   const workflow = projection === null || open === null ? undefined : projection.workflows[open.assetId]
-  const modes = detail?.fieldVisibility ?? visibility
+  const modes = detail?.fieldVisibility ?? (tab === 'form' ? formModes : visibility)
   const fieldContext = fieldContextOf(model?.fields, modes)
   // Named so the optional prop can be *omitted* rather than passed as
   // `undefined` (`exactOptionalPropertyTypes`). Both are equivalent here, and

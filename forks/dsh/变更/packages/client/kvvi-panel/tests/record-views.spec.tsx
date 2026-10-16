@@ -150,6 +150,49 @@ describe('记录详情', () => {
     expect(input.disabled || input.readOnly).toBe(true)
   })
 
+  it('★ U2：未改动的字段保留原始类型（布尔/数字/数组/null 不被强转成字符串）', () => {
+    const onSave = vi.fn()
+    const typedFields = [
+      { field_code: 'flag', label: '启用', type: 'boolean' },
+      { field_code: 'count', label: '数量', type: 'integer' },
+      { field_code: 'tags', label: '标签', type: 'multi_select' },
+      { field_code: 'note', label: '备注', type: 'short_text' },
+    ]
+    render(<KvviRecordDetail copy={t} fields={typedFields}
+      record={{ recordId: 'r1', rowVersion: 1,
+        data: { flag: true, count: 7, tags: ['a', 'b'], note: null },
+        fieldVisibility: { flag: 'VISIBLE', count: 'VISIBLE', tags: 'VISIBLE', note: 'VISIBLE' } }}
+      onSave={onSave} onBack={noop} />)
+    fireEvent.click(screen.getByRole('button', { name: zh['detail.save'] }))
+    expect(onSave).toHaveBeenCalledWith({ flag: true, count: 7, tags: ['a', 'b'], note: null }, 1)
+  })
+
+  it('★ U2：改动的数字输入被还原成数字类型', () => {
+    const onSave = vi.fn()
+    render(<KvviRecordDetail copy={t} fields={FIELDS}
+      record={{ recordId: 'r1', rowVersion: 1, data: { title: '报销', amount: 500 },
+        fieldVisibility: { title: 'VISIBLE', amount: 'VISIBLE' } }}
+      onSave={onSave} onBack={noop} />)
+    fireEvent.change(screen.getByLabelText('amount'), { target: { value: '900' } })
+    fireEvent.click(screen.getByRole('button', { name: zh['detail.save'] }))
+    expect(onSave).toHaveBeenCalledWith({ title: '报销', amount: 900 }, 1)
+  })
+
+  it('★ U3：CREATE_ONLY 字段不进更新 payload（改标题不牵连编号）', () => {
+    const onSave = vi.fn()
+    const withCode = [
+      { field_code: 'code', label: '编号', type: 'short_text', write_policy: 'CREATE_ONLY' },
+      { field_code: 'title', label: '标题', type: 'short_text' },
+    ]
+    render(<KvviRecordDetail copy={t} fields={withCode}
+      record={{ recordId: 'r1', rowVersion: 1, data: { code: 'X1', title: '报销' },
+        fieldVisibility: { code: 'VISIBLE', title: 'VISIBLE' } }}
+      onSave={onSave} onBack={noop} />)
+    fireEvent.change(screen.getByLabelText('title'), { target: { value: '报销（改）' } })
+    fireEvent.click(screen.getByRole('button', { name: zh['detail.save'] }))
+    expect(onSave).toHaveBeenCalledWith({ title: '报销（改）' }, 1)
+  })
+
   it('保存成功后显示「已保存」', () => {
     render(<KvviRecordDetail copy={t} record={record} fields={FIELDS} saved
       onSave={noop} onBack={noop} />)
@@ -223,5 +266,5 @@ it('omits readonly fields from a detail edit while preserving the version check'
   render(<KvviRecordDetail copy={t} fields={FIELDS} record={{ recordId:'r',rowVersion:4,data:{ title:'不能改',amount:'10' },fieldVisibility:{ title:'READONLY',amount:'VISIBLE' } }} onSave={onSave} onBack={noop} />)
   fireEvent.change(screen.getByLabelText('amount'),{ target:{ value:'20' } })
   fireEvent.click(screen.getByRole('button',{ name:zh['detail.save'] }))
-  expect(onSave).toHaveBeenCalledWith({ amount:'20' },4)
+  expect(onSave).toHaveBeenCalledWith({ amount:20 },4)
 })

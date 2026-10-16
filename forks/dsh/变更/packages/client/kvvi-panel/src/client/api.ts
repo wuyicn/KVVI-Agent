@@ -65,6 +65,12 @@ export interface ModelField {
   readonly label?: string
   readonly type?: string
   readonly required?: boolean
+  /**
+   * `MUTABLE` / `CREATE_ONLY` / `SYSTEM`. A `CREATE_ONLY` field can be set when
+   * the record is created but not changed afterwards, so the detail editor
+   * leaves it out of an update payload rather than sending it back unchanged.
+   */
+  readonly write_policy?: string
   readonly type_config?: {
     readonly options?: readonly { readonly code: string; readonly label?: string }[]
   }
@@ -346,7 +352,7 @@ export function getRecord(
  */
 export function createRecord(
   assetId: string,
-  data: Readonly<Record<string, string>>,
+  data: Readonly<Record<string, unknown>>,
 ): Promise<ApiResult<{ recordId: string; rowVersion: number; recordNo?: string }>> {
   return request('POST', `/systems/${encodeURIComponent(assetId)}/records`, { data })
 }
@@ -365,7 +371,7 @@ export function createRecord(
 export function updateRecord(
   assetId: string,
   recordId: string,
-  data: Readonly<Record<string, string>>,
+  data: Readonly<Record<string, unknown>>,
   rowVersion: number,
 ): Promise<ApiResult<{ recordId: string; rowVersion: number }>> {
   return request('PATCH',

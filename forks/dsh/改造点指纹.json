@@ -1,5 +1,5 @@
 {
-  "count": 239,
+  "count": 240,
   "files": {
     "apps/cli/package.json": {
       "sha256": "3a80bdf6c7da3ace285b256accb233212e9991c0335b0a1dd2c489815595801d",
@@ -319,7 +319,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/RecordDetail.tsx": {
-      "sha256": "ca65b0230d0f772665e097f5da67220dc714ffbf9652ef43ecad85d0119fd3c7",
+      "sha256": "45960a5a2d1f8052c9e9bdeb99afe9fcd09f10e1d65f98966dfd2fbc321d738c",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/RoleAdmin.tsx": {
@@ -331,11 +331,11 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/SystemShell.tsx": {
-      "sha256": "b06343c636b762a8d302db537ebc985d9f5c55a175a80c00ffa50ccca8ade415",
+      "sha256": "e6f4314e00af21f3dcc644a1d923936368be48e9d8b817bf315a18fa95a6e7cc",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/api.ts": {
-      "sha256": "aa39e32e86e346cf7ed7c8e075680d227c99155ca43971d388145b129f31953b",
+      "sha256": "fb63121de126d2d9464620e3646564d111f8735d033494a012421d03006ca281",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/builder-start.ts": {
@@ -376,6 +376,10 @@
     },
     "packages/client/kvvi-panel/src/client/session-notice.ts": {
       "sha256": "eaf4d48dcc0b1b5d9c21ce95e1b411b41187a45a99aa272fa117c892de72f9e4",
+      "status": "A"
+    },
+    "packages/client/kvvi-panel/src/client/values.ts": {
+      "sha256": "ca895270e4ef4044dbe0436d2de84e2c0727e11ab071e82eea4a7d9d0b4f0c9c",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/css-modules.d.ts": {
@@ -443,7 +447,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/record-views.spec.tsx": {
-      "sha256": "4914d18c210f1fcb22539946254b246f05563681adfd221f564e544d5c3d8e5b",
+      "sha256": "aefdbd930e0beded3cfa50f517870af84db2dca6e5242311fa46501887085e5e",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/runtime-ui.spec.tsx": {
@@ -455,7 +459,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/system-shell.spec.tsx": {
-      "sha256": "38f348074df7bd2967191ddbf25eb03cfb6e2a4bba323fd1df02ff2078a70c3b",
+      "sha256": "f34bd7005c557c886d164b67a865bebb43ca8b761d848537932af1e84268c22b",
       "status": "A"
     },
     "packages/client/kvvi-panel/tsconfig.json": {
@@ -1066,7 +1070,7 @@
       "upstream_baseline_sha256": "568b5f6d7d94f9a7d02040ea309ab858e8d2d47c9c5f68a9236a48268ed50d03"
     }
   },
-  "fork_head": "8efafe7a041cf171b2554f384c14854398efe975",
+  "fork_head": "d0efa7e3cc0a5efc27a2f07bbdb908d3ecf30ee8",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "e6a559b1550f5bee359cffc514f6a498710d0697"

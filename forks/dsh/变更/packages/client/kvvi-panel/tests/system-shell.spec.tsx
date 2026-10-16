@@ -141,6 +141,40 @@ describe('我的系统', () => {
     expect(screen.getByText('标题')).toBeTruthy()
   })
 
+  it('★ U1：首次打开填单，HIDDEN 字段不渲染、也不随表单提交', async () => {
+    const withSecret = {
+      ...RUNTIME,
+      models: { golden_01: { ...RUNTIME.models.golden_01, fields: [
+        { field_code: 'title', label: '标题', type: 'short_text' },
+        { field_code: 'secret', label: '密级', type: 'short_text' },
+      ] } },
+      views: { golden_01: {
+        view_code: 'golden_01_form', name: '事项登记表单', view_type: 'FORM',
+        componentsTree: [{
+          id: 'root', componentName: 'FormPage', children: [
+            { id: 'f1', componentName: 'ShortTextField',
+              props: { fieldBinding: { type: 'FieldRef', fieldRef: 'title' } } },
+            { id: 'f2', componentName: 'ShortTextField',
+              props: { fieldBinding: { type: 'FieldRef', fieldRef: 'secret' } } },
+          ],
+        }],
+      } },
+    }
+    // /fields 只返回本会话能看到的字段 —— secret 是 HIDDEN，被平台滤掉。
+    platform(healthy({
+      'GET /api/v1/systems/golden_01/runtime': { body: withSecret },
+      'GET /api/v1/systems/golden_01/fields': {
+        body: { assetId: 'golden_01', fields: [{ field_code: 'title' }], hiddenFieldCount: 1 },
+      },
+    }))
+    render(<KvviSystemShell copy={t} />)
+    await waitFor(() => { expect(screen.getByText('事项登记')).toBeTruthy() })
+    fireEvent.click(screen.getByRole('button', { name: zh['systems.open'] }))
+    await waitFor(() => { expect(screen.getByLabelText('title')).toBeTruthy() })
+    expect(screen.queryByLabelText('secret')).toBeNull()
+    expect(screen.queryByText('密级')).toBeNull()
+  })
+
   it('★ 系统不能运行时如实说明，而不是画一个空表单', async () => {
     platform({
       'GET /api/v1/systems': { body: SYSTEMS },
