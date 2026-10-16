@@ -78,6 +78,28 @@ PY
 T "目标节点在更晚的命令里才创建 → 红" 1 "$(run)"
 
 echo
+echo "[3b] DraftGraph 必须查 bindField 与 field.add 的引用（验收 B2）"
+reset; python3 - "$TMP" <<'PY'
+import glob, json, sys
+p = [x for x in sorted(glob.glob(sys.argv[1] + '/命令/*.json'))
+     if json.load(open(x, encoding='utf-8'))['type'] == 'view.bindField'][0]
+c = json.load(open(p, encoding='utf-8'))
+c['args']['field_id'] = 'ffffffff-ffff-4fff-8fff-ffffffffffff'
+open(p, 'w', encoding='utf-8').write(json.dumps(c, ensure_ascii=False, indent=2))
+PY
+T "bindField 指向未知字段 id → 红" 1 "$(run)"
+
+reset; python3 - "$TMP" <<'PY'
+import glob, json, sys
+p = [x for x in sorted(glob.glob(sys.argv[1] + '/命令/*.json'))
+     if json.load(open(x, encoding='utf-8'))['type'] == 'field.add'][0]
+c = json.load(open(p, encoding='utf-8'))
+c['args']['field_code'] = 'WRONG_CODE'
+open(p, 'w', encoding='utf-8').write(json.dumps(c, ensure_ascii=False, indent=2))
+PY
+T "field.add 字段码与 id 表不符 → 红" 1 "$(run)"
+
+echo
 echo "[4] 影响报告必须与产出物同步（『改一处、不传播』）"
 reset; python3 - "$TMP" <<'PY'
 import json, sys

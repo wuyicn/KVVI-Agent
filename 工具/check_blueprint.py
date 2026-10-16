@@ -242,6 +242,38 @@ def check(bp_dir: str, as_json: bool = False) -> int:
     notes.append('契约校验：%s' % '；'.join(
         '%s=%s' % (k, cc.scope_label(v)) for k, v in sorted(scopes.items())))
 
+    # ★ B1 修复：表单的字段绑定必须指向数据模型里**真实存在**的字段。
+    # 此前只逐份校验契约，不查「表单绑的字段」与「模型声明的字段」是否同源 ——
+    # 模型把 title 改名、命令与审批摘要同步了，表单还绑旧 title 也能闭环通过。
+    model_fields = {}
+    for e in entries:
+        if e['contract'] != 'business-schema/v1':
+            continue
+        spec = bp.load_json(e['path'])
+        model_fields[e['code']] = {
+            f.get('field_code') for f in spec.get('fields', [])
+            if isinstance(f, dict) and f.get('field_code')
+        }
+    for e in entries:
+        if e['contract'] != 'view-schema/lce-safe-v1':
+            continue
+        spec = bp.load_json(e['path'])
+        model_code = (spec.get('businessSchemaRef') or {}).get('asset_id')
+        known = model_fields.get(model_code)
+        for node in _preorder(spec['componentsTree'][0]):
+            binding = (node.get('props') or {}).get('fieldBinding')
+            if not isinstance(binding, dict):
+                continue
+            field_ref = binding.get('fieldRef')
+            if not field_ref:
+                continue
+            if known is None:
+                problems.append('%s：fieldBinding 指向字段 %r，但业务模型 %r 没有字段清单'
+                                % (e['code'], field_ref, model_code))
+            elif field_ref not in known:
+                problems.append('%s：fieldBinding 指向字段 %r，但业务模型里没有这个字段'
+                                % (e['code'], field_ref))
+
     # 口径过 §9.8.1 不变量
     for item in blueprint.get('calibers', []):
         path = bp.resolve(bp_dir, item['path'])

@@ -926,7 +926,7 @@
       "status": "A"
     },
     "packages/preset/agent-presets/presets/kvvi-builder/templates/README.md": {
-      "sha256": "97b13ea13e45afbc2474279e79676d867acc4a6e04bb5377df8a027006a60815",
+      "sha256": "cccc2009f163f9f1fca877910b2ba52e428f564db81cdf8f99a30550e9202d6c",
       "status": "A"
     },
     "packages/preset/agent-presets/presets/kvvi-worker/agent.cordis.yml": {

@@ -174,37 +174,58 @@ def replay(commands: List[Tuple[str, Dict]], blueprint: Dict) -> Tuple[List[Dict
                             '乐观并发要求每条命令作用于紧接着的下一版'
                             % (name, cmd.get('base_revision'), index))
 
-        # 目标必须已经存在：app 由蓝图给出，其余必须由**更早**的命令创建
-        for key, value in (cmd.get('target_ref') or {}).items():
-            if value is None:
-                # `view.addNode` 的 `parent_node_id: null` = 建根节点，
-                # 没有「先创建父节点」这一说。
-                continue
-            if key == 'app_id':
-                if value != blueprint.get('app', {}).get('app_id'):
-                    problems.append('%s：target app_id 不是蓝图里的应用' % name)
-                continue
-            meta = ids.get(value)
-            if meta is None:
-                problems.append('%s：target %s=%s 不在蓝图的 id 表里' % (name, key, value))
-                continue
-            expected_kind = TARGET_ID_KINDS.get(key)
-            if expected_kind and meta.get('kind') != expected_kind:
-                problems.append('%s：target %s 期望 kind=%s，蓝图声明的是 %s'
-                                % (name, key, expected_kind, meta.get('kind')))
-            creator = meta.get('created_by')
-            if creator == 'blueprint':
-                # 蓝图自带的外壳（视图/流程/权限）在草稿里已存在，
-                # 命令只做增量 —— 它们从第 0 步起就可见。检查器会把这批计数报出。
-                continue
-            creator_index = position.get(creator)
-            if creator_index is None:
-                problems.append('%s：target %s 的创建者 %r 不在命令序列里'
-                                % (name, key, creator))
-            elif creator_index >= index:
-                problems.append('%s：target %s 由第 %d 条命令创建，'
-                                '但它在这一条（第 %d 条）之后 —— 拓扑序不成立'
-                                % (name, key, creator_index, index))
+        # 目标必须已经存在：app 由蓝图给出，其余必须由**更早**的命令创建。
+        # ★ B2 修复：`args` 里的 id 引用（view.bindField 的 field_id /
+        #   business_object_id、navigation.addRoute 的 view_id）同样要查 ——
+        #   此前只查 target_ref，bindField 指向未知/错误字段都不拦。
+        for scope_name in ('target_ref', 'args'):
+            for key, value in (cmd.get(scope_name) or {}).items():
+                expected_kind = TARGET_ID_KINDS.get(key)
+                if expected_kind is None:
+                    # 不是 id 字段（field_code / label / componentName …）。
+                    continue
+                if value is None:
+                    # `view.addNode` 的 `parent_node_id: null` = 建根节点，
+                    # 没有「先创建父节点」这一说。
+                    continue
+                if key == 'app_id':
+                    if value != blueprint.get('app', {}).get('app_id'):
+                        problems.append('%s：%s.app_id 不是蓝图里的应用'
+                                        % (name, scope_name))
+                    continue
+                meta = ids.get(value)
+                if meta is None:
+                    problems.append('%s：%s.%s=%s 不在蓝图的 id 表里'
+                                    % (name, scope_name, key, value))
+                    continue
+                if meta.get('kind') != expected_kind:
+                    problems.append('%s：%s.%s 期望 kind=%s，蓝图声明的是 %s'
+                                    % (name, scope_name, key, expected_kind,
+                                       meta.get('kind')))
+                creator = meta.get('created_by')
+                if creator == 'blueprint':
+                    # 蓝图自带的外壳（视图/流程/权限）在草稿里已存在，
+                    # 命令只做增量 —— 它们从第 0 步起就可见。检查器会把这批计数报出。
+                    continue
+                creator_index = position.get(creator)
+                if creator_index is None:
+                    problems.append('%s：%s.%s 的创建者 %r 不在命令序列里'
+                                    % (name, scope_name, key, creator))
+                elif creator_index >= index:
+                    problems.append('%s：%s.%s 由第 %d 条命令创建，'
+                                    '但它在这一条（第 %d 条）之后 —— 拓扑序不成立'
+                                    % (name, scope_name, key, creator_index, index))
+
+        # ★ B2 修复：field.add 的 field_code 必须与蓝图 id 表里该字段的 logical
+        #   （即最终业务模型里的字段码）一致。改名不同步时这里会先红。
+        if cmd.get('type') == 'field.add':
+            field_code = (cmd.get('args') or {}).get('field_code')
+            for fid, meta in ids.items():
+                if meta.get('created_by') == cid and meta.get('kind') == 'field':
+                    if meta.get('logical') != field_code:
+                        problems.append('%s：field.add 的 field_code=%r 与 id 表里 '
+                                        '%s 的 logical=%r 不符'
+                                        % (name, field_code, fid, meta.get('logical')))
 
         steps.append({'index': index, 'file': name, 'command_id': cid,
                       'type': cmd.get('type'), 'creates': created_here})
