@@ -315,17 +315,25 @@ describe('阶段十 · G8 UI 与 Agent 差异等价', () => {
   })
 
   test('★ 向量 2：HIDDEN 字段在两条通道上都不出现', async () => {
-    await both('POST', `/api/v1/systems/${ASSET}/records`,
+    // HIDDEN 字段不可写（可写 ⟺ VISIBLE，验收 S8），两条通道一起拒。
+    const rejected = await both('POST', `/api/v1/systems/${ASSET}/records`,
       { data: { title: '带隐藏字段', secret: '机密' } })
+    agree('HIDDEN 字段的写入', rejected)
+    assert.equal(rejected.ui.status, 403)
+    assert.equal(rejected.ui.body.error, 'KVVI_FIELD_NOT_WRITABLE')
+
+    // 只写可见字段；读回来时 HIDDEN 字段不出现（「藏了等于没藏」）。
+    await both('POST', `/api/v1/systems/${ASSET}/records`,
+      { data: { title: '带隐藏字段' } })
     const list = await both('GET', `/api/v1/systems/${ASSET}/records`)
     agreeRead('记录列表', list)
     assert.equal(list.ui.status, 200)
-    // 藏在界面里却让 Agent 带走，正是「藏了等于没藏」。
     for (const channel of [list.ui, list.agent]) {
       const row = channel.body.items.find((r) => r.data.title === '带隐藏字段')
       assert.ok(row !== undefined, '刚建的记录读不到')
       assert.equal(row.data.secret, undefined, 'HIDDEN 字段出现在了记录里')
-      assert.equal(channel.body.fieldVisibility.secret, 'HIDDEN')
+      // secret 现在根本写不进记录，fieldVisibility 只覆盖出现在记录里的字段，
+      // 所以它不再有 secret 这一项 —— 「不出现」由上面的 data.secret 断言守住。
     }
   })
 

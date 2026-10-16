@@ -307,6 +307,28 @@ export async function fieldVisibility(companyId, userId, fields) {
 }
 
 /**
+ * 哪些字段码在该账号下**不可写**。
+ *
+ * ── 可写 ⟺ `VISIBLE`（§9.2、0B-5）。HIDDEN / MASKED / READONLY 都不可写：
+ *   · HIDDEN   —— 用户根本看不见这个字段；
+ *   · MASKED   —— 写入是部分合并，写一个只能看掩码的字段等于盲写覆盖；
+ *   · READONLY —— 名字就写着只读。
+ *
+ * 这是**唯一判据**，所有写入点（产品 API、命令执行器、访客链路）必须共用，
+ * 否则「创建 / 更新 / 命令」三处各写一份判据会漂移（验收 S7/S8 正是漂移的后果：
+ * API 更新漏了 MASKED、API 创建根本没判）。
+ *
+ * @param {string} companyId 公司
+ * @param {string} userId 账号
+ * @param {string[]} fields 字段 code 列表
+ * @returns {Promise<string[]>} 不可写的字段 code
+ */
+export async function notWritableFields(companyId, userId, fields) {
+  const visibility = await fieldVisibility(companyId, userId, fields)
+  return fields.filter((f) => (visibility[f] ?? 'HIDDEN') !== 'VISIBLE')
+}
+
+/**
  * 按可见性过滤一条记录的字段值。
  * **脱敏输出的是掩码，不是原文** —— 这一点由调用方无法绕过：
  * 本函数是唯一的字段出口。

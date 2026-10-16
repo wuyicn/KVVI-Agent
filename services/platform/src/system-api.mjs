@@ -18,7 +18,8 @@
  */
 
 import { pool } from './db.mjs'
-import { scopeContext, fieldVisibility, projectFields, canAct } from './authorization.mjs'
+import { scopeContext, fieldVisibility, projectFields, canAct,
+         notWritableFields } from './authorization.mjs'
 import { createRecord, readRecord, listRecords, updateRecord,
          publishedBusinessModel } from './refs.mjs'
 import { runtimeProjection } from './runtime-projection.mjs'
@@ -27,6 +28,7 @@ import { readDirectory, isDirectoryBuilder } from './business-directory.mjs'
 import { withActiveForm } from './business-lifecycle.mjs'
 import { idempotencyKeyOf, withIdempotency } from './idempotency.mjs'
 import { step, nextActions, submitterOf, WorkflowError } from './workflow.mjs'
+import { append, digestOf } from './audit.mjs'
 
 /**
  * 把已验证的会话折成执行点要的 `ctx`。
@@ -267,16 +269,19 @@ async function recordUpdate(ctx, assetId, recordId, payload) {
   })
   if (current === null) return fail('KVVI_NO_SUCH_RECORD', { recordId })
 
-  // 字段可见性：HIDDEN 与 READONLY **都不接受写入**。
-  // 这不是第二份授权 —— 它是**字段级**的约束，`fieldVisibility` 是唯一判据，
-  // 本模块只是把它应用到「你要写的这些字段」上。
+  // 字段可见性：可写 ⟺ VISIBLE（HIDDEN / MASKED / READONLY 都不可写）。
+  // 这不是第二份授权 —— 它是**字段级**的约束，`notWritableFields` 是唯一判据，
+  // 与命令执行器（commands.execute）、访客链路共用同一份（验收 S7/S8）。
   const touched = Object.keys(payload.data ?? {})
-  const visibility = await fieldVisibility(ctx.companyId, ctx.userId, touched)
-  const blocked = touched.filter((f) => {
-    const mode = visibility[f] ?? 'HIDDEN'
-    return mode === 'HIDDEN' || mode === 'READONLY'
-  })
+  const blocked = await notWritableFields(ctx.companyId, ctx.userId, touched)
   if (blocked.length > 0) {
+    await append({
+      companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
+      gateway: ctx.gateway, sessionId: ctx.sessionId,
+      action: 'record.update', resourceKind: 'record', resourceId: recordId,
+      outcome: 'DENY', reason: `KVVI_FIELD_NOT_WRITABLE:${blocked.join(',')}`,
+      paramsDigest: digestOf(payload.data ?? {}),
+    })
     return { status: 403, body: { error: 'KVVI_FIELD_NOT_WRITABLE', fields: blocked } }
   }
 
@@ -293,6 +298,13 @@ async function recordUpdate(ctx, assetId, recordId, payload) {
     return { status: 409, body: { error: 'KVVI_ROW_VERSION_CONFLICT',
       currentRowVersion: now.rowVersion } }
   }
+  // ★ S6 修复：产品 API 的写入也要留痕，不能只靠命令执行器那一条路。
+  await append({
+    companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
+    gateway: ctx.gateway, sessionId: ctx.sessionId,
+    action: 'record.update', resourceKind: 'record', resourceId: recordId,
+    outcome: 'ALLOW', paramsDigest: digestOf(payload.data ?? {}),
+  })
   return { status: 200, body: { recordId: updated.recordId, rowVersion: updated.rowVersion } }
 }
 
@@ -544,9 +556,25 @@ export async function systemRoutes({ method, path, payload, session, headers = {
         return await withIdempotency({
           ctx, endpoint: `POST /systems/${assetId}/records`, key,
           run: async () => {
+            // ★ S8 修复：创建也要逐字段判可写性（可写 ⟺ VISIBLE），
+            //    与更新路径、命令执行器同一份判据 —— 否则「只读字段创建时能塞值」。
+            const data = payload?.data ?? {}
+            const blocked = await notWritableFields(ctx.companyId, ctx.userId,
+              Object.keys(data))
+            if (blocked.length > 0) {
+              await append({
+                companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
+                gateway: ctx.gateway, sessionId: ctx.sessionId,
+                action: 'record.create', resourceKind: 'record', resourceId: null,
+                outcome: 'DENY', reason: `KVVI_FIELD_NOT_WRITABLE:${blocked.join(',')}`,
+                paramsDigest: digestOf(data),
+              })
+              return { status: 403,
+                body: { error: 'KVVI_FIELD_NOT_WRITABLE', fields: blocked } }
+            }
             const scope = await scopeContext(ctx)
             const created = await createRecord(ctx, scope, {
-              schemaCode: assetId, data: payload?.data ?? {},
+              schemaCode: assetId, data,
               // ★ **记录的出生状态来自流程契约，不是代码里的字面量。**
               //
               // 建表时写死了 `state text NOT NULL DEFAULT 'draft'`，而搭建者的流程
@@ -561,6 +589,13 @@ export async function systemRoutes({ method, path, payload, session, headers = {
               // ★ 同时把**这一版**流程钉进记录。之后发布的每一版都只影响新记录 ——
               //   氚云那条不变量（「流程修改仅对新提交数据生效」）就落在这里。
               workflowVersion: await currentWorkflowVersion(ctx, assetId),
+            })
+            // ★ S6 修复：产品 API 的创建也留痕。
+            await append({
+              companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
+              gateway: ctx.gateway, sessionId: ctx.sessionId,
+              action: 'record.create', resourceKind: 'record', resourceId: created.recordId,
+              outcome: 'ALLOW', paramsDigest: digestOf(data),
             })
             return { status: 201, body: created }
           },
