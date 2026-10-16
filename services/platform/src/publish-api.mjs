@@ -303,7 +303,7 @@ export async function publishCommit({ session, draftId, payload }) {
     //   `工具/check_publish_channel.py` 静态盯着这件事（§9.6.3）。
     apply: async ({ client }) => {
       const written = await writePolicies({
-        client, companyId: session.companyId, rows: prepared.rows,
+        client, companyId: session.companyId, assetId, rows: prepared.rows,
       })
       return { ...written, notEnforced: prepared.notEnforced.length }
     },

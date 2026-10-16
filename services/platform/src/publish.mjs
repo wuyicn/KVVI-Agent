@@ -88,17 +88,29 @@ export function buildDiffReport(before, after) {
  *
  * 所以调用方只负责**给出要写什么**（编译好的行），写入留在这里。
  *
- * ⚠️ 整体替换，不是追加：`DELETE` 之后整批写入，且与发布记录**同一个事务**
- * （由 `publishDraft` 的调用方保证）。只加不减的权限界面等于没有权限界面。
+ * ⚠️ **按系统整体替换，不是按公司、也不是追加。** 只删本次发布涉及的那几个
+ * 资源码（该系统自己的 `asset_id`，以及它声明的字段 code），其余系统的策略原样
+ * 保留 —— 否则「发布 B」会把「A 的策略」整段删光（验收 S4）。
+ * 只加不减的权限界面等于没有权限界面。
  *
  * @param {object} input 入参
  * @param {object} input.client 已开启事务的 pg 客户端
  * @param {string} input.companyId 公司
+ * @param {string} [input.assetId] 本次发布的系统代号；纳入删除范围，保证「删空重发」也生效
  * @param {Array<object>} input.rows 编译好的策略行
  * @returns {Promise<{policies: number}>} 写入条数
  */
-export async function writePolicies({ client, companyId, rows }) {
-  await client.query('DELETE FROM policies WHERE company_id = $1', [companyId])
+export async function writePolicies({ client, companyId, assetId = null, rows }) {
+  // ★ S4 修复：删除范围 = 本系统的 assetId ∪ 本次行里的资源码（字段 code 也算），
+  // 而不是 `DELETE ... WHERE company_id = $1`（那会删掉别的系统）。
+  const resourceCodes = [...new Set(
+    [assetId, ...rows.map((r) => r.resourceCode)]
+      .filter((c) => typeof c === 'string' && c !== ''))]
+  if (resourceCodes.length > 0) {
+    await client.query(
+      'DELETE FROM policies WHERE company_id = $1 AND resource_code = ANY($2::text[])',
+      [companyId, resourceCodes])
+  }
   for (const row of rows) {
     // ⚠️ 冲突目标必须与**表上的唯一约束逐列相同**（含 `state_code`），
     //    否则 Postgres 报「no unique or exclusion constraint matching the
