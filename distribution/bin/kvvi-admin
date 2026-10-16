@@ -65,7 +65,7 @@ from distribution.lib.backup import (  # noqa: E402
 from distribution.lib.install import (  # noqa: E402
     DEFAULT_HOME, install_plan, release_root_path,
 )
-from distribution.lib.pg import pg_bin_dir  # noqa: E402
+from distribution.lib.pg import pg_bin_dir, stop_cluster  # noqa: E402
 from distribution.lib.upgrade import migrations_from_ledger, rollback_plan  # noqa: E402
 
 #: 发行版根目录。**从 `install.py` 取，不在这里另算一遍** —— 见那里的说明。
@@ -333,7 +333,20 @@ def cmd_restore(args):
     if not args.yes and not sys.stdin.isatty():
         print('✗ 非交互环境下需要 --yes 才执行。', file=sys.stderr)
         return EXIT_USAGE
-    result = plan.apply(pg_bin_dir())
+    # ★ D1 修复：恢复是覆盖动作，动库之前先停掉在跑的进程（`describe()` 早就
+    #   这么写了，`apply()` 以前却没做）。核不过摘要时 `stop_services` 不会被调，
+    #   所以用一面旗子记「到底停没停」，只在真停了之后才重新拉起服务。
+    stopped = {'done': False}
+
+    def _stop():
+        stopped['done'] = True
+        return stop_plan(home=Path(config['home']), release_root=HERE).apply()
+
+    result = plan.apply(pg_bin_dir(), stop_services=_stop)
+    if stopped['done']:
+        # 恢复完（无论成败）把服务重新起起来，别把实例留在「停着」的状态。
+        start_plan(home=Path(config['home']), release_root=HERE,
+                   platform_port=config['platform_port']).apply()
     if not result['ok']:
         for error in result['errors']:
             print(f'  ✗ {error}', file=sys.stderr)
@@ -360,6 +373,13 @@ def cmd_uninstall(args):
             print()
             print('  确认无误后加 --yes 执行。')
         return EXIT_OK
+    # ★ D3 修复：删文件之前先停进程 —— 否则删了 PID 文件进程还活着，
+    #   `status` 再也看不见它们。
+    stop_plan(home=Path(config['home']), release_root=HERE).apply()
+    if plan.purge_data:
+        # `--purge-data` 要删 `pgdata`：先停数据库集群，别删一个还在跑的
+        # 数据目录（那等于在数据库开着的时候把它的文件抽走）。
+        stop_cluster(Path(config['home']), pg_bin_dir())
     result = plan.apply()
     for line in result['steps']:
         print(f'  ✓ 已删除 {line}')

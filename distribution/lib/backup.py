@@ -45,6 +45,26 @@ MANIFEST_NAME = 'backup-manifest.json'
 ARCHIVE_NAME = 'kvvi-backup.tar.gz'
 
 
+def _restore_failed(result) -> bool:
+    """
+    `pg_restore` 的非零返回码里，哪些算**真失败**。
+
+    ⚠️ **不能只匹配英文 `error:`。** 连接类错误由 libpq/服务器报出，其 locale
+    不由客户端 `LC_ALL` 决定 —— 中文环境是「错误: 连接失败」，只匹配英文
+    会把它当成「跳过不存在对象」，恢复**误报成功**（验收 D2）。
+
+    `--clean --if-exists` 已经把「对象不存在」消化成 `DROP ... IF EXISTS`，
+    所以剩下的非零返回码几乎都是真错误；再叠加一段跨语言的错误标记双保险。
+    @param result `subprocess.CompletedProcess`
+    @returns 该不该判为恢复失败
+    """
+    if result.returncode == 0:
+        return False
+    stderr = (result.stderr or '').lower()
+    markers = ('error', 'fatal', 'panic', '错误', '致命', '严重', '连接', 'connection')
+    return any(marker in stderr for marker in markers)
+
+
 def sha256_file(path: Path) -> str:
     """
     文件的 SHA-256。
@@ -324,10 +344,13 @@ class RestorePlan:
             '⚠️ 恢复是**覆盖**动作：第三步会替换库里的现有内容。',
         ])
 
-    def apply(self, pg_bin: Path) -> dict:
+    def apply(self, pg_bin: Path, stop_services=None) -> dict:
         """
         执行恢复。
         @param pg_bin PostgreSQL 二进制目录
+        @param stop_services 可选：在动数据库**之前**停掉在跑进程的回调。
+            `describe()` 早已声明「停掉在跑的进程」，此前 `apply()` 却从没做过 ——
+            恢复是覆盖动作，进程还活着时 pg_restore 会与它们抢同一份数据（验收 D1）。
         @returns `{ok, steps, errors}`
         """
         pg_bin = Path(pg_bin)
@@ -344,6 +367,11 @@ class RestorePlan:
                     'errors': [{'kind': 'verify', 'code': code,
                                 'problems': verdict['problems'][:5]}]}
         done.append('verify')
+
+        # ★ D1 修复：核过摘要、确认要动库之前，先停掉在跑的进程。
+        if stop_services is not None:
+            stopped = stop_services()
+            done.append('stop-services' + (f': {stopped}' if stopped else ''))
 
         staging = self.archive.parent / '.restore'
         if staging.exists():
@@ -362,9 +390,10 @@ class RestorePlan:
                      '-U', self.superuser, '-d', database, '--clean', '--if-exists',
                      str(dump)],
                     capture_output=True, text=True, env=env, timeout=1800)
-                # `pg_restore` 对「对象不存在，跳过」返回非零，而那不算失败。
-                # 判据是**错误行里有没有真正的错误**，不是退出码。
-                if result.returncode != 0 and 'error:' in result.stderr.lower():
+                # `pg_restore` 的非零返回码要区分「真错误」与「可忽略的跳过」。
+                # `--clean --if-exists` 已消化「对象不存在」，剩下的非零基本是真错。
+                # 判据跨语言（英文 error / 中文「错误」），见 `_restore_failed`。
+                if _restore_failed(result):
                     return {'ok': False, 'steps': done,
                             'errors': [{'kind': 'restore', 'database': database,
                                         'stderr': result.stderr.strip()[:500]}]}
@@ -413,11 +442,17 @@ class UninstallPlan:
             lines += ['', f'⚠️ {self.warning}']
         return '\n'.join(lines)
 
-    def apply(self) -> dict:
+    def apply(self, stop_services=None) -> dict:
         """
         执行卸载。
+        @param stop_services 可选：删除任何文件**之前**停掉在跑进程的回调。
+            此前卸载只删 `run/`（含 PID 文件），进程却还活着 —— 删了 PID 文件
+            之后 `status` 再也看不见它们（验收 D3）。
         @returns `{ok, steps, errors}`
         """
+        # ★ D3 修复：先停进程，再删文件。否则「卸载成功」却留着活进程。
+        if stop_services is not None:
+            stop_services()
         removed = []
         for item in self.removes:
             target = self.home / item
