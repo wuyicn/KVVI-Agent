@@ -40,8 +40,9 @@ export const MIGRATIONS = Object.freeze({
     '28-company-branding.sql',
     '32-business-build-intents.sql',
   ]),
-  // ⚠️ 业务库的迁移**同样按顺序**：26 依赖 20 建出来的 `business_records`。
-  kvvi_business: Object.freeze(['20-business.sql', '26-record-workflow-version.sql', '31-business-directory.sql', '33-field-uniqueness.sql']),
+  // ⚠️ 业务库的迁移**同样按顺序**：26 依赖 20 建出来的 `business_records`，
+  // 34 依赖 20 的函数（`kvvi_guc*`）与策略。
+  kvvi_business: Object.freeze(['20-business.sql', '26-record-workflow-version.sql', '31-business-directory.sql', '33-field-uniqueness.sql', '34-scope-by-resource.sql']),
   kvvi_audit: Object.freeze(['30-audit.sql']),
 })
 

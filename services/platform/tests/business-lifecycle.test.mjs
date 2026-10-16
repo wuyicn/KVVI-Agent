@@ -21,13 +21,16 @@ test('archiving blocks real references, generic commands and HTTP paths; restore
   assert.equal(archive.status,200)
   const calls=[
     ()=>readRecord(f.builder.ctx,scope,{id:RECORDS.bobOwn}),
-    ()=>readRecord(f.builder.ctx,scope,{id:RECORDS.bobOwn,schemaCode:'hidden_item'}),
     ()=>listRecords(scope,'general_item'),
     ()=>createRecord(f.builder.ctx,scope,{schemaCode:'general_item',data:{title:'must not write'}}),
     ()=>updateRecord(f.builder.ctx,scope,{id:RECORDS.bobOwn},{data:{title:'must not write'},rowVersion:1}),
     ()=>execute({ctx:f.builder.ctx,scope,request:{action:'record.update',targets:[{id:RECORDS.bobOwn}],patch:{data:{title:'must not write'}}}}),
   ]
   for(const call of calls) await assert.rejects(call,/KVVI_FORM_ARCHIVED/)
+  // S1 修复后：schema 不匹配的引用按「找不到」（null）处理，不触发该记录真实
+  // schema 的归档闸 —— 否则等于把「这条记录存在且其表单已归档」泄露给错误
+  // schema 的调用方（而这正是 S1 要堵的越权读口）。
+  assert.equal(await readRecord(f.builder.ctx,scope,{id:RECORDS.bobOwn,schemaCode:'hidden_item'}), null)
   await assert.rejects(()=>step({ctx:f.builder.ctx,spec:{states:[],actions:[]},assetId:'general_item',recordId:RECORDS.bobOwn,from:'draft',action:'submit',applyTransition:()=>assert.fail('archive must prevent callback')}),/KVVI_FORM_ARCHIVED/)
   await assert.rejects(()=>runtimeProjection(A.company,'general_item'),/KVVI_FORM_ARCHIVED/)
   for(const suffix of ['runtime','fields','records','records/'+RECORDS.bobOwn,'records/GI2026000002']) {

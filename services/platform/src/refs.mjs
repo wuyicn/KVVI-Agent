@@ -50,7 +50,15 @@ export function buildHandle(ctx, logical) {
     // 不写成「你在 A，这条属于 B」—— 那本身就是一次跨租户信息泄漏。
     throw new KvviRefError('KVVI_CROSS_TENANT_REF')
   }
-  return { kind: logical.kind ?? 'record', id: logical.id, companyId: ctx.companyId }
+  return {
+    kind: logical.kind ?? 'record',
+    id: logical.id,
+    companyId: ctx.companyId,
+    // ★ S1 修复：schema 也是资源身份的一部分。HTTP 路径会带（URL 里的系统
+    // 代号），读/写时据此把「属于别的系统的记录」挡在外面；命令路径不带
+    // （它按 id 读，授权用读回来的真实 schema 判），此时为 undefined。
+    schemaCode: typeof logical.schemaCode === 'string' ? logical.schemaCode : undefined,
+  }
 }
 
 /**
@@ -75,7 +83,8 @@ export async function readRecord(ctx, scope, logical) {
       `SELECT record_id, company_id, schema_code, dept_id, shop_id, owner_id,
               state, record_no, data, row_version, workflow_version
          FROM business_records
-        WHERE record_id = $1 AND company_id = $2`, [handle.id, handle.companyId])
+        WHERE record_id = $1 AND company_id = $2
+          AND ($3::text IS NULL OR schema_code = $3)`, [handle.id, handle.companyId, handle.schemaCode ?? null])
     if(rows.length===1) {
       await lockFormLifecycle(client,handle.companyId,rows[0].schema_code,'read')
       await assertFormActive(client,handle.companyId,rows[0].schema_code)
@@ -266,12 +275,12 @@ export async function updateRecord(ctx, scope, logical, patch) {
   const handle = buildHandle(ctx, logical)
   return withTransaction('business', async (client) => {
     await applyScopeGucs(client, scope)
-    const existing=(await client.query('SELECT schema_code FROM business_records WHERE company_id=$1 AND record_id=$2',[handle.companyId,handle.id])).rows[0]
+    const existing=(await client.query('SELECT schema_code FROM business_records WHERE company_id=$1 AND record_id=$2 AND ($3::text IS NULL OR schema_code = $3)',[handle.companyId,handle.id,handle.schemaCode ?? null])).rows[0]
     if(!existing) return null
     await lockFormLifecycle(client,handle.companyId,existing.schema_code,'write')
     await assertFormActive(client,handle.companyId,existing.schema_code)
     await lockUniqueFields(client, handle.companyId, existing.schema_code)
-    const current = (await client.query('SELECT data,row_version FROM business_records WHERE company_id=$1 AND record_id=$2 FOR UPDATE', [handle.companyId, handle.id])).rows[0]
+    const current = (await client.query('SELECT data,row_version FROM business_records WHERE company_id=$1 AND record_id=$2 AND ($3::text IS NULL OR schema_code = $3) FOR UPDATE', [handle.companyId, handle.id, handle.schemaCode ?? null])).rows[0]
     if (!current || (patch.rowVersion != null && Number(current.row_version) !== patch.rowVersion)) return null
     const model = await publishedBusinessModel(ctx.companyId, existing.schema_code)
     await assertUniquePublicationReady(client, ctx.companyId, existing.schema_code, model)
@@ -293,10 +302,11 @@ export async function updateRecord(ctx, scope, logical, patch) {
               row_version = row_version + 1,
               updated_at = now()
         WHERE record_id = $1 AND company_id = $2
+          AND ($6::text IS NULL OR schema_code = $6)
           AND ($5::bigint IS NULL OR row_version = $5::bigint)
         RETURNING record_id, row_version`,
       [handle.id, handle.companyId, JSON.stringify(patch.data ?? {}),
-       patch.state ?? null, patch.rowVersion ?? null])
+       patch.state ?? null, patch.rowVersion ?? null, handle.schemaCode ?? null])
     if (rows.length !== 1) return null
     return { recordId: rows[0].record_id, rowVersion: Number(rows[0].row_version) }
   })

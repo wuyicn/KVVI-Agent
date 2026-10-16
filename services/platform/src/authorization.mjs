@@ -108,13 +108,25 @@ export async function deptSubtree(client, companyId, deptId) {
 export async function scopeContext(ctx) {
   const client = await pool('platform').connect()
   try {
+    // ★ S2 修复：档位是「资源 × 档位」的二维事实，不能并成一维。
+    // 按 `resource_code` 分组保留，RLS（见 34-scope-by-resource.sql）按行里的
+    // schema_code 取「该资源 + `*`」的档位。
     const { rows } = await client.query(
-      `SELECT DISTINCT unnest(p.data_scopes) AS scope
+      `SELECT p.resource_code, unnest(p.data_scopes) AS scope
          FROM policies p
          JOIN role_members rm ON rm.role_id = p.role_id
         WHERE p.company_id = $1 AND rm.user_id = $2 AND p.dimension = 'DATA'`,
       [ctx.companyId, ctx.userId])
-    const scopes = rows.map((r) => r.scope).filter((s) => DATA_SCOPES.includes(s))
+    const scopesByResource = new Map()
+    const scopes = new Set()
+    for (const r of rows) {
+      if (!DATA_SCOPES.includes(r.scope)) continue
+      scopes.add(r.scope)
+      if (!scopesByResource.has(r.resource_code)) {
+        scopesByResource.set(r.resource_code, new Set())
+      }
+      scopesByResource.get(r.resource_code).add(r.scope)
+    }
 
     // ⚠️ 部门与店铺**从这里查成员关系得到**，不从入参取。
     //
@@ -135,7 +147,12 @@ export async function scopeContext(ctx) {
     const subtree = deptId ? await deptSubtree(client, ctx.companyId, deptId) : []
     return {
       companyId: ctx.companyId, userId: ctx.userId, gateway: ctx.gateway,
-      deptId, deptSubtree: subtree, shopId, scopes,
+      deptId, deptSubtree: subtree, shopId,
+      // 平铺并集：仍保留给「有没有任何数据档位」这类与资源无关的判据
+      // （访客签发资格、`checkDataAccess`）。
+      scopes: [...scopes],
+      // 资源 → 档位集合：RLS 按行的 schema_code 取用。
+      scopesByResource,
     }
   } finally {
     client.release()
@@ -160,6 +177,21 @@ export async function applyScopeGucs(client, scope) {
   await set('kvvi.dept_subtree', (scope.deptSubtree ?? []).join(','))
   await set('kvvi.shop_id', scope.shopId)
   await set('kvvi.scopes', (scope.scopes ?? []).join(','))
+  // S2：按资源维度的档位表。RLS（34-scope-by-resource.sql）据此按行里的
+  // schema_code 解析；没有 `scopesByResource` 的调用方（如离职交接的
+  // 公司级动作）退化为把整份档位挂到 `*` 上，语义不变。
+  await set('kvvi.scopes_by_resource', scopesByResourceJson(scope))
+}
+
+/** 把授权上下文里的「资源 → 档位」表序列化成 JSON（RLS 用）。 */
+function scopesByResourceJson(scope) {
+  const map = {}
+  if (scope.scopesByResource instanceof Map) {
+    for (const [code, set] of scope.scopesByResource) map[code] = [...set]
+  } else if (Array.isArray(scope.scopes)) {
+    map['*'] = [...scope.scopes]
+  }
+  return JSON.stringify(map)
 }
 
 /** 账号在某公司经角色得到的策略。 */

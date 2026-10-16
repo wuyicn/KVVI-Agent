@@ -394,6 +394,26 @@ async function replacePolicies(actor, roleCode, policies) {
   if (role.rows.length !== 1) throw new AdminError('KVVI_NO_SUCH_ROLE', { roleCode })
   const roleId = role.rows[0].role_id
 
+  // ★ S5 修复：改自己**所在角色**的策略 = 自授权（§9.6.7）。
+  //
+  // 此前 `assignRoleMembers` 有 `checkSelfGrant` 这道闸（自加角色 → 403），
+  // 但「改自己已经加入的角色的策略」没有 —— 一个有配置权的被委托者可以把
+  // 自己所在角色的 DATA 档位改宽，立即获得别人记录的读权，且不经发布草案。
+  // 判据是「操作者是不是这个角色的成员」，与「他有没有配置权」无关 ——
+  // 这与 `checkSelfGrant` 对 `assignRoleMembers` 的口径一致。
+  const selfMember = await pool('platform').query(
+    'SELECT 1 FROM role_members WHERE role_id = $1 AND user_id = $2',
+    [roleId, actor.userId])
+  if (selfMember.rows.length === 1) {
+    await appendDenial({
+      companyId: actor.companyId, actorKind: 'USER', actorId: actor.userId,
+      gateway: actor.gateway, sessionId: actor.sessionId,
+      action: 'admin.replacePolicies', outcome: 'DENY',
+      reason: 'KVVI_SELF_GRANT_FORBIDDEN', paramsDigest: digestOf({ roleCode }),
+    })
+    throw new AdminError('KVVI_SELF_GRANT_FORBIDDEN', { roleCode })
+  }
+
   // 替换与成员清点同事务：清点用于「不能把最后一个所有者降级」。
   const applied = await withTransaction('platform', async (client) => {
     await client.query(
