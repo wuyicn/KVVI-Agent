@@ -34,6 +34,17 @@ class PackageProvenanceTests(unittest.TestCase):
         self.assertNotIn('inventoryDigest',result); self.assertNotIn('sourceEntryCount',result)
         self.assertFalse(result['releaseApproved']); self.assertEqual(result['code'],'FIXED_SOURCE_REJECTED')
 
+    def test_opt_in_source_rows_are_complete_digest_bound_and_absent_on_failure(self):
+        from 工具.lib.package_provenance import qualify_runtime_source
+        self.prepare()
+        result = qualify_runtime_source(self.source,self.objects,self.manifest_path,include_source_rows=True)
+        rows = result['sourceRows']; self.assertEqual(len(rows),result['sourceEntryCount'])
+        digest = hashlib.sha256(json.dumps(rows,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+        self.assertEqual('sha256:' + digest,result['inventoryDigest'])
+        (self.source / 'src/base.js').write_bytes(b'changed')
+        failed = qualify_runtime_source(self.source,self.objects,self.manifest_path,include_source_rows=True)
+        self.assertFalse(failed['valid']); self.assertNotIn('sourceRows',failed); self.assertNotIn('inventoryDigest',failed)
+
     def test_build_outputs_are_listed_as_unqualified_and_not_hashed_as_source(self):
         self.prepare(); output = self.source / 'lib/generated.js'; output.parent.mkdir(); output.write_bytes(b'unqualified build')
         first = self.qualify(); self.assertTrue(first['valid']); self.assertIn('lib',first['excludedUnqualified'])

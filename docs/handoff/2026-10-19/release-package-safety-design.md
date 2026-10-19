@@ -24,9 +24,10 @@
 - [ ] 下一批把固定Git完整source资格与完整host/native/client输出、目录/generated收据绑定到candidate和检查，source选择或入口存在本身不够。
 
 
-## 固定源码资格接口（待接入发行流程）
+## 固定源码资格接口
 
 - [x] package_provenance.qualify_runtime_source读取仓库工具指定的可信manifest，绑定其原字节SHA256、固定Git基线与全部declared source清单；只在完整valid、count/profile/digest均符合时输出资格记录。失败仅固定码，无部分digest/count。
 - [x] manifest普通文件稳定初读/复读，均在fd身份核对后拒超限size，读取最多16MiB+1；source workspace元数据同限制。CLI以-m运行，仅固定仓库manifest，不接受业务payload另选manifest。根为管理员控制，不声称原子树快照。
 - [x] 7组Git夹具及双Python联合75项通过；实际新树12196项资格通过、旧built树拒绝。success仍releaseApproved:false，明确exec位/依赖/输出/client收据/目录消费/发行验收未鉴定。
-- [ ] 下一批将此接口接入candidate前后、manifest内外绑定与G9必需校验；再接完整构建与目录收据，不把仅有source资格当发行资格。
+- [x] v3将接口接入candidate前后、manifest内外绑定与G9必需校验；私有完整source表校验自身摘要后绑定candidate正文/链接与必收全集，阻断临时改动再恢复或漏收。main元数据核同表SHA，workspace由表枚举，最终candidate内main须解析到regular file。双Python92项及独立复核通过。
+- [ ] 再接完整host/native/client构建与目录收据；v3现有source资格不代表输出来源或发行资格。

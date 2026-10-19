@@ -3,6 +3,7 @@ import importlib.util
 import io
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -20,6 +21,21 @@ def load_package():
     return module
 
 
+def register_runtime_source(module, root):
+    """Real, isolated Git baseline for owned source qualification fixtures."""
+    objects = root / 'source-objects'
+    if objects.exists(): shutil.rmtree(objects)
+    shutil.copytree(module.RUNTIME_SOURCE, objects, symlinks=True)
+    environment = {**os.environ,'GIT_CONFIG_GLOBAL':os.devnull,'GIT_CONFIG_SYSTEM':os.devnull}
+    def git(*args):
+        return subprocess.run(['git','-C',str(objects),*args], env=environment, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True).stdout.strip()
+    git('init','--quiet'); git('add','--all')
+    git('-c','user.name=Package Fixture','-c','user.email=package@example.invalid','-c','core.hooksPath=/dev/null','-c','commit.gpgsign=false','commit','--quiet','-m','owned source')
+    manifest = root / 'forks/dsh/改造点指纹.json'; manifest.parent.mkdir(parents=True,exist_ok=True)
+    manifest.write_text(json.dumps({'upstream_merge_base':git('rev-parse','HEAD'),'count':0,'files':{}}))
+    module.GIT_OBJECTS = str(objects)
+
+
 class ReleasePackageTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='kvvi-package-test-'); self.addCleanup(self.temp.cleanup)
@@ -35,6 +51,7 @@ class ReleasePackageTests(unittest.TestCase):
         workspaces = ['vendor/*','packages/*/*','native/system','native/system/packages/*','apps/*','benchmarks','website','python/sdk-runtime']
         (self.root / 'vendor/dsh/package.json').write_text(json.dumps({'workspaces':workspaces}))
         (self.root / 'vendor/dsh/pnpm-workspace.yaml').write_text('packages:\n' + ''.join('  - ' + path + '\n' for path in workspaces))
+        register_runtime_source(self.module,self.root)
         self.assertEqual(self.call(self.module.build), 0)
         self.old = self.pair()
 
@@ -90,6 +107,7 @@ from pathlib import Path
 spec=importlib.util.spec_from_file_location('interrupted_package',sys.argv[1]);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 m.ROOT=sys.argv[2];m.OUT_DIR=str(Path(sys.argv[3]).parent);m.ARCHIVE=sys.argv[3];m.MANIFEST=sys.argv[4]
 m.RUNTIME_SOURCE=str(Path(sys.argv[2])/'vendor/dsh')
+m.GIT_OBJECTS=sys.argv[5]
 original=os.replace
 def interrupt(source,target):
  result=original(source,target)
@@ -98,7 +116,7 @@ def interrupt(source,target):
 os.replace=interrupt
 raise SystemExit(m.build())
 '''
-        child = subprocess.run([sys.executable, '-c', code, str(SCRIPT), str(self.root), self.module.ARCHIVE, self.module.MANIFEST],
+        child = subprocess.run([sys.executable, '-c', code, str(SCRIPT), str(self.root), self.module.ARCHIVE, self.module.MANIFEST, self.module.GIT_OBJECTS],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
         self.assertEqual(child.returncode, 73)
         self.assertNotEqual(self.call(self.module.check), 0)  # old source digest differs from the newly changed README

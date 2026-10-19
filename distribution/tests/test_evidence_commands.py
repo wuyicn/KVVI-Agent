@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class EvidenceCommandTests(unittest.TestCase):
     def test_quoted_writer_commands_are_accepted_and_argv_substitutions_are_rejected(self):
         with tempfile.TemporaryDirectory(prefix='kvvi-evidence-command-') as temporary:
-            owned = Path(temporary); source = owned / 'explicit source'; source.mkdir()
+            owned = Path(temporary); source = owned / 'explicit source'; source.mkdir(); objects = owned / 'git objects'; objects.mkdir()
             for number, stage in ((8,'阶段八'),(9,'阶段九'),(10,'阶段十'),(11,'阶段十一')):
                 with self.subTest(stage=stage):
                     path = ROOT / '工具' / ('check_stage' + str(number) + '.py')
@@ -25,7 +25,7 @@ class EvidenceCommandTests(unittest.TestCase):
                     else: classes = []
                     body = 'owned fixture only\n'; (owned / 'evidence.txt').write_text('$ fixture\n\n' + body)
                     arguments = ['python3','工具/check_stage' + str(number) + '.py','--run-only']
-                    if number == 11: arguments += ['--runtime-source',str(source)]
+                    if number == 11: arguments += ['--runtime-source',str(source),'--git-objects',str(objects)]
                     entry = {'stage':stage,'ok':True,'exitCode':0,'command':shlex.join(arguments),'evidence':'evidence.txt',
                         'digest':'sha256:' + hashlib.sha256(body.encode()).hexdigest(),'evidenceClasses':classes,'acceptanceHost':'clean-dir'}
                     def save(): reader.MANIFEST.write_text(json.dumps({'entries':[entry]}))

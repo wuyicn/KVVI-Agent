@@ -10,10 +10,9 @@ import os
 from pathlib import Path
 import re
 
-from .package_inventory import MAX_MANIFEST_BYTES, InventoryError, load_json, snapshot
+from .package_inventory import MAX_MANIFEST_BYTES, SOURCE_LIMITATIONS, InventoryError, load_json, snapshot
 from .runtime_source import qualify_source
 
-LIMITATIONS = ['source-executable-bits','dependencies','build-outputs','client-receipt','catalog-consumption','release-acceptance']
 
 
 def _reject(code):
@@ -29,7 +28,7 @@ def _root(value):
     return path
 
 
-def qualify_runtime_source(source, objects, trusted_manifest):
+def qualify_runtime_source(source, objects, trusted_manifest, *, include_source_rows=False):
     """Only a successful complete inventory yields a source binding record."""
     try:
         source = _root(source); objects = _root(objects)
@@ -38,7 +37,7 @@ def qualify_runtime_source(source, objects, trusted_manifest):
         manifest_row, body = snapshot(manifest_path, 'trusted-overlay-manifest.json', max_bytes=MAX_MANIFEST_BYTES)
         if manifest_row['type'] != 'file': raise ValueError()
         manifest = load_json(body)
-        result = qualify_source(source, objects, manifest)
+        result = qualify_source(source, objects, manifest, include_inventory=True) if include_source_rows is True else qualify_source(source, objects, manifest)
         after_row, after_body = snapshot(manifest_path, 'trusted-overlay-manifest.json', max_bytes=MAX_MANIFEST_BYTES)
         if after_row != manifest_row or after_body != body: return _reject('FIXED_SOURCE_INPUT_CHANGED')
         if not result['valid']: return _reject('FIXED_SOURCE_REJECTED')
@@ -47,11 +46,14 @@ def qualify_runtime_source(source, objects, trusted_manifest):
                 or result['inventoryProfile'] != 'kvvi-declared-source/v1'
                 or not re.fullmatch(r'sha256:[0-9a-f]{64}', result['inventoryDigest'])):
             return _reject('FIXED_SOURCE_REPORT_INVALID')
-        return {'valid':True, 'validationScope':'FIXED_DECLARED_SOURCE', 'releaseApproved':False,
+        binding = {'valid':True, 'validationScope':'FIXED_DECLARED_SOURCE', 'releaseApproved':False,
                 'baseline':manifest['upstream_merge_base'], 'overlayManifestSha256':manifest_row['sha256'],
                 'inventoryProfile':result['inventoryProfile'], 'inventoryDigest':result['inventoryDigest'],
                 'sourceEntryCount':count, 'excludedUnqualified':result['excludedUnqualified'],
-                'limitations':LIMITATIONS[:]}
+                'limitations':list(SOURCE_LIMITATIONS)}
+        if include_source_rows is True:
+            binding['sourceRows'] = result['sourceInventory']
+        return binding
     except (OSError, ValueError, TypeError, KeyError, RecursionError, InventoryError):
         return _reject('FIXED_SOURCE_INPUT_INVALID')
 

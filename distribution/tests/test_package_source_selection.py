@@ -24,6 +24,7 @@ class RuntimeSelectionTests(unittest.TestCase):
         shutil.copytree(self.root / 'vendor/dsh', selected)
         (selected / 'apps/cli/lib/bin.js').write_bytes(b'explicit new runtime\n')
         self.module.RUNTIME_SOURCE = str(selected)
+        preservation.register_runtime_source(self.module,self.root)
         return selected
 
     def test_every_runtime_archive_entry_comes_from_selected_root(self):
@@ -58,6 +59,7 @@ class RuntimeSelectionTests(unittest.TestCase):
                 package.write_text(json.dumps({'name':'invalid-entrypoint', 'main':main}))
                 hidden = package.parent / 'node_modules/hidden.js'; hidden.parent.mkdir(exist_ok=True); hidden.write_bytes(b'excluded')
                 self.assertTrue((package.parent / main).is_file())
+                preservation.register_runtime_source(self.module,self.root)
                 self.assertNotEqual(self.call(self.module.build), 0)
                 self.assertEqual(self.pair(), self.old)
 
@@ -84,6 +86,7 @@ class RuntimeSelectionTests(unittest.TestCase):
         self.module.RUNTIME_SOURCE = str(renamed)
         package = renamed / 'packages/new/selected/package.json'; package.parent.mkdir(parents=True)
         package.write_text(json.dumps({'name':'broken', 'main':'lib/missing.js'}))
+        preservation.register_runtime_source(self.module,self.root)
         self.assertNotEqual(self.call(self.module.build), 0); self.assertEqual(self.pair(), self.old)
 
     def test_absolute_main_and_unpacked_dependency_alias_cannot_claim_an_entrypoint(self):
@@ -93,6 +96,7 @@ class RuntimeSelectionTests(unittest.TestCase):
         for main in (str(real), 'node_modules/hidden.js'):
             with self.subTest(main=main):
                 package.write_text(json.dumps({'name':'not-portable', 'main':main}))
+                preservation.register_runtime_source(self.module,self.root)
                 self.assertNotEqual(self.call(self.module.build), 0); self.assertEqual(self.pair(), self.old)
 
     def test_all_declared_workspace_main_suffixes_must_be_present(self):
@@ -102,6 +106,7 @@ class RuntimeSelectionTests(unittest.TestCase):
             for suffix in ('.cjs','.mjs',''):
                 with self.subTest(relative=relative,suffix=suffix):
                     package.write_text(json.dumps({'name':'missing-entrypoint', 'main':'lib/missing' + suffix}))
+                    preservation.register_runtime_source(self.module,self.root)
                     self.assertNotEqual(self.call(self.module.build), 0); self.assertEqual(self.pair(), self.old)
             package.unlink()
 
@@ -109,9 +114,11 @@ class RuntimeSelectionTests(unittest.TestCase):
         selected = self.select_another(); package = selected / 'packages/new/selected/package.json'; package.parent.mkdir(parents=True)
         entry = package.parent / 'index.cjs'; entry.write_bytes(b'module.exports={fixture:true}\n')
         package.write_text('{"name":"present","main":"index.cjs","dependencies":{"same":"workspace:*","same":"workspace:*"}}')
+        preservation.register_runtime_source(self.module,self.root)
         self.assertEqual(self.call(self.module.build), 0); self.assertEqual(self.call(self.module.check), 0)
         previous = self.pair()
         package.write_text('{"main":"index.cjs","main":"missing.cjs"}')
+        preservation.register_runtime_source(self.module,self.root)
         self.assertNotEqual(self.call(self.module.build), 0); self.assertEqual(self.pair(), previous)
 
     def test_unsupported_workspace_selection_metadata_fails_closed(self):
@@ -119,12 +126,14 @@ class RuntimeSelectionTests(unittest.TestCase):
         for body in ('packages: [vendor/*]\n', 'packages:\n  - !vendor/*\n', 'packages:\n  - vendor/*\npackages:\n  - apps/*\n', "'packages':\n  - vendor/*\n", 'packages:\n  - extras#hidden\n'):
             with self.subTest(body=body):
                 yaml.write_text(body)
+                preservation.register_runtime_source(self.module,self.root)
                 self.assertNotEqual(self.call(self.module.build), 0); self.assertEqual(self.pair(), self.old)
 
     def test_portable_commonjs_workspace_main_loads_after_unpack(self):
         selected = self.select_another(); package = selected / 'vendor/portable/package.json'; package.parent.mkdir(parents=True)
         package.write_text(json.dumps({'name':'portable-fixture','main':'./index.cjs'}))
         (package.parent / 'index.cjs').write_bytes(b'module.exports={fixture:true}\n')
+        preservation.register_runtime_source(self.module,self.root)
         self.assertEqual(self.call(self.module.build), 0); self.assertEqual(self.call(self.module.check), 0)
         destination = self.root / 'unpacked'; destination.mkdir()
         extract = subprocess.run(['/usr/bin/tar','-xzf',self.module.ARCHIVE,'-C',str(destination)], capture_output=True, timeout=15)
@@ -139,6 +148,7 @@ class RuntimeSelectionTests(unittest.TestCase):
         self.module.RUNTIME_SOURCE = str(renamed)
         package = renamed / 'packages/new/selected/package.json'; package.parent.mkdir(parents=True)
         package.write_text(json.dumps({'name':'broken', 'main':'lib/missing.js'}))
+        preservation.register_runtime_source(self.module,self.root)
         self.assertNotEqual(self.call(self.module.build), 0); self.assertEqual(self.pair(), self.old)
 
     def test_counts_and_missing_main_use_only_the_selected_root(self):
@@ -156,14 +166,14 @@ class RuntimeSelectionTests(unittest.TestCase):
     def copy_owned_cli(self):
         directory = self.root / '工具'; (directory / 'lib').mkdir(parents=True)
         shutil.copy2(preservation.SCRIPT, directory / '发行包.py')
-        for name in ('package_outputs.py','package_inventory.py'):
+        for name in ('package_outputs.py','package_inventory.py','package_provenance.py','runtime_source.py'):
             shutil.copy2(preservation.SCRIPT.parent / 'lib' / name, directory / 'lib' / name)
         return directory / '发行包.py'
 
     def test_cli_requires_explicit_source_and_rejects_conflicting_actions(self):
         script = self.copy_owned_cli()
         archive = self.root / '交付/发行/kvvi-macos-pilot.tar.gz'
-        for arguments in (['--build'], ['--check'], ['--build','--check','--runtime-source',str(self.root / 'vendor/dsh')]):
+        for arguments in (['--build'], ['--check'], ['--build','--check','--runtime-source',str(self.root / 'vendor/dsh')], ['--build','--runtime-source',str(self.root / 'vendor/dsh')]):
             with self.subTest(arguments=arguments):
                 result = subprocess.run([sys.executable,str(script),*arguments], capture_output=True, timeout=15)
                 self.assertNotEqual(result.returncode, 0); self.assertFalse(archive.exists())
@@ -171,7 +181,7 @@ class RuntimeSelectionTests(unittest.TestCase):
     def test_cli_build_and_check_take_the_explicit_tree_including_space_paths(self):
         selected = self.select_another(); script = self.copy_owned_cli()
         for action in ('--build','--check'):
-            result = subprocess.run([sys.executable,str(script),action,'--runtime-source',str(selected)], capture_output=True, timeout=15)
+            result = subprocess.run([sys.executable,str(script),action,'--runtime-source',str(selected),'--git-objects',self.module.GIT_OBJECTS], capture_output=True, timeout=15)
             self.assertEqual(result.returncode, 0, result.stdout.decode(errors='replace'))
         with tarfile.open(self.root / '交付/发行/kvvi-macos-pilot.tar.gz') as archive:
             with archive.extractfile(self.module.TOP + '/vendor/dsh/apps/cli/lib/bin.js') as handle:
@@ -191,24 +201,24 @@ class RuntimeSelectionTests(unittest.TestCase):
             calls.append(command)
             return subprocess.CompletedProcess(command,0,stdout='',stderr='')
         with patch.object(g9,'run',side_effect=execute), contextlib.redirect_stdout(io.StringIO()):
-            g9.ensure_archive(str(selected))
+            g9.ensure_archive(str(selected),self.module.GIT_OBJECTS)
         self.assertEqual(len(calls),2)
         for command in calls:
-            self.assertEqual(command[-2:], ['--runtime-source',str(selected)])
+            self.assertEqual(command[-4:], ['--runtime-source',str(selected),'--git-objects',self.module.GIT_OBJECTS])
 
     def test_evidence_collection_and_stage11_dispatch_forward_explicit_source(self):
         script = preservation.SCRIPT.parent / '验收证据包.py'
         spec = importlib.util.spec_from_file_location('owned_evidence',script); evidence = importlib.util.module_from_spec(spec); spec.loader.exec_module(evidence)
         selected = str(self.select_another())
         for flag, method in ((None,'collect'),('--append-stage11','append_stage11'),('--refresh-stage11','refresh_stage11')):
-            arguments = ['owned-evidence'] + ([flag] if flag else []) + ['--runtime-source',selected]
+            arguments = ['owned-evidence'] + ([flag] if flag else []) + ['--runtime-source',selected,'--git-objects',self.module.GIT_OBJECTS]
             with self.subTest(method=method), patch.object(evidence,method,return_value=0) as called, patch.object(sys,'argv',arguments):
-                self.assertEqual(evidence.main(), 0); called.assert_called_once_with(selected)
+                self.assertEqual(evidence.main(), 0); called.assert_called_once_with(selected,self.module.GIT_OBJECTS)
         for method in (evidence.append_stage11, evidence.refresh_stage11):
             with patch.object(evidence,'_write_stage',return_value=0) as write:
-                self.assertEqual(method(selected), 0)
+                self.assertEqual(method(selected,self.module.GIT_OBJECTS), 0)
                 command = write.call_args.args[2][0][1]
-                self.assertEqual(command[-2:], ['--runtime-source',selected])
+                self.assertEqual(command[-4:], ['--runtime-source',selected,'--git-objects',self.module.GIT_OBJECTS])
 
 
 if __name__ == '__main__':

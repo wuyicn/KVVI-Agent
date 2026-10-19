@@ -747,3 +747,24 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `package-provenance-final39.log`：`ce2619f2ddce74255e7b60b482d54dcfc32f93b0edda68ba48d70d5df33c7ee6`。
 - `package-provenance-fresh-final.json`：`643d3a133e240eafe5edbad41ff45da05098e99ffdd7263a0b2e94736931c63a`。
 - `package-provenance-legacy-final.json`：`5f2ed90e1b92a113b7204ff66d646f70436be7308f7a246b0cf00974867a2aa4`。
+
+
+## 批次48：固定源码绑定最终候选与G9
+
+- 发行格式升为kvvi-macos-pilot/v3，旧v1/v2拒绝；build/check及G9采集/append/refresh均要求显式runtime-source与git-objects，可信G2路径由仓库工具固定。candidate前后完整源码资格相同，内外manifest绑定同一sourceQualification；记录仍releaseApproved:false，依赖、exec位、build、client receipt、目录消费与发行验收仍未鉴定。
+- 完整source checker新增仅成功时可选私有sourceInventory，provenance显式传出sourceRows供内部绑定，不将12196行表扩充到发行manifest。校验表的完整count、排序、唯一安全路径/type/hash及canonical摘要后，最终candidate中所有declared source的type/实际body或linktext SHA必须匹配；按打包策略必收源项不得遗漏，新增runtime路径仅限明确未鉴定输出排除范围。
+- 初5组先RED（5失败/1错误）。两位独立复核先后实证source临时改字节/漏收后恢复、metadata临时移除main、workspace glob暂漏、最终candidate暂缺generated main仍可发布；分别补真实反例先RED，再将正文/集合/元数据绑定同一可信表，从表枚举workspace，最终入口检查使用candidate行集。追加目录link伪装main的RED后，复用逐组件链接解析，只接受在candidate内最终解析到regular file的入口；指向已打包普通文件的link正例保留。
+- G9记录精确7 argv，两个显式目录均必需，证据reader仍仅解析不执行；self-test创建自己的Git对象、G2及最小runtime，调用方资产不参与。CLI/证据/CI同步；未执行真实collector、真实发行build/check/self-test或历史证据刷新。
+- 最终8模块联合92项在Python3.12/系统3.9.6以-W error::ResourceWarning全部通过、exit0（22.799/23.497秒）；两位只读复核分别最新91/91和最终92/92闭环，未发现新增阻断。clone错误行仍是受控timeout反例预期。冻结7文件摘要全通过。平台未改，最近全平台仍批次40的810项。
+- 实际新树仅只读source/candidate快照绑定：12196源项全部匹配，collect16045项，其中2868 runtime输出仍未鉴定，main缺失0，source digest e5bd0355fdf46668f7df25509a2c2ea48dfc75623a2ad49d9975fe3ebac99b9e。没有生成包、覆盖输出、重启/部署试点或真实模型验收；完整构建/目录收据继续下一批，整体12项仍不勾选。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `package-source-gate-red.log`：`6142ed72a14ab92a262a4e91191a8a9e543e9482afd92381adae53d72c6784c9`。
+- `package-source-aba-red.log`：`3ebf215df1d496084299680bf4f902fb596a85852b9a372d93114c689d601b02`。
+- `package-source-omission-red.log`：`309e006e3461900cf556117315b9f39ef8ec97dedb3fa6a2e5db8e7be09c8dc5`。
+- `package-source-metadata-aba-red.log`：`d8a9c959c43056727370a015dba2edeba818e6fa3cca7e0738263c1f5491d006`。
+- `package-source-main-sets-red.log`：`ba6537f77832e214e7ab026981f69cd60c0a589189f62f172839120088f88404`。
+- `package-candidate-main-type-red.log`：`97a3320cd095c3dc8fe4e10b3583e246d404478b1dd93326b61408b4a72e7293`。
+- `package-source-gate-final312-2.log`：`e441765cc41005eeee6e78218968717ae7333f8b495fab3e60897b9312c46033`。
+- `package-source-gate-final39-2.log`：`ef391a99faa8d76e4069229ebf6e2d71868346a8d7a575b725c45e4a90782484`。
+- `package-source-row-binding-fresh-final2.json`：`601c564e9183ae934467e3643b70a5f97ad598a06505ffb1eec31a78de799701`。

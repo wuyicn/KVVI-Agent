@@ -28,7 +28,7 @@
 
 用法：
 
-    python3 工具/验收证据包.py --runtime-source /absolute/qualified-dsh
+    python3 工具/验收证据包.py --runtime-source /absolute/qualified-dsh --git-objects /absolute/dsh-objects
     python3 工具/验收证据包.py --verify          # 只复核证据包与指纹
     python3 工具/验收证据包.py --append-stage8   # 保留旧条目，只追加 G6
     python3 工具/验收证据包.py --refresh-stage8  # 仅复验并替换尚未交付的 G6
@@ -36,8 +36,8 @@
     python3 工具/验收证据包.py --refresh-stage9  # 仅复验并替换尚未交付的 G7
     python3 工具/验收证据包.py --append-stage10  # 保留旧条目，只追加 G8
     python3 工具/验收证据包.py --refresh-stage10 # 仅复验并替换尚未交付的 G8
-    python3 工具/验收证据包.py --append-stage11 --runtime-source /absolute/qualified-dsh
-    python3 工具/验收证据包.py --refresh-stage11 --runtime-source /absolute/qualified-dsh
+    python3 工具/验收证据包.py --append-stage11 --runtime-source /absolute/qualified-dsh --git-objects /absolute/dsh-objects
+    python3 工具/验收证据包.py --refresh-stage11 --runtime-source /absolute/qualified-dsh --git-objects /absolute/dsh-objects
 """
 
 import hashlib
@@ -136,15 +136,20 @@ STAGE11 = ('阶段十一', '私有化发行版闭环', [
 ])
 
 
-def selected_stage11(runtime_source):
+def selected_stage11(runtime_source, git_objects):
     """Construct the G9 invocation only from an explicit administrator selection."""
     if not isinstance(runtime_source, str) or not os.path.isabs(runtime_source) or '..' in runtime_source.split(os.sep):
         raise ValueError('G9_RUNTIME_SOURCE_REQUIRED_OR_INVALID')
     runtime_source = os.path.normpath(runtime_source)
     if os.path.islink(runtime_source) or not os.path.isdir(runtime_source):
         raise ValueError('G9_RUNTIME_SOURCE_REQUIRED_OR_INVALID')
+    if not isinstance(git_objects,str) or not os.path.isabs(git_objects) or '..' in git_objects.split(os.sep):
+        raise ValueError('G9_GIT_OBJECTS_REQUIRED_OR_INVALID')
+    git_objects = os.path.normpath(git_objects)
+    if os.path.islink(git_objects) or not os.path.isdir(git_objects):
+        raise ValueError('G9_GIT_OBJECTS_REQUIRED_OR_INVALID')
     stage, title, checks = STAGE11
-    return stage, title, [(name, [*command, '--runtime-source', runtime_source]) for name, command in checks]
+    return stage, title, [(name, [*command, '--runtime-source', runtime_source, '--git-objects', git_objects]) for name, command in checks]
 
 STAGE11_SOURCES = [
     'distribution/bin/kvvi-admin',
@@ -166,6 +171,9 @@ STAGE11_SOURCES = [
     '工具/发行包.py',
     '工具/lib/package_outputs.py',
     '工具/lib/package_inventory.py',
+    '工具/lib/package_provenance.py',
+    '工具/lib/runtime_source.py',
+    'forks/dsh/改造点指纹.json',
     '工具/check_stage11.py',
     '安装手册.md',
 ]
@@ -233,8 +241,8 @@ def run(cmd, timeout=3600):
     return subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=timeout)
 
 
-def collect(runtime_source) -> int:
-    all_stages = STAGES + [STAGE8, STAGE9, STAGE10, selected_stage11(runtime_source)]
+def collect(runtime_source,git_objects) -> int:
+    all_stages = STAGES + [STAGE8, STAGE9, STAGE10, selected_stage11(runtime_source,git_objects)]
     os.makedirs(EVID, exist_ok=True)
     entries = []
     failed = []
@@ -420,18 +428,18 @@ def append_stage10() -> int:
     return _write_stage(*STAGE10, STAGE10_SOURCES, classes, replace=False)
 
 
-def append_stage11(runtime_source) -> int:
+def append_stage11(runtime_source,git_objects) -> int:
     """只追加阶段十一；既有阶段、条目与证据文件不重跑、不改写。"""
     classes = ['preflight', 'install', 'runtime', 'bootstrap', 'user_journey',
                'backup_restore', 'uninstall', 'no_repo_leak']
-    return _write_stage(*selected_stage11(runtime_source), STAGE11_SOURCES, classes, replace=False)
+    return _write_stage(*selected_stage11(runtime_source,git_objects), STAGE11_SOURCES, classes, replace=False)
 
 
-def refresh_stage11(runtime_source) -> int:
+def refresh_stage11(runtime_source,git_objects) -> int:
     """只复验阶段十一；历史阶段的记录与证据文件保持逐字节不变。"""
     classes = ['preflight', 'install', 'runtime', 'bootstrap', 'user_journey',
                'backup_restore', 'uninstall', 'no_repo_leak']
-    return _write_stage(*selected_stage11(runtime_source), STAGE11_SOURCES, classes, replace=True)
+    return _write_stage(*selected_stage11(runtime_source,git_objects), STAGE11_SOURCES, classes, replace=True)
 
 
 def refresh_stage10() -> int:
@@ -492,16 +500,17 @@ def main() -> int:
     for action in ('refresh-stage11','append-stage11','refresh-stage10','append-stage10','refresh-stage9','append-stage9','refresh-stage8','append-stage8','verify'):
         actions.add_argument('--' + action, action='store_true')
     parser.add_argument('--runtime-source')
+    parser.add_argument('--git-objects')
     args = parser.parse_args()
     if args.refresh_stage11 or args.append_stage11:
-        if args.runtime_source is None: parser.error('阶段十一必须显式指定 --runtime-source')
-        return refresh_stage11(args.runtime_source) if args.refresh_stage11 else append_stage11(args.runtime_source)
+        if args.runtime_source is None or args.git_objects is None: parser.error('阶段十一必须显式指定 --runtime-source 和 --git-objects')
+        return refresh_stage11(args.runtime_source,args.git_objects) if args.refresh_stage11 else append_stage11(args.runtime_source,args.git_objects)
     for stage in (10,9,8):
         if getattr(args, 'refresh_stage' + str(stage)): return globals()['refresh_stage' + str(stage)]()
         if getattr(args, 'append_stage' + str(stage)): return globals()['append_stage' + str(stage)]()
     if args.verify: return verify()
-    if args.runtime_source is None: parser.error('完整采集必须显式指定 --runtime-source')
-    return collect(args.runtime_source)
+    if args.runtime_source is None or args.git_objects is None: parser.error('完整采集必须显式指定 --runtime-source 和 --git-objects')
+    return collect(args.runtime_source,args.git_objects)
 
 
 

@@ -7,11 +7,13 @@ import hashlib
 from collections import deque
 import json
 import os
+import re
 from pathlib import PurePosixPath
 import stat
 import unicodedata
 
-VERSION = 'kvvi-macos-pilot/v2'
+VERSION = 'kvvi-macos-pilot/v3'
+SOURCE_LIMITATIONS = ('source-executable-bits','dependencies','build-outputs','client-receipt','catalog-consumption','release-acceptance')
 INTERNAL = '发行包清单.json'
 MAX_MANIFEST_BYTES = 16 * 1024 * 1024
 
@@ -81,23 +83,38 @@ def validate_rows(rows):
     directories = {str(parent) for name in names for parent in PurePosixPath(name).parents if str(parent) != '.'}
     if directories & names.keys(): fail()  # no file or link may also be an ancestor
     for path, row in names.items():
-        if row['type'] != 'symlink': continue
-        stack = path.split('/')[:-1]; pending = deque(_target(path, row['target']).split('/')); expansions = 0
-        while pending:
-            component = pending.popleft()
-            if component in ('', '.'): continue
-            if component == '..':
-                if not stack: fail()
-                stack.pop(); continue
-            stack.append(component); prefix = '/'.join(stack); entry = names.get(prefix)
-            if entry and entry['type'] == 'symlink':
-                expansions += 1
-                if expansions > 64: fail()
-                stack.pop(); pending.extendleft(reversed(_target(prefix, entry['target']).split('/')))
-            elif entry:
-                if pending: fail()  # regular file is not traversable, even before /..
-            elif prefix not in directories: fail()
+        if row['type'] == 'symlink': _resolve_link(path,row['target'],names,directories)
     return rows
+
+
+def _resolve_link(path,target,names,directories):
+    stack = path.split('/')[:-1]; pending = deque(_target(path,target).split('/')); expansions = 0
+    while pending:
+        component = pending.popleft()
+        if component in ('', '.'): continue
+        if component == '..':
+            if not stack: fail()
+            stack.pop(); continue
+        stack.append(component); prefix = '/'.join(stack); entry = names.get(prefix)
+        if entry and entry['type'] == 'symlink':
+            expansions += 1
+            if expansions > 64: fail()
+            stack.pop(); pending.extendleft(reversed(_target(prefix, entry['target']).split('/')))
+        elif entry:
+            if pending: fail()  # regular file is not traversable, even before /..
+        elif prefix not in directories: fail()
+    return '/'.join(stack)
+
+
+def regular_entry_paths(rows):
+    validate_rows(rows)
+    names = {row['path']:row for row in rows}
+    directories = {str(parent) for name in names for parent in PurePosixPath(name).parents if str(parent) != '.'}
+    result = set()
+    for path,row in names.items():
+        target = path if row['type'] == 'file' else _resolve_link(path,row['target'],names,directories)
+        if names.get(target,{}).get('type') == 'file': result.add(path)
+    return result
 
 
 def content_digest(rows):
@@ -128,8 +145,58 @@ def snapshot(absolute, relative, max_bytes=None):
     return {'path':relative, 'type':'file', 'mode':mode, 'bytes':len(body), 'sha256':'sha256:' + hashlib.sha256(body).hexdigest()}, body
 
 
-def internal_manifest(rows):
-    return {'bundleVersion':VERSION, 'fileCount':len(rows), 'contentDigest':content_digest(rows), 'entries':rows}
+def validate_source_qualification(value):
+    fields = {'valid','validationScope','releaseApproved','baseline','overlayManifestSha256','inventoryProfile','inventoryDigest','sourceEntryCount','excludedUnqualified','limitations'}
+    if not isinstance(value,dict) or set(value) != fields: fail()
+    if value['valid'] is not True or value['releaseApproved'] is not False or value['validationScope'] != 'FIXED_DECLARED_SOURCE' or value['inventoryProfile'] != 'kvvi-declared-source/v1': fail()
+    if not isinstance(value['baseline'],str) or not re.fullmatch(r'[0-9a-f]{40}',value['baseline']): fail()
+    for key in ('overlayManifestSha256','inventoryDigest'):
+        if not isinstance(value[key],str) or not re.fullmatch(r'sha256:[0-9a-f]{64}',value[key]): fail()
+    if type(value['sourceEntryCount']) is not int or value['sourceEntryCount'] < 1 or value['limitations'] != list(SOURCE_LIMITATIONS): fail()
+    excluded = value['excludedUnqualified']
+    if not isinstance(excluded,list): fail()
+    for path in excluded: _path(path)
+    if excluded != sorted(set(excluded)): fail()
+
+
+def internal_manifest(rows, source_qualification):
+    validate_source_qualification(source_qualification)
+    return {'bundleVersion':VERSION, 'fileCount':len(rows), 'contentDigest':content_digest(rows), 'entries':rows, 'sourceQualification':source_qualification}
+
+
+def fixed_source_index(source_rows, qualification):
+    """Validate the complete private table before any metadata uses its hashes."""
+    validate_source_qualification(qualification)
+    if not isinstance(source_rows,list) or len(source_rows) != qualification['sourceEntryCount']: fail()
+    expected = {}
+    for row in source_rows:
+        if not isinstance(row,list) or len(row) != 3: fail()
+        path, kind, digest = row; _path(path)
+        if path in expected or kind not in ('file','symlink') or not isinstance(digest,str) or not re.fullmatch('[0-9a-f]{64}',digest): fail()
+        expected[path] = (kind,digest)
+    if [row[0] for row in source_rows] != sorted(expected,key=lambda path:path.encode('utf-8')): fail()
+    digest = 'sha256:' + hashlib.sha256(json.dumps(source_rows,ensure_ascii=False,separators=(',',':')).encode('utf-8')).hexdigest()
+    if digest != qualification['inventoryDigest']: fail()
+    return expected
+
+
+def bind_fixed_source_rows(rows, source_rows, qualification, included_source_paths):
+    """Compare candidate bytes with the actual fully verified source inventory."""
+    expected = fixed_source_index(source_rows,qualification)
+    if not isinstance(included_source_paths,set) or not included_source_paths <= expected.keys(): fail()
+    candidate_paths = {row['path'][len('vendor/dsh/'):] for row in rows if row['path'].startswith('vendor/dsh/')}
+    if not included_source_paths <= candidate_paths: fail()
+    excluded = qualification['excludedUnqualified']
+    for row in rows:
+        if not row['path'].startswith('vendor/dsh/'): continue
+        path = row['path'][len('vendor/dsh/'):]
+        if path in expected:
+            kind, digest = expected[path]
+            if kind != row['type']: fail()
+            actual = row['sha256'][7:] if kind == 'file' else hashlib.sha256(row['target'].encode('utf-8')).hexdigest()
+            if actual != digest: fail()
+        elif not any(path == root or path.startswith(root + '/') for root in excluded):
+            fail()  # a transient unregistered source path cannot masquerade as a build output
 
 
 def verify_archive(tar, top, rows, internal):
@@ -159,7 +226,8 @@ def verify_archive(tar, top, rows, internal):
     actual.sort(key=lambda row:row['path'])
     if seen != set(expected) | {top + '/' + INTERNAL} or actual != rows or inner != internal: fail()
     # Equality alone is permissive for JSON bool/int. Independently validate the embedded shape.
-    if not isinstance(inner, dict) or set(inner) != {'bundleVersion','fileCount','contentDigest','entries'} or type(inner['fileCount']) is not int: fail()
+    if not isinstance(inner, dict) or set(inner) != {'bundleVersion','fileCount','contentDigest','entries','sourceQualification'} or type(inner['fileCount']) is not int: fail()
+    validate_source_qualification(inner['sourceQualification'])
     if content_digest(inner['entries']) != inner['contentDigest']: fail()
     if tar.pax_headers: fail()
     # Consume the gzip stream through its CRC/footer, and reject a second tar or

@@ -53,7 +53,7 @@ def _regular(root, rel):
     return body
 
 
-def qualify_source(source, objects, manifest):
+def qualify_source(source, objects, manifest, *, include_inventory=False):
     """Selected roots are administrator controlled; this is not an atomic tree snapshot.
 
     Git blob hashing uses original bytes. Public contract c14n is not used for
@@ -67,11 +67,14 @@ def qualify_source(source, objects, manifest):
     def report(expected=None):
         rows = sorted(inventory, key=lambda x: x[0].encode('utf-8'))
         digest = hashlib.sha256(json.dumps(rows, ensure_ascii=False, separators=(',', ':')).encode('utf-8')).hexdigest()
-        return {'valid': not errors, 'validationScope': 'DECLARED_SOURCE_INVENTORY', 'releaseApproved': False,
+        result = {'valid': not errors, 'validationScope': 'DECLARED_SOURCE_INVENTORY', 'releaseApproved': False,
                 'sourceEntryCount': len(expected or {}), 'matchedEntryCount': len(rows),
                 'inventoryProfile': 'kvvi-declared-source/v1', 'inventoryDigest': 'sha256:' + digest,
                 'errors': sorted(errors, key=lambda x: (x['path'], x['code'])),
                 'excludedUnqualified': sorted(excluded)}
+        if not errors and include_inventory is True:
+            result['sourceInventory'] = rows
+        return result
 
     try:
         source = Path(source)
