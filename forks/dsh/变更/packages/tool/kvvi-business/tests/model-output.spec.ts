@@ -7,7 +7,12 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context, Service } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
-import { ToolCallId } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { ToolCallId } from '@deepseek-ai/dsh-llm'
+import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
+import AgentLoop from '@deepseek-ai/dsh-agent-loop'
+import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import ApprovalService from '@deepseek-ai/dsh-user-approval'
 import SystemPrompt, { renderContextSections } from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import * as Business from '../src/index.ts'
@@ -40,6 +45,7 @@ class TestMode extends Service {
 }
 
 let ctx: Context | undefined
+let fixtureAgent: Agent | undefined
 let root: string | undefined
 let server: ReturnType<typeof createServer> | undefined
 let routeResponse: ((path: string) => unknown) | undefined
@@ -51,6 +57,7 @@ const requests: { method: string | undefined; url: string | undefined; body: str
 afterEach(async () => {
   await ctx?.fiber.dispose()
   ctx = undefined
+  fixtureAgent = undefined
   if (server !== undefined) {
     server.closeAllConnections()
     await new Promise<void>((resolve, reject) => server?.close(error => error ? reject(error) : resolve()))
@@ -64,7 +71,7 @@ afterEach(async () => {
   holdResponse = false
 })
 
-async function boot() {
+async function boot(withApproval = false) {
   server = createServer(async (req, res) => {
     let body = ''
     for await (const chunk of req) body += String(chunk)
@@ -89,6 +96,12 @@ async function boot() {
     `    contextSecret: ${SECRET}`, '',
   ].join('\n'))
   ctx = new Context()
+  if (withApproval) {
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(AgentRegistry)
+  }
   ctx.baseUrl = pathToFileURL(root).href + '/'
   await ctx.plugin(Loader)
   ctx.loader.builtins.include = Include
@@ -105,12 +118,22 @@ async function boot() {
   await ctx.loader.create({ name: 'cordis:include', config: { path: pathToFileURL(configPath).href } })
   await ctx.loader.await()
   for (const entry of ctx.loader.entries()) await entry.fiber?.await()
+  if (withApproval) {
+    await ctx.plugin(AgentLoop, { agents: [] })
+    await ctx.plugin(ApprovalService)
+    // Transport fixture accepts this exact request; refusal/one-shot semantics
+    // are exercised separately by the confirmation tests and real mode router.
+    ctx.on('approval/request', async () => 'allowed-once' as const)
+    fixtureAgent = (await ctx.agents.create({ sessionId: SessionId('signed-transport-test') })).agent
+    fixtureAgent.session.append('turn/start', { turn: 1 })
+  }
   return ctx
 }
 
 async function execute(name: string, args: Record<string, unknown>) {
   if (ctx === undefined) throw new Error('test context not booted')
-  return ctx.tools.execute({ name, arguments: args, callId: ToolCallId(name), signal: new AbortController().signal })
+  return ctx.tools.execute({ name, arguments: args, callId: ToolCallId(name),
+    signal: new AbortController().signal, ...fixtureAgent === undefined ? {} : { agent: fixtureAgent } })
 }
 
 describe('employee tools through real Loader and signed platform transport', () => {
@@ -134,7 +157,7 @@ describe('employee tools through real Loader and signed platform transport', () 
     ['workflow_act', { system: 'customer', id: RECORD.recordNo, action: 'follow', rowVersion: 7 }, { recordId: RECORD.recordId, from: 'not_followed', state: 'followed', rowVersion: 8 }, `/systems/customer/records/${RECORD.recordNo}/transitions`, 'POST'],
   ] as const)('%s sends complete authorized values to the model, in one request', async (name, args, value, path, method) => {
     response = value
-    await boot()
+    await boot(name === 'workflow_act')
     const result = await execute(name, args)
     expect(result.isError, JSON.stringify(result.content)).toBe(false)
     expect(result.content).toEqual([{ type: 'text', text: JSON.stringify(value) }])

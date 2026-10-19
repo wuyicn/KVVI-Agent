@@ -108,3 +108,13 @@
 - MetaSchema结构测试最初因系统Python3.9缺jsonschema失败；在独立Python3.12 venv按现有requirements.lock及哈希安装后，结构6/6通过。冻结清单与依赖版本未改。
 - 独立fixed-dsh按现有锁文件离线安装，使用实际pnpm11.7.0，exit0；mode-router/business/publish三包基线6文件81测试通过。这是固定源测试，不是原vendor已更新或试点已部署。
 - efde7293的九份Web fixture当前blob已相同，删除核对已有等效测试；原8184报告副本相同，无需覆盖。b146的后台身份/确认与有损装订拒绝仍需继续整合，任务0不关闭。
+
+## 批次8：后台Agent身份与流程逐次确认
+
+- 从b14647a4按行为整合WeakMap/ALS后台身份绑定与workflow_act执行器逐次allowed-once确认，保留当前builder-preview/business-directory/system-context接线；参数、记录、动作、版本及原身份在确认前冻结，迟到确认后复核取消和身份。
+- 先导入旧反例，当前实现21项RED；补实现后8文件106/106通过、exit0。测试create现在返回真实SessionCreateValue形状，从Agent registry取Agent并窄化unknown；没有照搬旧implicit-any或把返回值当Agent的断言。HTTP输出测试增加真实Agent/ApprovalService及开放turn，其自动确认仅为传输夹具，不当作人工验收。
+- 独立复核未发现增量生产绕过；发现旧包脚本会缩到tools.spec.ts，已恢复整个tests目录，保留model-output.spec.ts默认覆盖。
+- 固定pnpm11.7.0离线安装使用frozen-lockfile；锁文件仅新增workspace importer links，外部解析版本未刷新。
+- 在独立registered-fork从固定基线及镜像建立可核对Git提交，用现有G2生成器生成242路径指纹；G2登记52条/242路径全匹配；新鲜重建234覆盖+8删除全部匹配。原vendor未改；内层仓库没有向任何remote推送。
+- 根host类型检查exit2，共284条诊断；本批两包无诊断。主要是既有Context上的SessionControllerLike/AgentPresetsLike窄声明污染真实服务面；任务11仍须修复，不能将包测试通过写成完整构建通过。
+- 未执行真实DeepSeek：当前进程无DEEPSEEK_API_KEY，工作区settings无DeepSeek配置。已向用户询问安全配置位置，继续独立任务；没有读取聊天中的密钥、调用付费模型、更新试点或刷新历史快照。

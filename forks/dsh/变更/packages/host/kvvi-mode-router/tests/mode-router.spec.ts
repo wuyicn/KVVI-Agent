@@ -8,6 +8,15 @@ import TypertGatewayService, {
 } from '@deepseek-ai/dsh-api-gateway'
 import WebServer from '@deepseek-ai/dsh-host-webserver'
 import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
+import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
+import AgentLoop from '@deepseek-ai/dsh-agent-loop'
+import LlmRuntime, { ToolCallId } from '@deepseek-ai/dsh-llm'
+import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
+import ApprovalService from '@deepseek-ai/dsh-user-approval'
+import * as business from '@deepseek-ai/dsh-tool-kvvi-business'
 import {
   assertOwnedSessionId, assertPresetAllowed, authorizeRuntimeRequest,
   enforceCreateRequest, filterControlFrame, KvviModeRouter, ownedSessionId,
@@ -78,6 +87,245 @@ Promise<{ socket: WebSocket; frames: Record<string, unknown>[] }> {
   })
   return { socket, frames }
 }
+
+async function toolHarness() {
+  const ctx = new Context()
+  await ctx.plugin(LlmRuntime)
+  await ctx.plugin(SessionStore)
+  await ctx.plugin(SessionProjectionRegistry)
+  await ctx.plugin(SystemPrompt)
+  await ctx.plugin(ToolRuntime)
+  await ctx.plugin(AgentRegistry)
+  await ctx.plugin(AgentLoop, { agents: [] })
+  await ctx.plugin(ApprovalService)
+  ctx.provide('connection' as never, {} as never)
+  const disposers = new Map<Agent, () => Promise<void>>()
+  ctx.provide('sessionController', {
+    create: async (request: Parameters<Context['sessionController']['create']>[0]) => {
+      const handle = await ctx.agents.create({
+        sessionId: SessionId(request.sessionId!), meta: { agentPreset: request.agentPreset! },
+      })
+      disposers.set(handle.agent, () => handle.dispose())
+      return { sessionId: handle.agent.id, agentPreset: request.agentPreset }
+    },
+    list: async () => ({ items: [] }),
+    search: async () => ({ items: [] }),
+    control: async function * () {},
+  })
+  ctx.provide('agentPresets', {
+    select: async (_agent: unknown, requested: string) => requested,
+    remoteExportList: async () => ({ presets: [], authorable: false, modeSelectionEnabled: false }),
+  })
+  const router = await ctx.plugin(KvviModeRouter, { secret })
+  const observed: string[] = []
+  ctx.tools.register(defineTool({
+    name: 'identity_probe', description: 'Read the runtime platform identity', parameters: {},
+    output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+    async execute() {
+      await Promise.resolve()
+      const mode = ctx.kvviModeRouter.requireMode()
+      observed.push(mode.sessionId)
+      return mode.sessionId
+    },
+  }))
+  const request = async (identity: Parameters<typeof signModeHeaders>[0], next: () => Promise<void>) => {
+    const response = { writeHead: () => response, end: () => response }
+    await ctx.waterfall('connection/request', { headers: signModeHeaders(identity, secret) } as never,
+      response as never, next)
+  }
+  const create = async (identity: Parameters<typeof signModeHeaders>[0], id: string) => {
+    let agent!: Agent
+    await request(identity, async () => {
+      const created = await ctx.sessionController.create({ sessionId: SessionId(id) })
+      if (typeof created !== 'object' || created === null
+        || typeof Reflect.get(created, 'sessionId') !== 'string') throw new Error('invalid create result')
+      agent = ctx.agents.get(SessionId(String(Reflect.get(created, 'sessionId'))))!
+    })
+    return agent
+  }
+  const execute = (agent?: Agent, args: unknown = {}) => ctx.tools.execute({
+    signal: new AbortController().signal, callId: ToolCallId('probe'),
+    name: 'identity_probe', arguments: args, ...agent === undefined ? {} : { agent },
+  })
+  const dispose = (agent: Agent) => disposers.get(agent)!()
+  return { ctx, router, request, create, execute, dispose, observed }
+}
+
+describe('KVVI background tool identity', () => {
+  it('recovers the original platform session for pre-execute, approval and dispatch after the request ends', async () => {
+    const { ctx, create, execute } = await toolHarness()
+    try {
+      const agent = await create(context, 'background')
+      agent.session.append('turn/start', { turn: 1 })
+      expect(() => ctx.kvviModeRouter.requireMode()).toThrow('KVVI_RUNTIME_CONTEXT_REQUIRED')
+      const stages: string[] = []
+      ctx.on('tools/pre-execute', async (_exec, _next) => {
+        stages.push(`pre:${ctx.kvviModeRouter.requireMode().sessionId}`)
+        return { kind: 'ask' }
+      })
+      ctx.on('approval/request', async (_req, _next) => {
+        stages.push(`approval:${ctx.kvviModeRouter.requireMode().sessionId}`)
+        return 'allowed-once'
+      })
+      const result = await execute(agent)
+      expect(result.isError).toBe(false)
+      expect(result.value).toBe(context.sessionId)
+      expect(stages).toEqual([`pre:${context.sessionId}`, `approval:${context.sessionId}`])
+      expect(() => ctx.kvviModeRouter.requireMode()).toThrow('KVVI_RUNTIME_CONTEXT_REQUIRED')
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('refuses an unknown agent despite a valid-looking namespace or model-supplied identity', async () => {
+    const { ctx, execute, observed } = await toolHarness()
+    try {
+      const mode = { ...context, preset: 'kvvi-worker' as const, issuedAt: 1 }
+      const agent = (await ctx.agents.create({ sessionId: SessionId(ownedSessionId(mode, 'unverified')) })).agent
+      for (const candidate of [agent, undefined]) {
+        const result = await execute(candidate, { ...context })
+        expect(result.isError).toBe(true)
+        expect(result.error?.message).toBe('KVVI_RUNTIME_CONTEXT_REQUIRED')
+      }
+      expect(observed).toEqual([])
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('refuses a different current caller session even in the same owner namespace', async () => {
+    const { ctx, create, request, execute, observed } = await toolHarness()
+    try {
+      const agent = await create(context, 'original')
+      await request({ ...context, sessionId: 'another-platform-session' }, async () => {
+        const result = await execute(agent)
+        expect(result.isError).toBe(true)
+        expect(result.error?.message).toBe('KVVI_SESSION_ACCESS_DENIED')
+      })
+      expect(observed).toEqual([])
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('keeps concurrent background sessions isolated', async () => {
+    const { ctx, create, execute } = await toolHarness()
+    try {
+      const other = { ...context, gateway: 'BUILDER' as const, userId: 'other-user',
+        companyId: 'other-company', sessionId: 'other-session' }
+      const [first, second] = await Promise.all([create(context, 'first'), create(other, 'second')])
+      const results = await Promise.all([execute(first), execute(second), execute(first)])
+      expect(results.map(result => result.value)).toEqual([context.sessionId, other.sessionId, context.sessionId])
+      expect(results.every(result => !result.isError)).toBe(true)
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('rejects cross-company, cross-user and cross-mode current callers before policy runs', async () => {
+    const { ctx, create, request, execute, observed } = await toolHarness()
+    try {
+      const agent = await create(context, 'owner')
+      const policy: string[] = []
+      ctx.on('tools/pre-execute', async (_exec, next) => { policy.push('entered'); return next() })
+      for (const caller of [
+        { ...context, companyId: 'another-company' },
+        { ...context, userId: 'another-user' },
+        { ...context, gateway: 'BUILDER' as const },
+      ]) {
+        await request(caller, async () => {
+          const result = await execute(agent)
+          expect(result.error?.message).toBe('KVVI_SESSION_ACCESS_DENIED')
+        })
+      }
+      expect(policy).toEqual([])
+      expect(observed).toEqual([])
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('loses background authority after router restart even for the same live Agent', async () => {
+    const { ctx, router, create, execute } = await toolHarness()
+    try {
+      const agent = await create(context, 'before-restart')
+      expect((await execute(agent)).value).toBe(context.sessionId)
+      await router.dispose()
+      await ctx.plugin(KvviModeRouter, { secret })
+      const result = await execute(agent)
+      expect(result.error?.message).toBe('KVVI_RUNTIME_CONTEXT_REQUIRED')
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('refuses agentless tool calls inside an authenticated request', async () => {
+    const { ctx, request, execute, observed } = await toolHarness()
+    try {
+      await request(context, async () => {
+        const result = await execute(undefined, context)
+        expect(result.error?.message).toBe('KVVI_RUNTIME_CONTEXT_REQUIRED')
+      })
+      expect(observed).toEqual([])
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('refuses authenticated publication of an Agent outside the caller namespace', async () => {
+    const { ctx, request } = await toolHarness()
+    try {
+      const other = { ...context, companyId: 'another-company', preset: 'kvvi-worker' as const, issuedAt: 1 }
+      const sessionId = SessionId(ownedSessionId(other, 'cross-company'))
+      await request(context, async () => {
+        await expect(ctx.agents.create({ sessionId, meta: { agentPreset: 'kvvi-worker' } }))
+          .rejects.toThrow('KVVI_SESSION_ACCESS_DENIED')
+      })
+      expect(ctx.agents.get(sessionId)).toBeUndefined()
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('removes identity when the Agent is disposed', async () => {
+    const { ctx, create, execute, dispose } = await toolHarness()
+    try {
+      const agent = await create(context, 'disposed')
+      expect((await execute(agent)).value).toBe(context.sessionId)
+      await dispose(agent)
+      const result = await execute(agent)
+      expect(result.error?.message).toBe('KVVI_RUNTIME_CONTEXT_REQUIRED')
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it.each(['disposed', 'session-replaced'] as const)(
+    'refuses a late workflow approval after its Agent is %s', async invalidation => {
+      const { ctx, create, dispose } = await toolHarness()
+      let agent: Agent | undefined
+      let originalSession: Session | undefined
+      const answer = Promise.withResolvers<'allowed-once'>()
+      try {
+        await ctx.plugin(business, { platformUrl: 'http://platform.test', contextSecret: secret })
+        agent = await create(context, `approval-${invalidation}`)
+        originalSession = agent.session
+        originalSession.append('turn/start', { turn: 1 })
+        const entered = Promise.withResolvers<void>()
+        ctx.on('approval/request', async () => { entered.resolve(); return answer.promise })
+        const posts: string[] = []
+        vi.stubGlobal('fetch', async (url: string) => {
+          posts.push(url)
+          return new Response(JSON.stringify({
+            recordId: 'record-1', from: 'pending', state: 'approved', rowVersion: 8,
+          }), { status: 200, headers: { 'content-type': 'application/json' } })
+        })
+        const signal = new AbortController().signal
+        const pending = ctx.tools.execute({
+          agent, name: 'workflow_act', signal, callId: ToolCallId(`late-${invalidation}`),
+          arguments: { system: 'leave', id: 'record-1', action: 'approve', rowVersion: 7 },
+        })
+        await entered.promise
+        if (invalidation === 'disposed') await dispose(agent)
+        else expect(Reflect.set(agent, 'session', Session.create(agent.id))).toBe(true)
+        expect(signal.aborted).toBe(false)
+        answer.resolve('allowed-once')
+        const result = await pending
+        expect(posts).toEqual([])
+        expect(result.isError).toBe(true)
+        expect(result.error?.message).toBe(invalidation === 'disposed'
+          ? 'KVVI_RUNTIME_CONTEXT_REQUIRED' : 'KVVI_SESSION_ACCESS_DENIED')
+      } finally {
+        answer.resolve('allowed-once')
+        if (agent !== undefined && originalSession !== undefined) Reflect.set(agent, 'session', originalSession)
+        vi.unstubAllGlobals()
+        await ctx.fiber.dispose()
+      }
+    },
+  )
+})
 
 describe('KVVI mode router', () => {
   it('maps only trusted gateways to fixed presets', () => {
