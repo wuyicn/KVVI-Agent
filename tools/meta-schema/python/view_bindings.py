@@ -40,8 +40,16 @@ def expression_errors(expr, fields, context, path):
     return errors
 
 
+def field_reference_errors(spec, fields, prefix):
+    """Field existence only; no capabilities or resolver calls."""
+    return [diagnostic("VIEW_FIELD_REF_INVALID", child_path(path, "fieldRef"))
+            for value, path in walk(spec, prefix)
+            if isinstance(value, dict) and not is_i18n_path(path)
+            and value.get("type") == "FieldRef" and value["fieldRef"] not in fields]
+
+
 def validate_bindings(spec, context, prefix, fields):
-    errors = []
+    errors = field_reference_errors(spec, fields, prefix)
     queries = {}
     for index, entry in enumerate(spec.get("queries", [])):
         path = child_path(child_path(prefix, "queries"), index)
@@ -55,10 +63,7 @@ def validate_bindings(spec, context, prefix, fields):
         if not isinstance(value, dict) or is_i18n_path(path):
             continue
         kind = value.get("type")
-        if kind == "FieldRef":
-            if value["fieldRef"] not in fields:
-                errors.append(diagnostic("VIEW_FIELD_REF_INVALID", child_path(path, "fieldRef")))
-        elif kind == "I18nRef":
+        if kind == "I18nRef":
             if not any(value["key"] in messages for messages in i18n.values()):
                 errors.append(diagnostic("VIEW_PROP_INVALID", child_path(path, "key")))
         elif kind == "SafeExpression":

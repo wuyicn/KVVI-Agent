@@ -66,8 +66,19 @@ function expressionErrors(expr, fields, context, path) {
   return errors;
 }
 
+/** Field existence only; never invokes actions, queries or a resolver. */
+export function fieldReferenceErrors(spec, fields, prefix) {
+  const errors = [];
+  for (const [value, path] of walk(spec, prefix)) {
+    if (!isObject(value) || isI18nPath(path)) continue;
+    if (value.type === "FieldRef" && !fields.has(value.fieldRef))
+      errors.push(diagnostic("VIEW_FIELD_REF_INVALID", childPath(path, "fieldRef")));
+  }
+  return errors;
+}
+
 export function validateBindings(spec, context, prefix, fields) {
-  const errors = [],
+  const errors = fieldReferenceErrors(spec, fields, prefix),
     queries = new Map();
   (spec.queries ?? []).forEach((entry, index) => {
     const path = childPath(childPath(prefix, "queries"), index);
@@ -83,11 +94,7 @@ export function validateBindings(spec, context, prefix, fields) {
   });
   for (const [value, path] of walk(spec, prefix)) {
     if (!isObject(value) || isI18nPath(path)) continue;
-    if (value.type === "FieldRef" && !fields.has(value.fieldRef))
-      errors.push(
-        diagnostic("VIEW_FIELD_REF_INVALID", childPath(path, "fieldRef")),
-      );
-    else if (
+    if (
       value.type === "I18nRef" &&
       !Object.values(spec.i18n ?? {}).some((messages) =>
         Object.hasOwn(messages, value.key),

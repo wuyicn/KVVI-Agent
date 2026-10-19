@@ -20,6 +20,13 @@
 
 中立权威JSON放contracts/component-catalog/v1；包含完整PLATFORM_CONTROL引用、真实React适配器身份/许可/源码闭包摘要与严格能力声明。现23个映射中Table不可用、表单按钮节点未执行；仅可登记实际实现的子集，loop/condition/queries/action/i18n等未实现能力明确拒绝。不能沿用vue_element_approved或no-renderer来声称满足冻结Vue适配器要求。
 
+### 第三批：共用静态树规则
+
+- [x] 抽取Node view_tree.mjs / Python view_tree.py 的checkViewTree / check_view_tree，供Fake wrapper与后续生产wrapper调用。保留结构预算、诊断排序、secret、节点ID、props Schema、绑定位置、字段类型/存在性、父子/数量、事件/loop检查。Fake现有resolve与fixture要求不变；root判据通过内部allowRoot函数适配，Fake默认空allowedParents，正式v1明确$root标记。
+- [x] view_bindings两语言抽取fieldReferenceErrors / field_reference_errors，所有FieldRef存在性使用同一函数；props错误时不深入无效动态对象。现有完整Fake语料必须完全保持原判据，不更新fixture或快照。
+- [x] 用实际安装目录、明确modelFields和删除ID集合测两语言静态树正反例，包括真实18项、字段不存在/类型不符、非法props/父子/页类型、重复/已删除ID和预算。此core不解析完整模型引用、不授信modelFields/删除历史，也不表示批准；完整生产wrapper必须另取可信resolver与已知历史。
+- [x] 独立复核、双语言1049语料及平台完整回归实际退出后提交推送。本批不改DSH/目录版本，也不把抽取规则当作生产发布已接线。
+
 Node/Python直接读取同一目录，DSH内生成携带相同目录摘要的TS元数据并核对显式renderer集合；平台不加载DSH插件。生产resolver只信受控安装目录，不信上传者fake_assets或production自声明；保留现有Fake完整校验入口。正式目录、共享校验与各消费端分别先失败反例、再实现。
 
 模型引用须有真实TENANT/company/app/module/asset/version/digest身份。目前published_contracts没有完整身份；另加不可变元数据及profile，不从schema_code猜app或回填旧摘要。view只可引用明确存在且内容摘要一致的版本；发布API prepare和最终publish事务均复验，runtime拒绝已升级模型与旧view错配，要求显式修订审批重发。

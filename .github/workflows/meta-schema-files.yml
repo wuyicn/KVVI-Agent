@@ -29,6 +29,6 @@ jobs:
         run: |
           sha256sum -c docs/baselines/prd-v1.11-go0.sha256
           PYTHONDONTWRITEBYTECODE=1 python protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/tests/test_conformance.py
-          node --test services/platform/tests/canonical.test.mjs services/platform/tests/component-catalog.test.mjs
+          node --test services/platform/tests/canonical.test.mjs services/platform/tests/component-catalog.test.mjs services/platform/tests/view-tree.test.mjs
       - name: Validate all 13 protocol machine files
         run: python tests/meta-schema-full/0a-full-r1/test_structure.py

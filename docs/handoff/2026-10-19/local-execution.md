@@ -556,3 +556,20 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `component-catalog-final-focused.log`：`ed85ef54d7c73ae95f82734004e4d74d55f24975ae97176bb9c755a40e2706b1`。
 - `component-catalog-source-qualification.log`：`36309f0a693b743d7106b987300aa01b2a8dc27139bacfa8a10a39c6dc7ab92a`。
 - `component-catalog-platform-full.log`：`9d025998ca51cc61560778d968685d19a1b6bfaa3b6294385803cb3bfe70fc07`。
+
+
+## 批次38：双语言共用静态树与字段引用规则
+
+- 抽出Node view_tree.mjs与Python view_tree.py：checkViewTree/check_view_tree复用原树walker的结构预算、secret、节点ID、props实际Schema、绑定位置、字段类型、父子/数量、动作/loop与locale规则；FieldRef存在性抽到view_bindings的fieldReferenceErrors/field_reference_errors。Fake wrapper保留原fixture/精确解析要求与最终能力引用检查，实际调用同一core；未构造Fake上下文为正式目录开后门。
+- 根判据是内部allowRoot函数：默认保留Fake空allowedParents语义，正式v1的显式$root在调用处适配。core不解析模型/目录引用，不授信modelFields/删除历史，不代表批准；正式wrapper还必须拒绝目录未支持的condition/queries/i18n等并使用可信完整ref与已知历史。未补造旧记录app/module、UUID或PUBLISHED元数据。
+- 缺helper初始RED后跨语言定向绿；自查组合“非法locale+未知字段”发现提前提取FieldRef会改变原跳过行为，补组合RED再将locale检查一起放入core、保持VIEW_PROP_INVALID先阻断动态遍历。最终6项定向全通过：实际18项/FORM LIST DETAIL、根约定、字段不存在/类型错配/ignored props、父子/页类型/未知按钮、重复与已删ID、结构/501节点预算以及该组合次序。两语言诊断逐项相同，正文未被修改。
+- 独立只读复核报告：此前5组定向通过，并把276个现有带context View语料与HEAD旧wrapper/旧bindings仅内存对拍，诊断/顺序/抛错无差异；此为复核探针，不代替下述完整新鲜语料结果。未改变冻结输入或字面预期/历史证据。
+- 最终1049份双语言Meta-Schema语料全部匹配，实际exit0、207.205秒；最终完整平台787项：786通过、0失败、1既有跳过，exit0、160.751秒，runner确认自有PG停止。所有最终进程退出后才计算日志SHA。完整平台命令同批次31，语料命令：`env PATH=/Users/wuyi-macs/.local/opt/node-v24.20.0/bin:/Users/wuyi-macs/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin PYTHONDONTWRITEBYTECODE=1 .local-remediation-evidence/schema-venv/bin/python tests/meta-schema/test_conformance.py`。
+- 本批未改DSH/目录版本/产物，也未接发布/runtime；真实模型登记、不可变映射与来源、生产完整ref resolver和wrapper继续。整体12项与任务10仍不勾选。
+
+非敏感日志SHA-256：
+- `view-tree-red.log`：`750212b7385444a58bce5e3897dcdac5bb3b48805da7c2c736d8ce91a1113e58`。
+- `view-tree-precedence-red.log`：`f2b995d672fdd117eb6b554774a9e070dd3d6cf6e1bc47450183417d146ba765`。
+- `view-tree-final-focused.log`：`0e91278937b3dbf5064ca1ba2b79715f0bee75408d1595dea3a3a36fde0a3c59`。
+- `view-tree-meta-corpus.log`：`5153d9c064630799a086dcf2478ad2e713d92e023aee685114a1a543c0085ccf`。
+- `view-tree-platform-full.log`：`a71f9ba5bd0c46e23c71b715d8ecafd90f17b29b5a3738649dc8591e723cdf76`。
