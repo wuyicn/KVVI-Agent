@@ -226,3 +226,10 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 非敏感日志摘要：
 - `runner-lifecycle-final5.log`：SHA-256 `565d992db39603dcc50f5468e2f7962641d52460b768de8df9781fab2f7cd0d8`，1268字节。
 - `platform-runner-final3-full.log`：SHA-256 `17e0311ae88f75fbfc68da996e39249077d6db7e7985ab8ba30668f1668503cd`，63869字节。
+
+## 批次17：创建字段清单元数据
+
+- 字段清单原只列非HIDDEN声明但未返回当前可见性，UI无法区分READONLY/MASKED，也缺decimal精度和money币种。新增本次授权计算的visibility及precision/scale/currency_mode/currency白名单配置；不展开整份field/type_config，不携带默认值。
+- 真实PG新增反例先RED；补VISIBLE/READONLY、精确配置、隐藏字段缺席、正式default及config非白名单键不返回的断言。独立只读复核未发现代码问题，并据建议加强正式default反例。
+- 隔离PG17的system-fields/system-api定向回归全部通过，exit0；本批是服务端元数据，创建UI仍在后续接线，不算十类型旅程完成。
+- `field-declarations-final.log`：SHA-256 `6d5e02897216cc3ef283aebb2b922f6d8f1cbf9098a2added918a5d10e656b4e`，2389字节。

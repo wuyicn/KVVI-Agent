@@ -132,6 +132,7 @@ async function grantOnSystem(userId, companyId, actions, hidden = [], assetCode 
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [randomUUID(), companyId, roleId, dimension, code, acts, scopes, visibility])
   }
+  return roleId
 }
 
 before(async () => {
@@ -278,4 +279,29 @@ describe('系统字段声明：跨公司读不到', () => {
     assert.deepEqual(r.body.fields.map((f) => f.field_code), ['name', 'phone', 'status'])
     assert.ok(!r.body.fields.some((f) => f.field_code === PHONE))
   })
+})
+
+
+test('field declarations carry current visibility and exact type configuration without defaults', async () => {
+  const asset = 'typed_fields'
+  const fields = [
+    {field_code:'rate',type:'decimal',type_config:{precision:38,scale:12,internal_hint:'internal-only'},default:'private-default'},
+    {field_code:'fee',type:'money',type_config:{currency_mode:'FIXED',currency:'CNY'}},
+    {field_code:'frozen',type:'short_text'},
+    {field_code:'secret',type:'short_text',default:'hidden-default'},
+  ]
+  await publishSystem(builder.ctx, owner.ctx, asset, fields, 'Typed fields')
+  const roleId = await grantOnSystem(A.carol,A.company,['read','create'],['secret'],asset)
+  await pool('platform').query(`INSERT INTO policies(policy_id,company_id,role_id,dimension,resource_code,actions,data_scopes,field_visibility)
+    VALUES(gen_random_uuid(),$1,$2,'FIELD','frozen','{}','{}','READONLY')`,[A.company,roleId])
+  const r = await api('GET',`/api/v1/systems/${asset}/fields`,blind)
+  assert.equal(r.status,200)
+  const byCode=Object.fromEntries(r.body.fields.map(field=>[field.field_code,field]))
+  assert.equal(byCode.rate.visibility,'VISIBLE')
+  assert.equal(byCode.frozen.visibility,'READONLY')
+  assert.deepEqual(byCode.rate.type_config,{precision:38,scale:12})
+  assert.deepEqual(byCode.fee.type_config,{currency_mode:'FIXED',currency:'CNY'})
+  assert.equal(byCode.secret,undefined)
+  assert.equal(JSON.stringify(r.body).includes('default'),false)
+  assert.equal(JSON.stringify(r.body).includes('internal-only'),false)
 })

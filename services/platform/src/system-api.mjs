@@ -166,7 +166,7 @@ async function systemFields(ctx, assetId) {
     declared.map((f) => f.field_code))
   const fields = declared
     .filter((f) => (visibility[f.field_code] ?? 'HIDDEN') !== 'HIDDEN')
-    .map(fieldDeclaration)
+    .map(field => ({ ...fieldDeclaration(field), visibility: visibility[field.field_code] }))
   return { status: 200, body: {
     assetId, fields, hiddenFieldCount: declared.length - fields.length,
   } }
@@ -181,6 +181,9 @@ async function systemFields(ctx, assetId) {
  * @returns {object} 字段声明
  */
 function fieldDeclaration(field) {
+  const config = field.type_config ?? {}
+  const typeConfig = Object.fromEntries(['precision', 'scale', 'currency_mode', 'currency']
+    .filter(key => Object.hasOwn(config, key)).map(key => [key, config[key]]))
   // 枚举取值来自 `type_config.options`（`business-schema.v1` 里 select 类字段必带）。
   // 停用的选项不是可取值，列出来只会把调用方引到一个不该选的值上。
   const options = (field.type_config?.options ?? [])
@@ -193,6 +196,7 @@ function fieldDeclaration(field) {
     required: field.required === true,
     nullable: field.nullable === true,
     write_policy: field.write_policy ?? 'MUTABLE',
+    ...(Object.keys(typeConfig).length === 0 ? {} : { type_config: typeConfig }),
     ...(options.length === 0 ? {} : { options }),
   }
 }
