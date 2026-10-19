@@ -32,6 +32,8 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from .process_identity import (checked_identity, group_members, identity_path,
+                               observe, store_identity, descendants, same_process)
 from typing import Dict, List, Optional
 
 from distribution.lib.pg import cluster_is_running, cluster_start_step, pg_bin_dir
@@ -55,6 +57,7 @@ STOP_KILL_WAIT_SECONDS = 5.0
 
 #: 轮询间隔。
 STOP_POLL_SECONDS = 0.1
+_OWNED_CHILDREN = {}
 
 
 def schema_step(release_root: Path, env_file: Dict[str, str]) -> dict:
@@ -89,6 +92,10 @@ def _process_alive(pid: int) -> bool:
     # 先认领自己的子进程：它退出之后会变成僵尸，而 `os.kill(pid, 0)` 对僵尸
     # **仍然成功** —— 于是一个已经死掉的进程会被判成「还在」，stop 白等一整轮
     # 再升级到 SIGKILL，最后报一条假的「杀不掉」。这一条是测试当场抓到的。
+    owned = _OWNED_CHILDREN.get(pid)
+    if owned is not None and owned.poll() is not None:
+        _OWNED_CHILDREN.pop(pid, None)
+        return False
     try:
         if os.waitpid(pid, os.WNOHANG) == (pid, 0):
             return False
@@ -194,6 +201,32 @@ class ProcessPlan:
             '仅展示计划；执行前仍须检查配置、端口与进程身份。',
         ])
 
+    def _await_group_exit(self, pid, seconds, children=None):
+        children = children or {}
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline:
+            try:
+                ended = not group_members(pid) and not any(same_process(observe(key), value) for key, value in children.items())
+            except (OSError, ValueError, subprocess.SubprocessError):
+                return None
+            if ended:
+                _process_alive(pid)  # Reap an owned child if it has exited.
+                return True
+            time.sleep(STOP_POLL_SECONDS)
+        try:
+            return not group_members(pid) and not any(same_process(observe(key), value) for key, value in children.items())
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return None
+
+    def _signal_escaped_children(self, children, pgid, number):
+        for child_pid, identity in children.items():
+            current = observe(child_pid)
+            if same_process(current, identity) and current['pgid'] != pgid:
+                try:
+                    os.kill(child_pid, number)
+                except ProcessLookupError:
+                    pass
+
     def apply(self) -> dict:
         """
         执行。
@@ -211,34 +244,59 @@ class ProcessPlan:
                 if not pid_file.is_file():
                     done.append(step['kind'] + ': 未运行')
                     continue
-                pid = int(pid_file.read_text().strip() or '0')
-                if not _process_alive(pid):
+                try:
+                    pid, identity = checked_identity(pid_file, self.home, self.release_root, step['program'])
+                except (OSError, ValueError, subprocess.SubprocessError) as error:
+                    code = str(error) if isinstance(error, ValueError) else 'KVVI_PROCESS_IDENTITY_UNAVAILABLE'
+                    errors.append({'kind': step['kind'], 'code': code})
+                    continue
+                if identity is None:
                     # pid 文件是**上一次**留下的：进程早就没了。先删文件再报，
                     # 否则下一次 `status` 又会对着一具尸体报「运行中」。
                     pid_file.unlink(missing_ok=True)
+                    identity_path(pid_file).unlink(missing_ok=True)
                     done.append(step['kind'] + ': 进程已不在')
                     continue
                 try:
-                    os.kill(pid, 15)
+                    members = group_members(pid)
+                    children = descendants(pid)
+                    # Revalidate immediately before signalling the owned process group.
+                    checked_identity(pid_file, self.home, self.release_root, step['program'])
+                    self._signal_escaped_children(children, pid, 15)
+                    os.killpg(pid, 15)
                 except ProcessLookupError:
-                    pid_file.unlink(missing_ok=True)
-                    done.append(step['kind'] + ': 进程已不在')
-                    continue
+                    pass
                 except PermissionError:
                     errors.append({'kind': step['kind'], 'stderr': f'无权结束 pid {pid}'})
                     continue
-                if not _await_exit(pid, STOP_WAIT_SECONDS):
+                except (OSError, ValueError, subprocess.SubprocessError):
+                    errors.append({'kind': step['kind'], 'code': 'KVVI_PROCESS_IDENTITY_UNAVAILABLE'})
+                    continue
+                exited = self._await_group_exit(pid, STOP_WAIT_SECONDS, children)
+                if exited is None:
+                    errors.append({'kind': step['kind'], 'code': 'KVVI_PROCESS_IDENTITY_UNAVAILABLE'})
+                    continue
+                if not exited:
                     # 优雅关停没生效 —— 升级到 SIGKILL，并把这次升级**报出来**。
                     # 静默升级会让「平台的关停路径有 bug」这件事永远没人知道。
                     try:
-                        os.kill(pid, 9)
+                        remaining = group_members(pid)
+                        if any(members.get(key) != value for key, value in remaining.items()):
+                            errors.append({'kind': step['kind'], 'code': 'KVVI_PROCESS_GROUP_CHANGED'})
+                            continue
+                        self._signal_escaped_children(children, pid, 9)
+                        if remaining:
+                            os.killpg(pid, 9)
                     except ProcessLookupError:
                         pass
                     except PermissionError:
                         errors.append({'kind': step['kind'],
                                        'stderr': f'pid {pid} 不接受 SIGTERM，也无权结束它'})
                         continue
-                    if not _await_exit(pid, STOP_KILL_WAIT_SECONDS):
+                    except (OSError, ValueError, subprocess.SubprocessError):
+                        errors.append({'kind': step['kind'], 'code': 'KVVI_PROCESS_IDENTITY_UNAVAILABLE'})
+                        continue
+                    if not self._await_group_exit(pid, STOP_KILL_WAIT_SECONDS, children):
                         errors.append({'kind': step['kind'],
                                        'stderr': f'pid {pid} 在 SIGTERM 与 SIGKILL 之后仍在'})
                         continue
@@ -246,6 +304,7 @@ class ProcessPlan:
                 else:
                     done.append(step['kind'])
                 pid_file.unlink(missing_ok=True)
+                identity_path(pid_file).unlink(missing_ok=True)
             return {'ok': not errors, 'steps': done, 'errors': errors, 'pids': pids}
 
         for step in self.steps:
@@ -386,14 +445,10 @@ class ProcessPlan:
         import time
         for _ in range(seconds * 10):
             time.sleep(0.1)
-            try:
-                os.kill(pid, 0)
-            except ProcessLookupError:
+            if observe(pid) is None:
+                _process_alive(pid)
                 tail = self._log_tail(pid)
                 return f'进程启动后立刻退出（pid {pid}）。日志尾：{tail}'
-            except PermissionError:
-                # 进程存在但不是我们的 —— 那也算活着（不该发生，但不误报）。
-                return None
         return None
 
     def _log_tail(self, _pid: int, lines: int = 6) -> str:
@@ -417,6 +472,16 @@ class ProcessPlan:
 
     def _spawn(self, step: dict, log_dir: Path) -> Optional[int]:
         """起一个进程，把 pid 写进 `$KVVI_HOME/run/<program>.pid`。"""
+        pid_file = self.home / 'run' / (step['program'] + '.pid')
+        if pid_file.exists():
+            try:
+                _pid, live = checked_identity(pid_file, self.home, self.release_root, step['program'])
+            except (OSError, ValueError, subprocess.SubprocessError):
+                return None
+            if live is not None:
+                return None
+            pid_file.unlink()
+            identity_path(pid_file).unlink(missing_ok=True)
         env = dict(os.environ)
         env.update(step.get('env') or {})
         env['LC_ALL'] = 'en_US.UTF-8'
@@ -426,13 +491,20 @@ class ProcessPlan:
                                        stdout=log, stderr=subprocess.STDOUT,
                                        start_new_session=True)
         except OSError as error:
-            log.close()
             return None
         finally:
-            pass
+            log.close()
         pid_dir = self.home / 'run'
+        _OWNED_CHILDREN[process.pid] = process
         pid_dir.mkdir(parents=True, exist_ok=True)
-        (pid_dir / (step['program'] + '.pid')).write_text(str(process.pid) + '\n')
+        try:
+            store_identity(pid_dir / (step['program'] + '.pid'), self.home, self.release_root,
+                           step['program'], process.pid)
+        except (OSError, ValueError):
+            process.kill()
+            process.wait(timeout=10)
+            _OWNED_CHILDREN.pop(process.pid, None)
+            return None
         return process.pid
 
 
@@ -649,20 +721,18 @@ def status_report(home: Path, release_root: Path,
         pid_file = home / 'run' / (program + '.pid')
         pid = None
         running = False
+        identity_error = None
+        identity = None
         if pid_file.is_file():
             try:
-                pid = int(pid_file.read_text().strip() or '0')
-            except ValueError:
-                pid = None
-            if pid:
-                try:
-                    os.kill(pid, 0)
-                    running = True
-                except (ProcessLookupError, PermissionError):
-                    running = False
+                pid, identity = checked_identity(pid_file, home, release_root, program)
+                running = identity is not None
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
+                identity_error = str(error) if isinstance(error, ValueError) else 'KVVI_PROCESS_IDENTITY_UNAVAILABLE'
         # ⚠️ `user` 一定报出来：这是「两个进程同用户」这名话的可复核证据。
-        report[program] = {'pid': pid, 'running': running, 'user': os.getuid(),
-                           'userName': _user_name()}
+        report[program] = {'pid': pid, 'running': running,
+                          'user': identity['uid'] if identity else os.getuid(),
+                          'userName': _user_name(), 'identityError': identity_error}
     if processes:
         report.update(processes)
     return {'home': str(home), 'releaseRoot': str(release_root),

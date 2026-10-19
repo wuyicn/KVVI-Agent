@@ -462,6 +462,9 @@ class StopReallyEndsTheProcessTest(unittest.TestCase):
     def _write_pid(self, program: str, pid: int) -> Path:
         path = self.home / 'run' / (program + '.pid')
         path.write_text(str(pid) + '\n')
+        from distribution.lib.process_identity import observe, store_identity
+        if observe(pid) is not None:
+            store_identity(path, self.home, self.root, program, pid)
         return path
 
     def _stop(self, program: str) -> dict:
@@ -492,15 +495,15 @@ class StopReallyEndsTheProcessTest(unittest.TestCase):
         self.assertEqual(result['steps'], ['stop-platform'])
         self.assertIsNotNone(cooperative.poll())
 
-    def test_a_stale_pid_file_is_cleaned_up_and_not_reported_as_running(self):
+    def test_a_stale_unverified_pid_file_is_preserved_for_recovery(self):
         dead = self._child('import time\ntime.sleep(120)\n')
         dead_pid = dead.pid
         dead.kill()
         dead.wait(timeout=10)
         pid_file = self._write_pid('platform', dead_pid)
         result = self._stop('platform')
-        self.assertTrue(result['ok'], result['errors'])
-        self.assertFalse(pid_file.exists(), 'pid 文件留着，下一次 status 会对着一具尸体报「运行中」')
+        self.assertFalse(result['ok'])
+        self.assertTrue(pid_file.exists(), '不能从root退出推定所有另session子进程已经退出')
 
     def test_the_wait_constants_are_positive(self):
         # 等到 0 秒等于没等 —— 那样这条判据就退化回「发个信号就当成了」。
