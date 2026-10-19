@@ -190,3 +190,18 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node services/platform/test
 - 独立复核指出decimal缺省18/2与年0判据分叉；增加反例并直接复用冻结校验器的fitsDecimal/decimalParts/validDate/validDatetime，不另维护日期和精度算法。纯函数与消费布局32/32，exit0；最新完整平台611项：610通过、0失败、1个既有跳过，exit0。
 - 容器源布局调整为/app/services/platform，明确只复制values.mjs/safe_pattern.mjs两个纯工具依赖；独立临时消费布局在没有仓库的目录中实际加载通过。Docker CLI存在但daemon未运行，真实镜像构建未执行，不冒称容器资格通过；没有启动daemon或现有服务。
 - UI目前仍需接线：新增编辑器反例已重现现有parseFloat/parseInt的精度和截断问题，尚未计入本后端提交，也没有将后端拒绝称为完整十类型编辑完成。
+
+## 批次15：详情十类型编辑
+
+- 先以编辑器反例重现parseInt截断、decimal/money浮点化；详情改用原生boolean/integer、精确decimal字符串及money对象，多选使用真实multiple select。未知类型锁定并提示，非法输入不触发保存；补decimal默认18/2、币种标度、停用选项、日期/时间及null检查。
+- datetime以本地控件显示、改变后转带时区ISO；未改动的原值（包括null、时区和高精度时间）不进入PATCH。记录切换仅使用当前recordId草稿。CREATE_ONLY/SYSTEM等既有锁定与dirty/no-op规则保留。
+- 新增验证先RED；独立复核再发现过量小数与24点时间仍放行，追加反例后修正。全包首轮193项有1失败，为旧业务页夹具缺type造成预期保存被拒；补正式short_text。纯测试归属改为.client.spec.ts，避免将client API引进host类型程序。
+- 独立复核另实际重现A→B仅查看→A时旧草稿复活并绑定新版本；补RED反例后在切换时清掉旧编辑。最终固定源19文件195/195、exit0；host/client根类型检查exit0；Node24.20.0、实际pnpm11.7.0完整构建exit0。G2生成243路径/52登记匹配，新鲜重建235覆盖+8删除逐字节匹配；原vendor和试点未改。
+- 本批是详情组件与固定源构建，尚非完整十类型验收：创建表单转型、身份绑定耐久原key、迟到响应/终态及真实浏览器到数据库旅程仍待接线。真实DeepSeek凭据尚未确认可用，未执行模型验收。
+
+非敏感日志摘要：
+- `typed-detail-package-final.log`：SHA-256 `806a72c6101a3f5de1d8b4ae5cb5584e859a448376d6089409e3eba3de7b18f4`，12547字节。
+- `typed-detail-types-final.log`：SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`，0字节。
+- `typed-detail-build-final.log`：SHA-256 `7e03f3744b36b28d3c763bda4eb9e92a7a2a0fee662835f0dbdc2a3d004c6138`，352493字节。
+- `typed-detail-g2-final.log`：SHA-256 `7e57358d193bdf8a986a5c2c5a0f1ec5329148fd8548bd84a82bbf81ec2071bd`，423字节。
+- `typed-detail-rebuild-final.log`：SHA-256 `ffb13469f22aa36795f2c93b252b355a905d5db8da79c9e5b728ab8e494ae6a1`，440字节。

@@ -65,6 +65,7 @@ export interface ModelField {
   readonly label?: string
   readonly type?: string
   readonly required?: boolean
+  readonly nullable?: boolean
   /**
    * `MUTABLE` / `CREATE_ONLY` / `SYSTEM`. A `CREATE_ONLY` field can be set when
    * the record is created but not changed afterwards, so the detail editor
@@ -72,7 +73,11 @@ export interface ModelField {
    */
   readonly write_policy?: string
   readonly type_config?: {
-    readonly options?: readonly { readonly code: string; readonly label?: string }[]
+    readonly options?: readonly { readonly code: string; readonly label?: string; readonly enabled?: boolean }[]
+    readonly precision?: number
+    readonly scale?: number
+    readonly currency_mode?: string
+    readonly currency?: string
   }
 }
 

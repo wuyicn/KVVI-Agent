@@ -19,7 +19,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { ModelField, RecordView } from './api.ts'
 import type { Copy } from './FormView.tsx'
-import { coerceValue, displayString } from './values.ts'
+import { coerceValue, displayString, knownFieldType } from './values.ts'
 
 /** Props the record detail accepts. */
 export interface KvviRecordDetailProps {
@@ -49,7 +49,6 @@ function editorFor(
 ): ReactNode {
   const locked = mode !== 'VISIBLE'
   const code = field.type ?? 'short_text'
-  const numeric = code === 'integer' || code === 'decimal' || code === 'money'
   if (code === 'boolean') {
     return (
       <input
@@ -72,9 +71,15 @@ function editorFor(
         style={{ width: '100%', padding: '6px 8px' }}
       >
         <option value="" />
-        {options.map(o => <option key={o.code} value={o.code}>{o.label ?? o.code}</option>)}
+        {options.map(o => <option key={o.code} value={o.code} disabled={o.enabled === false}>{o.label ?? o.code}</option>)}
       </select>
     )
+  }
+  if (code === 'multi_select') {
+    return <select multiple aria-label={field.field_code} value={value === '' ? [] : value.split(',')}
+      disabled={locked} onChange={e => { set(Array.from(e.target.selectedOptions, option => option.value).join(',')) }}>
+      {(field.type_config?.options ?? []).map(o => <option key={o.code} value={o.code} disabled={o.enabled === false}>{o.label ?? o.code}</option>)}
+    </select>
   }
   if (code === 'long_text') {
     return (
@@ -91,9 +96,10 @@ function editorFor(
   return (
     <input
       aria-label={field.field_code}
-      {...(numeric ? { type: 'number', step: 'any' } : {})}
+      {...(code === 'integer' ? { type: 'number', step: '1' } : {})}
+      {...(code === 'decimal' || code === 'money' ? { type: 'text', inputMode: 'decimal' } as const : {})}
       {...(code === 'date' ? { type: 'date' } : {})}
-      {...(code === 'datetime' ? { type: 'datetime-local' } : {})}
+      {...(code === 'datetime' ? { type: 'datetime-local', step: 'any' } : {})}
       value={value}
       readOnly={locked}
       disabled={locked}
@@ -111,15 +117,11 @@ function editorFor(
 export function KvviRecordDetail({
   copy, record, fields, stateLabel, onSave, onBack, busy, saved, conflictRowVersion, error,
 }: KvviRecordDetailProps): ReactNode {
-  const [values, setValues] = useState<Record<string, string>>(() => {
-    const out: Record<string, string> = {}
-    for (const [key, value] of Object.entries(record.data)) {
-      out[key] = value === null || value === undefined
-        ? ''
-        : typeof value === 'string' ? value : String(value)
-    }
-    return out
-  })
+  const [edit, setEdit] = useState<{ recordId: string; values: Record<string, string> }>(() => ({ recordId: record.recordId, values: {} }))
+  // Discard the old draft on a switch, including A -> B (view only) -> A.
+  // Reset during render so children never commit with the previous identity.
+  if (edit.recordId !== record.recordId) setEdit({ recordId: record.recordId, values: {} })
+  const values = edit.recordId === record.recordId ? edit.values : {}
 
   // Only fields the platform actually returned are shown. A field missing from
   // `data` was hidden for this session, and adding an empty input for it would
@@ -128,14 +130,21 @@ export function KvviRecordDetail({
     && ['VISIBLE','READONLY','MASKED'].includes(record.fieldVisibility[f.field_code] ?? 'HIDDEN'))
   const writable = (field: ModelField): boolean => record.fieldVisibility[field.field_code] === 'VISIBLE'
     && (field.write_policy ?? 'MUTABLE') === 'MUTABLE'
+    && knownFieldType(field.type)
   const patch: Record<string, unknown> = {}
+  const invalidFields = shown.filter(field => !knownFieldType(field.type)).map(field => field.label ?? field.field_code)
   for (const field of shown) {
     if (!writable(field)) continue
-    const str = values[field.field_code] ?? ''
     const original = record.data[field.field_code]
-    if (str === displayString(original)) continue
-    const next = coerceValue(field.type, str)
-    if (JSON.stringify(next) !== JSON.stringify(original)) patch[field.field_code] = next
+    const str = values[field.field_code] ?? displayString(original, field.type)
+    if (str === displayString(original, field.type)) continue
+    try {
+      const next = coerceValue(field.type, str, field.type_config)
+      if (next === null && field.nullable === false) throw new Error('KVVI_FIELD_NULL_NOT_ALLOWED')
+      if (JSON.stringify(next) !== JSON.stringify(original)) patch[field.field_code] = next
+    } catch {
+      invalidFields.push(field.label ?? field.field_code)
+    }
   }
 
   return (
@@ -156,6 +165,7 @@ export function KvviRecordDetail({
             : copy('detail.conflict', { currentRowVersion: String(conflictRowVersion) })}
         </p>
       )}
+      {invalidFields.length > 0 ? <p role="alert">{copy('field.invalidValue', { fields: invalidFields.join('、') })}</p> : null}
       {saved === true ? (
         <p style={{ fontSize: 12.5, marginBottom: 8 }} data-kvvi-saved="1">{copy('detail.saved')}</p>
       ) : null}
@@ -169,17 +179,17 @@ export function KvviRecordDetail({
         {shown.map(field => (
           <label key={field.field_code} style={{ display: 'block', marginBottom: 10 }}>
             <span style={{ display: 'block', fontSize: 12, opacity: .7 }}>{field.label ?? field.field_code}</span>
-            {editorFor(field, values[field.field_code] ?? '', writable(field) ? 'VISIBLE' : 'READONLY',
-              (next) => { if (busy !== true) setValues(v => ({ ...v, [field.field_code]: next })) })}
+            {editorFor(field, values[field.field_code] ?? displayString(record.data[field.field_code], field.type), writable(field) ? 'VISIBLE' : 'READONLY',
+              (next) => { if (busy !== true) setEdit(v => ({ recordId: record.recordId, values: { ...(v.recordId === record.recordId ? v.values : {}), [field.field_code]: next } })) })}
           </label>
         ))}
       </fieldset>
 
       <button
         type="button"
-        disabled={busy === true || Object.keys(patch).length === 0}
+        disabled={busy === true || invalidFields.length > 0 || Object.keys(patch).length === 0}
         onClick={() => {
-          if (busy === true || Object.keys(patch).length === 0) return
+          if (busy === true || invalidFields.length > 0 || Object.keys(patch).length === 0) return
           onSave(patch, record.rowVersion)
         }}
         style={{ marginTop: 8 }}

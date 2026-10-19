@@ -10,7 +10,7 @@ import { businessAddress, parseBusinessAddress } from '../src/client/business-ta
 import { AccountArea, type AccountAreaProps } from '../src/client/AccountArea.tsx'
 import { zh } from '../src/client/locales.ts'
 const t = ((key: string, params?: Record<string, unknown>) => ((zh as Record<string,string>)[key] ?? key).replace(/\{(\w+)\}/gu, (_, name: string) => String(params?.[name] ?? ''))) as BusinessBodyProps['t']
-const runtime = { system: { name: '客户登记', assetId: 'customer' }, models: { customer: { fields: [{ field_code:'name', label:'名称' }] } }, views: { customer: { view_type:'FORM', componentsTree:[{ id:'root',componentName:'FormPage',children:[{ id:'f',componentName:'ShortTextField',props:{ fieldBinding:{ fieldRef:'name' } } }] }] } }, workflows:{} }
+const runtime = { system: { name: '客户登记', assetId: 'customer' }, models: { customer: { fields: [{ field_code:'name', label:'名称',type:'short_text' }] } }, views: { customer: { view_type:'FORM', componentsTree:[{ id:'root',componentName:'FormPage',children:[{ id:'f',componentName:'ShortTextField',props:{ fieldBinding:{ fieldRef:'name' } } }] }] } }, workflows:{} }
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 it('explains a duplicate refusal without losing entered form values or suggesting retry', async () => {
   vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => Promise.resolve(Response.json(

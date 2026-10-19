@@ -36,7 +36,7 @@ const t: Copy = (key, params) => {
 
 const FIELDS = [
   { field_code: 'title', label: '标题', type: 'short_text' },
-  { field_code: 'amount', label: '金额', type: 'money' },
+  { field_code: 'amount', label: '金额', type: 'money', type_config: { currency_mode: 'FIXED', currency: 'CNY' } },
 ]
 
 it('explains duplicate editing as a business correction without exposing an error code', () => {
@@ -100,7 +100,7 @@ describe('记录列表', () => {
 describe('记录详情', () => {
   const record = {
     recordId: 'r1', recordNo: 'R000001', rowVersion: 3, state: 'submitted',
-    data: { title: '报销', amount: '500' },
+    data: { title: '报销', amount: { amount: '500', currency: 'CNY' } },
     fieldVisibility: { title: 'VISIBLE', amount: 'VISIBLE' },
   }
 
@@ -171,13 +171,13 @@ describe('记录详情', () => {
 
   it('★ U2：改动的数字输入被还原成数字类型', () => {
     const onSave = vi.fn()
-    render(<KvviRecordDetail copy={t} fields={FIELDS}
-      record={{ recordId: 'r1', rowVersion: 1, data: { title: '报销', amount: 500 },
-        fieldVisibility: { title: 'VISIBLE', amount: 'VISIBLE' } }}
+    render(<KvviRecordDetail copy={t} fields={[{field_code:'count',type:'integer'}]}
+      record={{ recordId: 'r1', rowVersion: 1, data: { count: 7 },
+        fieldVisibility: { count: 'VISIBLE' } }}
       onSave={onSave} onBack={noop} />)
-    fireEvent.change(screen.getByLabelText('amount'), { target: { value: '900' } })
+    fireEvent.change(screen.getByLabelText('count'), { target: { value: '0' } })
     fireEvent.click(screen.getByRole('button', { name: zh['detail.save'] }))
-    expect(onSave).toHaveBeenCalledWith({ amount: 900 }, 1)
+    expect(onSave).toHaveBeenCalledWith({ count: 0 }, 1)
   })
 
   it('★ U3：CREATE_ONLY 字段不进更新 payload（改标题不牵连编号）', () => {
@@ -299,8 +299,82 @@ describe('API 客户端', () => {
 
 it('omits readonly fields from a detail edit while preserving the version check',()=>{
   const onSave=vi.fn()
-  render(<KvviRecordDetail copy={t} fields={FIELDS} record={{ recordId:'r',rowVersion:4,data:{ title:'不能改',amount:'10' },fieldVisibility:{ title:'READONLY',amount:'VISIBLE' } }} onSave={onSave} onBack={noop} />)
+  render(<KvviRecordDetail copy={t} fields={FIELDS} record={{ recordId:'r',rowVersion:4,data:{ title:'不能改',amount:{amount:'10',currency:'CNY'} },fieldVisibility:{ title:'READONLY',amount:'VISIBLE' } }} onSave={onSave} onBack={noop} />)
   fireEvent.change(screen.getByLabelText('amount'),{ target:{ value:'20' } })
   fireEvent.click(screen.getByRole('button',{ name:zh['detail.save'] }))
-  expect(onSave).toHaveBeenCalledWith({ amount:20 },4)
+  expect(onSave).toHaveBeenCalledWith({ amount:{amount:'20',currency:'CNY'} },4)
+})
+
+describe('typed detail changes', () => {
+  it('preserves exact decimal/money, false and multiselect values in a single dirty patch', () => {
+    const onSave=vi.fn()
+    const fields=[{field_code:'price',type:'decimal'}, {field_code:'fee',type:'money',type_config:{currency_mode:'FIXED',currency:'CNY'}},
+      {field_code:'flag',type:'boolean'}, {field_code:'tags',type:'multi_select',type_config:{options:[{code:'a'},{code:'b'}]}}]
+    render(<KvviRecordDetail copy={t} fields={fields} record={{recordId:'r',rowVersion:9,
+      data:{price:'1.00',fee:{amount:'2.00',currency:'CNY'},flag:true,tags:['a']},fieldVisibility:{price:'VISIBLE',fee:'VISIBLE',flag:'VISIBLE',tags:'VISIBLE'}}}
+      onSave={onSave} onBack={noop} />)
+    fireEvent.change(screen.getByLabelText('price'),{target:{value:'9007199254740993.01'}})
+    fireEvent.change(screen.getByLabelText('fee'),{target:{value:'9007199254740993.02'}})
+    fireEvent.click(screen.getByLabelText('flag'))
+    const select=screen.getByLabelText('tags') as HTMLSelectElement
+    for(const option of Array.from(select.options)) option.selected=option.value==='b'
+    fireEvent.change(select)
+    fireEvent.click(screen.getByRole('button',{name:zh['detail.save']}))
+    expect(onSave).toHaveBeenCalledWith({price:'9007199254740993.01',fee:{amount:'9007199254740993.02',currency:'CNY'},flag:false,tags:['b']},9)
+  })
+
+  it('invalid integer or unsupported field shows a local error and cannot save', () => {
+    const onSave=vi.fn()
+    const view=render(<KvviRecordDetail copy={t} fields={[{field_code:'count',label:'数量',type:'integer'}]}
+      record={{recordId:'r',rowVersion:1,data:{count:7},fieldVisibility:{count:'VISIBLE'}}} onSave={onSave} onBack={noop} />)
+    fireEvent.change(screen.getByLabelText('count'),{target:{value:'7.5'}})
+    expect(screen.getByRole('alert').textContent).toContain('数量')
+    fireEvent.click(screen.getByRole('button',{name:zh['detail.save']}))
+    expect(onSave).not.toHaveBeenCalled()
+    view.rerender(<KvviRecordDetail copy={t} fields={[{field_code:'unknown',type:'future_type'}]}
+      record={{recordId:'r2',rowVersion:1,data:{unknown:'x'},fieldVisibility:{unknown:'VISIBLE'}}} onSave={onSave} onBack={noop} />)
+    expect((screen.getByLabelText('unknown') as HTMLInputElement).disabled).toBe(true)
+    expect(screen.getByRole('alert').textContent).toContain('unknown')
+    fireEvent.click(screen.getByRole('button',{name:zh['detail.save']}))
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it('renders datetime locally without dirtying it and sends a selected time with timezone', () => {
+    const onSave=vi.fn()
+    render(<KvviRecordDetail copy={t} fields={[{field_code:'at',type:'datetime'},{field_code:'note',type:'short_text'}]}
+      record={{recordId:'r',rowVersion:1,data:{at:'2026-10-19T12:30:00.000Z',note:null},fieldVisibility:{at:'VISIBLE',note:'VISIBLE'}}}
+      onSave={onSave} onBack={noop} />)
+    const input=screen.getByLabelText('at') as HTMLInputElement
+    expect(input.value).not.toBe('')
+    expect((screen.getByRole('button',{name:zh['detail.save']}) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(input,{target:{value:'2026-10-20T10:15'}})
+    fireEvent.click(screen.getByRole('button',{name:zh['detail.save']}))
+    expect(onSave).toHaveBeenCalledWith({at:new Date('2026-10-20T10:15').toISOString()},1)
+  })
+
+  it('switching record does not reuse the previous record draft', () => {
+    const onSave=vi.fn()
+    const fields=[{field_code:'title',type:'short_text'}]
+    const view=render(<KvviRecordDetail copy={t} fields={fields} record={{recordId:'a',rowVersion:1,data:{title:'A'},fieldVisibility:{title:'VISIBLE'}}} onSave={onSave} onBack={noop} />)
+    fireEvent.change(screen.getByLabelText('title'),{target:{value:'draft A'}})
+    view.rerender(<KvviRecordDetail copy={t} fields={fields} record={{recordId:'b',rowVersion:3,data:{title:'B'},fieldVisibility:{title:'VISIBLE'}}} onSave={onSave} onBack={noop} />)
+    expect((screen.getByLabelText('title') as HTMLInputElement).value).toBe('B')
+    expect((screen.getByRole('button',{name:zh['detail.save']}) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('title'),{target:{value:'updated B'}})
+    fireEvent.click(screen.getByRole('button',{name:zh['detail.save']}))
+    expect(onSave).toHaveBeenCalledWith({title:'updated B'},3)
+    view.rerender(<KvviRecordDetail copy={t} fields={fields} record={{recordId:'a',rowVersion:2,data:{title:'fresh A'},fieldVisibility:{title:'VISIBLE'}}} onSave={onSave} onBack={noop} />)
+    expect((screen.getByLabelText('title') as HTMLInputElement).value).toBe('fresh A')
+    expect((screen.getByRole('button',{name:zh['detail.save']}) as HTMLButtonElement).disabled).toBe(true)
+  })
+})
+
+it('drops a draft even if another record is only viewed before returning', () => {
+  const fields=[{field_code:'title',type:'short_text'}]
+  const view=render(<KvviRecordDetail copy={t} fields={fields} record={{recordId:'a',rowVersion:1,data:{title:'A'},fieldVisibility:{title:'VISIBLE'}}} onSave={noop} onBack={noop} />)
+  fireEvent.change(screen.getByLabelText('title'),{target:{value:'old draft'}})
+  view.rerender(<KvviRecordDetail copy={t} fields={fields} record={{recordId:'b',rowVersion:1,data:{title:'B'},fieldVisibility:{title:'VISIBLE'}}} onSave={noop} onBack={noop} />)
+  view.rerender(<KvviRecordDetail copy={t} fields={fields} record={{recordId:'a',rowVersion:2,data:{title:'new A'},fieldVisibility:{title:'VISIBLE'}}} onSave={noop} onBack={noop} />)
+  expect((screen.getByLabelText('title') as HTMLInputElement).value).toBe('new A')
+  expect((screen.getByRole('button',{name:zh['detail.save']}) as HTMLButtonElement).disabled).toBe(true)
 })
