@@ -21,6 +21,7 @@
 import { pool, withTransaction } from './db.mjs'
 import { lockFormLifecycle, assertFormActive } from './business-lifecycle.mjs'
 import { latestContract } from './contracts.mjs'
+import {assertRecordEditable,recordData} from './record-state.mjs'
 import { assertFieldValues } from './field-rules.mjs'
 import { applyScopeGucs, fieldVisibility, requiredFields } from './authorization.mjs'
 import { nextRecordNo } from './record-no.mjs'
@@ -217,6 +218,7 @@ async function visibleFieldCodes(ctx, model) {
 const writeTransaction = (client, fn) => client ? fn(client) : withTransaction('business', fn)
 
 export async function createRecord(ctx, scope, input, {client: transactionClient} = {}) {
+  recordData(input.data)
   return writeTransaction(transactionClient, async (client) => {
     await applyScopeGucs(client, scope)
     await lockFormLifecycle(client,ctx.companyId,input.schemaCode,'write')
@@ -273,7 +275,8 @@ export async function createRecord(ctx, scope, input, {client: transactionClient
  * @param {object} patch 补丁
  * @returns {Promise<{recordId: string, rowVersion: number}|null>} 结果
  */
-export async function updateRecord(ctx, scope, logical, patch, {client: transactionClient} = {}) {
+export async function updateRecord(ctx, scope, logical, patch, {client: transactionClient,transitionAction} = {}) {
+  recordData(patch?.data)
   const handle = buildHandle(ctx, logical)
   return writeTransaction(transactionClient, async (client) => {
     await applyScopeGucs(client, scope)
@@ -282,8 +285,10 @@ export async function updateRecord(ctx, scope, logical, patch, {client: transact
     await lockFormLifecycle(client,handle.companyId,existing.schema_code,'write')
     await assertFormActive(client,handle.companyId,existing.schema_code)
     await lockUniqueFields(client, handle.companyId, existing.schema_code)
-    const current = (await client.query('SELECT data,row_version FROM business_records WHERE company_id=$1 AND record_id=$2 AND ($3::text IS NULL OR schema_code = $3) FOR UPDATE', [handle.companyId, handle.id, handle.schemaCode ?? null])).rows[0]
+    const current = (await client.query('SELECT data,row_version,state,workflow_version,owner_id FROM business_records WHERE company_id=$1 AND record_id=$2 AND ($3::text IS NULL OR schema_code = $3) FOR UPDATE', [handle.companyId, handle.id, handle.schemaCode ?? null])).rows[0]
     if (!current || (patch.rowVersion != null && Number(current.row_version) !== patch.rowVersion)) return null
+    await assertRecordEditable(ctx,{schemaCode:existing.schema_code,state:current.state,workflowVersion:current.workflow_version,ownerId:current.owner_id},
+      {data:patch?.data,toState:patch?.state,transitionAction})
     const model = await publishedBusinessModel(ctx.companyId, existing.schema_code)
     await assertUniquePublicationReady(client, ctx.companyId, existing.schema_code, model)
     // Field mutability applies to the patch; uniqueness applies to the merged record.

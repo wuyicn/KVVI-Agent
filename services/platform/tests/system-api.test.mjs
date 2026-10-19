@@ -23,9 +23,13 @@ import { A, B, PASSWORD, resetDatabase, grantBaseline, grantPlatformRole,
          makeSession } from './harness.mjs'
 import { submitDraft, approveDraft, publishDraft, DIFF_FACES } from '../src/publish.mjs'
 import { handleApi } from '../src/api-router.mjs'
-import { createRecord, readRecord } from '../src/refs.mjs'
-import { scopeContext } from '../src/authorization.mjs'
+import { createRecord, readRecord, updateRecord } from '../src/refs.mjs'
+import { scopeContext, applyScopeGucs } from '../src/authorization.mjs'
 import { runtimeProjection } from '../src/runtime-projection.mjs'
+import { handleCommand, ACTIVE_CONTRACT_VERSION } from '../src/business.mjs'
+import { publicKeysOf } from '../src/signing.mjs'
+import { signingKeys } from '../src/identity.mjs'
+import { adminQuery } from './harness.mjs'
 
 let owner = null
 let builder = null
@@ -41,7 +45,7 @@ const DIFF = { faces: DIFF_FACES, added: [{ dim: 'DATA', scope: 'COMPANY' }],
 const ASSET = 'leave_api'
 
 /** 发一个最小可运行系统。字段只有 reason 一个，便于断言逐字段不变。 */
-async function publishSystem() {
+async function publishSystem({submittedTerminal=true,initialCode='draft'}={}) {
   const model = {
     schema_code: ASSET, name: '请假申请',
     fields: [{ field_code: 'reason', label: '事由', type: 'short_text', required: true }],
@@ -56,10 +60,11 @@ async function publishSystem() {
   }
   const workflow = {
     businessSchemaRef: { asset_type: 'BUSINESS_SCHEMA', asset_id: ASSET },
-    states: [{ state_code: 'draft', name: '草稿', initial: true, terminal: false },
-             { state_code: 'submitted', name: '待审批', initial: false, terminal: true }],
+    states: [{ state_code: initialCode, name: '草稿', initial: true, terminal: false },
+             { state_code: 'submitted', name: '待审批', initial: false, terminal: submittedTerminal },
+             { state_code: 'business_finished', name: '完成', initial: false, terminal: true }],
     actions: [{ action_code: 'submit', kind: 'SUBMIT', capability_ref: {} }],
-    transitions: [{ transition_code: 'submit_flow', from_state: 'draft',
+    transitions: [{ transition_code: 'submit_flow', from_state: initialCode,
                     to_state: 'submitted', action_code: 'submit' }],
     approverRef: { kind: 'SINGLE', role_ref: {
       permission_ref: { asset_type: 'PERMISSION', asset_id: 'role_directory' },
@@ -133,6 +138,9 @@ async function grantOnSystem(userId, actions) {
        actions, data_scopes, field_visibility)
      VALUES ($1,$2,$3,'DATA','*','{}',$4,'VISIBLE')`,
     [randomUUID(), A.company, roleId, ['SELF', 'COMPANY']])
+  await pool('platform').query(
+    `INSERT INTO policies(policy_id,company_id,role_id,dimension,resource_code,actions) VALUES($1,$2,$3,'FLOW',$4,'{SUBMIT}')`,
+    [randomUUID(),A.company,roleId,ASSET])
 }
 
 before(async () => {
@@ -243,4 +251,108 @@ describe('阶段九 · 系统与记录 API', () => {
     assert.equal(r.body.error, 'KVVI_UNKNOWN_ROUTE')
     assert.equal(r.body.session.companyId, A.company)
   })
+})
+
+
+async function ownRecord(state,workflowVersion=1) {
+  const scope=await scopeContext(owner.ctx)
+  const record=await createRecord(owner.ctx,scope,{schemaCode:ASSET,data:{reason:'unchanged original'},state,workflowVersion})
+  return {record,scope}
+}
+async function commandUpdate(recordId) {
+  return handleCommand({token:owner.raw,publicKeys:publicKeysOf(signingKeys()),contractVersion:ACTIVE_CONTRACT_VERSION,
+    body:{action:'record.update',targets:[{id:recordId}],patch:{data:{reason:'must not write'}}}})
+}
+async function unchanged(recordId) {
+  const {rows}=await adminQuery('kvvi_business','SELECT data,row_version,state FROM business_records WHERE record_id=$1',[recordId])
+  assert.equal(rows[0].data.reason,'unchanged original');assert.equal(Number(rows[0].row_version),1)
+  return rows[0]
+}
+test('a contract terminal state rejects typed API, command, and direct data updates without changing the row',async()=>{
+  for(const mode of ['api','command','data']) {
+    const {record,scope}=await ownRecord('submitted')
+    if(mode==='data')await assert.rejects(()=>updateRecord(owner.ctx,scope,{schemaCode:ASSET,id:record.recordId},{data:{reason:'must not write'},rowVersion:1}),error=>error.code==='KVVI_TERMINAL_STATE')
+    else {
+      const response=mode==='api'?await api('PATCH',`/api/v1/systems/${ASSET}/records/${record.recordId}`,owner,{data:{reason:'must not write'},rowVersion:1}):await commandUpdate(record.recordId)
+      assert.equal(response.status,403);assert.equal(response.body.error,'KVVI_TERMINAL_STATE')
+    }
+    assert.equal((await unchanged(record.recordId)).state,'submitted')
+  }
+})
+test('an unknown stored state or missing pinned workflow version cannot fall back to editable draft',async()=>{
+  for(const [state,version,code] of [['not_a_state',1,'KVVI_UNKNOWN_STATE'],['draft',99999,'KVVI_WORKFLOW_VERSION_MISSING']]){
+    const {record}=await ownRecord(state,version)
+    const response=await api('PATCH',`/api/v1/systems/${ASSET}/records/${record.recordId}`,owner,{data:{reason:'must not write'},rowVersion:1})
+    assert.equal(response.status,403);assert.equal(response.body.error,code)
+    await unchanged(record.recordId)
+  }
+})
+
+test('noninitial field changes require approval and pinned terminal rules survive a newer workflow',async()=>{
+  await publishSystem({submittedTerminal:false})
+  for(const [state,version,code] of [['submitted',2,'KVVI_RECORD_CHANGE_APPROVAL_REQUIRED'],['submitted',1,'KVVI_TERMINAL_STATE'],['business_finished',2,'KVVI_TERMINAL_STATE']]){
+    const {record}=await ownRecord(state,version)
+    for(const mode of ['api','command']){
+      const response=mode==='api'?await api('PATCH',`/api/v1/systems/${ASSET}/records/${record.recordId}`,owner,{data:{reason:'must not write'},rowVersion:1}):await commandUpdate(record.recordId)
+      assert.equal(response.status,403);assert.equal(response.body.error,code)
+    }
+    await unchanged(record.recordId)
+  }
+  await publishSystem({submittedTerminal:false,initialCode:'collecting'})
+  const {record}=await ownRecord('collecting',3)
+  const response=await api('PATCH',`/api/v1/systems/${ASSET}/records/${record.recordId}`,owner,{data:{reason:'allowed initial edit'},rowVersion:1})
+  assert.equal(response.status,200);assert.equal(response.body.rowVersion,2)
+})
+
+test('malformed data cannot masquerade as an empty patch and change a noninitial record',async()=>{
+  for(const data of [[], ['injected'], '', 'injected', null, 0, false])for(const mode of ['api','command','data']){
+    const {record,scope}=await ownRecord('submitted',2)
+    if(mode==='data')await assert.rejects(()=>updateRecord(owner.ctx,scope,{id:record.recordId},{data,rowVersion:1}),error=>error.code==='KVVI_RECORD_DATA_INVALID')
+    else{
+      const response=mode==='api'?await api('PATCH',`/api/v1/systems/${ASSET}/records/${record.recordId}`,owner,{data,rowVersion:1})
+        :await handleCommand({token:owner.raw,publicKeys:publicKeysOf(signingKeys()),contractVersion:ACTIVE_CONTRACT_VERSION,
+          body:{action:'record.update',targets:[{id:record.recordId}],patch:{data}}})
+      assert.equal(response.status,400);assert.equal(response.body.error,'KVVI_RECORD_DATA_INVALID')
+    }
+    await unchanged(record.recordId)
+  }
+})
+test('a plain command cannot reset a noninitial state and then bypass change approval',async()=>{
+  const {record}=await ownRecord('submitted',2)
+  const response=await handleCommand({token:owner.raw,publicKeys:publicKeysOf(signingKeys()),contractVersion:ACTIVE_CONTRACT_VERSION,
+    body:{action:'record.update',targets:[{id:record.recordId}],patch:{state:'collecting'}}})
+  assert.equal(response.status,403);assert.equal(response.body.error,'KVVI_TRANSITION_ACTION_REQUIRED')
+  assert.equal((await unchanged(record.recordId)).state,'submitted')
+  assert.equal((await commandUpdate(record.recordId)).body.error,'KVVI_RECORD_CHANGE_APPROVAL_REQUIRED')
+})
+
+test('the real workflow endpoint still performs an authorized action while raw state targets cannot be substituted',async()=>{
+  const {record,scope}=await ownRecord('draft',2)
+  await assert.rejects(()=>updateRecord(owner.ctx,scope,{schemaCode:ASSET,id:record.recordId},{state:'draft',rowVersion:1},
+    {transitionAction:'submit'}),error=>error.code==='KVVI_TRANSITION_TARGET_MISMATCH')
+  await unchanged(record.recordId)
+  const result=await api('POST',`/api/v1/systems/${ASSET}/records/${record.recordId}/transitions`,owner,{action:'submit',rowVersion:1})
+  assert.equal(result.status,200,JSON.stringify(result.body));assert.equal(result.body.state,'submitted');assert.equal(result.body.rowVersion,2)
+})
+test('a PATCH waiting for a real row lock cannot overwrite a concurrently advanced workflow version',async()=>{
+  const {record,scope}=await ownRecord('draft',2)
+  const blocker=await pool('business').connect()
+  let pending
+  try{
+    await blocker.query('BEGIN');await applyScopeGucs(blocker,scope)
+    await blocker.query("UPDATE business_records SET state='submitted',row_version=row_version+1 WHERE record_id=$1",[record.recordId])
+    pending=api('PATCH',`/api/v1/systems/${ASSET}/records/${record.recordId}`,owner,{data:{reason:'stale must not write'},rowVersion:1})
+    const deadline=Date.now()+3000
+    let waiting=false
+    while(Date.now()<deadline){
+      const status=await adminQuery('kvvi_business',"SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE 'SELECT data,row_version,state,workflow_version,owner_id FROM business_records%'")
+      if(status.rows.length){waiting=true;break}
+      await new Promise(resolve=>setTimeout(resolve,10))
+    }
+    assert.equal(waiting,true,'the PATCH did not reach the locked row')
+    await blocker.query('COMMIT')
+    const result=await pending;assert.equal(result.status,409);assert.equal(result.body.currentRowVersion,2)
+    const actual=(await adminQuery('kvvi_business','SELECT data,state,row_version FROM business_records WHERE record_id=$1',[record.recordId])).rows[0]
+    assert.equal(actual.data.reason,'unchanged original');assert.equal(actual.state,'submitted');assert.equal(Number(actual.row_version),2)
+  }finally{await blocker.query('ROLLBACK');blocker.release();await pending?.catch(()=>{})}
 })

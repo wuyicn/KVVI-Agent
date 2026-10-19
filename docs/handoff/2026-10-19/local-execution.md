@@ -393,3 +393,19 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `legacy-checking-list-build-final.log`：`1f185d7d9ec3a5a9b808189741dbba31e94306cd22c765104ea21e7d5cf5dab6`。
 - `legacy-checking-list-g2.log`：`8998762eb35572304ce24a585304135cb47e301aa37ad8bbfff69a9343a3607b`。
 - `legacy-checking-list-rebuild.log`：`9a8c4240570c68ed0f2ea289aafb8e89bbd2d8084aaec5bcc47a859d821c33f0`。
+
+
+## 批次28：公共记录层执行流程状态写入边界
+
+- 新record-state.mjs沿既有contractAt/latestContract读取并校验摘要，以记录自己的workflow_version及当前state判定，不静默退回新版本。refs.updateRecord在FOR UPDATE和rowVersion核对后检查；terminal任意修改拒绝，未知状态/缺历史版本/坏定义拒绝。命令在风险审批前预检同规则，真正写入仍锁内重验，R3批准不能替代基础状态规则。
+- 字段变更只允许真实initial状态（不硬编码状态码叫draft）；非initial非terminal返回KVVI_RECORD_CHANGE_APPROVAL_REQUIRED。审批申请/批准/执行闭环仍待做，本批只阻止未经批准的直接字段修改。空流程/旧无流程只识别既有draft，不把任意字符串视为可写。
+- 独立复核两条绕过均先RED：空数组/标量data按Object.keys判空而实际JSONB拼接会改变结构；普通command patch.state可先重置初始态再改字段。现recordData统一要求对象，API/commands/refs create/update均拒绝数组、标量和null根值，字段值中的合法null仍支持；普通命令没有可信transitionAction不能改state。可信流程在记录锁内按实际pinned契约、当前owner/state与FLOW权限重新judge并核对目标状态，旧step预检保留。
+- 真实PG覆盖API/command/direct终态拒绝且data/version不变、未知/丢版本、新版改变terminal不影响老记录、自定义collecting初始态正向、空/非空数组/字符串/null/0/false反例、重置状态两步绕过、合法submit、目标替换、实际行锁等待后409。最终定向system-api+diff 29/29、exit0；之前三文件60/60为中间版本证据，不替代最终回归。
+- 首次完整平台6项失败来自旧恢复夹具的draft定义缺必需terminal布尔值，补为false；第二次完整663项仅旧差分错误码失败，新预检提前于legacy非法动作诊断。保留旧非法迁移诊断顺序后，仍由权威状态检查拒绝任何假迁移放行，未改旧断言。最终完整平台663项：662通过、0失败、1既有跳过，exit0；隔离PG确认停止。两名只读复核确认绕过已关闭。前端/固定fork未变，本批未重复无关构建。
+- 设计见record-state-design.md。流程事件/独立审计耐久原key、非初始变更审批、组织与真实浏览器等仍未完成，任务3/4/8不勾选。未部署、迁移或重启已有试点；再次仅输出配置存在/键非空布尔值，指定kvvi.env仍没有非空DEEPSEEK_API_KEY，真实DeepSeek未执行。
+
+非敏感日志SHA-256：
+- `record-state-red.log`：`d72a6d75ebb9714f34639ee3700030d309560709ceb9d5ee45e08c48e9adcf13`。
+- `record-state-bypass-red.log`：`127d460fe112db6b490eb17bed670f3d9420753dd9eb1b70141ce05777129c3b`。
+- `record-state-final-focused.log`：`2a981fa4af55834b228b7a29be61298604489fbd982383b3203299b0e497f5d1`。
+- `record-state-platform-full-final2.log`：`aad9a940ce7cd3ca86fa4f076dea8bbdd86178285fd1f6f69416968d7a873e90`。

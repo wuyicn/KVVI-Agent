@@ -18,7 +18,7 @@ before(async()=>{
   const draft=await submitDraft({ctx:alice.ctx,change:{assetId:'general_item'},diffReport:{faces:DIFF_FACES},invariant:{ok:true}})
   await approveDraft({ctx:bob.ctx,draftId:draft.draftId,decision:'APPROVE'})
   const specs={'business-schema':{schema_code:'general_item',fields:[{field_code:'title',type:'short_text'}]},
-    'view-schema':{componentsTree:[]},'workflow-spec':{states:[{state_code:'draft',initial:true}],transitions:[]},
+    'view-schema':{componentsTree:[]},'workflow-spec':{states:[{state_code:'draft',initial:true,terminal:false}],transitions:[]},
     'permission-spec':{roles:[],policies:[]},'tool-spec':{tools:[]},'app-model-command':{commands:[]}}
   await publishDraft({ctx:bob.ctx,draftId:draft.draftId,apply:async({diffDigest})=>({diffDigest}),
     system:{assetId:'general_item',schemaCode:'general_item',name:'Intents'},

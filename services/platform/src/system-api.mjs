@@ -31,6 +31,7 @@ import { writeOperation, readWriteOperation } from './record-write-operations.mj
 import { recordWriteIntent } from './record-write-intents.mjs'
 import { step, nextActions, submitterOf, WorkflowError } from './workflow.mjs'
 import { append, digestOf } from './audit.mjs'
+import {recordData} from './record-state.mjs'
 
 /**
  * 把已验证的会话折成执行点要的 `ctx`。
@@ -259,7 +260,7 @@ async function authorizeRecordWrite(ctx, assetId, data, action, recordId=null, c
     const current=await readRecord(ctx,await scopeContext(ctx),{schemaCode:assetId,id:recordId},{client})
     if (current===null) return fail('KVVI_NO_SUCH_RECORD',{recordId})
   }
-  const blocked=await notWritableFields(ctx.companyId,ctx.userId,Object.keys(data??{}))
+  const blocked=await notWritableFields(ctx.companyId,ctx.userId,Object.keys(recordData(data)))
   if (blocked.length > 0) {
     // Metadata-only intent reads/controls do not attempt this business write.
     // Their permitted state changes have their own transactional audit outbox.
@@ -458,7 +459,7 @@ async function recordTransition(ctx, assetId, recordId, payload) {
         // 不这么做的话两条路径互相覆盖且都不报错。
         const updated = await updateRecord(ctx, scope, {
           companyId: ctx.companyId, schemaCode: assetId, id: recordId,
-        }, { state: toState, rowVersion: payload.rowVersion })
+        }, { state: toState, rowVersion: payload.rowVersion },{transitionAction:action})
         if (updated === null) throw new WorkflowError('KVVI_ROW_VERSION_CONFLICT')
         return updated
       },

@@ -28,6 +28,7 @@ import { createHash } from 'node:crypto'
 import { append } from './audit.mjs'
 import { fieldVisibility, projectFields, resolveTransition, canAct } from './authorization.mjs'
 import { readRecord, updateRecord, createRecord, buildHandle } from './refs.mjs'
+import {assertRecordEditable,RecordStateError,recordData} from './record-state.mjs'
 
 /**
  * 风险分级：**封闭清单**（§9.6.4.1）。
@@ -164,6 +165,8 @@ export async function execute({ ctx, scope, request, approval = null, transition
     throw new CommandError('KVVI_CALLER_SUPPLIED_IDENTITY', 'POLICY', { fields: forbidden })
   }
 
+  recordData(request.patch?.data)
+
   // ── 第 1 步：基础授权（**不可被审批替代**）──────────────────────
   const loaded = []
   for (const target of request.targets ?? []) {
@@ -209,6 +212,12 @@ export async function execute({ ctx, scope, request, approval = null, transition
         await append({ ...auditBase, outcome: 'DENY', reason: verdict.reason })
         throw new CommandError(verdict.reason, 'POLICY', { from: record.state })
       }
+    }
+    try {await assertRecordEditable(ctx,record,{data:request.patch?.data,toState:request.patch?.state})}
+    catch(error){
+      if(!(error instanceof RecordStateError))throw error
+      await append({...auditBase,outcome:'DENY',reason:error.code,resourceId:record.recordId})
+      throw error
     }
   }
 

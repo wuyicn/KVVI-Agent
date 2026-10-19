@@ -41,7 +41,7 @@ before(async () => {
       {field_code:'nullable_count',type:'integer',nullable:true},
     ] },
     'view-schema': { componentsTree: [] },
-    'workflow-spec': { states: [{ state_code: 'draft', initial: true }], transitions: [] },
+    'workflow-spec': { states: [{ state_code: 'draft', initial: true, terminal: false }], transitions: [] },
     'permission-spec': { roles: [], policies: [] }, 'tool-spec': { tools: [] }, 'app-model-command': { commands: [] },
   }
   await publishDraft({ ctx: bob.ctx, draftId: draft.draftId, apply: async ({ diffDigest }) => ({ diffDigest }),

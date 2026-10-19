@@ -32,6 +32,7 @@
 import { TOKEN_TTL_MS, verifyExpiry, verifySignature } from './signing.mjs'
 import { CommandError, detectCallerIdentityFields, execute } from './commands.mjs'
 import { scopeContext } from './authorization.mjs'
+import {RecordStateError} from './record-state.mjs'
 
 /** 本业务系统当前激活的契约版本（§9.4.2 与 §9.4.3 是两个独立版本，不要合并）。 */
 export const ACTIVE_CONTRACT_VERSION = process.env.KVVI_CONTRACT_VERSION ?? 'kvvi-contract/v1'
@@ -207,6 +208,7 @@ export async function handleCommand({
     const result = await execute({ ctx, scope, request: body, approval, transitions })
     return { status: 200, body: { ok: true, offline: !online, ...result } }
   } catch (error) {
+    if(error instanceof RecordStateError)return {status:error.status,body:{ok:false,error:error.code,category:'POLICY',offline:!online}}
     if (error instanceof CommandError) {
       return { status: error.code === 'KVVI_RECORD_NOT_FOUND' ? 404 : 403,
                body: { ok: false, error: error.code, category: error.category,

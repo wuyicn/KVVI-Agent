@@ -39,6 +39,7 @@ import { FieldRuleError } from './field-rules.mjs'
 import { checkIdentifierSegments, INVALID_IDENTIFIER } from './request-refs.mjs'
 import { appendDenial, digestOf } from './audit.mjs'
 import { WriteOperationError } from './record-write-operations.mjs'
+import {RecordStateError} from './record-state.mjs'
 
 /** 产品 API 的前缀。与运行时 RPC 的 `/api` 区分靠**更具体**的路径。 */
 const PREFIX = '/api/v1'
@@ -275,6 +276,7 @@ export async function handleApi({ method, path, query, body, headers, loadSessio
   try {
     return await dispatch(routes)
   } catch (error) {
+    if(error instanceof RecordStateError)return {status:error.status,body:{error:error.code}}
     if (error instanceof WriteOperationError) {
       return {status:error.status,body:{error:error.code,
         ...(error.code==='KVVI_OPERATION_OUTCOME_UNKNOWN'?{idempotencyKey:error.key,retryWithSameKey:true}:{})}}
