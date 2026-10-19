@@ -217,7 +217,7 @@ async function visibleFieldCodes(ctx, model) {
 
 const writeTransaction = (client, fn) => client ? fn(client) : withTransaction('business', fn)
 
-export async function createRecord(ctx, scope, input, {client: transactionClient} = {}) {
+export async function createRecord(ctx, scope, input, {client: transactionClient,beforeInsert} = {}) {
   recordData(input.data)
   return writeTransaction(transactionClient, async (client) => {
     await applyScopeGucs(client, scope)
@@ -244,6 +244,9 @@ export async function createRecord(ctx, scope, input, {client: transactionClient
     const recordNo = input.recordNo ?? await nextRecordNo(client, {
       companyId: ctx.companyId, schemaCode: input.schemaCode,
     })
+    // Trusted server hook: recheck external authorization after lifecycle,
+    // uniqueness and sequence waits, immediately before the actual INSERT.
+    if(beforeInsert)await beforeInsert(client)
     const { rows } = await client.query(
       `INSERT INTO business_records (record_id, company_id, schema_code, dept_id,
          shop_id, owner_id, state, record_no, data, workflow_version)

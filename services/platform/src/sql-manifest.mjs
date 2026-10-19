@@ -39,6 +39,7 @@ export const MIGRATIONS = Object.freeze({
     '27-policy-field-required.sql',
     '28-company-branding.sql',
     '32-business-build-intents.sql',
+    '40-visitor-protocol.sql',
   ]),
   // ⚠️ 业务库的迁移**同样按顺序**：26 依赖 20 建出来的 `business_records`，
   // 34 依赖 20 的函数（`kvvi_guc*`）与策略。

@@ -440,3 +440,21 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `visitor-admission-red.log`：`0fb3c60491591f1002a160ae74a590c6e92bab48b801cf2087eb63fc4e840676`。
 - `visitor-admission-green3.log`：`e98cf0503bdd114d68e965428b1a01b78e3b7cffbe8578c84b40f4a610c3bbc0`。
 - `visitor-admission-platform-full.log`：`90c3f81f988862762593350c7d826eb22ef24cbf100f1977f323fa72f9f67628`。
+
+
+## 批次31：访客签名协议与原子提交模块
+
+- SQL40新增永久legacy-unknown默认，不回填新协议；v2签入公司/issuer/max/protocol，使用时完整核登记正文与token摘要。本人吊销增加issuer谓词。8项签名/登记/吊销反例先RED，38项定向通过；独立复核指出“v2已可旧式消费”资格窗口，故未单独提交协议版本，一并接入以下原子路径。中间691项回归不是最终源码验收。
+- submitAsVisitor要求调用者预先生成随机UUID原key，统一大小写并使用隔离namespace，复用writeOperation稳定回执。配额、真实发布初态/流程版本、事务取号、createRecord、公司提交账本、原响应与audit payload使用同一client；旧create→平台counter→event→audit串行路径移除。默认准入关闭即拒绝新效果，已有原key恢复不重复消费；平台计数满额不阻挡原回执恢复。
+- 初始6个原子反例先RED，maxN不同key并发、同key并发、正文冲突、实际COMMIT后丢确认、journal故障回滚记录/receipt/额度/取号、全新Node进程原key恢复、audit不可达后恢复均有真实PG证据。旧访客fixture现在发布六份真实契约并由夹具管理员明确启用隔离库准入；每次旧用例调用的随机key由测试调用方预先生成，生产服务没有自动生成替代key。
+- 两名独立复核指出quota重验之后仍可能等form/unique/sequence。真实PG持锁→请求确实等待→吊销→放锁的3个反例先RED；createRecord可信beforeInsert在取号后立即做最终重验，失败完整回滚。另有转出当前行范围仍泄露原回执recordId、await后原input源信息变化导致投影来源不一致的RED，均修复。额度等锁期间撤销/到期、来源格式拒绝也有正反向覆盖。
+- 最终定向55项全通过。最终完整平台708项：707通过、0失败、1既有跳过，exit0，runner确认自有PG停止；摘要均在最终进程退出后计算。完整命令：`cd services/platform && env PATH=/Users/wuyi-macs/.local/opt/node-v24.20.0/bin:/Users/wuyi-macs/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs npm test`。
+- 此批仅模块原子提交；成功明确projectionPending=true，后台计数/事件补投下批继续。平台吊销与business COMMIT仍没有跨库原子性，不夸大已知锁后重验；旧writer栅栏/历史基线、HTTP/UI/真实浏览器、DeepSeek和现有试点部署均未执行。任务7及整体12项不勾选。
+
+非敏感日志SHA-256：
+- `visitor-protocol-red.log`：`0e9ce08f8a5fe7aa23b2f570c96c323d92bd8f6f7925d68ce6b01479dbb22f0b`。
+- `visitor-atomic-red.log`：`27bdb7330499ef0fc470f92b8a998da144c33658dd4cd3f5f19cde0716a05654`。
+- `visitor-receipt-scope-red.log`：`7c8afb3929e1eeb6f6c021922f1c0f6dd3897c55ee9040aa3d5efbf710c1f325`。
+- `visitor-insert-waits-red.log`：`4138bba0848ee45e68603cec4cdefb9f3e74effa9b95691e58468b2b5e14a993`。
+- `visitor-atomic-final-focused2.log`：`84121a79ac203b521665a22b33cb887b7964cf4d98054860a205e2ca84bd92f1`。
+- `visitor-atomic-platform-full.log`：`30792b8e2d9bfc6ec7840e967a40ba2380acc13ba5d8f5d5dbc3d1d0911e1a46`。

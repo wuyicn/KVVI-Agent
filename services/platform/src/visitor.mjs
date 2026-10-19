@@ -28,12 +28,15 @@
 import { createHash, createPrivateKey, createPublicKey, randomUUID, sign as edSign,
          verify as edVerify } from 'node:crypto'
 import { pool, withTransaction } from './db.mjs'
+import {isDeepStrictEqual} from 'node:util'
 import { TOKEN_TTL_MS, ISSUER, TOKEN_ALG } from './signing.mjs'
 import { signingKeys, loadSession } from './identity.mjs'
-import { publicKeysOf, signToken, verifySignature, verifyExpiry } from './signing.mjs'
-import { append } from './audit.mjs'
+import { publicKeysOf, signToken } from './signing.mjs'
 import { fieldVisibility,scopeContext,notWritableFields } from './authorization.mjs'
 import {recordData} from './record-state.mjs'
+import {applyScopeGucs} from './authorization.mjs'
+import {runtimeProjection} from './runtime-projection.mjs'
+import {writeOperation,WriteOperationError} from './record-write-operations.mjs'
 import { createRecord } from './refs.mjs'
 import { canAct } from './authorization.mjs'
 
@@ -58,6 +61,7 @@ export class VisitorError extends Error {
   }
 }
 
+export const SUBMISSION_PROTOCOL='kvvi-visitor/v2'
 const digestOf = (raw) => createHash('sha256').update(raw).digest('hex')
 const b64url = (b) => Buffer.from(b).toString('base64url')
 const unb64url = (s) => Buffer.from(s, 'base64url')
@@ -150,7 +154,7 @@ export async function issueLink(input) {
   const nonce = randomUUID()
   const expiresAt = new Date(Date.now() + ttlMs)
   const token = await signLink({ linkId, nonce, ctx, formCode, schemaCode,
-                                 fields, actions, rowScope, expiresAt })
+                                 fields, actions, rowScope, expiresAt, maxSubmissions })
 
   const session = await loadSession(ctx.sessionId)
   // ⚠️ 记录**当前**授权版本，不是会话里冻结的那一个。
@@ -166,12 +170,12 @@ export async function issueLink(input) {
       `INSERT INTO visitor_links (link_id, token_digest, nonce, company_id,
          schema_code, form_code, allowed_fields, allowed_actions, row_scope,
          issuer_user_id, issuer_dept_id, issuer_shop_id, issuer_authz_version,
-         one_time, max_submissions, expires_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+         one_time, max_submissions, expires_at, submission_protocol)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
       [linkId, digestOf(token), nonce, ctx.companyId, schemaCode, formCode,
        fields, actions, JSON.stringify(rowScope ?? {}), ctx.userId,
        session?.deptId ?? home.dept_id, session?.shopId ?? home.shop_id,
-       issuerAuthzVersion, maxSubmissions === 1, maxSubmissions, expiresAt])
+       issuerAuthzVersion, maxSubmissions === 1, maxSubmissions, expiresAt, SUBMISSION_PROTOCOL])
   })
   await events(linkId, ctx, 'ISSUED', { formCode, fields, rowScope }, input.sourceIp)
   return { linkId, token, expiresAt, formCode, fields, actions, rowScope }
@@ -179,7 +183,7 @@ export async function issueLink(input) {
 
 /** 用与令牌同一套非对称密钥对链接签名（§3.5.1：同一信任锚点体系）。 */
 async function signLink({ linkId, nonce, ctx, formCode, schemaCode, fields, actions,
-                          rowScope, expiresAt }) {
+                          rowScope, expiresAt, maxSubmissions }) {
   const claims = {
     sub: ctx.userId, sid: ctx.sessionId, ten: ctx.companyId, gw: 'VISITOR',
     av: 1, cv: 'kvvi-visitor/v1',
@@ -190,6 +194,7 @@ async function signLink({ linkId, nonce, ctx, formCode, schemaCode, fields, acti
   signToken(claims, signingKeys())
   const payload = b64url(JSON.stringify({
     link: linkId, nonce, form: formCode, schema: schemaCode,
+    protocol:SUBMISSION_PROTOCOL,maxSubmissions,companyId:ctx.companyId,issuerUserId:ctx.userId,
     fields, actions, rowScope: rowScope ?? {},
     exp: Math.floor(expiresAt.getTime() / 1000),
   }))
@@ -261,7 +266,7 @@ export async function verifyLinkStatus(row, { nowMs = Date.now(), reachable = tr
 export async function revokeLink({ linkId, ctx, reason = 'ISSUER_REVOKED' }) {
   const { rows } = await pool('platform').query(
     `UPDATE visitor_links SET revoked_at = now(), revoked_by = $2, revoked_reason = $3
-      WHERE link_id = $1 AND company_id = $4 AND revoked_at IS NULL
+      WHERE link_id = $1 AND company_id = $4 AND issuer_user_id = $2 AND revoked_at IS NULL
       RETURNING company_id, issuer_user_id`,
     [linkId, ctx.userId, reason, ctx.companyId])
   if (rows.length !== 1) return false
@@ -285,8 +290,9 @@ export async function revokeLink({ linkId, ctx, reason = 'ISSUER_REVOKED' }) {
  * @param {object} input 入参
  * @returns {Promise<object>} 结果
  */
-export async function submitAsVisitor(input) {
-  const { token, data, sourceIp, nowMs = Date.now(), reachable = true } = input
+async function authorizeSubmission(input) {
+  const { token, data, sourceIp, reachable = true } = input
+  const nowMs=Math.max(input.nowMs??Date.now(),Date.now())
 
   recordData(data)
   const sig = verifyLinkSignature(token)
@@ -299,6 +305,11 @@ export async function submitAsVisitor(input) {
   if (rows.length !== 1) throw new VisitorError('KVVI_LINK_UNKNOWN')
   const row = rows[0]
   if (row.nonce !== body.nonce) throw new VisitorError('KVVI_LINK_REPLAY')
+  if(row.submission_protocol!==SUBMISSION_PROTOCOL||body.protocol!==SUBMISSION_PROTOCOL)throw new VisitorError('KVVI_VISITOR_LEGACY_LINK')
+  const registered={link:row.link_id,nonce:row.nonce,form:row.form_code,schema:row.schema_code,
+    protocol:row.submission_protocol,maxSubmissions:row.max_submissions,companyId:row.company_id,issuerUserId:row.issuer_user_id,
+    fields:row.allowed_fields,actions:row.allowed_actions,rowScope:row.row_scope,exp:Math.floor(new Date(row.expires_at).getTime()/1000)}
+  if(row.token_digest!==digestOf(token)||!isDeepStrictEqual(body,registered)||row.one_time!==(body.maxSubmissions===1))throw new VisitorError('KVVI_VISITOR_BINDING_CHANGED')
 
   const status = await verifyLinkStatus(row, { nowMs, reachable })
   if (!status.ok) {
@@ -349,41 +360,70 @@ export async function submitAsVisitor(input) {
   const ownership = await resolveOwnership(row)
   if (!ownership.ok) throw new VisitorError(ownership.error, ownership.detail)
 
-  // ⑦ 限流（提交前）
-  await enforceLimits('SUBMIT', {
-    ctx: { companyId: row.company_id, userId: row.issuer_user_id },
-    link: row, sourceIp,
-  })
-
-  // ⑧ 落库：**正式业务数据**，同等对待（§3.5.3）
   const currentScope=await scopeContext({companyId:row.company_id,userId:row.issuer_user_id})
   if(scopesFor(currentScope,row.schema_code).size===0)throw new VisitorError('KVVI_ISSUER_NO_LONGER_WRITABLE')
   if(currentScope.deptId!==ownership.deptId||currentScope.shopId!==ownership.shopId)throw new VisitorError('KVVI_ROW_SCOPE_MISMATCH')
-  const created = await createRecord(
-    { companyId: row.company_id, userId: ownership.ownerId, sessionId: null,
-      gateway: 'VISITOR' },
-    currentScope,
-    { schemaCode: row.schema_code, data, recordNo: `VIS${Date.now()}` })
+  return {body,row,ownership,currentScope}
+}
 
-  await withTransaction('platform', async (client) => {
-    await client.query(
-      `UPDATE visitor_links SET submissions = submissions + 1, used_at = now()
-        WHERE link_id = $1`, [row.link_id])
-  })
-  await events(row.link_id, { companyId: row.company_id, userId: row.issuer_user_id },
-               'SUBMITTED', { recordId: created.recordId, fields }, sourceIp)
-  // 红线 3 的受限形式：记**访客通道**，不冒充签发人亲自操作（§3.5.4）
-  await append({
-    // actor_kind=VISITOR 说清「不是账号持有者本人在操作」；
-    // actor_id=签发人让入口有主。两者分开，才既不冒充又可追溯（§3.5.4）。
-    companyId: row.company_id, actorKind: 'VISITOR', actorId: row.issuer_user_id,
-    gateway: 'VISITOR', sessionId: null, action: 'visitor.submit', outcome: 'ALLOW',
-    resourceKind: 'visitor_link', resourceId: row.link_id,
-    paramsDigest: createHash('sha256').update(JSON.stringify(fields)).digest('hex'),
-  })
-  return { recordId: created.recordId, ownership,
-           traceability: { issuerUserId: row.issuer_user_id, linkId: row.link_id,
-                           note: '追溯单位为「签发人 + 链接 + 通道」，不承诺区分访客个体' } }
+/** The caller must retain this random key before sending; the server never invents a retry identity. */
+export async function submitAsVisitor(input) {
+  recordData(input.data)
+  const supplied=input.idempotencyKey
+  if(typeof supplied!=='string'||!(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i).test(supplied))throw new VisitorError('KVVI_OPERATION_KEY_INVALID')
+  const key=supplied.toLowerCase()
+  if(input.sourceIp!=null&&(typeof input.sourceIp!=='string'||!input.sourceIp||Buffer.byteLength(input.sourceIp)>128))throw new VisitorError('KVVI_VISITOR_SOURCE_INVALID')
+  // Copy the JSON body once: an in-process caller cannot change the request after its digest is taken.
+  const request={data:JSON.parse(JSON.stringify(input.data??{}))},submission={...input,...request}
+  let authorized=await authorizeSubmission(submission)
+  const ctx={companyId:authorized.row.company_id,userId:authorized.row.issuer_user_id,sessionId:null,gateway:'VISITOR'}
+  const endpoint=`VISITOR /links/${authorized.row.link_id}`
+  try {
+    const result=await writeOperation({ctx,endpoint,key:`visitor.v1.${key}`,request,
+      authorize:async client=>{
+        authorized=await authorizeSubmission(submission)
+        await applyScopeGucs(client,authorized.currentScope)
+        const existing=(await client.query(`SELECT response FROM record_write_operations
+          WHERE company_id=$1 AND actor_id=$2 AND endpoint=$3 AND idempotency_key=$4`,[ctx.companyId,ctx.userId,endpoint,`visitor.v1.${key}`])).rows[0]
+        if(existing&&!(await client.query('SELECT 1 FROM business_records WHERE company_id=$1 AND record_id=$2',[ctx.companyId,existing.response.recordId])).rows.length)throw new VisitorError('KVVI_NOT_ALLOWED')
+        return null
+      },
+      run:async(client,{operationId})=>{
+        await applyScopeGucs(client,authorized.currentScope)
+        const {row,body}=authorized
+        const admittedAt=(await client.query('SELECT kvvi_visitor_private.admit($1,$2,$3,$4,$5,$6,$7,$8) AS at',
+          [ctx.companyId,ctx.userId,row.link_id,operationId,body.maxSubmissions,digestOf(submission.token),
+           submission.sourceIp?digestOf(submission.sourceIp):null,new Date(body.exp*1000)])).rows[0].at
+        // A source lock can wait across companies. Re-read revocation, field permissions and membership after it.
+        authorized=await authorizeSubmission(submission)
+        const {ownership,currentScope}=authorized
+        const projection=await runtimeProjection(ctx.companyId,row.schema_code,{client})
+        const workflow=projection.workflows[row.schema_code],states=workflow?.states
+        const initial=Array.isArray(states)?states.filter(state=>state.initial===true):[]
+        if(!Array.isArray(states)||(states.length>0&&(initial.length!==1||initial[0].terminal!==false||typeof initial[0].state_code!=='string'||!initial[0].state_code||!Number.isSafeInteger(workflow.workflowVersion))))throw new VisitorError('KVVI_RUNTIME_CONTRACT_INCOMPLETE')
+        const created=await createRecord(ctx,currentScope,{schemaCode:row.schema_code,data:request.data,
+          state:states.length?initial[0].state_code:'draft',workflowVersion:states.length?workflow.workflowVersion:null},{client,
+            beforeInsert:async()=>{
+              const final=await authorizeSubmission(submission)
+              if(final.currentScope.deptId!==currentScope.deptId||final.currentScope.shopId!==currentScope.shopId)throw new VisitorError('KVVI_ROW_SCOPE_MISMATCH')
+            }})
+        const fields=Object.keys(request.data).sort()
+        const payload={companyId:ctx.companyId,issuerUserId:ctx.userId,linkId:row.link_id,recordId:created.recordId,
+          fields,sourceIp:submission.sourceIp??null,admittedAt:admittedAt.toISOString()}
+        await client.query(`INSERT INTO visitor_submissions(company_id,operation_id,link_id,issuer_id,record_id,admitted_at,projection_payload)
+          VALUES($1,$2,$3,$4,$5,$6,$7)`,[ctx.companyId,operationId,row.link_id,ctx.userId,created.recordId,admittedAt,payload])
+        return {status:201,body:{...created,ownership,
+          traceability:{issuerUserId:ctx.userId,linkId:row.link_id,note:'追溯单位为「签发人 + 链接 + 通道」，不承诺区分访客个体'}},
+          audit:{companyId:ctx.companyId,actorKind:'VISITOR',actorId:ctx.userId,gateway:'VISITOR',sessionId:null,
+            action:'visitor.submit',outcome:'ALLOW',resourceKind:'visitor_link',resourceId:row.link_id,paramsDigest:digestOf(JSON.stringify(fields))}}
+      }})
+    // A durable company journal now owns platform projection. Never run the business effect again to repair it.
+    return {...result.body,idempotencyKey:key,projectionPending:true}
+  }catch(error){
+    if(error instanceof WriteOperationError){error.key=key;throw error}
+    if(error.code==='P0001'&&/^KVVI_[A-Z_]+$/.test(error.message))throw new VisitorError(error.message)
+    throw error
+  }
 }
 
 /**
@@ -436,7 +476,7 @@ export async function checkRelatedRef(row, ref) {
 }
 
 /** 限流四维度（§3.5.2）。**超限即拒绝并记录，不排队、不降级放行。** */
-async function enforceLimits(kind, { ctx, link = null, sourceIp = null }) {
+async function enforceLimits(kind, { ctx }) {
   const since = new Date(Date.now() - RATE.windowMs)
   const client = await pool('platform').connect()
   try {
@@ -458,25 +498,6 @@ async function enforceLimits(kind, { ctx, link = null, sourceIp = null }) {
       return
     }
 
-    // 链接维度：用已登记的提交次数（不是事件计数，避免并发下的窗口竞态）
-    if (link.submissions >= link.max_submissions) {
-      throw new VisitorError('KVVI_RATE_LIMITED_LINK', { limit: link.max_submissions })
-    }
-    if (sourceIp) {
-      const { rows } = await client.query(
-        `SELECT count(*)::int AS n FROM visitor_link_events
-          WHERE source_ip = $1 AND kind = 'SUBMITTED' AND at > $2`, [sourceIp, since])
-      if (rows[0].n >= RATE.perSourceSubmissions) {
-        throw new VisitorError('KVVI_RATE_LIMITED_SOURCE', { limit: RATE.perSourceSubmissions })
-      }
-    }
-    const { rows: c } = await client.query(
-      `SELECT count(*)::int AS n FROM visitor_link_events
-        WHERE company_id = $1 AND kind = 'SUBMITTED' AND at > $2`, [ctx.companyId, since])
-    if (c[0].n >= RATE.perCompanySubmissions) {
-      throw new VisitorError('KVVI_RATE_LIMITED_COMPANY',
-        { limit: RATE.perCompanySubmissions })
-    }
   } finally {
     client.release()
   }

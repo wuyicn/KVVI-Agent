@@ -13,12 +13,14 @@ import { randomUUID } from 'node:crypto'
 import { pool, closeAll } from '../src/db.mjs'
 import { A, B, resetDatabase, makeSession, grantBaseline, adminQuery } from './harness.mjs'
 import {
-  issueLink, submitAsVisitor, revokeLink, revokeLinksOfIssuer, checkRelatedRef,
+  issueLink, submitAsVisitor as submitWithKey, revokeLink, revokeLinksOfIssuer, checkRelatedRef,
   verifyLinkSignature, RATE, LINK_TTL_MAX_MS, VisitorError,
 } from '../src/visitor.mjs'
 import { scopeContext } from '../src/authorization.mjs'
 import { bumpAuthzVersion, suspendAccount } from '../src/identity.mjs'
 
+import {publishVisitorFixture} from './visitor-fixture.mjs'
+const submitAsVisitor=input=>submitWithKey({idempotencyKey:randomUUID(),...input})
 const FORM = 'general_item'
 let alice = null       // 有写权限的签发人
 let carol = null       // 只有读权限
@@ -36,6 +38,8 @@ function grantReadOnly(roleCode) {
 before(async () => {
   await resetDatabase()
   await grantBaseline(A.alice)
+  await publishVisitorFixture()
+  await adminQuery('kvvi_business','UPDATE kvvi_visitor_private.config SET enabled=true WHERE singleton')
   alice = await makeSession(A.alice, A.company)
   carol = await makeSession(A.carol, A.company)
   bob = await makeSession(A.bob, A.company)
@@ -195,7 +199,7 @@ describe('锚点④ §3.5.1 提交：行范围、归属与越权关联', () => {
       [link.linkId, JSON.stringify({ deptId: A.otherDept })])
     await assert.rejects(
       () => submitAsVisitor({ token: link.token, data: GOOD }),
-      (e) => e.code === 'KVVI_ROW_SCOPE_MISMATCH')
+      (e) => e.code === 'KVVI_VISITOR_BINDING_CHANGED')
   })
 
   test('关联对象越权 → 拒绝；且**不返回任何候选**', async () => {
