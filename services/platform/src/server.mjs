@@ -32,6 +32,7 @@ import { directoryAuditPending } from './business-directory-audit.mjs'
 import { retryDirectoryJobs, buildIntentsPending } from './business-build-intents.mjs'
 import { flushWriteAudit, writeAuditPending } from './record-write-operations.mjs'
 
+import {handleVisitor,isVisitorPath,VISITOR_HEADERS} from './visitor-http.mjs'
 import {flushVisitorProjections,visitorProjectionPending} from './visitor-projection.mjs'
 
 let visitorProjectionRunning=false
@@ -392,6 +393,23 @@ async function handleRequest(req, res) {
     }
     const out = await bootstrapRoutes({ method, path, body, expectedToken: BOOTSTRAP_TOKEN })
     return send(res, out.status, out.body)
+  }
+
+  // Signed visitor capabilities are independent of account cookies and the DSH proxy.
+  if(isVisitorPath(path)){
+    if(!['/visitor/submit','/visitor/receipt'].includes(path)||method!=='POST'){
+      const out=await handleVisitor({method,path})
+      return send(res,out.status,out.body,{...VISITOR_HEADERS,...out.headers})
+    }
+    if(url.search)return send(res,400,{error:'KVVI_VISITOR_QUERY_FORBIDDEN'},VISITOR_HEADERS)
+    if(!/^application\/json(?:\s*;|$)/i.test(req.headers['content-type']??''))return send(res,415,{error:'KVVI_JSON_REQUIRED'},VISITOR_HEADERS)
+    const sourceIp=req.socket.remoteAddress
+    const raw=await readBody(req)
+    if(raw===BODY_TOO_LARGE)return send(res,413,{error:'KVVI_BODY_TOO_LARGE'},VISITOR_HEADERS)
+    let body
+    try{body=JSON.parse(raw)}catch{return send(res,400,{error:'KVVI_BAD_JSON'},VISITOR_HEADERS)}
+    const out=await handleVisitor({method,path,query:url.search,headers:req.headers,body,sourceIp})
+    return send(res,out.status,out.body,{...VISITOR_HEADERS,...out.headers})
   }
 
   // ── KVVI 业务面板的数据端点 ────────────────────────────────────────

@@ -220,6 +220,8 @@ export function verifyLinkSignature(token) {
   } catch {
     return { ok: false, error: 'KVVI_LINK_MALFORMED' }
   }
+  if(!header||typeof header!=='object'||Array.isArray(header)||header.typ!=='KVVI-VISITOR'
+    ||typeof header.kid!=='string'||!body||typeof body!=='object'||Array.isArray(body))return {ok:false,error:'KVVI_LINK_MALFORMED'}
   if (header.alg !== TOKEN_ALG) return { ok: false, error: 'KVVI_LINK_ALG_UNSUPPORTED' }
   const key = publicKeysOf(signingKeys()).find((k) => k.kid === header.kid)
   if (!key) return { ok: false, error: 'KVVI_LINK_UNKNOWN_KEY' }

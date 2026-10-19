@@ -488,3 +488,20 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `visitor-recovery-red.log`：`8bd0b0f189331e02dd415111b4afccce28c8438e2baa77b31aa32bbe9070ec3a`。
 - `visitor-recovery-final-focused.log`：`80cf6054f4ef1c5d481cce8eb563901723b502ce1ddea5a3465961d80ccc0cd7`。
 - `visitor-recovery-platform-full.log`：`690f3db83fd23db6990a31b618c520b464dcdf92342b3140bf7a6674dd731e85`。
+
+
+## 批次34：真实访客HTTP提交与只读恢复
+
+- 平台认领/visitor命名空间，登录门/运行时代理前精确处理POST /visitor/submit与/visitor/receipt；其它路径404、其它方法405，无匿名列表/候选/账号查询。JSON正文白名单分别token+data、token，原key只取Idempotency-Key头；不使用cookie/Bearer/runtime身份，不接受body公司/来源或双key。64KiB、JSON content-type、query拒绝、no-store/nosniff/no-referrer覆盖错误响应。
+- source取实际socket remoteAddress，忽略代理身份头，IPv4映射地址归一。适配只做格式与领域码映射，权限/模型/原key语义仍归visitor/createRecord；不反射SQL、业务正文、token或错误detail字段。已确定业务成功但投影pending仍为201。
+- 两项真实HTTP初始RED为303登录重定向、命名空间未认领；修后13项通过。独立复核另重现畸形header=null误500与WebSocket Upgrade转发visitor路径。两条真实反例再RED（500≠401、101≠404），现验签拒绝非对象header/body及错误typ，Upgrade拒绝平台owned路径；带真实有效浏览器cookie的runtime /socket实际101作正向对照，visitor原始Upgrade返回404且上游计数不增。
+- 最终15项真实PG+自有平台HTTP专测全通过，包含max1并发、原生字段、同key冲突/恢复、假来源头、无效签名、主体额外字段、JSON/大小/cache边界、吞掉已提交HTTP回复后原key只读找回、UNKNOWN以及默认关闭准入503且无效果。自有平台、伪runtime与吞回复代理均结束；没有以mock fetch取代HTTP旅程。
+- 最终完整平台746项：745通过、0失败、1既有跳过，exit0，自有PG确认停止；摘要在进程退出后计算。完整命令与批次31相同。本批未运行DSH/GUI构建，不将HTTP通过冒称浏览器或产品表单验收。
+- 另仅输出布尔复查指定~/Library/Application Support/KVVI-Agent-Pilot/kvvi.env：文件存在、没有非空DEEPSEEK_API_KEY，当前命令环境亦无该键；未取证实际runtime进程环境，未重启试点或输出任何密钥值，真实DeepSeek仍未执行。
+- 访客签发/分享产品入口、表单UI/真实浏览器、签发数量并发、可信切换与历史额度、跨库授权变更序列化等后续继续；整体12项仍不勾选。
+
+非敏感日志SHA-256：
+- `visitor-http-red.log`：`fe7acc544af4256006c44a979822d071ff86dc0c8d802100151bef5ea8975b59`。
+- `visitor-http-boundaries-red.log`：`e31b6d39aecb661e1dfd921816b55a0e0abe91fee7b56805268ee4fdbe932ffd`。
+- `visitor-http-final-focused2.log`：`9c1677ca8b9e38c586edf60b6482ac949471e8081377987617ce46a830fbd309`。
+- `visitor-http-platform-full.log`：`cbace9ec0cb9b4fe241274a0f8f868c0a780b77a5b85d85cffa14e4cd9a7397f`。

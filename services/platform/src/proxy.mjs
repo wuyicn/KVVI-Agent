@@ -44,7 +44,7 @@ const OWNED_PREFIXES = ['/healthz', '/topology', '/auth/', '/sign/', '/registry/
                         // 运行时的 RPC 通道注册为 `prefix /api`，若不在这里认领，
                         // `/api/v1/*` 会被转发给它并回 404（实测如此）。
                         // 运行时对 `/api/v1` 的响应一直是 404，所以认领不改变它的行为。
-                        '/api/v1/']
+                        '/api/v1/', '/visitor/']
 
 /**
  * 该路径是否属于本进程。
@@ -52,7 +52,7 @@ const OWNED_PREFIXES = ['/healthz', '/topology', '/auth/', '/sign/', '/registry/
  * @returns 属于本进程时为 true。
  */
 export function isOwnedPath(pathname) {
-  return OWNED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p))
+  return pathname==='/visitor'||OWNED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p))
 }
 
 /**
@@ -212,6 +212,14 @@ export function createUpgradeHandler(target, credential, contextProvider) {
   // 「启动时取一次」在全新安装上会拿到 undefined，而这个进程再也不会有第二次机会。
 
   return async (req, clientSocket, head) => {
+    let pathname
+    try { pathname = new URL(req.url ?? '/', 'http://localhost').pathname }
+    catch { clientSocket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n'); return }
+    // Platform-owned HTTP paths are never runtime WebSocket channels.
+    if (isOwnedPath(pathname)) {
+      clientSocket.end('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n')
+      return
+    }
     const trustedContext = contextProvider === undefined
       ? {} : await contextProvider(req)
     if (trustedContext === undefined) {
