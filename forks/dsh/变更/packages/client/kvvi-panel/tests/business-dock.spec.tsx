@@ -10,7 +10,7 @@ import { businessAddress, parseBusinessAddress } from '../src/client/business-ta
 import { AccountArea, type AccountAreaProps } from '../src/client/AccountArea.tsx'
 import { zh } from '../src/client/locales.ts'
 const t = ((key: string, params?: Record<string, unknown>) => ((zh as Record<string,string>)[key] ?? key).replace(/\{(\w+)\}/gu, (_, name: string) => String(params?.[name] ?? ''))) as BusinessBodyProps['t']
-const runtime = { system: { name: '客户登记', assetId: 'customer' }, models: { customer: { fields: [{ field_code:'name', label:'名称',type:'short_text' }] } }, views: { customer: { view_type:'FORM', componentsTree:[{ id:'root',componentName:'FormPage',children:[{ id:'f',componentName:'ShortTextField',props:{ fieldBinding:{ fieldRef:'name' } } }] }] } }, workflows:{} }
+const runtime = { system: { name: '客户登记', assetId: 'customer' }, models: { customer: { fields: [{ field_code:'name', label:'名称',type:'short_text',visibility:'VISIBLE' }] } }, views: { customer: { view_type:'FORM', componentsTree:[{ id:'root',componentName:'FormPage',children:[{ id:'f',componentName:'ShortTextField',props:{ fieldBinding:{ fieldRef:'name' } } }] }] } }, workflows:{} }
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 it('explains a duplicate refusal without losing entered form values or suggesting retry', async () => {
   vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => Promise.resolve(Response.json(
@@ -117,7 +117,7 @@ it('withholds the form when the platform refuses the authorized field read',asyn
 it('renders choices from the published model when authorized declarations carry top-level options', async()=>{
   const field={ field_code:'status',label:'跟进状态',type:'single_select',type_config:{ options:[{ code:'following',label:'跟进中' },{ code:'retired',label:'停用',enabled:false }] } }
   const projection={ ...runtime,models:{ customer:{ fields:[field] } },views:{ customer:{ view_type:'FORM',componentsTree:[{ id:'f',componentName:'SingleSelectField',props:{ fieldBinding:{ fieldRef:'status' } } }] } } }
-  vi.stubGlobal('fetch',vi.fn((url:string)=>Promise.resolve(new Response(JSON.stringify(url.endsWith('/fields')?{ fields:[{ field_code:'status',label:'跟进状态',type:'single_select',options:field.type_config.options.filter(option=>option.enabled!==false) }] }:projection)))))
+  vi.stubGlobal('fetch',vi.fn((url:string)=>Promise.resolve(new Response(JSON.stringify(url.endsWith('/fields')?{ fields:[{ field_code:'status',label:'跟进状态',type:'single_select',visibility:'VISIBLE',options:field.type_config.options.filter(option=>option.enabled!==false) }] }:projection)))))
   const b=body(businessAddress('customer','form'));render(<BusinessBody {...b.props} />)
   expect(await screen.findByRole('option',{ name:'跟进中' })).toHaveProperty('value','following')
   expect(screen.queryByRole('option',{ name:'停用' })).toBeNull()
@@ -170,4 +170,44 @@ it('does not redirect a business page after leaving a form with a pending submit
   await waitFor(() => expect(b.store.getSnapshot().writes[props.address]?.busy).toBe(false))
   expect(b.openResource).not.toHaveBeenCalled()
   expect(b.store.getSnapshot().revisions.customer).toBe(1)
+})
+
+it('creates all ten types through the real business form with exact JSON wire values',async()=>{
+  const fields=[{field_code:'title',type:'short_text'},{field_code:'note',type:'long_text'},
+    {field_code:'flag',type:'boolean'},{field_code:'count',type:'integer'},
+    {field_code:'rate',type:'decimal',type_config:{precision:38,scale:12}},
+    {field_code:'fee',type:'money',type_config:{currency_mode:'FIXED',currency:'CNY'}},
+    {field_code:'day',type:'date'},{field_code:'at',type:'datetime'},
+    {field_code:'status',type:'single_select',type_config:{options:[{code:'a'}]}},
+    {field_code:'tags',type:'multi_select',type_config:{options:[{code:'a'},{code:'b'}]}}]
+  const components=['ShortTextField','LongTextField','BooleanField','IntegerField','DecimalField','MoneyField','DateField','DateTimeField','SingleSelectField','MultiSelectField']
+  const projected={...runtime,models:{customer:{fields}},views:{customer:{view_type:'FORM',componentsTree:[{id:'root',componentName:'FormPage',children:fields.map((field,i)=>({id:field.field_code,componentName:components[i],props:{fieldBinding:{fieldRef:field.field_code}}}))}]}}}
+  const posts:unknown[]=[]
+  vi.stubGlobal('fetch',vi.fn((url:string,init?:RequestInit)=>{
+    if(init?.method==='POST') {posts.push(JSON.parse(String(init.body)));return Promise.resolve(Response.json({recordId:'typed',rowVersion:1}))}
+    return Promise.resolve(Response.json(url.endsWith('/fields')?{fields:fields.map(field=>({...field,visibility:'VISIBLE',options:field.type_config?.options}))}:projected))
+  }))
+  const b=body(businessAddress('customer','form'));render(<BusinessBody {...b.props} />)
+  await screen.findByLabelText('title')
+  for(const [field,value] of Object.entries({title:'title',note:'note',count:'0',rate:'12345678901234567890.123456789012',fee:'9007199254740993.01',day:'2026-10-19',at:'2026-10-19T10:15',status:'a'})) {
+    fireEvent.change(screen.getByLabelText(field),{target:{value}})
+  }
+  fireEvent.click(screen.getByLabelText('flag'));fireEvent.click(screen.getByLabelText('flag'))
+  fireEvent.click(screen.getByLabelText('tags:a'));fireEvent.click(screen.getByLabelText('tags:b'))
+  fireEvent.submit(screen.getByLabelText('title').closest('form')!)
+  await waitFor(()=>expect(posts).toHaveLength(1))
+  expect(posts[0]).toEqual({data:{title:'title',note:'note',flag:false,count:0,rate:'12345678901234567890.123456789012',fee:{amount:'9007199254740993.01',currency:'CNY'},day:'2026-10-19',at:new Date('2026-10-19T10:15').toISOString(),status:'a',tags:['a','b']}})
+})
+
+it('an invalid typed form remains entered and makes no POST',async()=>{
+  const field={field_code:'rate',label:'比率',type:'decimal',type_config:{precision:18,scale:2}}
+  const projection={...runtime,models:{customer:{fields:[field]}},views:{customer:{view_type:'FORM',componentsTree:[{id:'rate',componentName:'DecimalField',props:{fieldBinding:{fieldRef:'rate'}}}]}}}
+  const fetcher=vi.fn((url:string,init?:RequestInit)=>Promise.resolve(Response.json(init?.method==='POST'?{recordId:'bad'}:url.endsWith('/fields')?{fields:[{...field,visibility:'VISIBLE'}]}:projection)))
+  vi.stubGlobal('fetch',fetcher)
+  const b=body(businessAddress('customer','form'));render(<BusinessBody {...b.props} />)
+  fireEvent.change(await screen.findByLabelText('rate'),{target:{value:'1.234'}})
+  fireEvent.submit(screen.getByLabelText('rate').closest('form')!)
+  expect(fetcher.mock.calls.some(([,init])=>init?.method==='POST')).toBe(false)
+  expect(screen.getByRole('alert').textContent).toContain('比率')
+  expect(screen.getByLabelText('rate')).toHaveProperty('value','1.234')
 })

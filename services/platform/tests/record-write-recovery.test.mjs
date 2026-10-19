@@ -38,6 +38,7 @@ before(async () => {
       {field_code:'choice',type:'single_select',type_config:{options:[{code:'a'},{code:'b'}]}},
       {field_code:'tags',type:'multi_select',type_config:{options:[{code:'a'},{code:'b'}]}},
       {field_code:'nullable_text',type:'short_text',nullable:true},
+      {field_code:'nullable_count',type:'integer',nullable:true},
     ] },
     'view-schema': { componentsTree: [] },
     'workflow-spec': { states: [{ state_code: 'draft', initial: true }], transitions: [] },
@@ -352,4 +353,24 @@ test('background enumeration has a deadline under an actual table lock and can r
     assert.ok(Date.now()-start<9000)
   } finally { await lock.query('ROLLBACK'); lock.release() }
   assert.deepEqual(await flushWriteAudit(),{delivered:0,pending:0})
+})
+
+
+test('the actual client create converter uses authorized metadata and reaches real PG without stringifying types',async()=>{
+  const {coerceCreateData}=await import('../../../forks/dsh/变更/packages/client/kvvi-panel/src/client/values.ts')
+  const metadata=await call(alice,'GET','/systems/general_item/fields')
+  assert.equal(metadata.status,200)
+  const fields=metadata.body.fields.map(field=>({...field,type_config:{...field.type_config,options:field.options??[]}}))
+  const converted=coerceCreateData(fields,{title:'converted create',note:'long text',flag:'false',count:'0',
+    ratio:'12345678901234567890.123456789012',total:'9007199254740993.01',on_date:'2024-02-29',
+    at_time:'2026-10-19T10:15',choice:'b',tags:'a,b',nullable_count:''},
+    Object.fromEntries(fields.map(field=>[field.field_code,field.visibility])))
+  assert.deepEqual(converted.invalidFields,[])
+  const expected={title:'converted create',note:'long text',flag:false,count:0,ratio:'12345678901234567890.123456789012',
+    total:{amount:'9007199254740993.01',currency:'CNY'},on_date:'2024-02-29',at_time:new Date('2026-10-19T10:15').toISOString(),
+    choice:'b',tags:['a','b'],nullable_count:null}
+  assert.deepEqual(converted.data,expected)
+  const created=await call(alice,'POST',path,{data:converted.data})
+  assert.equal(created.status,201)
+  assert.deepEqual((await adminQuery('kvvi_business','SELECT data FROM business_records WHERE record_id=$1',[created.body.recordId])).rows[0].data,expected)
 })

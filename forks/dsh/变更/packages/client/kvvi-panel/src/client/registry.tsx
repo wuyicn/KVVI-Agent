@@ -165,10 +165,7 @@ function LongTextField({ field, label, value, mode, onChange }: FieldRenderProps
 }
 
 /**
- * Integers, decimals and money all use the browser's numeric input.
- *
- * `step` is `any` rather than 1: a decimal field whose step refused its own
- * contract value would mark a valid record invalid in the browser.
+ * Integer input. Exact decimal and money inputs use text to preserve digits.
  * @param props - field presentation and the change callback.
  * @returns the numeric input.
  */
@@ -178,7 +175,7 @@ function NumberField({ field, label, value, mode, onChange }: FieldRenderProps):
       <input
         aria-label={field}
         type="number"
-        step="any"
+        step="1"
         value={value}
         readOnly={readOnlyOf(mode)}
         disabled={readOnlyOf(mode)}
@@ -189,9 +186,18 @@ function NumberField({ field, label, value, mode, onChange }: FieldRenderProps):
   )
 }
 
+/** Exact decimal draft; parsing and scale checks happen before HTTP. */
+function ExactNumberField({ field, label, value, mode, onChange }: FieldRenderProps): ReactNode {
+  return <Field label={label}>
+    <input aria-label={field} type="text" inputMode="decimal" value={value}
+      readOnly={readOnlyOf(mode)} disabled={readOnlyOf(mode)}
+      onChange={e => { onChange(e.target.value) }} className={css.control} />
+  </Field>
+}
+
 /**
  * A checkbox. The controlled value is the string `'true'` / `'false'`, so the
- * payload carries the same type the wire uses for every other field.
+ * form draft stays textual until conversion immediately before HTTP.
  * @param props - field presentation and the change callback.
  * @returns the checkbox.
  */
@@ -243,6 +249,7 @@ function DateTimeField({ field, label, value, mode, onChange }: FieldRenderProps
       <input
         aria-label={field}
         type="datetime-local"
+        step="any"
         value={value}
         readOnly={readOnlyOf(mode)}
         disabled={readOnlyOf(mode)}
@@ -282,9 +289,8 @@ function SingleSelectField({ field, label, value, mode, options, onChange }: Fie
 /**
  * Several choices.
  *
- * The value is a comma-separated list because the platform's record `data` is a
- * flat map of field code to value; a nested array would change the wire format
- * the execution point accepts.
+ * The local draft joins codes with commas; creation converts it to a JSON
+ * array before sending it to the platform.
  * @param props - field presentation, the model's options, and the change callback.
  * @returns the option group.
  */
@@ -413,8 +419,8 @@ export const COMPONENT_REGISTRY: Readonly<Record<string, RegistryEntry>> = Objec
   LongTextField: { kind: 'field', viewTypes: ALL_VIEWS, render: LongTextField },
   BooleanField: { kind: 'field', viewTypes: ALL_VIEWS, render: BooleanField },
   IntegerField: { kind: 'field', viewTypes: ALL_VIEWS, render: NumberField },
-  DecimalField: { kind: 'field', viewTypes: ALL_VIEWS, render: NumberField },
-  MoneyField: { kind: 'field', viewTypes: ALL_VIEWS, render: NumberField },
+  DecimalField: { kind: 'field', viewTypes: ALL_VIEWS, render: ExactNumberField },
+  MoneyField: { kind: 'field', viewTypes: ALL_VIEWS, render: ExactNumberField },
   DateField: { kind: 'field', viewTypes: ALL_VIEWS, render: DateField },
   DateTimeField: { kind: 'field', viewTypes: ALL_VIEWS, render: DateTimeField },
   SingleSelectField: { kind: 'field', viewTypes: ALL_VIEWS, render: SingleSelectField },

@@ -18,7 +18,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { KvviListView } from '../src/client/ListView.tsx'
 import { KvviRecordDetail } from '../src/client/RecordDetail.tsx'
 import type { Copy } from '../src/client/FormView.tsx'
-import { createRecord, getRecord, listRecords, updateRecord } from '../src/client/api.ts'
+import { createRecord, getRecord, listRecords, updateRecord, readFormFields } from '../src/client/api.ts'
 import { en, zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)
@@ -377,4 +377,15 @@ it('drops a draft even if another record is only viewed before returning', () =>
   view.rerender(<KvviRecordDetail copy={t} fields={fields} record={{recordId:'a',rowVersion:2,data:{title:'new A'},fieldVisibility:{title:'VISIBLE'}}} onSave={noop} onBack={noop} />)
   expect((screen.getByLabelText('title') as HTMLInputElement).value).toBe('new A')
   expect((screen.getByRole('button',{name:zh['detail.save']}) as HTMLButtonElement).disabled).toBe(true)
+})
+
+
+it('rejects incomplete permission declarations before exposing a creation editor', async () => {
+  try {
+    for(const value of [{},{fields:[{field_code:'title'}]},{fields:[{field_code:'title',visibility:'guessed'}]},
+      {fields:[{field_code:'title',visibility:'VISIBLE'},{field_code:'title',visibility:'READONLY'}]}]) {
+      vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json(value)))
+      expect(await readFormFields('form')).toEqual({ok:false,status:502,code:'KVVI_BAD_RESPONSE'})
+    }
+  } finally { vi.unstubAllGlobals() }
 })

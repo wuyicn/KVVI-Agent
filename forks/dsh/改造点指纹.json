@@ -271,7 +271,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/BusinessBody.tsx": {
-      "sha256": "b5ae94149eac527356b2aa392c366815d37f44112bb95ac29403b6ac5f71609e",
+      "sha256": "3110a3600c7ed47c41c5230a7ff077461580183f51c9bd7b700a5caa0ea39fb0",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/BusinessDirectory.tsx": {
@@ -291,7 +291,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/FormView.tsx": {
-      "sha256": "954abf4f78a709f2c60eeb4478ba2cf9aa16821effd15755e8b9c6c1962b39f1",
+      "sha256": "1fb60792703c0ab4121596c52a0f8588d02116dc21671af8edb0d01c388a56bd",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/ListView.tsx": {
@@ -331,11 +331,11 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/SystemShell.tsx": {
-      "sha256": "5a7e8ec093f46b4b34922ceb28f5581ab1e76640b6cd17b076150118552f2e1c",
+      "sha256": "12b3b3cdd7f7b575bf4313722ee1f694e24d7174e021b6150f91dc6e361d6035",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/api.ts": {
-      "sha256": "d95c2378dcb5965139df20d878b23f03eaf78afc20d71426d64729760f28ea46",
+      "sha256": "7b20b8af5da6f248ed9ec738c0572eeba1589d820068529aff3305f23bd4a216",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/builder-start.ts": {
@@ -371,7 +371,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/registry.tsx": {
-      "sha256": "05bb4db4265385291c18c3045b975c12553d7858a21067ec76d4db263a5b13a1",
+      "sha256": "0057cfafb84a72c6a1b7a9d797dc84238cdea6efe2ea3815f589a077e157cd94",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/session-notice.ts": {
@@ -379,7 +379,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/values.ts": {
-      "sha256": "889074df28f444346195ce3949c35e3f486d4d72a9ddabd14ab557f6f6e69941",
+      "sha256": "7e7e522224feaa06e3560719f4b92b4f06b0691512debd5728fe18efaa930c59",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/css-modules.d.ts": {
@@ -423,7 +423,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-dock.spec.tsx": {
-      "sha256": "4c8a98880982fa2663185ef4996044e08cf3b58868ce64df87e63c9791702463",
+      "sha256": "277e22b7f10fbe7620bd11ef87be2dbf1673b24b702066817c43e6446270d084",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-entry.spec.tsx": {
@@ -447,11 +447,11 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/record-views.spec.tsx": {
-      "sha256": "b7f80d24d5e5e91cb5bea24973a73eecce82a5e2f78afa1367018b33f277a05b",
+      "sha256": "d4347f1d6b087e7fb87645c1bdc7f875dce96b1dcbe18054194d4e7989edca42",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/runtime-ui.spec.tsx": {
-      "sha256": "ebd6b22a61a3a5aeaef74393bf47cc9c86459714e318f2ac281ab819c855f249",
+      "sha256": "e6af32ad07a148890ddb2b441e71d534e25d0e00e657216ba26b6ae7d54b9dbb",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/session-notice.spec.tsx": {
@@ -459,11 +459,11 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/system-shell.spec.tsx": {
-      "sha256": "14f7c271e27559974466af5224b79f2856c537ac6b4b66229ecad21f4e3d9815",
+      "sha256": "608a559a71c424d6c54312b409e032c921e5efb844e300e4722c4e7c3fe54cf3",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/values.client.spec.ts": {
-      "sha256": "c7ba8a1a33d0a048415dfc4c3db4c767987a1df0e664dd87bb660ae34de0ffc6",
+      "sha256": "9a929a82c634debbebf18fb8f3ff204889e6ee17968b31cb817f60105a8f92a5",
       "status": "A"
     },
     "packages/client/kvvi-panel/tsconfig.json": {
@@ -1082,7 +1082,7 @@
       "upstream_baseline_sha256": "568b5f6d7d94f9a7d02040ea309ab858e8d2d47c9c5f68a9236a48268ed50d03"
     }
   },
-  "fork_head": "40ee85cf8710485a13e0a1d88c6707cf7c79bbeb",
+  "fork_head": "bcb070acd2e117dfb0fc7e87f7456334e61a59cd",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "e6a559b1550f5bee359cffc514f6a498710d0697"

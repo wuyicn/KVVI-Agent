@@ -233,3 +233,20 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - 真实PG新增反例先RED；补VISIBLE/READONLY、精确配置、隐藏字段缺席、正式default及config非白名单键不返回的断言。独立只读复核未发现代码问题，并据建议加强正式default反例。
 - 隔离PG17的system-fields/system-api定向回归全部通过，exit0；本批是服务端元数据，创建UI仍在后续接线，不算十类型旅程完成。
 - `field-declarations-final.log`：SHA-256 `6d5e02897216cc3ef283aebb2b922f6d8f1cbf9098a2added918a5d10e656b4e`，2389字节。
+
+## 批次18：创建表单十类型转换与权限读取边界
+
+- 保留表单字符串草稿，在BusinessBody/SystemShell调用createRecord前共用coerceCreateData转换。boolean/integer/多选为原生JSON，decimal保精确字符串，money保amount/currency对象，datetime本地输入转换为ISO；非法输入停在客户端并保留草稿。decimal/money控件改text+decimal inputMode，避免浏览器数字控件将大额输入当浮点。
+- 字段可见性取当前/fields；缺失、未知mode及重复声明/坏options明确拒绝。SystemShell原先先画表单等权限、权限失败继续编辑，现等授权返回再画，失败显示重试；READONLY/MASKED/SYSTEM锁定且不提交，hidden名称/默认值不进入首屏编辑。
+- 转换器反例先RED；独立复核发现optional+nonnullable空输入被误作必填，追加RED后省略此类空值；required仍拒绝，nullable允许的显式空值转null。又复现收集字段与draw分叉：隐藏父节点/值绑定、不渲染子树的字段叶子会提交未显示的草稿。追加两轮RED，现收集仅沿实际渲染的layout子树，值绑定采用同一隐藏判据。
+- 最新固定源19文件204/204、host/client根tsc exit0、Node24.20.0/pnpm11.7.0完整build exit0。G2生成243路径/52登记匹配，新鲜重建235覆盖+8删除匹配。
+- 真实隔离PG测试实际导入当前客户端values.ts，从当前字段清单取配置，经转换器→授权API适配器→JSONB逐项核对十类型、false、0、null、数组、长decimal和money；record-write-recovery定向18/18、exit0。没有把适配器/组件旅程称为真实浏览器完整端到端。
+- 任务4仍未关闭：迟到响应/跨身份、终态、UI与Agent耐久原key及整页刷新恢复待实现。原vendor、已有试点未改，真实DeepSeek仍未执行。
+
+非敏感日志摘要：
+- `typed-create-package-final2.log`：SHA-256 `6266275dd42bbfd7809bba9fdbe3cdcc024393149132d9da8241c006e7b67163`，12547字节。
+- `typed-create-types-final2.log`：SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`，0字节。
+- `typed-create-build.log`：SHA-256 `8e0cb7124dd25e30a3a0a4a0b1c0cd8d37231fe29da4c9f19c0c61d09082d0ff`，356123字节。
+- `typed-create-g2.log`：SHA-256 `1b91d7ad08c96423debaff7edc7097a78a72d7ddc5c997b260cc599c0b1bb2d9`，423字节。
+- `typed-create-rebuild.log`：SHA-256 `ffb13469f22aa36795f2c93b252b355a905d5db8da79c9e5b728ab8e494ae6a1`，440字节。
+- `typed-create-real-pg.log`：SHA-256 `b958f0a4748c2694310c4c52e3aed43252bbcb157bf3daa00f7f1eff54c5719d`，2066字节。

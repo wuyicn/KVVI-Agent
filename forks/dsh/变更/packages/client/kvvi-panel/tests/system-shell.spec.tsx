@@ -72,7 +72,7 @@ const VIEW = {
 const RUNTIME = {
   system: { systemId: 's1', assetId: 'golden_01', name: '事项登记', schemaCode: 'golden_01' },
   models: { golden_01: { schema_code: 'golden_01', name: '事项登记', fields: [
-    { field_code: 'title', label: '标题', type: 'short_text' },
+    { field_code: 'title', label: '标题', type: 'short_text', visibility: 'VISIBLE' },
   ] } },
   views: { golden_01: VIEW },
   workflows: { golden_01: { states: { submitted: { label: '待审批' } }, transitions: [] } },
@@ -91,6 +91,7 @@ function healthy(extra: Readonly<Record<string, Answer>> = {}): Record<string, A
   return {
     'GET /api/v1/systems': { body: SYSTEMS },
     'GET /api/v1/systems/golden_01/runtime': { body: RUNTIME },
+    'GET /api/v1/systems/golden_01/fields': { body: { fields: RUNTIME.models.golden_01.fields } },
     'GET /api/v1/systems/golden_01/records': {
       body: { items: [{
         recordId: 'r1', recordNo: 'R000001', rowVersion: 3, state: 'submitted',
@@ -145,7 +146,7 @@ describe('我的系统', () => {
     const withSecret = {
       ...RUNTIME,
       models: { golden_01: { ...RUNTIME.models.golden_01, fields: [
-        { field_code: 'title', label: '标题', type: 'short_text' },
+        { field_code: 'title', label: '标题', type: 'short_text', visibility: 'VISIBLE' },
         { field_code: 'secret', label: '密级', type: 'short_text' },
       ] } },
       views: { golden_01: {
@@ -164,7 +165,7 @@ describe('我的系统', () => {
     platform(healthy({
       'GET /api/v1/systems/golden_01/runtime': { body: withSecret },
       'GET /api/v1/systems/golden_01/fields': {
-        body: { assetId: 'golden_01', fields: [{ field_code: 'title' }], hiddenFieldCount: 1 },
+        body: { assetId: 'golden_01', fields: [{ field_code: 'title', visibility: 'VISIBLE' }], hiddenFieldCount: 1 },
       },
     }))
     render(<KvviSystemShell copy={t} />)
@@ -295,5 +296,28 @@ it('opens a published system beside the conversation through its injected dock a
   render(<KvviSystemShell copy={t} onDock={onDock} />)
   fireEvent.click(await screen.findByRole('button', { name: '边聊边填' }))
   expect(onDock).toHaveBeenCalledWith(SYSTEMS.items[0], 'form')
+  expect(screen.queryByLabelText('title')).toBeNull()
+})
+
+
+it('withholds the first form until field permissions return and refuses a failed read', async () => {
+  let finish:(response:Response)=>void=()=>{}
+  const fetcher=vi.fn((url:string)=>url.endsWith('/fields')?new Promise<Response>(resolve=>{finish=resolve}):Promise.resolve(Response.json(url.endsWith('/systems')?SYSTEMS:RUNTIME)))
+  vi.stubGlobal('fetch',fetcher)
+  render(<KvviSystemShell copy={t} />)
+  fireEvent.click(await screen.findByRole('button',{name:zh['systems.open']}))
+  await waitFor(()=>expect(fetcher.mock.calls.some(([url])=>url.endsWith('/fields'))).toBe(true))
+  expect(screen.queryByLabelText('title')).toBeNull()
+  finish(Response.json({error:'KVVI_NOT_ALLOWED'},{status:403}))
+  expect((await screen.findByRole('alert')).textContent).toContain('KVVI_NOT_ALLOWED')
+  expect(screen.queryByLabelText('title')).toBeNull()
+})
+
+it('a field without an explicit visibility does not become editable', async () => {
+  platform(healthy({'GET /api/v1/systems/golden_01/fields':{body:{fields:[{field_code:'title'}]}}}))
+  render(<KvviSystemShell copy={t} />)
+  fireEvent.click(await screen.findByRole('button',{name:zh['systems.open']}))
+  expect((await screen.findByRole('alert')).textContent).toContain('KVVI_BAD_RESPONSE')
+  expect(screen.queryByRole('button',{name:zh['form.submit']})).toBeNull()
   expect(screen.queryByLabelText('title')).toBeNull()
 })

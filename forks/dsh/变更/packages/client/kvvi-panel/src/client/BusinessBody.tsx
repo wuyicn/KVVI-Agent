@@ -11,6 +11,7 @@ import { KvviFormView, fieldContextOf } from './FormView.tsx'
 import { KvviListView } from './ListView.tsx'
 import { KvviRecordDetail } from './RecordDetail.tsx'
 import { ReadFailure } from './ReadFailure.tsx'
+import { coerceCreateData } from './values.ts'
 import css from './business.module.css'
 
 export type BusinessBodyProps = PropsRuntime<'sidebar.right.pane.tab'> & PropsLocale<'kvviPanel'> & PropsStore<ReturnType<typeof createBusinessStore>>
@@ -98,12 +99,25 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
   const { assetId, mode, recordId } = route
   const model = projection?.models[assetId]
   const view = projection?.views[assetId]
+  const formModes = Object.fromEntries((model?.fields ?? []).map(field => {
+    const rawMode = allowedFields?.find(visible => visible.field_code === field.field_code)?.visibility ?? 'HIDDEN'
+    const mode = ['VISIBLE', 'READONLY', 'MASKED'].includes(rawMode) ? rawMode : 'HIDDEN'
+    return [field.field_code, mode === 'VISIBLE' && field.write_policy === 'SYSTEM' ? 'READONLY' : mode]
+  }))
+  const createFields = (model?.fields ?? []).filter(field => allowedFields?.some(visible => visible.field_code === field.field_code))
+    .map(field => ({ ...field, type_config: { ...field.type_config, ...allowedFields?.find(visible => visible.field_code === field.field_code)?.type_config,
+      options: allowedFields?.find(visible => visible.field_code === field.field_code)?.options ?? [] } }))
   const open = (next: 'form' | 'records') => { openResource(businessAddress(assetId, next)) }
   const create = (data: Record<string, string>) => {
     if (writing.current || busy || allowedFields === null || error === 'KVVI_FORM_ARCHIVED') return
+    const converted = coerceCreateData(createFields, data, formModes)
+    if (converted.invalidFields.length > 0) {
+      actions.finish(address, { busy: false, error: 'KVVI_FIELD_TYPE_INVALID', fields: converted.invalidFields }, false, identity)
+      return
+    }
     const submittedDraft = { ...draft }
     writing.current = true; actions.begin(address); setError(undefined)
-    void createRecord(assetId, data).then((result) => {
+    void createRecord(assetId, converted.data).then((result) => {
       writing.current = false
       actions.finish(address, result.ok ? { busy: false } : {
         busy: false, error: result.code, fields: (result.problems ?? []).map(problem => problem.field),
@@ -121,7 +135,7 @@ export function BusinessContent({ address, signal, openResource, useStore, actio
     <details><summary>{t('form.diagnostics')}</summary><code>{write.error}</code></details>
   </div>
   const form = view === undefined ? <p role="alert">{t('system.unrunnable', { detail: 'KVVI_RUNTIME_CONTRACT_INCOMPLETE' })}</p> :
-    <KvviFormView spec={view} copy={t} context={fieldContextOf((model?.fields ?? []).filter(field => allowedFields?.some(visible => visible.field_code === field.field_code)).map(field => ({ ...field, type_config: { ...field.type_config, options: allowedFields?.find(visible => visible.field_code === field.field_code)?.options ?? [] } })), Object.fromEntries((model?.fields ?? []).map(field => [field.field_code, allowedFields?.some(visible => visible.field_code === field.field_code) === true ? 'VISIBLE' : 'HIDDEN'])))} values={draft ?? {}}
+    <KvviFormView spec={view} copy={t} context={fieldContextOf(createFields, formModes)} values={draft ?? {}}
       onValuesChange={(values) => { actions.change(assetId, values) }} onSubmit={create} busy={busy} />
   if (error === 'KVVI_FORM_ARCHIVED') return <ReadFailure error={error} copy={t} onRetry={() => {
     actions.finish(address, { busy: false }, false, identity)

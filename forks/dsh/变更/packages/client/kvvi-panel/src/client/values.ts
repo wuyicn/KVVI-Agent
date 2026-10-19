@@ -103,3 +103,30 @@ export function coerceValue(type: string | undefined, str: string, config?: Mode
   }
   return invalid()
 }
+
+/** Convert the form's string draft once, just before the authorized create call. */
+export function coerceCreateData(
+  fields: readonly ModelField[] | undefined,
+  values: Readonly<Record<string, string>>,
+  modes: Readonly<Record<string, string>>,
+): { data: Record<string, unknown>; invalidFields: string[] } {
+  const declared = new Map((fields ?? []).map(field => [field.field_code, field]))
+  const data: Record<string, unknown> = {}, invalidFields: string[] = []
+  for (const [code, input] of Object.entries(values)) {
+    const field = declared.get(code)
+    if (field === undefined) { invalidFields.push(code); continue }
+    if (modes[code] !== 'VISIBLE' || field.write_policy === 'SYSTEM') continue
+    try {
+      // The current BooleanField is a checkbox: its unselected state means false.
+      const value = coerceValue(field.type, field.type === 'boolean' && input === '' ? 'false' : input, field.type_config)
+      // A blank optional nonnullable field is absent on creation, not an
+      // explicit null. Required fields still fail and nullable fields keep null.
+      if (value === null && field.nullable === false && field.required !== true) continue
+      if ((value === null && field.nullable === false) || (field.required === true && (value === null || value === ''))) {
+        throw new Error('KVVI_FIELD_REQUIRED')
+      }
+      data[code] = value
+    } catch { invalidFields.push(code) }
+  }
+  return { data, invalidFields }
+}

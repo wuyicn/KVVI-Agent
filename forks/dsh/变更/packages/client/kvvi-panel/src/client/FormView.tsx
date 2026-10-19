@@ -166,9 +166,12 @@ export function visibleFields(
   const out: string[] = []
   const walk = (list: readonly ViewNode[]): void => {
     for (const node of list) {
+      const entry = COMPONENT_REGISTRY[node.componentName]
       const field = boundField(node)
-      if (field !== undefined && (modes[field] ?? 'VISIBLE') !== 'HIDDEN') out.push(field)
-      if (node.children !== undefined) walk(node.children)
+      const bound = field ?? (entry?.kind === 'value' ? valueField(node) : undefined)
+      if (bound !== undefined && (modes[bound] ?? 'VISIBLE') === 'HIDDEN') continue
+      if (entry?.kind === 'field' && field !== undefined) out.push(field)
+      if (entry?.kind === 'layout' && node.children !== undefined) walk(node.children)
     }
   }
   walk(nodes)
@@ -247,7 +250,6 @@ export function KvviFormView({
     const entry = COMPONENT_REGISTRY[node.componentName]
     if (entry === undefined) return null
     const title = titleOf(node)
-    const kids = node.children === undefined ? [] : draw(node.children)
 
     // A node bound to a `HIDDEN` field draws **nothing** — including its
     // container and its children. Skipping only the payload would leave the
@@ -255,6 +257,7 @@ export function KvviFormView({
     // slot that still says a field is there.
     const bound = boundField(node) ?? (entry.kind === 'value' ? valueField(node) : undefined)
     if (bound !== undefined && (context.modes[bound] ?? 'VISIBLE') === 'HIDDEN') return null
+    const kids = entry.kind === 'layout' && node.children !== undefined ? draw(node.children) : []
 
     switch (entry.kind) {
       case 'layout':
@@ -314,7 +317,7 @@ export function KvviFormView({
       // Filtered again on the way out. The payload is built from the fields that
       // were rendered, so a value that arrived in `initial` for a hidden field
       // is not carried along.
-      if ((context.modes[field] ?? 'VISIBLE') === 'HIDDEN') continue
+      if ((context.modes[field] ?? 'VISIBLE') !== 'VISIBLE') continue
       data[field] = values[field] ?? ''
     }
     onSubmit?.(data)
@@ -349,7 +352,7 @@ export function fieldContextOf(
     labels[field.field_code] = field.label ?? field.field_code
     const declared = field.type_config?.options
     if (declared !== undefined) {
-      options[field.field_code] = declared.map(o => ({ value: o.code, label: o.label ?? o.code }))
+      options[field.field_code] = declared.filter(o => o.enabled !== false).map(o => ({ value: o.code, label: o.label ?? o.code }))
     }
   }
   return { labels, modes, options }

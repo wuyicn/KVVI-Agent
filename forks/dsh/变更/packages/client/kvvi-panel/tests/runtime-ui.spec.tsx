@@ -214,3 +214,35 @@ describe('KVVI 已发布系统渲染器', () => {
     expect(Object.keys(en).sort()).toEqual(Object.keys(zh).sort())
   })
 })
+
+it('a hidden bound parent also excludes its unrendered descendants from submission',()=>{
+  const tree=[{id:'parent',componentName:'ShortTextField',props:{fieldBinding:{fieldRef:'hidden'}},children:[
+    {id:'child',componentName:'ShortTextField',props:{fieldBinding:{fieldRef:'child'}}},
+  ]}]
+  expect(visibleFields(tree,{hidden:'HIDDEN',child:'VISIBLE'})).toEqual([])
+  const onSubmit=vi.fn()
+  render(<KvviFormView copy={t} spec={{view_code:'v',view_type:'FORM',componentsTree:tree}}
+    context={{labels:{},modes:{hidden:'HIDDEN',child:'VISIBLE'},options:{}}}
+    initial={{hidden:'never',child:'unrendered draft'}} onSubmit={onSubmit} />)
+  expect(screen.queryByLabelText('child')).toBeNull()
+  fireEvent.click(screen.getByRole('button',{name:zh['form.submit']}))
+  expect(onSubmit).toHaveBeenCalledWith({})
+})
+
+it('submission follows rendered layout children, including hidden value bindings and field leaves',()=>{
+  for(const parent of [
+    {id:'p',componentName:'Description',props:{value:{fieldRef:'secret'}}},
+    {id:'p',componentName:'ShortTextField',props:{fieldBinding:{fieldRef:'parent'}}},
+  ]) {
+    const tree=[{...parent,children:[{id:'child',componentName:'ShortTextField',props:{fieldBinding:{fieldRef:'child'}}}]}]
+    expect(visibleFields(tree,{secret:'HIDDEN',parent:'VISIBLE',child:'VISIBLE'})).not.toContain('child')
+    const onSubmit=vi.fn()
+    const form=render(<KvviFormView copy={t} spec={{view_code:'v',view_type:'FORM',componentsTree:tree}}
+      context={{labels:{},modes:{secret:'HIDDEN',parent:'VISIBLE',child:'VISIBLE'},options:{}}}
+      initial={{child:'unrendered draft',parent:'shown'}} onSubmit={onSubmit} />)
+    expect(screen.queryByLabelText('child')).toBeNull()
+    fireEvent.click(screen.getByRole('button',{name:zh['form.submit']}))
+    expect(onSubmit).toHaveBeenCalledWith(parent.componentName==='Description'?{}:{parent:'shown'})
+    form.unmount()
+  }
+})

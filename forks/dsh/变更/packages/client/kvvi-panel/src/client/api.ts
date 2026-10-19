@@ -656,7 +656,19 @@ export function publishDraft(draftId: string): Promise<ApiResult<{ status: strin
 }
 
 /** Read only the platform-authorized declarations for a new business form. */
-export interface AuthorizedField { field_code: string; options?: { code: string; label?: string }[] }
-export function readFormFields(assetId: string, signal?: AbortSignal): Promise<ApiResult<{ fields: AuthorizedField[] }>> {
-  return request('GET', `/systems/${encodeURIComponent(assetId)}/fields`, undefined, signal)
+export interface AuthorizedField extends ModelField {
+  readonly visibility?: string
+  readonly options?: { code: string; label?: string }[]
+}
+export async function readFormFields(assetId: string, signal?: AbortSignal): Promise<ApiResult<{ fields: AuthorizedField[] }>> {
+  const result = await request<{ fields: AuthorizedField[] }>('GET', `/systems/${encodeURIComponent(assetId)}/fields`, undefined, signal)
+  if (!result.ok) return result
+  const fields = result.value?.fields
+  if (!Array.isArray(fields) || fields.some(field => !field || typeof field.field_code !== 'string'
+    || !['VISIBLE', 'READONLY', 'MASKED'].includes(field.visibility ?? '')
+    || (field.options !== undefined && (!Array.isArray(field.options) || field.options.some(option => !option || typeof option.code !== 'string'))))
+    || new Set(fields.map(field => field.field_code)).size !== fields.length) {
+    return { ok: false, status: 502, code: 'KVVI_BAD_RESPONSE' }
+  }
+  return result
 }

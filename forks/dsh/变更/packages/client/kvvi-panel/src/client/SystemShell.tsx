@@ -26,13 +26,14 @@ import type { ReactNode } from 'react'
 import {
   createRecord, getRecord, listRecords, listSystems, loadRuntime, readFormFields, updateRecord,
 } from './api.ts'
-import type { PublishedSystem, RecordRow, RecordView, RuntimeProjection } from './api.ts'
+import type { AuthorizedField, PublishedSystem, RecordRow, RecordView, RuntimeProjection } from './api.ts'
 import type { Copy } from './FormView.tsx'
 import { KvviFormView, fieldContextOf } from './FormView.tsx'
 import { KvviListView } from './ListView.tsx'
 import { KvviRecordDetail } from './RecordDetail.tsx'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { ReadFailure } from './ReadFailure.tsx'
+import { coerceCreateData } from './values.ts'
 import css from './business.module.css'
 
 /** Props the shell accepts. */
@@ -77,7 +78,9 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
 
   const [rows, setRows] = useState<readonly RecordRow[]>([])
   const [visibility, setVisibility] = useState<Readonly<Record<string, string>>>({})
-  const [formModes, setFormModes] = useState<Readonly<Record<string, string>>>({})
+  const [formFields, setFormFields] = useState<readonly AuthorizedField[] | null>(null)
+  const [formError, setFormError] = useState<string | undefined>()
+  const [formAttempt, setFormAttempt] = useState(0)
   const [listError, setListError] = useState<string | undefined>(undefined)
 
   const [detail, setDetail] = useState<RecordView | null>(null)
@@ -104,6 +107,7 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
     if (open === null) return undefined
     const controller = new AbortController()
     setProjection(null)
+    setFormFields(null)
     setProjectionError(undefined)
     void loadRuntime(open.assetId, controller.signal).then((result) => {
       if (controller.signal.aborted) return
@@ -141,19 +145,15 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
   useEffect(() => {
     if (open === null || tab !== 'form' || projection === null) return undefined
     const controller = new AbortController()
-    const modelFields = projection.models[open.assetId]?.fields
+    setFormFields(null)
+    setFormError(undefined)
     void readFormFields(open.assetId, controller.signal).then((result) => {
       if (controller.signal.aborted) return
-      if (!result.ok) return
-      const visible = new Set(result.value.fields.map(field => field.field_code))
-      const modes: Record<string, string> = {}
-      for (const field of modelFields ?? []) {
-        modes[field.field_code] = visible.has(field.field_code) ? 'VISIBLE' : 'HIDDEN'
-      }
-      setFormModes(modes)
+      if (result.ok) setFormFields(result.value.fields)
+      else setFormError(describeFailure(result.code, result.detail))
     })
     return () => { controller.abort() }
-  }, [open, tab, projection])
+  }, [open, tab, projection, formAttempt])
 
   const openRecord = (recordId: string): void => {
     if (open === null) return
@@ -169,8 +169,16 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
   const model = projection === null || open === null ? undefined : projection.models[open.assetId]
   const view = projection === null || open === null ? undefined : projection.views[open.assetId]
   const workflow = projection === null || open === null ? undefined : projection.workflows[open.assetId]
-  const modes = detail?.fieldVisibility ?? (tab === 'form' ? formModes : visibility)
-  const fieldContext = fieldContextOf(model?.fields, modes)
+  const formModes = Object.fromEntries((model?.fields ?? []).map(field => {
+    const rawMode = formFields?.find(visible => visible.field_code === field.field_code)?.visibility ?? 'HIDDEN'
+    const mode = ['VISIBLE', 'READONLY', 'MASKED'].includes(rawMode) ? rawMode : 'HIDDEN'
+    return [field.field_code, mode === 'VISIBLE' && field.write_policy === 'SYSTEM' ? 'READONLY' : mode]
+  }))
+  const createFields = (model?.fields ?? []).filter(field => formFields?.some(visible => visible.field_code === field.field_code))
+    .map(field => ({ ...field, type_config: { ...field.type_config, ...formFields?.find(visible => visible.field_code === field.field_code)?.type_config,
+      options: formFields?.find(visible => visible.field_code === field.field_code)?.options ?? [] } }))
+  const modes = tab === 'form' ? formModes : visibility
+  const fieldContext = fieldContextOf(tab === 'form' ? createFields : model?.fields, modes)
   // Named so the optional prop can be *omitted* rather than passed as
   // `undefined` (`exactOptionalPropertyTypes`). Both are equivalent here, and
   // the spread is the form the rest of this file already uses.
@@ -303,15 +311,26 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
           <p role="alert" style={{ fontSize: 12.5 }}>
             {copy('system.unrunnable', { detail: 'KVVI_RUNTIME_CONTRACT_INCOMPLETE' })}
           </p>
+        ) : formError !== undefined ? (
+          <ReadFailure error={formError} copy={copy} onRetry={() => { setFormAttempt(value => value + 1) }} />
+        ) : formFields === null ? (
+          <p role="status">{copy('panel.loading')}</p>
         ) : (
           <KvviFormView
             spec={view}
             copy={copy}
             context={fieldContext}
+            busy={busy}
             onSubmit={(data) => {
+              if (busy) return
+              const converted = coerceCreateData(createFields, data, formModes)
+              if (converted.invalidFields.length > 0) {
+                setNotice(copy('field.invalidValue', { fields: converted.invalidFields.map(code => model?.fields?.find(field => field.field_code === code)?.label ?? code).join('、') }))
+                return
+              }
               setBusy(true)
               setNotice(null)
-              void createRecord(open.assetId, data).then((result) => {
+              void createRecord(open.assetId, converted.data).then((result) => {
                 setBusy(false)
                 setNotice(result.ok
                   ? copy('form.created', { recordNo: result.value.recordNo ?? result.value.recordId })
