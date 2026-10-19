@@ -368,8 +368,9 @@ export function createRecord(
   assetId: string,
   data: Readonly<Record<string, unknown>>,
   idempotencyKey?: string,
+  signal?: AbortSignal,
 ): Promise<ApiResult<{ recordId: string; rowVersion: number; recordNo?: string; operationId?: string; auditPending?: boolean }>> {
-  return recordWrite('POST', `/systems/${encodeURIComponent(assetId)}/records`, { data }, idempotencyKey)
+  return recordWrite('POST', `/systems/${encodeURIComponent(assetId)}/records`, { data }, idempotencyKey, signal)
 }
 
 /**
@@ -389,10 +390,11 @@ export function updateRecord(
   data: Readonly<Record<string, unknown>>,
   rowVersion: number,
   idempotencyKey?: string,
+  signal?: AbortSignal,
 ): Promise<ApiResult<{ recordId: string; rowVersion: number; operationId?: string; auditPending?: boolean }>> {
   return recordWrite('PATCH',
     `/systems/${encodeURIComponent(assetId)}/records/${encodeURIComponent(recordId)}`,
-    { data, rowVersion }, idempotencyKey)
+    { data, rowVersion }, idempotencyKey, signal)
 }
 
 function recordWrite<T>(method: string, path: string, body: unknown, key: string | undefined, signal?: AbortSignal): Promise<ApiResult<T>> {
@@ -487,14 +489,14 @@ export function getRecordWriteIntent(target: RecordWriteTarget, signal?: AbortSi
 export function getRecordWriteReceipt(target: RecordWriteTarget, key: string, signal?: AbortSignal): Promise<ApiResult<RecordWriteIntent>> {
   return intentRequest(target, 'GET', '', undefined, ['COMMITTED'], key, signal, 'write-receipt')
 }
-export function prepareRecordWriteIntent(target: RecordWriteTarget, input: RecordWriteInput): Promise<ApiResult<RecordWriteIntent>> {
-  return intentRequest(target, 'POST', '', input, ['PREPARED', 'COMMITTED'])
+export function prepareRecordWriteIntent(target: RecordWriteTarget, input: RecordWriteInput, signal?: AbortSignal): Promise<ApiResult<RecordWriteIntent>> {
+  return intentRequest(target, 'POST', '', input, ['PREPARED', 'COMMITTED'], undefined, signal)
 }
-export function cancelRecordWriteIntent(target: RecordWriteTarget, key: string): Promise<ApiResult<RecordWriteIntent>> {
-  return intentRequest(target, 'POST', '/cancel', {}, ['CANCELED', 'COMMITTED'], key)
+export function cancelRecordWriteIntent(target: RecordWriteTarget, key: string, signal?: AbortSignal): Promise<ApiResult<RecordWriteIntent>> {
+  return intentRequest(target, 'POST', '/cancel', {}, ['CANCELED', 'COMMITTED'], key, signal)
 }
-export function acknowledgeRecordWriteIntent(target: RecordWriteTarget, key: string): Promise<ApiResult<RecordWriteIntent>> {
-  return intentRequest(target, 'POST', '/acknowledge', {}, ['ACKNOWLEDGED'], key)
+export function acknowledgeRecordWriteIntent(target: RecordWriteTarget, key: string, signal?: AbortSignal): Promise<ApiResult<RecordWriteIntent>> {
+  return intentRequest(target, 'POST', '/acknowledge', {}, ['ACKNOWLEDGED'], key, signal)
 }
 
 // ── 管理 API（阶段十）─────────────────────────────────────────────────────

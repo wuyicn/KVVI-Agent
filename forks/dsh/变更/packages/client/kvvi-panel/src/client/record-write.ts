@@ -11,8 +11,10 @@ export interface RecordWriteSnapshot {
   readonly canRetry:boolean
   readonly error?:Failure
 }
-export function createRecordWriteController(target:RecordWriteTarget, options:{expectedIdentity?:string;isCurrent?:()=>boolean}={}) {
+export function createRecordWriteController(target:RecordWriteTarget, options:{expectedIdentity?:string;isCurrent?:()=>boolean;requestTimeoutMs?:number}={}) {
   target={...target}
+  const timeoutMs=options.requestTimeoutMs??6500
+  if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>30000) throw new Error('KVVI_BAD_REQUEST_TIMEOUT')
   let snapshot:RecordWriteSnapshot={phase:'loading',busy:false,intent:null,canRetry:false}
   let disposed=false, running=false, owner=options.expectedIdentity, frozen:RecordWriteInput|null=null, originalKey:string|undefined, retryAllowed=false
   let bodyBoundKey:string|undefined, retryRefusal:Failure|undefined
@@ -26,11 +28,28 @@ export function createRecordWriteController(target:RecordWriteTarget, options:{e
     for(const listener of listeners) listener()
   }
   const fail=(failure:Failure)=>publish('pending',snapshot.intent,failure)
-  const unknown=():Failure=>({ok:false,status:202,code:'KVVI_OPERATION_OUTCOME_UNKNOWN',
+  const unknown=(status=202):Failure=>({ok:false,status,code:'KVVI_OPERATION_OUTCOME_UNKNOWN',
     ...(originalKey===undefined?{}:{idempotencyKey:originalKey,retryWithSameKey:true})})
+  /** Aborting an HTTP wait does not cancel a possible server-side effect. */
+  async function requestBefore<T>(send:(signal:AbortSignal)=>Promise<ApiResult<T>>,uncertain=false):Promise<ApiResult<T>> {
+    const io=new AbortController()
+    let end!:(failure:Failure)=>void
+    const stopped=new Promise<Failure>(resolve=>{end=resolve})
+    const abort=()=>{end({ok:false,status:0,code:'KVVI_ABORTED'});io.abort()}
+    reads.signal.addEventListener('abort',abort,{once:true})
+    const timer=setTimeout(()=>{
+      end(uncertain?unknown(0):{ok:false,status:0,code:'KVVI_UNREACHABLE'})
+      io.abort()
+    },timeoutMs)
+    try {
+      if(reads.signal.aborted) {abort();return await stopped}
+      return await Promise.race([send(io.signal),stopped])
+    } catch {return uncertain?unknown(0):{ok:false,status:0,code:'KVVI_UNREACHABLE'}}
+    finally {clearTimeout(timer);reads.signal.removeEventListener('abort',abort)}
+  }
   async function verifyOwner() {
     if(!isCurrent()) return false
-    const entrance=await readEntrance(reads.signal)
+    const entrance=await requestBefore(signal=>readEntrance(signal))
     if(!isCurrent()) return false
     if(!entrance.ok) {publish('blocked',null,entrance);return false}
     const who=entrance.value
@@ -58,12 +77,12 @@ export function createRecordWriteController(target:RecordWriteTarget, options:{e
     if(!await verifyOwner()) return
     let receiptError:Failure|undefined
     if(originalKey!==undefined) {
-      const receipt=await getRecordWriteReceipt(target,originalKey,reads.signal)
+      const receipt=await requestBefore(signal=>getRecordWriteReceipt(target,originalKey!,signal))
       if(!await verifyOwner()) return
       if(receipt.ok) {retryAllowed=false;publish('committed',receipt.value);return}
       receiptError=receipt
     }
-    const active=await getRecordWriteIntent(target,reads.signal)
+    const active=await requestBefore(signal=>getRecordWriteIntent(target,signal))
     if(!await verifyOwner()) return
     if(!active.ok) {retryAllowed=false;fail(active);return}
     if(originalKey!==undefined && (active.value.state==='EMPTY'||!('idempotencyKey' in active.value)||active.value.idempotencyKey!==originalKey)) {
@@ -80,8 +99,9 @@ export function createRecordWriteController(target:RecordWriteTarget, options:{e
   }
   async function writeFrozen() {
     if(frozen===null||originalKey===undefined||bodyBoundKey!==originalKey||!await verifyOwner()) return undefined
-    const result=target.recordId===undefined?await createRecord(target.assetId,frozen.data,originalKey)
-      :await updateRecord(target.assetId,target.recordId,frozen.data,frozen.rowVersion!,originalKey)
+    const input=frozen,key=originalKey
+    const result=await requestBefore(signal=>target.recordId===undefined?createRecord(target.assetId,input.data,key,signal)
+      :updateRecord(target.assetId,target.recordId,input.data,input.rowVersion!,key,signal),true)
     if(!await verifyOwner()) return undefined
     if(!result.ok) {
       if(result.status===409) {retryAllowed=false;retryRefusal={...result,idempotencyKey:originalKey}}
@@ -89,7 +109,7 @@ export function createRecordWriteController(target:RecordWriteTarget, options:{e
     }
     // Success must be validated as the original receipt, even if another tab
     // has already acknowledged it or prepared a subsequent active intent.
-    const receipt=await getRecordWriteReceipt(target,originalKey,reads.signal)
+    const receipt=await requestBefore(signal=>getRecordWriteReceipt(target,originalKey!,signal))
     if(!await verifyOwner()) return undefined
     if(!receipt.ok) {fail(receipt);return undefined}
     retryAllowed=false;publish('committed',receipt.value)
@@ -106,7 +126,8 @@ export function createRecordWriteController(target:RecordWriteTarget, options:{e
       try {frozen=JSON.parse(JSON.stringify(input)) as RecordWriteInput}
       catch {publish('ready',snapshot.intent,{ok:false,status:400,code:'KVVI_BAD_REQUEST'});return undefined}
       publish('pending')
-      const prepared=await prepareRecordWriteIntent(target,frozen)
+      const preparedInput=frozen
+      const prepared=await requestBefore(signal=>prepareRecordWriteIntent(target,preparedInput!,signal),true)
       if(!await verifyOwner()) return undefined
       if(!prepared.ok) {retryAllowed=false;fail(prepared);return undefined}
       if(prepared.value.state==='COMMITTED') {originalKey=prepared.value.idempotencyKey;retryAllowed=false;publish('committed',prepared.value);return knownResult()}
@@ -126,7 +147,8 @@ export function createRecordWriteController(target:RecordWriteTarget, options:{e
     }),
     cancel:async()=>Boolean(await exclusive(async()=>{
       if(snapshot.intent===null||!('idempotencyKey' in snapshot.intent)||!await verifyOwner()) return false
-      const result=await cancelRecordWriteIntent(target,snapshot.intent.idempotencyKey)
+      const key=snapshot.intent.idempotencyKey
+      const result=await requestBefore(signal=>cancelRecordWriteIntent(target,key,signal),true)
       if(!await verifyOwner()) return false
       if(!result.ok) {fail(result);return false}
       if(result.value.state==='COMMITTED') {retryAllowed=false;publish('committed',result.value);return false}
@@ -134,7 +156,8 @@ export function createRecordWriteController(target:RecordWriteTarget, options:{e
     })),
     acknowledge:async()=>Boolean(await exclusive(async()=>{
       if(snapshot.phase!=='committed'||snapshot.intent?.state!=='COMMITTED'||!await verifyOwner()) return false
-      const result=await acknowledgeRecordWriteIntent(target,snapshot.intent.idempotencyKey)
+      const key=snapshot.intent.idempotencyKey
+      const result=await requestBefore(signal=>acknowledgeRecordWriteIntent(target,key,signal),true)
       if(!await verifyOwner()) return false
       if(!result.ok) {fail(result);return false}
       frozen=null;originalKey=undefined;bodyBoundKey=undefined;retryRefusal=undefined;retryAllowed=false;publish('settled',result.value);return true

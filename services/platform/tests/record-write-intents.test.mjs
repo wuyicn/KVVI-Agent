@@ -537,3 +537,44 @@ test('actual client controller recovers a committed lost response after relogin 
     assert.equal((await call(alice,'POST',intent+'/cancel',{},preparedKey)).body.state,'CANCELED')
   } finally {releasePrepare();for(const c of controllers)c.dispose();globalThis.fetch=originalFetch}
 })
+
+test('real HTTP response hang after PG commit times out as unknown and recovers without another write',{timeout:15000},async()=>{
+  await settle()
+  const {createServer}=await import('node:http')
+  const {createRecordWriteController}=await import('../../../forks/dsh/变更/packages/client/kvvi-panel/src/client/record-write.ts')
+  const originalFetch=globalThis.fetch
+  let releaseReply
+  const lateReply=new Promise(resolve=>{releaseReply=resolve})
+  const server=createServer(async(req,res)=>{
+    try {
+      const url=new URL(req.url,'http://test'),chunks=[]
+      for await(const chunk of req)chunks.push(chunk)
+      const input={method:req.method,path:url.pathname,query:url.search,body:Buffer.concat(chunks).toString()||null,headers:req.headers}
+      const result=url.pathname==='/auth/session'?await handleAuth(input):await handleApi({...input,
+        loadSession:token=>handleAuth({method:'GET',path:'/auth/session',body:null,headers:{authorization:'Bearer '+token}})})
+      if(req.method==='POST'&&url.pathname.endsWith('/records')&&result.status===201) await lateReply
+      if(!res.destroyed) {res.writeHead(result.status,{'content-type':'application/json'});res.end(JSON.stringify(result.body))}
+    } catch {if(!res.destroyed){res.writeHead(500,{'content-type':'application/json'});res.end('{"error":"KVVI_TEST_HTTP_FAILURE"}')}}
+  })
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve))
+  const origin='http://127.0.0.1:'+server.address().port
+  globalThis.fetch=(url,init={})=>originalFetch(origin+url,{...init,headers:{...Object.fromEntries(new Headers(init.headers).entries()),authorization:'Bearer '+alice.raw}})
+  const c=createRecordWriteController({assetId:'general_item'},{requestTimeoutMs:600})
+  try {
+    await c.refresh();assert.equal(c.getSnapshot().phase,'ready')
+    assert.equal(await c.submit({data:{title:'HTTP committed with hung reply'}}),undefined)
+    assert.equal(c.getSnapshot().phase,'pending')
+    assert.equal(c.getSnapshot().error.code,'KVVI_OPERATION_OUTCOME_UNKNOWN')
+    assert.equal(typeof c.getSnapshot().error.idempotencyKey,'string')
+    assert.equal(await effects('HTTP committed with hung reply'),1)
+    await c.refresh();assert.equal(c.getSnapshot().phase,'committed')
+    assert.equal(await c.acknowledge(),true)
+    await c.refresh();assert.equal(c.getSnapshot().phase,'ready')
+    releaseReply();await new Promise(resolve=>setImmediate(resolve))
+    assert.equal(c.getSnapshot().phase,'ready')
+    assert.equal(await effects('HTTP committed with hung reply'),1)
+  } finally {
+    c.dispose();releaseReply();globalThis.fetch=originalFetch
+    server.closeAllConnections();await new Promise(resolve=>server.close(resolve))
+  }
+})

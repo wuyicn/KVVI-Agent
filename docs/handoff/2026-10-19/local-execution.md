@@ -325,3 +325,19 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `write-controller-real-pg-final2.log`：`67ea5f6e29c1fa8acc310c38c9d71c06e55d6690574e62b64f9d0758fc5116d3`。
 - `write-controller-g2.log`：`0c085240394f8ff3a2d298b86dcb60cec5ee25183fef34dc355e23426c920571`。
 - `write-controller-rebuild.log`：`5b39a5a579a6cc4db8226183a0f78b8e17c055f1756f347b1a83f5acf7cead26`。
+
+## 批次24：客户端HTTP悬挂预算
+
+- 控制器为每次HTTP请求单独设置6500ms等待预算，内部测试可显式选1–30000ms。prepare/业务写/cancel/ACK超时只记UNKNOWN且保留已知原key，客户端未收到HTTP响应时status为0；读取/身份超时拒绝继续。该预算不是整个鉴权/恢复链路的全局预算，也不声称终止服务端事务。
+- api.ts显式signal贯通创建、PATCH与控制操作；超时或dispose先解除本次等待再中止HTTP，迟到resolve/reject被原Promise.race接住，不继续状态机。每次请求的timer和master abort listener均在finally清理，后续恢复查询用新的signal。
+- 先RED复现hung prepare/write永不结束；实现首轮有局部input遮蔽submit参数，15项回归失败且tsc拒绝，已修正变量名后重新验证。另补读取响应体悬挂、fetch忽略abort时dispose立即解开、迟到拒绝及HTTP未到达状态码反例；19项控制器测试通过。两名独立复核者补验响应体悬挂、默认期限内dispose及无未处理拒绝，未发现新增确定阻断。
+- 新建仅监听127.0.0.1随机端口的自有HTTP服务，实际调用认证/API并写入隔离PG；业务COMMIT后故意悬挂HTTP响应。当前controller在600ms试验预算后UNKNOWN，GET原回执确认一条业务效果，ACK后重读EMPTY；释放迟到响应不覆盖ready、不再写业务。服务、HTTP连接与PG均自行收尾，没有使用试点端口或实例。
+- 最终客户端20文件231/231、host/client根tsc exit0、完整build exit0；真实PG定向22/22、exit0，含上述真实HTTP旅程。G2 245路径/52登记有效，新鲜重建237覆盖+8删除一致。UI/Agent仍未接入控制器，真实浏览器整页恢复与DeepSeek仍待执行。
+
+非敏感日志SHA-256：
+- `write-http-timeout-package-final.log`：`b83db2fcf1b31bbf02cdfef6d16c2e64d344ebc95b87fdac30b5ff9b5347c19f`。
+- `write-http-timeout-types-final.log`：`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`。
+- `write-http-timeout-build-final.log`：`c39732cb467e3e2b23f7d4280762f2df3b3b278f7d4c05c13323a935eac4ae10`。
+- `write-http-timeout-real-pg-final.log`：`951bcb2aa479f9856a3514d510bb30b395ad562f9b8652a6432a2c14f6af0aec`。
+- `write-http-timeout-g2.log`：`81b9a65e8965e2ac7c46a69ff987f4280f7be2da88ed56915f6e574efbccda9a`。
+- `write-http-timeout-rebuild.log`：`5b39a5a579a6cc4db8226183a0f78b8e17c055f1756f347b1a83f5acf7cead26`。

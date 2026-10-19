@@ -9,7 +9,7 @@ const deferred=<T,>()=>{let resolve!:(value:T)=>void;const promise=new Promise<T
 
 function server() {
   let who={...identity}, active=false, canceled=false, committed=false, effect=0, beforeWriteFailure=false, lostReply=false
-  let prepareFailure=false, prepareReply:Promise<void>|undefined
+  let prepareFailure=false, prepareReply:Promise<void>|undefined,writeReply:Promise<void>|undefined
   const writes:Array<{key:string|null;body:unknown}>=[]
   const result={recordId:'record-1',rowVersion:1}
   const receipt=()=>({state:'COMMITTED',operationId:'operation-1',statusCode:201,result,auditPending:false})
@@ -38,6 +38,7 @@ function server() {
       if(beforeWriteFailure) throw new Error('not delivered')
       if(canceled) return Response.json({error:'KVVI_OPERATION_CANCELED'},{status:409})
       if(!committed) {effect++;committed=true}
+      if(writeReply) await writeReply
       if(lostReply) throw new Error('reply lost after commit')
       return Response.json(result,{status:201})
     }
@@ -46,7 +47,8 @@ function server() {
   vi.stubGlobal('fetch',fetcher)
   return {fetcher,writes,result,get effect(){return effect},set who(next:typeof identity){who=next},
     set beforeWriteFailure(value:boolean){beforeWriteFailure=value},set lostReply(value:boolean){lostReply=value},
-    set prepareFailure(value:boolean){prepareFailure=value},set prepareReply(value:Promise<void>){prepareReply=value}}
+    set prepareFailure(value:boolean){prepareFailure=value},set prepareReply(value:Promise<void>){prepareReply=value},
+    set writeReply(value:Promise<void>){writeReply=value}}
 }
 const controller=()=>createRecordWriteController(target,{expectedIdentity:scope})
 
@@ -238,4 +240,63 @@ it('a failed prepare cannot bind its unconfirmed body to an independently discov
   expect(c.getSnapshot().canRetry).toBe(false)
   expect(await c.retry()).toBeUndefined()
   expect(s.writes).toHaveLength(0)
+})
+
+it('a hung write reply has a bounded wait, retains the key and ignores its late completion',async()=>{
+  const s=server(), waiting=deferred<void>(), c=createRecordWriteController(target,{expectedIdentity:scope,requestTimeoutMs:20})
+  await c.refresh();s.writeReply=waiting.promise
+  const submitting=c.submit({data:{title:'hung committed reply'}})
+  const outcome=await Promise.race([submitting.then(()=>true),new Promise<boolean>(resolve=>setTimeout(()=>resolve(false),150))])
+  if(!outcome) {c.dispose();waiting.resolve();await submitting;expect(outcome).toBe(true);return}
+  expect(c.getSnapshot().phase).toBe('pending')
+  expect(c.getSnapshot().error).toMatchObject({status:0,code:'KVVI_OPERATION_OUTCOME_UNKNOWN',idempotencyKey:'original-key'})
+  const post=s.fetcher.mock.calls.find(([url,init])=>url.endsWith('/records')&&init?.method==='POST')
+  expect(post?.[1]?.signal?.aborted).toBe(true)
+  await c.refresh();expect(c.getSnapshot().phase).toBe('committed')
+  waiting.resolve();await Promise.resolve()
+  expect(c.getSnapshot().phase).toBe('committed')
+  expect(s.effect).toBe(1)
+  expect(s.writes).toHaveLength(1)
+  c.dispose()
+})
+
+it('a hung prepare is uncertain, aborts its HTTP wait and never sends a late business write',async()=>{
+  const s=server(), waiting=deferred<void>(), c=createRecordWriteController(target,{expectedIdentity:scope,requestTimeoutMs:20})
+  await c.refresh();s.prepareReply=waiting.promise
+  const submitting=c.submit({data:{title:'hung prepare'}})
+  const outcome=await Promise.race([submitting.then(()=>true),new Promise<boolean>(resolve=>setTimeout(()=>resolve(false),150))])
+  if(!outcome) {c.dispose();waiting.resolve();await submitting;expect(outcome).toBe(true);return}
+  expect(c.getSnapshot().error?.code).toBe('KVVI_OPERATION_OUTCOME_UNKNOWN')
+  await c.refresh();expect(c.getSnapshot().canRetry).toBe(false)
+  expect(await c.cancel()).toBe(true)
+  waiting.resolve();await Promise.resolve()
+  expect(s.writes).toHaveLength(0)
+  expect(s.effect).toBe(0)
+  c.dispose()
+})
+
+it('a hung authentication response body has a bounded read without starting any intent request',async()=>{
+  const waiting=deferred<unknown>(),fetcher=vi.fn(async()=>({ok:true,status:200,json:()=>waiting.promise}))
+  vi.stubGlobal('fetch',fetcher)
+  const c=createRecordWriteController(target,{expectedIdentity:scope,requestTimeoutMs:20})
+  await c.refresh()
+  expect(c.getSnapshot().phase).toBe('blocked')
+  expect(c.getSnapshot().error).toMatchObject({status:0,code:'KVVI_UNREACHABLE'})
+  expect(fetcher).toHaveBeenCalledTimes(1)
+  c.dispose();waiting.resolve(identity);await Promise.resolve()
+  expect(fetcher).toHaveBeenCalledTimes(1)
+})
+
+it('dispose immediately releases an in-flight write even when fetch ignores abort and later rejects',async()=>{
+  const s=server(),waiting=deferred<void>(),c=controller();await c.refresh();s.writeReply=waiting.promise
+  const submitting=c.submit({data:{title:'dispose hung write'}})
+  await vi.waitFor(()=>expect(s.writes).toHaveLength(1))
+  c.dispose()
+  const outcome=await Promise.race([submitting.then(()=>true),new Promise<boolean>(resolve=>setTimeout(()=>resolve(false),100))])
+  s.lostReply=true;waiting.resolve();await submitting
+  expect(outcome).toBe(true)
+  const post=s.fetcher.mock.calls.find(([url,init])=>url.endsWith('/records')&&init?.method==='POST')
+  expect(post?.[1]?.signal?.aborted).toBe(true)
+  expect(s.effect).toBe(1)
+  expect(s.writes).toHaveLength(1)
 })
