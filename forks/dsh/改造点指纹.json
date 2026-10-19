@@ -1,5 +1,5 @@
 {
-  "count": 245,
+  "count": 247,
   "files": {
     "apps/cli/package.json": {
       "sha256": "3a80bdf6c7da3ace285b256accb233212e9991c0335b0a1dd2c489815595801d",
@@ -271,7 +271,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/BusinessBody.tsx": {
-      "sha256": "3110a3600c7ed47c41c5230a7ff077461580183f51c9bd7b700a5caa0ea39fb0",
+      "sha256": "24a69ac5318b5be6e75dc654be184535ba33373754c111e661490c52b8005962",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/BusinessDirectory.tsx": {
@@ -322,6 +322,10 @@
       "sha256": "4ec131da59f610dca3c71ef56aacb24970b5575dcb2d74fe40dff16d84f9dda3",
       "status": "A"
     },
+    "packages/client/kvvi-panel/src/client/RecordWriteGuard.tsx": {
+      "sha256": "5bb5f5cf2dac865ddd341690606b580bbe6cd23b2e19554bac8eebcce90e540e",
+      "status": "A"
+    },
     "packages/client/kvvi-panel/src/client/RoleAdmin.tsx": {
       "sha256": "1a81f12d97ae55d8903874f8203de272a55a2b38365184ce11b1b2072c4e457a",
       "status": "A"
@@ -367,7 +371,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/locales.ts": {
-      "sha256": "2baa670a32224be0a41baa39586cec4b7eb5b2a7b11e05fac49a9de5df4bb18d",
+      "sha256": "04b43f937c2e223da7d31acfc286d388968bfff653e4b78a8a4c81c96f102dd0",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/record-write.ts": {
@@ -427,7 +431,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-dock.spec.tsx": {
-      "sha256": "277e22b7f10fbe7620bd11ef87be2dbf1673b24b702066817c43e6446270d084",
+      "sha256": "8ceb84fc3bdfbfcb4a214408ff7f3b25bb099de61816d1fba59dde830cde47ce",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/business-entry.spec.tsx": {
@@ -472,6 +476,10 @@
     },
     "packages/client/kvvi-panel/tests/values.client.spec.ts": {
       "sha256": "9a929a82c634debbebf18fb8f3ff204889e6ee17968b31cb817f60105a8f92a5",
+      "status": "A"
+    },
+    "packages/client/kvvi-panel/tests/write-guard.spec.tsx": {
+      "sha256": "936c0b520a1e5961c19555f596c7629068d5d45e3d7d50550aa7650b4cc4b9e0",
       "status": "A"
     },
     "packages/client/kvvi-panel/tsconfig.json": {
@@ -1090,7 +1098,7 @@
       "upstream_baseline_sha256": "568b5f6d7d94f9a7d02040ea309ab858e8d2d47c9c5f68a9236a48268ed50d03"
     }
   },
-  "fork_head": "4f07ad8f64933ff5b44fbab11fbb601437db5447",
+  "fork_head": "8557c2a88afeb4bbe75c5e99083aa12720c9f130",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "e6a559b1550f5bee359cffc514f6a498710d0697"

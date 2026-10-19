@@ -341,3 +341,20 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `write-http-timeout-real-pg-final.log`：`951bcb2aa479f9856a3514d510bb30b395ad562f9b8652a6432a2c14f6af0aec`。
 - `write-http-timeout-g2.log`：`81b9a65e8965e2ac7c46a69ff987f4280f7be2da88ed56915f6e574efbccda9a`。
 - `write-http-timeout-rebuild.log`：`5b39a5a579a6cc4db8226183a0f78b8e17c055f1756f347b1a83f5acf7cead26`。
+
+
+## 批次25：BusinessBody可见写入恢复
+
+- 新RecordWriteGuard把真实业务主区与会话右栏的创建/PATCH接入批次23–24控制器；提交先prepare，未知结果显示不确定状态，查询、原操作重试、取消、确认、查看结果均为明确按钮。无已知key时只允许检查，不给无效取消入口；受限回执只显示元数据，不显示表单/结果。新会话通过服务端active找回，不把业务输入存浏览器持久存储。
+- Guard以公司/账号/session/gateway身份、asset/record及父读取generation绑定occurrence；effect创建并dispose控制器，StrictMode重放不复用已销毁实例。所有迟到回调重验current；父BusinessContent按身份重建，旧响应不导航、不改新身份草稿。ACK/取消后重读当前projection/fields/record，不将旧PATCH值合并进新记录。
+- 新建显式查看与初次成功分开：工作台创建关闭弹窗并刷新列表，恢复结果需点击查看才导航；恢复查看不清新草稿。初次提交及显式retry的已知成功只clearIfUnchanged原提交快照。独立复核先RED复现retry成功遗留旧草稿，修复后增加反例；另复现并修复同scope回调更新仍调用旧函数、未知key显示取消、工作台显式查看未导航等问题。
+- 协议感知组件夹具验证prepare先于业务POST、刷新为新store找回已提交、恢复不自动导航、不重复写、切换身份与另一页签新草稿不被清理、迟到PATCH后ACK读取当前版本。身份测试最初立即断言已存在旧DOM，改等待新身份DOM提交后再释放旧响应；保留原跨身份效果断言。最初新行为令6项旧夹具/自动恢复假设失败，已改显式协议交互，未修改成自动重放。
+- 最终21文件247/247通过，host/client根tsc exit0，完整build exit0（252客户端产物）。两名独立只读复核，所发现草稿问题已补RED修复。G2 247路径/52登记有效，新鲜固定源239覆盖+8删除逐字节一致；第一次重建未包含尚未暂存的2个新文件而明确失败，纳入Git暂存后以新目录重建通过，不掩盖失败。
+- 本批是实际BusinessBody组件接线及jsdom验收；SystemShell旧入口与Agent仍待接线，未执行真实浏览器整页刷新、真实DeepSeek、现有试点部署，不据此勾选任务3/4完成。平台生产代码未改，实际HTTP+PG证据仍为批次24。
+
+非敏感日志SHA-256：
+- `business-write-recovery-package-final.log`：`12c9b992c7b9d9d267a3082ee4ab5663d93e382912425cca12c8f63b5fb77d87`。
+- `business-write-recovery-types-final.log`：`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`。
+- `business-write-recovery-build-final.log`：`aac3c2448814506975b461fc055e3e7bbaffd16db06d6a720b7694baed3e3f3a`。
+- `business-write-recovery-g2.log`：`e2edd1fd35a95409d5c9b3c80f4470f799f53529549c2bb50410be0b6842571c`。
+- `business-write-recovery-rebuild-final.log`：`7b047cf4e34c31db4bf0927fb575e3dbc7ed49d79c2f620661ac759b7e8e6fb4`。

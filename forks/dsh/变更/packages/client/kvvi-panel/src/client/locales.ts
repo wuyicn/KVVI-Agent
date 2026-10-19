@@ -18,6 +18,19 @@ export const QUERY_UNSUPPORTED = 'KVVI_TABLE_QUERY_UNSUPPORTED'
 
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
+  'recovery.pendingUnidentified': '上次准备请求尚未确认。请先检查原操作，确认前不能开始新操作。',
+  'recovery.uncertain': '操作结果尚未确认，请检查原操作。',
+  'recovery.pending': '上次操作的结果尚未确认。请检查原操作，或取消未提交的操作。',
+  'recovery.saved': '上次操作已保存。',
+  'recovery.savedRestricted': '上次操作已保存；当前权限不允许查看原结果。',
+  'recovery.check': '检查原操作',
+  'recovery.retry': '重试原操作',
+  'recovery.cancel': '取消未提交操作',
+  'recovery.acknowledge': '确认结果并重新加载',
+  'recovery.view': '查看已保存记录',
+  'recovery.reload': '重新加载当前页面',
+  'recovery.settled': '原操作已处理，请重新加载后继续填写。',
+  'recovery.identityChanged': '登录身份已变化，请重新打开当前业务。',
   'preview.title': '草稿预览',
   'preview.refresh': '更新预览',
   'preview.explanation': '这是尚未发布的表单。可以试填，数据仅用于当前预览，不会保存到正式业务。',
@@ -312,6 +325,19 @@ export const zh = {
 
 /** English dictionary, key-identical to the Chinese source of truth. */
 export const en: Record<KvviKey, string> = {
+  'recovery.pendingUnidentified': 'The preparation result is unconfirmed. Check the original operation before starting another.',
+  'recovery.uncertain': 'The result is unconfirmed. Check the original operation.',
+  'recovery.pending': 'The previous result is unconfirmed. Check the original operation or cancel it if it has not committed.',
+  'recovery.saved': 'The previous operation was saved.',
+  'recovery.savedRestricted': 'The previous operation was saved. Your current permissions do not allow viewing its result.',
+  'recovery.check': 'Check original operation',
+  'recovery.retry': 'Retry original operation',
+  'recovery.cancel': 'Cancel uncommitted operation',
+  'recovery.acknowledge': 'Acknowledge and reload',
+  'recovery.view': 'View saved record',
+  'recovery.reload': 'Reload current page',
+  'recovery.settled': 'The original operation is resolved. Reload before continuing.',
+  'recovery.identityChanged': 'Your sign-in identity changed. Reopen this business page.',
   'preview.title': 'Draft preview',
   'preview.refresh': 'Refresh preview',
   'preview.explanation': 'This form is unpublished. Trial values stay in this preview and are never saved as business records.',
