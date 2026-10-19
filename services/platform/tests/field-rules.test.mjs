@@ -20,9 +20,9 @@ const MODEL = {
   fields: [
     { field_code: 'customer_name', type: 'short_text', required: true, nullable: false,
       write_policy: 'MUTABLE' },
-    { field_code: 'owner_id', type: 'person', required: false, nullable: false,
+    { field_code: 'owner_id', type: 'short_text', required: false, nullable: false,
       write_policy: 'CREATE_ONLY' },
-    { field_code: 'created_by', type: 'person', required: false, nullable: false,
+    { field_code: 'created_by', type: 'short_text', required: false, nullable: false,
       write_policy: 'SYSTEM' },
     { field_code: 'note', type: 'long_text', required: false, nullable: true,
       write_policy: 'MUTABLE' },
@@ -127,7 +127,7 @@ describe('字段写入约束：纯判定', () => {
   })
 
   test('`write_policy` 缺省按 `MUTABLE`（契约必填，但缺省不炸）', () => {
-    const model = { fields: [{ field_code: 'a', required: false }] }
+    const model = { fields: [{ field_code: 'a', type: 'short_text', required: false }] }
     assert.deepEqual(checkFieldValues({ model, operation: 'update', data: { a: 'x' } }), [])
   })
 
@@ -175,8 +175,8 @@ describe('字段写入约束：纯判定', () => {
 
   test('权限层的必填**只管新增**（修改是补丁语义）', () => {
     const model = { fields: [
-      { field_code: 'follow_status', required: false, nullable: true },
-      { field_code: 'note', required: false, nullable: true },
+      { field_code: 'follow_status', type: 'short_text', required: false, nullable: true },
+      { field_code: 'note', type: 'long_text', required: false, nullable: true },
     ] }
     assert.deepEqual(checkFieldValues({
       model, operation: 'update', data: { note: '只改备注' },

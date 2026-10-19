@@ -47,6 +47,8 @@
  * （反了），而这里反过来会把「你没填必填项」报成「服务端坏了」，
  * 调用方会去重试一个永远不会成功的请求。
  */
+import { fieldValueProblem } from './field-value-types.mjs'
+
 export class FieldRuleError extends Error {
   /**
    * @param {string} code 稳定的错误码（取第一条违规的原因）
@@ -136,7 +138,12 @@ export function checkFieldValues({ model, operation, data, requiredFields, decla
     if (blank(value) && field.required === true && field.nullable === false) {
       // 必填字段被显式写成空：这是**填错**，不是「没带」。没带由下面那一轮管。
       problems.push({ field: code, reason: 'KVVI_FIELD_REQUIRED', detail: {} })
+      continue
     }
+    // Direct internal callers may have undefined properties; JSONB encoding omits them.
+    if (value===undefined) continue
+    const typeProblem=fieldValueProblem(field,value)
+    if(typeProblem) problems.push({field:code,reason:typeProblem,detail:{}})
   }
 
   if (operation === 'create') {

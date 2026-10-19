@@ -51,7 +51,8 @@ function model(assetId) {
     fields: [
       { field_code: 'title', label: '标题', type: 'short_text', required: true, nullable: false },
       { field_code: 'detail', label: '说明', type: 'long_text', required: false, nullable: true },
-      { field_code: 'amount', label: '金额', type: 'money', required: false, nullable: true },
+      { field_code: 'amount', label: '金额', type: 'money', required: false, nullable: true,
+        type_config:{currency_mode:'FIXED',currency:'CNY'} },
       { field_code: 'due_date', label: '期限', type: 'date', required: false, nullable: true },
     ],
   }
@@ -290,7 +291,7 @@ describe('阶段九 · G7 端到端', () => {
   test('④ 员工按投影里的视图提交第一条记录 → 201 且有记录号', async () => {
     const runtime = await api('GET', `/api/v1/systems/${ASSET}/runtime`, employee)
     const fields = runtime.body.models[ASSET].fields.map((f) => f.field_code)
-    const data = { title: '会议室投影仪坏了', detail: '三号会议室', amount: '0', due_date: '2026-10-01' }
+    const data = { title: '会议室投影仪坏了', detail: '三号会议室', amount: {amount:'0',currency:'CNY'}, due_date: '2026-10-01' }
     // 提交的字段必须都是模型声明过的 —— 视图绑不到模型外的字段。
     for (const key of Object.keys(data)) assert.ok(fields.includes(key), `模型没声明 ${key}`)
 
@@ -309,7 +310,7 @@ describe('阶段九 · G7 端到端', () => {
     // ⚠️ 必须重新读：写成功与读得到是两件事，中间隔着 RLS 与字段可见性。
     assert.ok(row !== undefined, '刚提交的记录在列表里读不到')
     assert.equal(row.data.detail, '三号会议室')
-    assert.equal(row.data.amount, '0')
+    assert.deepEqual(row.data.amount, {amount:'0',currency:'CNY'})
     assert.ok(row.recordNo !== undefined && row.recordNo !== '')
     // 渲染器只按平台给的可见性画，所以它必须在响应里。
     assert.equal(list.body.fieldVisibility.title, 'VISIBLE')
@@ -334,7 +335,7 @@ describe('阶段九 · G7 端到端', () => {
     assert.equal(after.body.data.detail, '三号会议室（已修）')
     // 未改的字段必须还在：补丁是合并，不是替换。
     assert.equal(after.body.data.title, '会议室投影仪坏了')
-    assert.equal(after.body.data.amount, '0')
+    assert.deepEqual(after.body.data.amount, {amount:'0',currency:'CNY'})
   })
 
   test('⑦ 流程动作：可执行清单与执行一步', async () => {

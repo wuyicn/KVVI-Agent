@@ -182,3 +182,11 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node services/platform/test
 - 独立只读复核未发现增量问题。固定源`pnpm exec vitest run packages/client/kvvi-panel/tests`：18文件186/186、exit0；`pnpm exec tsc -b tsconfig.host.json tsconfig.client.json --pretty false`：exit0；明确Node24.20.0的完整`pnpm run build`：exit0。
 - G2由隔离registered-fork生成，242路径/52登记匹配；新鲜重建234覆盖+8删除匹配。原vendor不变，试点未部署。
 - 任务4仍未关闭：十类型编辑（尤其decimal/money精确结构）、未知/非法值拒绝、终态规则、迟到响应与身份绑定持久原key仍待实现。组件测试不冒称真实浏览器/数据库端到端验收。
+
+## 批次14：后端十类型落值校验
+
+- 在refs共用的field-rules接入闭合十类型校验，API/内部create/update均拒绝未知类型与不合法的原生JSON值，不把字符串布尔、截断整数、浮点decimal/money或逗号字符串数组强转为有效值。decimal保留精确十进制字符串，money保留amount/currency对象并复用现有ledger币种/标度规则；不以本批替代任务10的生产类型注册表绑定。
+- 12条类型单测先RED；增加真实PG API十类型创建、更新与反例，直接核对JSONB中的false、0、数组、null、长decimal及money对象。非法更新后rowVersion不变。旧夹具的person/缺type改为正式文本类型，money标量改为冻结契约规定的对象；内部undefined属性按JSON编码的省略语义处理，不放宽真实JSON类型。
+- 独立复核指出decimal缺省18/2与年0判据分叉；增加反例并直接复用冻结校验器的fitsDecimal/decimalParts/validDate/validDatetime，不另维护日期和精度算法。纯函数与消费布局32/32，exit0；最新完整平台611项：610通过、0失败、1个既有跳过，exit0。
+- 容器源布局调整为/app/services/platform，明确只复制values.mjs/safe_pattern.mjs两个纯工具依赖；独立临时消费布局在没有仓库的目录中实际加载通过。Docker CLI存在但daemon未运行，真实镜像构建未执行，不冒称容器资格通过；没有启动daemon或现有服务。
+- UI目前仍需接线：新增编辑器反例已重现现有parseFloat/parseInt的精度和截断问题，尚未计入本后端提交，也没有将后端拒绝称为完整十类型编辑完成。

@@ -29,7 +29,16 @@ before(async () => {
     diffReport: { faces: DIFF_FACES }, invariant: { ok: true } })
   await approveDraft({ ctx: bob.ctx, draftId: draft.draftId, decision: 'APPROVE' })
   const specs = {
-    'business-schema': { schema_code: 'general_item', fields: [{ field_code: 'title', type: 'short_text' }] },
+    'business-schema': { schema_code: 'general_item', fields: [
+      {field_code:'title',type:'short_text'}, {field_code:'note',type:'long_text'},
+      {field_code:'flag',type:'boolean'}, {field_code:'count',type:'integer'},
+      {field_code:'ratio',type:'decimal',type_config:{precision:38,scale:12}},
+      {field_code:'total',type:'money',type_config:{currency_mode:'FIXED',currency:'CNY'}},
+      {field_code:'on_date',type:'date'}, {field_code:'at_time',type:'datetime'},
+      {field_code:'choice',type:'single_select',type_config:{options:[{code:'a'},{code:'b'}]}},
+      {field_code:'tags',type:'multi_select',type_config:{options:[{code:'a'},{code:'b'}]}},
+      {field_code:'nullable_text',type:'short_text',nullable:true},
+    ] },
     'view-schema': { componentsTree: [] },
     'workflow-spec': { states: [{ state_code: 'draft', initial: true }], transitions: [] },
     'permission-spec': { roles: [], policies: [] }, 'tool-spec': { tools: [] }, 'app-model-command': { commands: [] },
@@ -39,6 +48,25 @@ before(async () => {
     contracts: Object.entries(specs).map(([contractType, content]) => ({ contractType, content, assetId: 'general_item' })) })
 })
 after(closeAll)
+
+test('ten declared types reach actual PG JSONB with native booleans/integers/arrays and exact decimals/money',async()=>{
+  const data={title:'typed database',note:'long\ntext',flag:true,count:7,
+    ratio:'12345678901234567890.123456789012',total:{amount:'9007199254740993.01',currency:'CNY'},
+    on_date:'2024-02-29',at_time:'2026-10-19T12:30:00+08:00',choice:'a',tags:['a','b'],nullable_text:null}
+  const created=await call(alice,'POST',path,{data})
+  assert.equal(created.status,201)
+  assert.deepEqual((await adminQuery('kvvi_business','SELECT data FROM business_records WHERE record_id=$1',[created.body.recordId])).rows[0].data,data)
+  const changed={flag:false,count:0,tags:[],nullable_text:'',ratio:'0.000000000001',total:{amount:'0.01',currency:'CNY'}}
+  const updated=await call(alice,'PATCH',`${path}/${created.body.recordId}`,{data:changed,rowVersion:1})
+  assert.equal(updated.status,200)
+  assert.deepEqual((await adminQuery('kvvi_business','SELECT data FROM business_records WHERE record_id=$1',[created.body.recordId])).rows[0].data,{...data,...changed})
+  for(const invalid of [{flag:'false'},{count:'7'},{tags:'a,b'},{ratio:0.1},{total:'1.23'}]) {
+    const refused=await call(alice,'PATCH',`${path}/${created.body.recordId}`,{data:invalid,rowVersion:2})
+    assert.equal(refused.status,400)
+    assert.equal(refused.body.error,'KVVI_FIELD_TYPE_INVALID')
+  }
+  assert.equal((await adminQuery('kvvi_business','SELECT row_version::int v FROM business_records WHERE record_id=$1',[created.body.recordId])).rows[0].v,2)
+})
 
 test('audit outage keeps one committed result; original key resumes after connection restart', async () => {
   const key = randomUUID()

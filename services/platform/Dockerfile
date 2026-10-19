@@ -10,7 +10,7 @@
 #   私钥由运行期挂载或外部 KMS 提供，缺失时 /healthz 的 signingKeyMounted 为 false。
 FROM node:24-bookworm-slim
 
-WORKDIR /app
+WORKDIR /app/services/platform
 COPY services/platform/package.json services/platform/package-lock.json ./
 # 依赖在**构建期**安装，而不是把开发机上的 node_modules 拷进镜像：
 # 拷贝法在干净克隆上必然失败（node_modules 不入库），
@@ -18,6 +18,8 @@ COPY services/platform/package.json services/platform/package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 COPY services/platform/src/ ./src/
 COPY services/platform/sql/ ./sql/
+# Share the frozen pure value/calendar functions without installing the full authoring toolchain.
+COPY tools/meta-schema/node/values.mjs tools/meta-schema/node/safe_pattern.mjs /app/tools/meta-schema/node/
 # 开发工具（造演示账号）。它**不在** `src/`，这是刻意的：
 # `工具/check_publish_channel.py` 静态核查「`src/` 里只有发布通道能写 policies」，
 # 而种子脚本要插 `policies` 的固定装置 —— 放进 `src/` 就会被正确地报成旁路。
@@ -30,7 +32,7 @@ COPY services/platform/dev/ ./dev/
 # `EACCES: permission denied, open '/app/src/auth.mjs'` 然后无限重启。
 # 那个报错看起来像代码 bug，实际是构建机的 umask 泄漏进了镜像。
 # 镜像的可运行性不该取决于构建机的 umask，所以在这里抹平。
-RUN chmod -R a+rX /app/src /app/sql /app/dev /app/node_modules
+RUN chmod -R a+rX ./src ./sql ./dev ./node_modules /app/tools/meta-schema/node
 
 # 阶段四起本进程需要一个数据库驱动（`pg`）—— 它要访问平台库。
 #
