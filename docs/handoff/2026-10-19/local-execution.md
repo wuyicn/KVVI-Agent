@@ -1009,3 +1009,19 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `package-test-fixture-policy-red.log`：`01529ac69075179158942536c8f53d3e4a2eb25265da68d87a9b67954667bd72`。
 - `package-test-fixture-policy-final312.log`：`7bb47f47f613860dcd28533269801aa7fc63d67a57218d2b9d3a214bca723e5e`。
 - `package-test-fixture-policy-final39.log`：`14f9b437ce705417d0bc4e635fe78dfba39a19a0526c3d2ad8b361d0146823c9`。
+
+## 批次64：真实v5包与两份独立只读复核
+
+- 固定代码d718c456dd2aa90564ca644e9190de0e717eb58a，在全新独立目录`.local-remediation-evidence/release-v5-d718c456-c144159ff2`显式选择bf8d91810b031/source和registered-fork，真实build/check及整体进程均exit0。复用已完整核验的实际成功构建，没有再次安装/编译、部署或重启；批次62失败目录、旧发行目录和实际源树保留。
+- v5共15955条数据（15940普通文件、15链接），另有一个内嵌manifest；890非runtime、15065 runtime，runtime为12196固定源和2869政策投影输出。完整构建9467输出、252客户端及原75374bytes收据/固定anchor均绑定。contentDigest为sha256:82707ab247a1b0b14346059bf550f7953b2d7e7ffd6d512a1ba9332951fe970a；归档45602610bytes，SHA-256 b1336af0c6da916ed7aa6af9df8d833ec380aca18b1b54833efebdefad4eb85a。FORBIDDEN命中0，first-party tests路径0，20项必需普通文件齐全、main缺失0。
+- 独立baseline复核直接流读实际tar字节、单gzip流/footer、canonical tar尾、成员唯一/元数据/PAX、contained link graph、三资格及内外manifest。独立lifecycle复核实际当前qualifier exit0，完整重算source/material/output/client和候选全15955条，与外清单完全一致；初末工具/日志/收据/anchor及归档/清单实物稳定。两者均只读，无安装/build/测试或试点操作。归档未嵌入raw local-build-anchor，使用仓库固定锚关联，不声称签名或历史执行认证。
+- 此结论仅支持d718c456快照的包一致性，releaseApproved:false；后续生产源码变化须重新打包。12项、真实模型/浏览器角色、跨实例恢复及干净Mac仍待验收，不从本批推导产品接受或发行批准。
+
+实际退出后非敏感证据SHA-256：
+- `release-v5-d718c456-c144159ff2/selection.json`：`a467671c1976a245a187008d8f56534c08054e39300ee96dedeb70426c4f52e2`。
+- 该目录`build-result.json`及`check-result.json`各：`3003741f53d50842fc5e7842382e8a5055e9526e4387cafd718c70c468639df6`。
+- 该目录`发行包清单.json`：`4558abd7cb22265cfe8955feeea62ef718217e219e1ade879751c1c1658384d3`。
+- `real-v5-d718c456-build-check.log`：`cdd3c21ec719eb0c319d59a1cb80fe310fb81d1b79a59206fe233f3c4fcc3325`。
+- `real-v5-d718c456-summary.json`：`e8223e07abac85610e45fad947014ce4b8405f68442d92486f6c2d522d2c4a4d`。
+- `read-only-v5-d718c456-baseline-review.json`：`5fdcd4d0144b0162ed3661f4bbfdf6951bf8f9590b78c9aec805ba175d0e3520`。
+- `batch64-independent-jvv25i35/read-only-binding.json`：`06e6855552a7f5ff6c8f0c510156b5c5bde60903b56cd8b4b384cd3feff92a55`。

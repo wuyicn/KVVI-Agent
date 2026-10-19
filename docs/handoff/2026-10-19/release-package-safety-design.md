@@ -166,3 +166,9 @@ v5内外manifest增加完整buildQualification，必须严格结构并与同一s
 ## First-party测试装置明确排除（批次63完成）
 
 共享政策仅在source_rel精确为services/platform或distribution且相对路径是顶层tests及后代时排除；src/lib/bin中的tests、tests-extra、DSH固定源及第三方依赖原政策均不变。原仓库测试body/mtime保留，秘密扫描未改；相同fixture令牌落生产src仍拒绝且保留旧pair。两个反例先RED后GREEN，独立复核矩阵闭环，双Python各180项必要打包/资格回归exit0、无skip/ResourceWarning。未把批次62失败升级成成功，也未重用该失败目录；下一批新目录实际build/check。
+
+## 首个真实v5包一致性复核（批次64完成）
+
+固定d718c456在新release-v5-d718c456-c144159ff2目录实际build/check均exit0，未覆盖旧包或失败结果。15955数据条目及一个内嵌清单，runtime15065条，完整9467输出先核验再投影2869条，与12196源共同绑定；归档45602610bytes、SHA b1336af0c6da916ed7aa6af9df8d833ec380aca18b1b54833efebdefad4eb85a。生产扫描0命中、必需20文件齐全。独立raw tar复核和当前资格/候选逐行复核均闭环，详细计数、限制与报告SHA见local-execution批次64。
+
+本批只复用已成功构建树作只读资格核验及实际打包，没有安装/编译/部署/模型调用。该包仅对应固定快照，后续生产源码改动须新包；releaseApproved:false，12项产品/角色/模型/干净Mac验收未完成。仓库锚关联不等于签名或历史认证。
