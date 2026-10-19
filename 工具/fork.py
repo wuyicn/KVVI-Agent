@@ -69,6 +69,8 @@ import tarfile
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+from 工具.lib.raw_git_source import export_raw_baseline
 DSH = os.path.join(ROOT, 'vendor', 'dsh')
 MANIFEST = os.path.join(ROOT, 'forks', 'dsh', '改造点指纹.json')
 CHANGES = os.path.join(ROOT, 'forks', 'dsh', '变更')
@@ -226,34 +228,31 @@ def pristine(upstream: str, into: str) -> bool:
     base = m['upstream_merge_base']
     if upstream == 'git':
         url = 'https://github.com/wuyicn/KVVI-Agent.git'
-        r = subprocess.run(['git', 'clone', '--quiet', '--single-branch', '--branch',
-                            'vendor-dsh', url, into], capture_output=True, text=True, timeout=3600)
-        if r.returncode != 0:
-            print('%s✗ 从上游克隆失败：%s%s' % (C_BAD, r.stderr.strip()[:200], C_OFF))
-            return False
-        r = subprocess.run(['git', 'checkout', '--quiet', base], cwd=into,
-                           capture_output=True, text=True, timeout=1800)
-        if r.returncode != 0:
-            print('%s✗ 基线提交 %s 在克隆里不存在%s' % (C_BAD, base[:12], C_OFF))
-            return False
-        shutil.rmtree(os.path.join(into, '.git'), ignore_errors=True)
-        return True
+        with tempfile.TemporaryDirectory(prefix='kvvi-upstream-objects-') as temporary:
+            objects = os.path.join(temporary, 'objects')
+            try:
+                r = subprocess.run(['git', 'clone', '--quiet', '--no-checkout', '--single-branch', '--branch',
+                                    'vendor-dsh', url, objects], capture_output=True, text=True, timeout=3600)
+            except (OSError, subprocess.SubprocessError):
+                print('%s✗ 从上游克隆失败：KVVI_FORK_CLONE_FAILED%s' % (C_BAD, C_OFF))
+                return False
+            if r.returncode != 0:
+                print('%s✗ 从上游克隆失败：%s%s' % (C_BAD, r.stderr.strip()[:200], C_OFF))
+                return False
+            try:
+                export_raw_baseline(objects, base, into)
+            except ValueError as error:
+                print('%s✗ 固定基线导出失败：%s%s' % (C_BAD, error, C_OFF))
+                return False
+            return True
 
     # local：从 vendor/dsh 自己的对象里导出基线提交的干净副本。
     # 这条路**不需要网络**，但它证的是「重建逻辑对」，
     # 不是「GitHub 能连上」—— 后者见 N23。
-    os.makedirs(into, exist_ok=True)
-    with tempfile.TemporaryFile() as archive:
-        exported = subprocess.run(['git', 'archive', base], cwd=DSH, stdout=archive,
-                                  stderr=subprocess.PIPE, text=True, timeout=900)
-        if exported.returncode != 0:
-            print('%s✗ 从本地对象导出基线失败：%s%s' % (C_BAD, exported.stderr.strip()[:200], C_OFF))
-            return False
-        archive.seek(0)
-        r = subprocess.run(['tar', '-x', '-C', os.path.abspath(into)], stdin=archive,
-                           capture_output=True, text=True, timeout=900)
-    if r.returncode != 0:
-        print('%s✗ 从本地对象导出基线失败：%s%s' % (C_BAD, r.stderr.strip()[:200], C_OFF))
+    try:
+        export_raw_baseline(DSH, base, into)
+    except ValueError as error:
+        print('%s✗ 从本地对象导出基线失败：%s%s' % (C_BAD, error, C_OFF))
         return False
     return True
 

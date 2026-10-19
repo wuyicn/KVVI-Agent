@@ -629,3 +629,21 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `runtime-source-python39.log`：`3433635765e32e7fb02fd2e11a6ecb5bec430b0ff175d2be9756cde0d7ba4f97`。
 - `runtime-source-final-built-rejected.json`：`11b3f7fecd4f166c0a55be75ad517a8d24bd11e760d1f10afe22cef2cf9a06d7`。
 - `runtime-source-final-canonical.json`：`27e9f25b1970e6fb91ece1755b564b8ae8392555bfa829c313ee842bcebb9b2f`。
+
+
+## 批次42：固定Git blob原字节重建
+
+- 新增raw_git_source.py，两条pristine来源共用禁replace的ls-tree/cat-file分批导出，按Git blob header/长度/SHA1验证原字节；local读现有对象，git来源在临时对象目录clone --no-checkout后仅取固定baseline，不再archive/checkout触发EOL转换。只往自有staging写，文件644/755、链接最后建立并解析留在stage内，成功后替换新或空目标；非空/末级link目标拒绝且保留。
+- source inventory私有_git最小增加input_bytes与120秒调用预算；初版错误复用旧参数产生TypeError，随后macOS /var→/private/var路径别名误拒合法链接，均由正例失败定位修正。模块初始缺失先RED。未以这些失败或早轮结果当最终通过，最终记录如下。
+- 独立复核用自有Git mktree重现APFS上A.txt/a.txt静默覆盖及clone TimeoutExpired越出bool接口；新反例先RED。文件改为O_EXCL/O_NOFOLLOW独占创建，再核stage实际全部路径及目录拼写集合，拒绝Src/one与src/two、Unicode等价目录等无文件碰撞的合并。clone的OSError/SubprocessError统一False并清理临时对象；目标权限/rename失败则固定RAW_SOURCE_EXPORT_FAILED，stage清理、空目标不变。
+- 最终18项在Python3.12与系统3.9.6分别全部通过，exit0（1.837秒/2.170秒），独立两人亦重跑18项闭环，无新增阻断。覆盖eol=crlf属性仍输出固定LF、755/链接文本、非空/链接目标保护、缺base/unsafe link不发布半套、replace忽略、local pristine与本地clone模拟git来源、rename故障及上述FS/超时边界。受控超时夹具预期输出KVVI_FORK_CLONE_FAILED，不是最终运行失败；没有在此声称真实网络clone通过。CI扩充同一测试入口。
+- 最终实际在新自有raw-rebuild-kb2jqs9a从registered-fork对象重建，240覆盖/8删除G2通过；完整source checker 12196/12196、exit0、无错误，inventoryDigest仍sha256:e5bd0355fdf46668f7df25509a2c2ea48dfc75623a2ad49d9975fe3ebac99b9e。print的os.walk基线12071文件不计一个目录symlink，完整12196判据含链接，未缺源项。此为最终修正后新重建，不覆盖原fixed-dsh、registered-fork、canonical-source或试点。
+- 该新树尚无依赖安装/完整构建或bundle。下一步按锁安装和全构建，随后显式runtime-source发行与源码/host/client/目录/收据绑定；旧built树三处差异仍未自动改。平台代码未改，最近全平台仍批次40的810项。整体12项不勾选。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `raw-source-red.log`：`1961b695a833a865afaa3689bd5e2de01ea87da7b77a9ea52bca8fdf77dbe5f5`。
+- `raw-source-alias-timeout-red.log`：`81160118ae79e78afc23bcb38df62d83a4b5b07c718631ea693897f357ead7c1`。
+- `raw-source-final-unit2.log`：`210fd23b08e7f7ca084565310c4bb0b926103376b838c91f2daf8bc31b8caebe`。
+- `raw-source-final-python39-2.log`：`e53bcdd71fa88bf778c3f3185d6125f7d35a82d96cb6c4af6d3352425ea811fb`。
+- `raw-source-final-rebuild.log`：`00c6053b53c73278d72ad1bef1c692f257ec7a0d2afc0d3ffcc2c296a9cdfa4c`。
+- `raw-source-final-qualified.json`：`27e9f25b1970e6fb91ece1755b564b8ae8392555bfa829c313ee842bcebb9b2f`。

@@ -16,10 +16,10 @@ def _safe(path):
             and all(p not in ('', '.', '..') for p in path.split('/')))
 
 
-def _git(objects, *args):
+def _git(objects, *args, input_bytes=None):
     env = {**os.environ, 'GIT_NO_REPLACE_OBJECTS': '1'}
     return subprocess.run(['git', '--no-replace-objects', '-C', str(objects), *args], env=env,
-                          check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
+                          check=True, input=input_bytes, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120).stdout
 
 
 def _jsonc(raw):
