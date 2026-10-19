@@ -166,8 +166,11 @@ class RuntimeSelectionTests(unittest.TestCase):
     def copy_owned_cli(self):
         directory = self.root / '工具'; (directory / 'lib').mkdir(parents=True)
         shutil.copy2(preservation.SCRIPT, directory / '发行包.py')
-        for name in ('package_outputs.py','package_inventory.py','package_provenance.py','runtime_source.py','package_client.py','package_policy.py'):
+        for name in ('package_outputs.py','package_inventory.py','package_provenance.py','runtime_source.py','package_client.py','package_policy.py',
+                     'package_build_receipt.py','package_build_binding.py','package_build_inventory.py','package_build_source.py','package_clean_build.py','owned_build_command.py','package_fixture.py'):
             shutil.copy2(preservation.SCRIPT.parent / 'lib' / name, directory / 'lib' / name)
+        identity=preservation.SCRIPT.parent.parent/'distribution/lib/process_identity.py'
+        target=self.root/'distribution/lib/process_identity.py';target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(identity,target)
         return directory / '发行包.py'
 
     def test_cli_requires_explicit_source_and_rejects_conflicting_actions(self):
@@ -179,13 +182,16 @@ class RuntimeSelectionTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0); self.assertFalse(archive.exists())
 
     def test_cli_build_and_check_take_the_explicit_tree_including_space_paths(self):
-        selected = self.select_another(); script = self.copy_owned_cli()
+        from distribution.tests import test_package_build_gate as build_fixture
+        owned=build_fixture.BuildGateTests();owned.setUp();self.addCleanup(owned.doCleanups)
+        self.root=owned.root;self.module=owned.module
+        selected=Path(self.module.RUNTIME_SOURCE);script = self.copy_owned_cli()
         for action in ('--build','--check'):
             result = subprocess.run([sys.executable,str(script),action,'--runtime-source',str(selected),'--git-objects',self.module.GIT_OBJECTS], capture_output=True, timeout=15)
             self.assertEqual(result.returncode, 0, (result.stdout+result.stderr).decode(errors='replace'))
         with tarfile.open(self.root / '交付/发行/kvvi-macos-pilot.tar.gz') as archive:
             with archive.extractfile(self.module.TOP + '/vendor/dsh/apps/cli/lib/bin.js') as handle:
-                self.assertEqual(handle.read(), b'explicit new runtime\n')
+                self.assertEqual(handle.read(), (selected/'apps/cli/lib/bin.js').read_bytes())
 
     def test_self_test_is_independent_of_caller_selection_and_both_existing_trees(self):
         self.module.RUNTIME_SOURCE = str(self.root / 'absent caller runtime')

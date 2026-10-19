@@ -36,9 +36,12 @@
 
 用法：
 
-    python3 工具/发行包.py --build --runtime-source /absolute/qualified-dsh --git-objects /absolute/dsh-objects
-    python3 工具/发行包.py --check --runtime-source /absolute/qualified-dsh --git-objects /absolute/dsh-objects
+    python3 工具/发行包.py --build --runtime-source /absolute/build/source --git-objects /absolute/dsh-objects
+    python3 工具/发行包.py --check --runtime-source /absolute/build/source --git-objects /absolute/dsh-objects
     python3 工具/发行包.py --self-test        # 反向测试：逐项破坏，必须变红
+
+v5要求仓库固定构建anchor与显式source相同，并完整验证同级
+metadata/build-receipt.json和全部当前输出；不搜索其它built目录。
 """
 
 import hashlib
@@ -53,6 +56,7 @@ import sys
 import tarfile
 import tempfile
 import subprocess
+import stat
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
@@ -62,7 +66,9 @@ from 工具.lib.package_inventory import (InventoryError, VERSION, INTERNAL, MAX
     snapshot, validate_rows, internal_manifest, verify_archive, load_json, validate_source_qualification, bind_fixed_source_rows, fixed_source_index, regular_entry_paths)
 from 工具.lib.package_provenance import qualify_runtime_source
 from 工具.lib.package_client import qualify_client_outputs, client_row_index, bind_client_rows, artifact_snapshots
-from 工具.lib.package_policy import should_skip, PORTABLE_DEPENDENCIES
+from 工具.lib.package_policy import should_skip, PORTABLE_DEPENDENCIES, runtime_file_included
+from 工具.lib.package_build_receipt import qualify_build_receipt
+from 工具.lib.package_build_binding import validate_build_qualification, bind_build_rows
 OUT_DIR = os.path.join(ROOT, '交付', '发行')
 ARCHIVE = os.path.join(OUT_DIR, 'kvvi-macos-pilot.tar.gz')
 MANIFEST = os.path.join(OUT_DIR, '发行包清单.json')
@@ -206,12 +212,25 @@ def selected_client_qualification(source_qualification):
     return result,client_rows
 
 
-def bind_selected_source(rows, source_rows, qualification):
+def selected_build_qualification(source_qualification, client_qualification):
     root = runtime_source_root()
-    included = set()
-    for path, kind, _ in source_rows:
-        probe = path + '/' if kind == 'symlink' and os.path.isdir(os.path.join(root,path)) else path
-        if not should_skip('vendor/dsh',probe): included.add(path)
+    result = qualify_build_receipt(root, GIT_OBJECTS, os.path.join(ROOT,'forks/dsh/改造点指纹.json'),
+        os.path.join(os.path.dirname(root),'metadata/build-receipt.json'),
+        os.path.join(ROOT,'docs/handoff/2026-10-19/local-build-anchor.json'), include_output_rows=True)
+    output_rows = result.pop('outputRows', None)
+    validate_build_qualification(result)
+    if result['sourceQualification'] != source_qualification or result['clientQualification'] != client_qualification:
+        raise InventoryError('PACKAGE_BUILD_QUALIFICATION_MISMATCH')
+    return result, output_rows
+
+
+def bind_selected_build(rows, output_rows, proof, source_rows):
+    included = {path for path,kind,digest in source_rows if runtime_file_included(path)}
+    bind_build_rows(rows, output_rows, proof, source_rows, included)
+
+
+def bind_selected_source(rows, source_rows, qualification):
+    included = {path for path,kind,digest in source_rows if runtime_file_included(path)}
     bind_fixed_source_rows(rows,source_rows,qualification,included)
 
 
@@ -244,7 +263,9 @@ def collect() -> list:
             for name in list(dirs):
                 absolute = os.path.join(base, name)
                 if os.path.islink(absolute):
-                    entries.append((absolute, os.path.join(into_rel, os.path.relpath(absolute, source))))
+                    relative = os.path.relpath(absolute, source)
+                    if source_rel != 'vendor/dsh' or runtime_file_included(relative):
+                        entries.append((absolute, os.path.join(into_rel, relative)))
                     dirs.remove(name)
             for name in files:
                 absolute = os.path.join(base, name)
@@ -267,6 +288,7 @@ def build() -> int:
         with output_guard(ARCHIVE, MANIFEST):
             source_qualification, source_rows = selected_source_qualification()
             client_qualification, client_rows = selected_client_qualification(source_qualification)
+            build_qualification, output_rows = selected_build_qualification(source_qualification, client_qualification)
             if os.path.abspath(OUT_DIR) != os.path.dirname(os.path.abspath(ARCHIVE)):
                 raise PublicationError('PACKAGE_OUTPUT_INVALID')
             if packages_missing_main(source_rows):
@@ -298,9 +320,10 @@ def build() -> int:
                         else: info.type = tarfile.SYMTYPE; info.linkname = row['target']
                         # The scanned snapshot is exactly the body supplied to tar.
                         tar.addfile(info, io.BytesIO(body) if body is not None else None)
-                    internal = internal_manifest(rows,source_qualification,client_qualification)
+                    internal = internal_manifest(rows,source_qualification,client_qualification,build_qualification)
                     bind_selected_source(rows,source_rows,source_qualification)
                     bind_client_rows(rows,client_rows,client_qualification)
+                    bind_selected_build(rows,output_rows,build_qualification,source_rows)
                     if any(row['type'] != 'file' for row in rows if row['path'] in REQUIRED):
                         raise InventoryError('PACKAGE_REQUIRED_FILE_INVALID')
                     payload = json.dumps(internal, ensure_ascii=False, indent=2).encode('utf-8')
@@ -315,6 +338,7 @@ def build() -> int:
                         archiveSha256=sha256_of(pending_archive), archiveBytes=os.path.getsize(pending_archive)),
                         handle, ensure_ascii=False, indent=2)
                     handle.write('\n')
+                manifest_snapshot = snapshot(pending_manifest, 'external-package-manifest.json', max_bytes=MAX_MANIFEST_BYTES)
                 after_qualification, after_source_rows = selected_source_qualification()
                 if after_qualification != source_qualification:
                     raise InventoryError('PACKAGE_FIXED_SOURCE_CHANGED')
@@ -325,6 +349,11 @@ def build() -> int:
                 bind_client_rows(rows,after_client_rows,after_client)
                 if packages_missing_main(after_source_rows,candidate_rows=rows):
                     raise InventoryError('PACKAGE_CANDIDATE_MAIN_MISSING')
+                after_build, after_output_rows = selected_build_qualification(after_qualification, after_client)
+                if after_build != build_qualification:
+                    raise InventoryError('PACKAGE_BUILD_RECEIPT_CHANGED')
+                bind_selected_build(rows,after_output_rows,after_build,after_source_rows)
+                verify_current_pair(pending_archive, pending_manifest, manifest_snapshot, rows, internal)
                 publish_pair(pending_archive, pending_manifest, ARCHIVE, MANIFEST)
     except (PublicationError, InventoryError, OSError, ValueError, tarfile.TarError) as error:
         code = str(error) if isinstance(error, (PublicationError, InventoryError)) else 'PACKAGE_BUILD_FAILED'
@@ -337,12 +366,44 @@ def build() -> int:
 
 
 def sha256_of(path: str) -> str:
-    """文件的 SHA-256。"""
+    """Streaming SHA of one stable regular file, including its pathname identity."""
     h = hashlib.sha256()
-    with open(path, 'rb') as handle:
+    identity = lambda value:(value.st_dev,value.st_ino,value.st_size,value.st_mtime_ns,value.st_ctime_ns,value.st_mode)
+    before = os.lstat(path)
+    if not stat.S_ISREG(before.st_mode): raise InventoryError('PACKAGE_ARCHIVE_TYPE_INVALID')
+    with open(path, 'rb', opener=lambda name, flags:os.open(name,flags|os.O_NOFOLLOW|os.O_NONBLOCK)) as handle:
+        if identity(before) != identity(os.fstat(handle.fileno())): raise InventoryError('PACKAGE_ARCHIVE_CHANGED')
         for chunk in iter(lambda: handle.read(1 << 20), b''):
             h.update(chunk)
+        if identity(before) != identity(os.fstat(handle.fileno())) or identity(before) != identity(os.lstat(path)):
+            raise InventoryError('PACKAGE_ARCHIVE_CHANGED')
     return 'sha256:' + h.hexdigest()
+
+
+def verify_current_pair(archive, manifest, manifest_snapshot, rows, internal):
+    """Last read-only pair check; no filesystem-wide atomicity is claimed."""
+    def manifest_same():
+        if snapshot(manifest,'external-package-manifest.json',max_bytes=MAX_MANIFEST_BYTES) != manifest_snapshot:
+            raise InventoryError('PACKAGE_MANIFEST_CHANGED')
+    manifest_same()
+    row, body = manifest_snapshot
+    if row['type'] != 'file': raise InventoryError('PACKAGE_MANIFEST_TYPE_INVALID')
+    value = load_json(body)
+    if not isinstance(value,dict): raise InventoryError('PACKAGE_MANIFEST_SHAPE_INVALID')
+    expected = dict(internal,archive=os.path.relpath(ARCHIVE,ROOT),
+                    archiveBytes=value.get('archiveBytes'),archiveSha256=value.get('archiveSha256'))
+    # Raw stability cannot turn a malformed first snapshot into the authority.
+    # Compare typed JSON so bool/float cannot stand in for integer quantities.
+    if json.dumps(value,sort_keys=True,ensure_ascii=True,separators=(',',':')) != json.dumps(expected,sort_keys=True,ensure_ascii=True,separators=(',',':')):
+        raise InventoryError('PACKAGE_MANIFEST_SEMANTIC_MISMATCH')
+    def archive_same():
+        if type(value['archiveBytes']) is not int or value['archiveBytes'] != os.path.getsize(archive) or value['archiveSha256'] != sha256_of(archive):
+            raise InventoryError('PACKAGE_ARCHIVE_CHANGED')
+    archive_same()
+    with tarfile.open(archive,'r:gz') as tar:
+        verify_archive(tar,TOP,rows,internal)
+    archive_same()
+    manifest_same()
 
 
 def scan_required(entries) -> list:
@@ -501,13 +562,18 @@ def _check_existing() -> int:
     if not os.path.isfile(ARCHIVE) or not os.path.isfile(MANIFEST):
         print(f'{C_BAD}✗ 发行包不存在（先跑 --build）{C_OFF}')
         return 2
-    with open(MANIFEST, 'rb') as handle:
-        manifest = load_json(handle.read(MAX_MANIFEST_BYTES + 1))
-    fields = {'bundleVersion','archive','fileCount','contentDigest','entries','archiveSha256','archiveBytes','sourceQualification','clientQualification'}
+    manifest_snapshot = snapshot(MANIFEST,'external-package-manifest.json',max_bytes=MAX_MANIFEST_BYTES)
+    if manifest_snapshot[0]['type'] != 'file': raise InventoryError('PACKAGE_MANIFEST_TYPE_INVALID')
+    manifest = load_json(manifest_snapshot[1])
+    fields = {'bundleVersion','archive','fileCount','contentDigest','entries','archiveSha256','archiveBytes','sourceQualification','clientQualification','buildQualification'}
     if not isinstance(manifest, dict) or set(manifest) != fields or manifest['bundleVersion'] != VERSION:
         raise InventoryError('PACKAGE_MANIFEST_VERSION_OR_SHAPE_INVALID')
     source_qualification, source_rows = selected_source_qualification()
     client_qualification, client_rows = selected_client_qualification(source_qualification)
+    build_qualification, output_rows = selected_build_qualification(source_qualification, client_qualification)
+    validate_build_qualification(manifest['buildQualification'])
+    if build_qualification != manifest['buildQualification']:
+        raise InventoryError('PACKAGE_BUILD_BINDING_MISMATCH')
     if client_qualification != manifest['clientQualification']:
         raise InventoryError('PACKAGE_CLIENT_BINDING_MISMATCH')
     if source_qualification != manifest['sourceQualification']:
@@ -519,9 +585,10 @@ def _check_existing() -> int:
         raise InventoryError('PACKAGE_MANIFEST_ARCHIVE_INVALID')
     if manifest['archiveSha256'] != sha256_of(ARCHIVE):
         raise InventoryError('PACKAGE_ARCHIVE_DIGEST_MISMATCH')
-    internal = internal_manifest(manifest['entries'],manifest['sourceQualification'],manifest['clientQualification'])
+    internal = internal_manifest(manifest['entries'],manifest['sourceQualification'],manifest['clientQualification'],manifest['buildQualification'])
     bind_selected_source(manifest['entries'],source_rows,source_qualification)
     bind_client_rows(manifest['entries'],client_rows,client_qualification)
+    bind_selected_build(manifest['entries'],output_rows,build_qualification,source_rows)
     if internal['contentDigest'] != manifest['contentDigest']:
         raise InventoryError('PACKAGE_INVENTORY_DIGEST_MISMATCH')
     with tarfile.open(ARCHIVE, 'r:gz') as tar:
@@ -549,6 +616,10 @@ def _check_existing() -> int:
     after_client, after_client_rows = selected_client_qualification(after_qualification)
     if after_client != client_qualification: raise InventoryError('PACKAGE_CLIENT_RECEIPT_CHANGED')
     bind_client_rows(rows,after_client_rows,after_client)
+    after_build, after_output_rows = selected_build_qualification(after_qualification, after_client)
+    if after_build != build_qualification: raise InventoryError('PACKAGE_BUILD_RECEIPT_CHANGED')
+    bind_selected_build(rows,after_output_rows,after_build,after_source_rows)
+    verify_current_pair(ARCHIVE,MANIFEST,manifest_snapshot,rows,internal)
     print(f'{C_OK}=== 发行包复核 ==={C_OFF}')
     print(f'  {os.path.relpath(ARCHIVE, ROOT)}：{len(rows)} 个源条目')
     print(f"  内容指纹 {internal['contentDigest'][:32]}")
@@ -661,40 +732,15 @@ def _self_test_fixture() -> int:
 def self_test() -> int:
     """Run destructive probes only on a generated disposable source/package pair."""
     from pathlib import Path
-    with tempfile.TemporaryDirectory(prefix='kvvi-package-self-test-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='kp-',dir='/private/tmp' if sys.platform=='darwin' else '/tmp') as temporary:
         root = Path(temporary)
         spec = importlib.util.spec_from_file_location('_owned_package_self_test', __file__)
         fixture = importlib.util.module_from_spec(spec); spec.loader.exec_module(fixture)
         fixture.ROOT = str(root); fixture.OUT_DIR = str(root / 'out')
-        fixture.RUNTIME_SOURCE = str(root / 'vendor/dsh')
         fixture.ARCHIVE = str(root / 'out/pilot.tar.gz'); fixture.MANIFEST = str(root / 'out/manifest.json')
-        for source, _ in fixture.CONTENTS:
-            (root / source).mkdir(parents=True, exist_ok=True)
-        for rel in fixture.REQUIRED + fixture.EXTRA_FILES + ['vendor/dsh/packages/fixture/build/lib/types/probe.js']:
-            if Path(rel).is_absolute() or '..' in Path(rel).parts:
-                return 1
-            path = root / rel; path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text('{}\n' if path.suffix == '.json' else 'fixture source\n', encoding='utf-8')
-        workspaces = ['vendor/*','packages/*/*','native/system','native/system/packages/*','apps/*','benchmarks','website','python/sdk-runtime']
-        (root / 'vendor/dsh/package.json').write_text(json.dumps({'version':'1.0.0','workspaces':workspaces}))
-        (root / 'vendor/dsh/pnpm-workspace.yaml').write_text('packages:\n' + ''.join('  - ' + path + '\n' for path in workspaces))
-        vite = root / 'vendor/dsh/apps/web/vite.config.ts'; vite.parent.mkdir(parents=True,exist_ok=True); vite.write_text('// owned client layout')
-        objects = root / 'source-objects'; shutil.copytree(fixture.RUNTIME_SOURCE,objects,symlinks=True,ignore=shutil.ignore_patterns('.dsh-build'))
-        environment = {**os.environ,'GIT_CONFIG_GLOBAL':os.devnull,'GIT_CONFIG_SYSTEM':os.devnull}
-        def git(*arguments):
-            return subprocess.run(['git','-C',str(objects),*arguments],env=environment,check=True,
-                stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True).stdout.strip()
-        git('init','--quiet'); git('add','--all')
-        git('-c','user.name=Package Self Test','-c','user.email=package@example.invalid','-c','core.hooksPath=/dev/null','-c','commit.gpgsign=false','commit','--quiet','-m','owned source')
-        trusted = root / 'forks/dsh/改造点指纹.json'; trusted.parent.mkdir(parents=True)
-        head = git('rev-parse','HEAD')
-        trusted.write_text(json.dumps({'upstream_merge_base':head,'fork_head':head,'count':0,'files':{}}))
-        fixture.GIT_OBJECTS = str(objects)
-        web = root / 'vendor/dsh/apps/web/dist/index.html'; web.parent.mkdir(parents=True); web.write_bytes(b'<html>owned self-test</html>')
-        client_rows, client_digest = artifact_snapshots(root / 'vendor/dsh')
-        receipt = root / 'vendor/dsh/.dsh-build/client-build-environment.json'; receipt.parent.mkdir(exist_ok=True)
-        receipt.write_text(json.dumps({'formatVersion':1,'environment':{'DSH_CLIENT_COMMIT_HASH':head[:7],'DSH_CLIENT_VERSION':'1.0.0'},
-                                      'artifacts':{'fileCount':len(client_rows),'sha256':client_digest}}))
+        from 工具.lib.package_fixture import create_fixture_sources, build_owned_fixture
+        create_fixture_sources(root, fixture)
+        build_owned_fixture(root, fixture)
         if fixture.build() != 0:
             return 1
         return fixture._self_test_fixture()
@@ -705,7 +751,7 @@ def main() -> int:
     分派。
     @returns 退出码
     """
-    parser = argparse.ArgumentParser(description='构建或核验发行包；runtime-source 必须显式指定绝对路径。')
+    parser = argparse.ArgumentParser(description='构建或核验v5发行包；显式runtime-source及同级metadata/build-receipt.json须匹配仓库固定构建anchor。')
     actions = parser.add_mutually_exclusive_group(required=True)
     actions.add_argument('--build', action='store_true')
     actions.add_argument('--check', action='store_true')

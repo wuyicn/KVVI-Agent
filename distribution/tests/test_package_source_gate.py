@@ -16,7 +16,7 @@ class FixedPackageSourceGateTests(unittest.TestCase):
         from 工具.lib.package_provenance import qualify_runtime_source
         expected = qualify_runtime_source(Path(self.module.RUNTIME_SOURCE),Path(self.module.GIT_OBJECTS),self.root / 'forks/dsh/改造点指纹.json')
         external = json.loads(Path(self.module.MANIFEST).read_text())
-        self.assertEqual(external['bundleVersion'],'kvvi-macos-pilot/v4')
+        self.assertEqual(external['bundleVersion'],'kvvi-macos-pilot/v5')
         self.assertEqual(external['sourceQualification'],expected)
         with tarfile.open(self.module.ARCHIVE) as archive:
             with archive.extractfile(self.module.TOP + '/发行包清单.json') as handle: internal = json.load(handle)
@@ -203,14 +203,14 @@ class FixedPackageSourceGateTests(unittest.TestCase):
             self.assertNotEqual(self.call(self.module.build),0)
         self.assertEqual(self.pair(),self.old)
 
-    def test_candidate_main_link_to_a_packaged_regular_file_is_accepted(self):
+    def test_generated_output_link_is_rejected_by_complete_build_gate(self):
         package = Path(self.module.RUNTIME_SOURCE) / 'packages/new/file-main/package.json'; package.parent.mkdir(parents=True)
         package.write_text('{"name":"file-main","main":"lib/index.js"}')
         (package.parent / 'tsconfig.json').write_text('{"compilerOptions":{"outDir":"lib/types"}}')
         fixture.register_runtime_source(self.module,self.root)
         output = package.parent / 'lib'; output.mkdir(); (output / 'actual.cjs').write_bytes(b'module.exports=true')
         (output / 'index.js').symlink_to('actual.cjs')
-        self.assertEqual(self.call(self.module.build),0); self.assertEqual(self.call(self.module.check),0)
+        self.assertNotEqual(self.call(self.module.build),0); self.assertEqual(self.pair(),self.old)
 
 
 if __name__ == '__main__':

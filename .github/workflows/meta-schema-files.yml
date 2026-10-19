@@ -35,7 +35,7 @@ jobs:
       - name: Test kernel process membership in owned fixtures
         run: python -W error::ResourceWarning -m unittest distribution.tests.test_process_membership distribution.tests.test_process_identity distribution.tests.test_supervisor distribution.tests.test_owned_build_command
       - name: Test owned clean build receipts with synthetic tools
-        run: python -W error::ResourceWarning -m unittest distribution.tests.test_package_clean_build distribution.tests.test_package_build_receipt
+        run: python -W error::ResourceWarning -m unittest distribution.tests.test_package_clean_build distribution.tests.test_package_build_receipt distribution.tests.test_package_build_gate
       - name: Test release output preservation in owned fixtures
         run: python -W error::ResourceWarning -m unittest distribution.tests.test_release_package distribution.tests.test_package_inventory distribution.tests.test_package_source_selection distribution.tests.test_evidence_commands distribution.tests.test_package_source_gate distribution.tests.test_package_client distribution.tests.test_package_client_gate distribution.tests.test_package_build_inventory distribution.tests.test_package_build_source distribution.tests.test_package_build_binding
       - name: Validate all 13 protocol machine files

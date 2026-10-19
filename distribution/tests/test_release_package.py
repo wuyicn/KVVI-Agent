@@ -1,4 +1,5 @@
 import contextlib
+import copy
 import importlib.util
 import io
 import json
@@ -25,7 +26,11 @@ def register_runtime_source(module, root, *, with_client_receipt=True):
     """Real, isolated Git baseline for owned source qualification fixtures."""
     objects = root / 'source-objects'
     if objects.exists(): shutil.rmtree(objects)
-    shutil.copytree(module.RUNTIME_SOURCE, objects, symlinks=True, ignore=shutil.ignore_patterns('.dsh-build'))
+    def ignore_outputs(directory,names):
+        ignored={name for name in names if name in ('.dsh-build','node_modules')}
+        if Path(directory)==Path(module.RUNTIME_SOURCE)/'apps/web':ignored.add('dist')
+        return ignored
+    shutil.copytree(module.RUNTIME_SOURCE, objects, symlinks=True, ignore=ignore_outputs)
     environment = {**os.environ,'GIT_CONFIG_GLOBAL':os.devnull,'GIT_CONFIG_SYSTEM':os.devnull}
     def git(*args):
         return subprocess.run(['git','-C',str(objects),*args], env=environment, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True).stdout.strip()
@@ -45,6 +50,25 @@ def register_runtime_source(module, root, *, with_client_receipt=True):
         record = root_source / '.dsh-build/client-build-environment.json'; record.parent.mkdir(exist_ok=True)
         record.write_text(json.dumps({'formatVersion':1,'environment':{'DSH_CLIENT_COMMIT_HASH':head[:7],'DSH_CLIENT_VERSION':version},
                                      'artifacts':{'fileCount':len(rows),'sha256':digest}}))
+        # These existing tests exercise publication/source/client mechanisms.
+        # Their qualifier dependency is fixed synthetic data, not execution
+        # evidence. test_package_build_gate separately uses the real qualifier
+        # and owned synthetic commands end to end, without this injection.
+        from 工具.lib.package_build_inventory import qualify_output_inventory
+        from 工具.lib.package_build_receipt import LIMITATIONS
+        output=qualify_output_inventory(root_source,objects,manifest,include_output_rows=True)
+        if output.get('valid') is True:
+            outputs=output.pop('outputRows');source=output['sourceQualification']
+            proof=dict(valid=True,validationScope='PINNED_LOCAL_BUILD_RECEIPT',releaseApproved=False,
+                sourceQualification=source,clientQualification=output['clientQualification'],
+                buildReceipt=dict(path='metadata/build-receipt.json',type='file',mode=0o644,bytes=7,sha256='sha256:'+'1'*64),buildAnchorSha256='sha256:'+'2'*64,
+                inputMaterialCount=source['sourceEntryCount'],inputMaterialDigest='sha256:'+'3'*64,outputCount=output['outputCount'],outputDigest=output['outputDigest'],
+                nodeHost=dict(version='v24.20.0',platform='darwin',arch='arm64'),
+                tools={name:dict(path='/synthetic/'+name,row=dict(path=name,type='file',mode=0o755,bytes=7,sha256='sha256:'+'4'*64)) for name in ('node','pnpm')},
+                limitations=list(LIMITATIONS),outputRows=outputs)
+        else:proof=output
+        module.qualify_build_receipt=lambda *args,**kwargs:copy.deepcopy(proof)
+        (root/'unit-build-proof.json').write_text(json.dumps(proof))
 
 
 class ReleasePackageTests(unittest.TestCase):
@@ -121,6 +145,8 @@ spec=importlib.util.spec_from_file_location('interrupted_package',sys.argv[1]);m
 m.ROOT=sys.argv[2];m.OUT_DIR=str(Path(sys.argv[3]).parent);m.ARCHIVE=sys.argv[3];m.MANIFEST=sys.argv[4]
 m.RUNTIME_SOURCE=str(Path(sys.argv[2])/'vendor/dsh')
 m.GIT_OBJECTS=sys.argv[5]
+import json
+m.qualify_build_receipt=lambda *args,**kwargs:json.loads((Path(m.ROOT)/'unit-build-proof.json').read_text())
 original=os.replace
 def interrupt(source,target):
  result=original(source,target)

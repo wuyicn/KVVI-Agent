@@ -1,4 +1,4 @@
-"""Strict v4 package inventory, computed from source snapshots and actual tar bytes.
+"""Strict v5 package inventory, computed from source snapshots and actual tar bytes.
 
 An untrusted manifest is an integrity record, not an authenticity signature.
 Qualification additionally compares every row with the selected current source.
@@ -12,7 +12,7 @@ from pathlib import PurePosixPath
 import stat
 import unicodedata
 
-VERSION = 'kvvi-macos-pilot/v4'
+VERSION = 'kvvi-macos-pilot/v5'
 SOURCE_LIMITATIONS = ('source-executable-bits','dependencies','build-outputs','client-receipt','catalog-consumption','release-acceptance')
 CLIENT_LIMITATIONS = ('source-executable-bits','dependencies','build-causality','host-native-outputs','catalog-consumption','release-acceptance')
 INTERNAL = '发行包清单.json'
@@ -177,11 +177,14 @@ def validate_client_qualification(value):
     if not isinstance(environment['DSH_CLIENT_VERSION'],str) or not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?',environment['DSH_CLIENT_VERSION']): fail()
 
 
-def internal_manifest(rows, source_qualification, client_qualification):
+def internal_manifest(rows, source_qualification, client_qualification, build_qualification):
+    from .package_build_binding import validate_build_qualification
     validate_source_qualification(source_qualification); validate_client_qualification(client_qualification)
+    validate_build_qualification(build_qualification)
     if client_qualification['sourceQualification'] != source_qualification: fail()
+    if build_qualification['sourceQualification'] != source_qualification or build_qualification['clientQualification'] != client_qualification: fail()
     return {'bundleVersion':VERSION, 'fileCount':len(rows), 'contentDigest':content_digest(rows), 'entries':rows,
-            'sourceQualification':source_qualification,'clientQualification':client_qualification}
+            'sourceQualification':source_qualification,'clientQualification':client_qualification,'buildQualification':build_qualification}
 
 
 def fixed_source_index(source_rows, qualification):
@@ -246,9 +249,12 @@ def verify_archive(tar, top, rows, internal):
     actual.sort(key=lambda row:row['path'])
     if seen != set(expected) | {top + '/' + INTERNAL} or actual != rows or inner != internal: fail()
     # Equality alone is permissive for JSON bool/int. Independently validate the embedded shape.
-    if not isinstance(inner, dict) or set(inner) != {'bundleVersion','fileCount','contentDigest','entries','sourceQualification','clientQualification'} or type(inner['fileCount']) is not int: fail()
+    if not isinstance(inner, dict) or set(inner) != {'bundleVersion','fileCount','contentDigest','entries','sourceQualification','clientQualification','buildQualification'} or type(inner['fileCount']) is not int: fail()
+    from .package_build_binding import validate_build_qualification
+    validate_build_qualification(inner['buildQualification'])
     validate_source_qualification(inner['sourceQualification']); validate_client_qualification(inner['clientQualification'])
     if inner['clientQualification']['sourceQualification'] != inner['sourceQualification']: fail()
+    if inner['buildQualification']['sourceQualification'] != inner['sourceQualification'] or inner['buildQualification']['clientQualification'] != inner['clientQualification']: fail()
     if content_digest(inner['entries']) != inner['contentDigest']: fail()
     if tar.pax_headers: fail()
     # Consume the gzip stream through its CRC/footer, and reject a second tar or

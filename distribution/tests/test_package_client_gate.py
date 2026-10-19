@@ -13,9 +13,9 @@ class PackageClientGateTests(unittest.TestCase):
     call = fixture.ReleasePackageTests.call
     pair = fixture.ReleasePackageTests.pair
 
-    def test_v4_manifest_and_archive_bind_the_verified_client_receipt(self):
+    def test_v5_manifest_and_archive_bind_the_verified_client_receipt(self):
         manifest = json.loads(Path(self.module.MANIFEST).read_text())
-        self.assertEqual(manifest['bundleVersion'],'kvvi-macos-pilot/v4')
+        self.assertEqual(manifest['bundleVersion'],'kvvi-macos-pilot/v5')
         proof = manifest['clientQualification']
         self.assertTrue(proof['valid']); self.assertFalse(proof['releaseApproved'])
         self.assertEqual(proof['sourceQualification'],manifest['sourceQualification'])

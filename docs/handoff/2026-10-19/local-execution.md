@@ -971,3 +971,19 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `package-build-binding-final39-2.log`：`e78b66f9c6ab025fac739388490db6f6d08a4196b16983ba1e3b9867e85134da`。
 - `bf8d91810b031-candidate-projection-final.json`：`d0998d0df953ba3d8383c80021de6b5c9b68ac89a1fcea67067341bc13e7d9f1`。
 - 只读脚本`read_build_candidate_projection.py`：`82cc63d4e88661ad1bfd645868288eb85f96f0a44b8e2073f3ac5827f196fa3b`。
+
+## 批次61：v5完整构建资格、候选与归档pair门禁
+
+- v5内外manifest绑定buildQualification及同一source/client，旧v4拒。发行build/check均从显式runtime-source的固定同级metadata/build-receipt.json及ROOT可信anchor取得完整资格/私有outputRows，候选初末完整绑定；不从anchor选来源、不搜索其它built目录，也无资格跳过开关，原source/objects CLI及G9转发不变。source links统一按单个archive entry path收录政策，无is_dir观察。
+- 新package_fixture仅用于自有短路径synthetic输入，fake工具实际经四owned命令生成完整receipt/外置材料表/日志/输出/独立anchor，self-test也使用这一途径。13项新gate不mock receipt/source qualifier，覆盖v5正例、缺失/变更receipt、瞬时host正文、漏非main host、末轮host/工具/输出link变化、私有表缺失/改写、旧v4、末main/check收据变化、pair晚变与首次清单语义。CLI带空格路径也改用此实际synthetic构建。原publication/source/client机制unit仅注入固定synthetic qualifier数据，明确不作执行历史证据；其Git baseline排除上一轮web dist，避免错误source/output重叠。所有临时源/归档仅夹具自己的，未使用实际成功树/试点。
+- 独立复核的三个边界先RED后闭环：build末main检查移到最后build资格之前；发布前/check末重新完整验证相同外清单原row/body、归档SHA/size及实际tar，再复读SHA/清单；首次snapshot也须typed canonical全文等于正确internal+固定archive字段，不能把错计数/三资格/路径或{}、[]当基准。归档SHA以NOFOLLOW流读取、fd/path初末身份相同，每chunk1MiB；清单初末16MiB有界。两位独立在自有夹具重放均关闭，晚改保留旧pair，读中改写/路径替换/link/FIFO/sparse边界拒绝。不声称文件树原子快照、签名、工具/依赖认证或发行验收。
+- 最终必要回归命令为`-W error::ResourceWarning -m unittest`加test_package_build_gate、test_package_build_binding、test_package_build_receipt、test_package_clean_build、test_owned_build_command、test_process_membership、test_process_identity、test_supervisor、test_package_build_source、test_package_build_inventory、test_package_client、test_package_provenance、test_runtime_source、test_raw_git_source、test_release_package、test_package_inventory、test_package_source_selection、test_package_source_gate、test_package_client_gate、test_evidence_commands（均distribution.tests命名空间）。Python3.12.13 286项134.661s、Python3.9.6 286项142.693s，实际均exit0/无skip/ResourceWarning；OK后的clone失败固定输出是既有受控超时反例。冻结7项sha256复验全部OK，git diff --check通过；无平台源码改动，不继承旧平台完整测试为本批新测。CI补新gate，G9来源摘要补完整helper依赖和anchor。
+- 本批没有生成真实发行包、部署或产品验收；实际成功构建树保留。下一批新独立输出目录调用真实build/check，保留既有包。12项、真实DeepSeek/浏览器角色/干净Mac等继续未完成，releaseApproved:false。
+
+最终非敏感证据SHA-256（实际退出后计算）：
+- `package-build-gate-v4-red.log`：`458b7f8af370d464ceb91c152f8f2b02e8df472091389a56505818493dae1ca5`。
+- `package-build-gate-final-main-red.log`：`55acbfd85d60dde45267a27235c3c293e227d854725e779d99128fdae97504eb`。
+- `package-build-gate-pair-red.log`：`95bfded8e28f3b33e0d5ebcdb9f9234b1a1e2df8a1874b75e681e13df76b302a`。
+- `package-build-gate-first-manifest-red.log`：`34d3aa74c2d66555e345ac1567f89325d4fed67f8eb8bbf1150916b2780f1ac6`。
+- `package-build-gate-final312.log`：`c1707c40d15307497bcc2ab46b82a07d0d6f29af9f598e5d01280715d498af3e`。
+- `package-build-gate-final39.log`：`8b38a47aeb154e11adc652617721461eac7ccf426d32ff9eb513aa111ac4997b`。
