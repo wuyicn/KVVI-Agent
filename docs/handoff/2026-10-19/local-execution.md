@@ -902,3 +902,26 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `package-clean-build-final312.log`：`8cbdca063939433a120c184c1ca53cbe4e6645c9231a2911d2a4e98c6136cf7c`。
 - `package-clean-build-final39.log`：`08aa1276b589ff4ade3377d275939e283acf5fa666edeb349b9310c49593fcea`。
 - `controlled-pnpm-store-path.log`：`f47a8983505091375299772f256960d1a470e8f7320a605d7b8929ccce7455e9`。
+
+
+## 批次57：实际首次失败、短路径预检与固定诊断
+
+- 已用批次56执行器在全新controlled-build-1210fe5bfe6e真实离线安装/构建。install由owned会话确认exit0、cleanupConfirmed:true；build日志报告tsx TMPDIR Unix socket路径过长EINVAL（本机SDK sun_path[104]），但owned控制结果是exitCode:null、CONTROL_OR_IDENTITY_FAILED/cleanupConfirmed:false，不能把日志的ELIFECYCLE 1写成已由父wait取得的实际exit。runner整体exit1/phase BUILD，无成功receipt；完整新工作区、日志、四命令metadata和失败结果均保留，原built树不清理。首次工具入口摘要未单独落盘，不能后补成初始历史证明。
+- 独立真实25个已wait父的原生query及保活root/短命子孙1000次枚举均未复现该控制原因，故首次控制异常仍UNKNOWN，不能拿纯fixture推断。另纯fixture确证非root父在candidate query期间退出并返回错误时会误abort：新增2组先RED，改query前/异常后再核父起始身份，仅kernel None的非root可跳边；root失踪、alive/reused/未知都仍拒绝。两位独立13项/14项及额外换身份/未知/多字节对照闭环，不称作首次控制异常根因。
+- 固定tsx TMPDIR socket路径按编码字节及最大PID后缀在workspace创建前预检，Darwin104/Linux108，过长固定SOCKET_PATH_LENGTH；长路径合成工具原valid:true反例先RED，测试改自有短/tmp目录。下一次实际执行将选新持久短路径，不重用本次失败树；未声称Linux现场构建已验收。
+- 命令结果补固定failurePhase/failureCode/cleanupFailureCode/workerFailureCode，whitelist和类型fallback，不回显异常原文。最初实现str(error)被独立不可格式化ValueError反例击穿：在cancel前抛异常并留子进程，新真实组+setsid测试先RED，再改从BaseException原生args descriptor取单个type is str参数，完全不执行格式化/覆写args属性。独立16项及真实原反例__str__调用0次、固定码、0存活闭环。新增build-input.json在命令前保存工具/environment/材料观测，新失败保留反例先RED后绿，成功receipt和终核绑定它，实际篡改会拒发布。
+- 最终clean25+owned16+membership13及既有来源/材料/输出/身份/supervisor共163项，Python3.12/系统3.9.6 -W error::ResourceWarning全部通过、exit0（36.923/40.376秒），无skip；clone行仍既有timeout反例。独立最后helper16项exit0（7.043秒）、clean保留/成功2项exit0（2.736秒），原生descriptor覆写args安全，命令前build-input存在/晚改拒收据。没有真实build成功收据、打包、部署/重启或模型验收，12项仍未勾选。下一步只在全新短路径实际工作区重试，保留本次失败和未知边界。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `controlled-build-1210fe5bfe6e-result.json`：`d7a50c60785d65be1e26c132fa98d3c572ddf769d128eab6288e0fd2bef796db`。
+- 失败工作区`metadata/install.json`：`056a49eb553ed8351c56ea394e8c5fbf623b7da193d3582c795b109dc64d9c69`。
+- 失败工作区`metadata/build.json`：`9ebe0765e07e12ba772489a97c6cf5907b758ab11400b9fa08278c8522fa7dd9`。
+- 失败工作区`logs/install.log`：`be36b192adf0679538579c69c7d144f4f9f1352a593d8ff330b892c3bfa111c8`。
+- 失败工作区`logs/build.log`：`a027990f785422a07a4d11d8731bfeffd6e83e0769dca7cc346f26091f0fb968`。
+- `process-intermediate-query-exit-red.log`：`7ecf695a694498a7de0209f203a4224338cd6451f22f32a1ff11ea460403b439`。
+- `package-clean-build-socket-length-red.log`：`d609a375b1f909e34c8638d3a849b8be3963fa34fd08b45f576f829a26daa11b`。
+- `owned-build-command-fixed-diagnostics-red.log`：`917a487d3f63f29433ae723577e4de0f6c801ef597ac4c707b4500313b64875a`。
+- `owned-build-command-unformattable-red.log`：`96f41687a4935003d84b0ae67f6d96dd7f5666682b03a41fcbbacc0814d60f89`。
+- `clean-build-input-observation-red.log`：`ea00f4037ffa1e1940f274d55e08294416b99929ebe0f7e860ace77180247fc6`。
+- `clean-build-runtime-boundaries-final312-2.log`：`2acca47ef300df6b672f7651e2973d8bc7ee97f6a81fd876ae361983696be97f`。
+- `clean-build-runtime-boundaries-final39-2.log`：`adb57682a0ec5a658d19245e4fb178e8348bdc993ca1a3aee7238e29f9db79a2`。

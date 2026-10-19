@@ -139,6 +139,27 @@ time.sleep(60)
         self.assertFalse(result['valid']);self.assertTrue(result['cleanupConfirmed'])
         self.assert_fixture_stopped()
 
+    def test_control_failure_records_fixed_phase_and_code_without_raw_error(self):
+        original=self.api.group_members
+        def failed(pgid):
+            if self.running_fixture_ids():raise ValueError('private-fixture-error-must-not-escape')
+            return original(pgid)
+        with patch.object(self.api,'group_members',side_effect=failed):result=self.run_command(self.detached_body())
+        self.assertFalse(result['valid']);self.assertEqual(result['failurePhase'],'WAIT_RESULT')
+        self.assertEqual(result['failureCode'],'CONTROL_VALUE_ERROR')
+        self.assertNotIn('private-fixture-error',json.dumps(result));self.assert_fixture_stopped()
+
+    def test_unformattable_error_cannot_interrupt_cooperative_cleanup(self):
+        class Unformattable(ValueError):
+            def __str__(self):raise RuntimeError('formatting must never run')
+        original=self.api.group_members
+        def failed(pgid):
+            if self.running_fixture_ids():raise Unformattable('private-fixture')
+            return original(pgid)
+        with patch.object(self.api,'group_members',side_effect=failed):result=self.run_command(self.detached_body())
+        self.assertFalse(result['valid']);self.assertEqual(result['failureCode'],'CONTROL_VALUE_ERROR')
+        self.assert_fixture_stopped()
+
     def test_structured_command_exit_zero_and_exact_environment_log(self):
         with patch.dict(os.environ,{'DO_NOT_INHERIT':'private-fixture'}):
             result=self.run_command("import os,json;print(json.dumps({'value':os.environ.get('ONLY_BUILD_VALUE'),'unexpected':'DO_NOT_INHERIT' in os.environ}))")

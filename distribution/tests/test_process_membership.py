@@ -117,6 +117,30 @@ class ProcessMembershipTests(unittest.TestCase):
              patch.object(identity, '_candidate_child_pids', side_effect=candidates):
             self.assertEqual(set(identity.descendants(20001)), {20002})
 
+    def test_intermediate_exit_during_candidate_query_does_not_abort_owned_root(self):
+        root, child = self.fake(20001, 20000), self.fake(20002, 20001)
+        reads = {20001:root, 20002:child}
+        def candidates(pid):
+            if pid == 20001:return [20002]
+            reads[20002] = None
+            raise ValueError('KVVI_PROCESS_MEMBERSHIP_UNAVAILABLE')
+        with patch.object(identity, '_observe_with_parent', side_effect=reads.get), \
+             patch.object(identity, '_candidate_child_pids', side_effect=candidates):
+            self.assertEqual(set(identity.descendants(20001)), {20002})
+
+    def test_failed_intermediate_query_with_live_or_reused_parent_stays_unknown(self):
+        for reused in (False, True):
+            with self.subTest(reused=reused):
+                root, child = self.fake(20001, 20000), self.fake(20002, 20001)
+                reads = {20001:root, 20002:child}
+                def candidates(pid):
+                    if pid == 20001:return [20002]
+                    if reused:reads[20002]=dict(child,startIdentity='reused')
+                    raise ValueError('KVVI_PROCESS_MEMBERSHIP_UNAVAILABLE')
+                with patch.object(identity, '_observe_with_parent', side_effect=reads.get), \
+                     patch.object(identity, '_candidate_child_pids', side_effect=candidates):
+                    with self.assertRaises(ValueError):identity.descendants(20001)
+
 
 if __name__ == '__main__':
     unittest.main()

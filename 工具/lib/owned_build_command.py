@@ -24,6 +24,32 @@ KILL_SECONDS = 1.0
 START_SECONDS = 5.0
 CANCEL_SECONDS = 45.0
 CONTROL_ERRORS = (OSError, ValueError, TypeError, KeyError, RecursionError, subprocess.SubprocessError)
+FIXED_ERRORS = frozenset('''KVVI_PROCESS_EXIT_UNCONFIRMED KVVI_PROCESS_IDENTITY_CHANGED
+KVVI_PROCESS_IDENTITY_MISMATCH KVVI_PROCESS_IDENTITY_MISSING KVVI_PROCESS_IDENTITY_UNAVAILABLE
+KVVI_PROCESS_IDENTITY_UNSUPPORTED KVVI_PROCESS_MEMBERSHIP_UNAVAILABLE KVVI_PROCESS_PID_INVALID
+BUILD_COMMAND_CONTROL_INVALID BUILD_COMMAND_IDENTITY_UNAVAILABLE_OR_CHANGED BUILD_COMMAND_FOREIGN_UID
+BUILD_COMMAND_WORKER_SESSION_CHANGED BUILD_COMMAND_START_FAILED BUILD_COMMAND_RESULT_INVALID
+BUILD_COMMAND_WORKER_FAILED'''.split())
+
+
+def _error_code(error):
+    if isinstance(error, ValueError):
+        # Diagnostics must never call user-defined formatting before cleanup.
+        try:
+            args = BaseException.args.__get__(error)
+            value = args[0] if type(args) is tuple and len(args) == 1 and type(args[0]) is str else None
+        except BaseException:
+            return 'CONTROL_VALUE_ERROR'
+        return value if value in FIXED_ERRORS else 'CONTROL_VALUE_ERROR'
+    if isinstance(error, subprocess.TimeoutExpired):
+        return 'CONTROL_TIMEOUT'
+    if isinstance(error, subprocess.SubprocessError):
+        return 'CONTROL_SUBPROCESS_ERROR'
+    if isinstance(error, OSError):
+        return 'CONTROL_OS_ERROR'
+    if isinstance(error, KeyboardInterrupt):
+        return 'CONTROL_INTERRUPTED'
+    return 'CONTROL_ERROR'
 
 
 def _write_json(path, value):
@@ -120,21 +146,23 @@ def _worker_own_group(number):
     os.killpg(os.getpgrp(), number)
 
 
-def _worker_stop(control, saved, known, child):
+def _worker_stop(control, saved, known, child, failure_code=None):
     discovery_ok = True
     try:
         if (control / 'cancel.json').exists():
             _merge_identities(known, _read_json(control / 'cancel.json')['observedIdentities'])
         _collect(saved, known)
-    except CONTROL_ERRORS:
+    except CONTROL_ERRORS as error:
         discovery_ok = False
+        failure_code = failure_code or _error_code(error)
     # Even when discovery is unavailable, the live worker can stop its intrinsic
     # session. Unknown escaped scope remains unconfirmed, never a success.
     _worker_own_group(signal.SIGTERM)
     try:
         _signal_escaped(saved, known, signal.SIGTERM)
-    except CONTROL_ERRORS:
+    except CONTROL_ERRORS as error:
         discovery_ok = False
+        failure_code = failure_code or _error_code(error)
     stopped = False
     deadline = time.monotonic() + TERM_SECONDS
     while True:
@@ -142,20 +170,22 @@ def _worker_stop(control, saved, known, child):
             child.poll()
         try:
             stopped = not _remaining(saved, known)
-        except CONTROL_ERRORS:
+        except CONTROL_ERRORS as error:
             discovery_ok = False
+            failure_code = failure_code or _error_code(error)
             break
         if stopped or time.monotonic() >= deadline:
             break
         time.sleep(POLL_SECONDS)
     status = dict(cleanupConfirmed=stopped and discovery_ok,
                   discoveryConfirmed=discovery_ok, signalEscalated=not stopped,
-                  observedIdentities=list(known.values()))
+                  observedIdentities=list(known.values()), workerFailureCode=failure_code)
     if not stopped:
         try:
             _signal_escaped(saved, known, signal.SIGKILL)
-        except CONTROL_ERRORS:
+        except CONTROL_ERRORS as error:
             status.update(cleanupConfirmed=False, discoveryConfirmed=False)
+            status['workerFailureCode'] = status['workerFailureCode'] or _error_code(error)
         # Publish before killing this session leader; the parent must verify all
         # observed identities and group exit before promoting this to confirmed.
         _write_json(control / 'stopped.json', status)
@@ -183,7 +213,7 @@ def _worker(control):
         if (control / 'cancel.json').exists() or not same_process(observe(controller['pid']), controller):
             _write_json(control / 'stopped.json', dict(cleanupConfirmed=True,
                         discoveryConfirmed=True, signalEscalated=False,
-                        observedIdentities=list(known.values())))
+                        observedIdentities=list(known.values()), workerFailureCode=None))
             return 70
         if time.monotonic() > deadline:
             return 70
@@ -207,15 +237,19 @@ def _worker(control):
                     return _worker_stop(control, saved, known, child)
                 return 0
             time.sleep(POLL_SECONDS)
-    except CONTROL_ERRORS:
-        return _worker_stop(control, saved, known, child)
+    except CONTROL_ERRORS as error:
+        return _worker_stop(control, saved, known, child, _error_code(error))
 
 
 def _adopt_stopped_status(control, known, result):
     status = _read_json(control / 'stopped.json')
-    if (not isinstance(status, dict) or set(status) != {'cleanupConfirmed', 'discoveryConfirmed', 'signalEscalated', 'observedIdentities'}
+    if (not isinstance(status, dict) or set(status) != {'cleanupConfirmed', 'discoveryConfirmed', 'signalEscalated', 'observedIdentities', 'workerFailureCode'}
             or any(type(status[key]) is not bool for key in ('cleanupConfirmed', 'discoveryConfirmed', 'signalEscalated'))):
         raise ValueError('BUILD_COMMAND_CONTROL_INVALID')
+    code = status['workerFailureCode']
+    if code is not None and code not in FIXED_ERRORS | {'CONTROL_VALUE_ERROR', 'CONTROL_TIMEOUT', 'CONTROL_SUBPROCESS_ERROR', 'CONTROL_OS_ERROR', 'CONTROL_ERROR'}:
+        raise ValueError('BUILD_COMMAND_CONTROL_INVALID')
+    result['workerFailureCode'] = code
     _merge_identities(known, status['observedIdentities'])
     result['signalEscalated'] = result['signalEscalated'] or status['signalEscalated']
     return status
@@ -276,18 +310,21 @@ def _stop_known_children(known, root_pid):
 def _execute(process, control, known, result, timeout_seconds):
     saved = None
     acknowledged = False
+    phase = 'START_WAIT'
     try:
         deadline = time.monotonic() + START_SECONDS
         while not (control / 'ready').is_file():
             if process.poll() is not None or time.monotonic() > deadline:
                 raise ValueError('BUILD_COMMAND_START_FAILED')
             time.sleep(0.01)
+        phase = 'START_IDENTITY'
         saved = observe(process.pid)
         if saved is None or saved['uid'] != os.getuid() or saved['pgid'] != process.pid:
             raise ValueError('BUILD_COMMAND_IDENTITY_UNAVAILABLE_OR_CHANGED')
         known[process.pid] = saved
         _checked_root(saved)
         (control / 'go').write_text('go\n')
+        phase = 'WAIT_RESULT'
         deadline = time.monotonic() + timeout_seconds
         while not (control / 'result.json').is_file():
             if process.poll() is not None:
@@ -298,6 +335,7 @@ def _execute(process, control, known, result, timeout_seconds):
                 break
             time.sleep(POLL_SECONDS)
         if (control / 'result.json').is_file():
+            phase = 'READ_RESULT'
             status = _read_json(control / 'result.json')
             if (not isinstance(status, dict) or set(status) != {'exitCode', 'observedIdentities'}
                     or type(status['exitCode']) is not int):
@@ -306,11 +344,15 @@ def _execute(process, control, known, result, timeout_seconds):
             _merge_identities(known, status['observedIdentities'])
             _checked_root(saved)
             result['exitCode'] = status['exitCode']
+        phase = 'DISCOVER_REMAINING'
         left_children = bool(_remaining(saved, known))
         if result['timedOut'] or left_children:
+            phase = 'SIGNAL_TERM'
             _signal_owned(saved, known, signal.SIGTERM)
+            phase = 'WAIT_TERM'
             if not _await_children(saved, known, TERM_SECONDS):
                 result['signalEscalated'] = True
+                phase = 'SIGNAL_KILL'
                 _signal_owned(saved, known, signal.SIGKILL)
             else:
                 (control / 'ack').write_text('ack\n')
@@ -318,11 +360,14 @@ def _execute(process, control, known, result, timeout_seconds):
         else:
             (control / 'ack').write_text('ack\n')
             acknowledged = True
+        phase = 'WAIT_WORKER'
         process.wait(timeout=KILL_SECONDS + 1)
         discovery_confirmed = True
         if (control / 'stopped.json').is_file():
+            phase = 'READ_STOPPED'
             discovery_confirmed = _adopt_stopped_status(control, known, result)['discoveryConfirmed']
         # No more parent group signals after releasing the session leader.
+        phase = 'FINAL_VERIFY'
         result['cleanupConfirmed'] = (discovery_confirmed and not group_members(saved['pid'])
                 and not any(same_process(observe(pid), value) for pid, value in known.items()))
         if not result['cleanupConfirmed']:
@@ -339,11 +384,13 @@ def _execute(process, control, known, result, timeout_seconds):
             result.update(valid=True, code='BUILD_COMMAND_OK')
     except BaseException as error:
         result.update(valid=False, cleanupConfirmed=False, code='BUILD_COMMAND_CONTROL_OR_IDENTITY_FAILED')
+        result.update(failurePhase=phase, failureCode=_error_code(error))
         # Keep control files and the held leader until cooperative stop finishes.
         try:
             _cancel_and_confirm(process, control, known, result)
-        except CONTROL_ERRORS:
+        except CONTROL_ERRORS as cleanup_error:
             result['cleanupConfirmed'] = False
+            result['cleanupFailureCode'] = _error_code(cleanup_error)
         finally:
             if process.poll() is None:
                 try:
@@ -375,7 +422,8 @@ def _execute(process, control, known, result, timeout_seconds):
 def run_owned_command(argv, cwd, env, log_path, timeout_seconds):
     result = dict(valid=False, started=False, exitCode=None, timedOut=False,
                   cleanupConfirmed=True, signalEscalated=False,
-                  code='BUILD_COMMAND_INPUT_INVALID', observedIdentities=[])
+                  code='BUILD_COMMAND_INPUT_INVALID', observedIdentities=[], failurePhase=None,
+                  failureCode=None, cleanupFailureCode=None, workerFailureCode=None)
     known = {}
     try:
         if (not isinstance(argv, list) or not argv

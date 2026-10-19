@@ -127,7 +127,22 @@ def descendants(pid):
     pending = [pid]
     while pending:
         parent = pending.pop()
-        for child in _candidate_child_pids(parent):
+        if parent != pid:
+            before = observe(parent)
+            if before is None:
+                continue
+            if not same_process(before, owned[parent]):
+                raise ValueError('KVVI_PROCESS_IDENTITY_CHANGED')
+        try:
+            candidates = _candidate_child_pids(parent)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            # If a candidate query fails after an intermediate exits,
+            # Only a confirmed absent intermediate permits skipping that edge;
+            # root disappearance, permission/unknown, or reuse still fails.
+            if parent != pid and observe(parent) is None:
+                continue
+            raise
+        for child in candidates:
             if child <= 1 or child in owned:
                 continue
             # Enumeration is only a hint. Bind each edge to kernel PPID,

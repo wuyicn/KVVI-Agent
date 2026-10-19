@@ -101,6 +101,12 @@ def run_clean_build(source, objects, trusted_manifest, workspace, node, pnpm, st
         workspace = target_path(workspace)
         if workspace.exists() or workspace.is_symlink():
             return _failure()
+        # The fixed tsx CLI creates TMPDIR/tsx-UID/PID.pipe. Reject a path
+        # that cannot fit the platform sockaddr_un before costly installation.
+        socket_path = workspace / 'tmp' / ('tsx-' + str(os.getuid())) / '2147483647.pipe'
+        limit = {'darwin':104, 'linux':108}.get(sys.platform)
+        if limit is None or len(os.fsencode(socket_path)) >= limit:
+            return _failure(phase='SOCKET_PATH_LENGTH')
         store = target_path(store)
         if store.is_symlink() or not store.is_dir():
             return _failure()
@@ -155,6 +161,9 @@ def run_clean_build(source, objects, trusted_manifest, workspace, node, pnpm, st
             return row
 
         record_json('source-material.json', initial_rows)
+        record_json('build-input.json', dict(tools=tools, environment=environment,
+                    inputQualification=initial_proof, inputMaterialCount=staged['materialCount'],
+                    inputMaterialDigest=staged['materialDigest'], pnpmStore=str(store), nestedPnpmShim=shim_row))
 
         def execute(name, argv, seconds):
             log = workspace / 'logs' / (name + '.log')
@@ -225,6 +234,7 @@ def run_clean_build(source, objects, trusted_manifest, workspace, node, pnpm, st
                 releaseApproved=False, runtimeSource=str(root), inputQualification=initial_proof,
                 inputMaterialCount=staged['materialCount'], inputMaterialDigest=staged['materialDigest'],
                 inputMaterialFile=metadata_records['source-material.json'],
+                buildInputFile=metadata_records['build-input.json'],
                 tools=tools, nodeHost=node_info, host=dict(system=sys.platform, machine=machine, release=platform.release()),
                 environment=environment, pnpmStore=str(store), commands=commands,
                 outputQualification=output,

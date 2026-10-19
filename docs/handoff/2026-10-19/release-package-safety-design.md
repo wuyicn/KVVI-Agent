@@ -104,3 +104,14 @@
 成功收据先写私有build-receipt.candidate.json；候选原正文、输入/工具/shim/记录/日志及第二轮完整输出资格和全rows相同后，最后以os.link独占发布build-receipt.json。候选保留为同inode别名；消费者只认最终路径和后续完整验证。发布是commit点，之后无验证/清理IO；提交点之后的进程中断与准备失败不同。此为单收据原子发布，不声称整文件树原子快照或断电耐久。
 
 23新组及既有来源/材料/输出/进程边界共157项双Python通过，两位独立23项及原政策ABA、晚改输出/外置表/命令metadata/收据故障/中断/大日志等反例闭环。实际仅只读调用固定pnpm store path，确认--store-dir /Users/wuyi-macs/.pnpm-store得到实际/Users/wuyi-macs/.pnpm-store/v11；尚未通过此runner执行真实安装或构建。下一批独占新实际workspace做受控重建，失败原样保留。
+
+## 实际首次失败及运行边界（批次57完成）
+
+新实际controlled-build-1210fe5bfe6e的install由owned会话确认exit0/cleanup true；build日志tsx创建TMPDIR下Unix socket报EINVAL，实际路径超过本机SDK sun_path[104]。build会话却记控制失败/exit未知/cleanup未确认，其控制异常根因仍UNKNOWN，不能从另一个纯fixture推断。完整失败工作区及日志保留，无成功收据；不重用它重试。
+
+runner增加固定tsx socket路径字节长度预检（Darwin104/Linux108，含最大PID后缀），过长在创建工作区/安装前拒；下一次使用新的持久短路径目录。另独立纯fixture证明已获非root中间父在候选query时退出并失败会误abort；现在query前及异常后复核，仅内核None的非root跳边，不给未知/复用/root失踪空集合成功。该边界修复不当作首次真实控制异常的已证根因。
+
+命令控制记录补固定failurePhase/failureCode/cleanupFailureCode/workerFailureCode，只给显式码白名单及类型fallback，不回显任意异常文本，便于下一次实际控制失败归因。双Python163项及独立反例复核闭环；未有真实build成功收据或产品验收。
+
+
+批次57诊断安全补充：不调用str(error)，只从BaseException原生args descriptor取得单个原生字符串并匹配白名单，其他固定fallback；实际不可格式化ValueError及覆写args属性反例不打断清理。新增build-input.json在所有命令之前保存工具、最小环境及材料观测，失败也保留，成功收据及最终行核验同时绑定；首次失败没有该新文件，不能事后回填当历史证据。

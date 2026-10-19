@@ -14,7 +14,7 @@ from distribution.tests.test_release_package import load_package, register_runti
 
 class CleanBuildTests(unittest.TestCase):
     def setUp(self):
-        self.temp=tempfile.TemporaryDirectory(prefix='kvvi-clean-build-');self.addCleanup(self.temp.cleanup)
+        self.temp=tempfile.TemporaryDirectory(prefix='kbuild-',dir='/private/tmp' if sys.platform=='darwin' else '/tmp');self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.source=self.root/'input';self.source.mkdir()
         files={'package.json':json.dumps({'version':'0.1.6-alpha.2','packageManager':'pnpm@11.7.0','engines':{'node':'^22.19.0 || >=24.0.0'}}),
                'packages/g/p/package.json':'{}','packages/g/p/tsconfig.json':'{"compilerOptions":{"outDir":"lib/types"}}',
@@ -113,6 +113,13 @@ else:
     def test_install_failure_retains_logs_and_never_runs_build(self):
         self.set_mode(installFail=True);self.rejected()
         self.assertTrue((self.workspace/'logs/install.log').exists());self.assertFalse((self.workspace/'logs/build.log').exists())
+
+    def test_failed_install_preserves_initial_tool_and_environment_observations(self):
+        self.set_mode(installFail=True);self.rejected()
+        record=json.loads((self.workspace/'metadata/build-input.json').read_text())
+        self.assertEqual(record['tools']['node']['path'],str(self.node))
+        self.assertEqual(record['environment']['HOME'],str(self.workspace/'home'))
+        self.assertEqual(record['inputMaterialCount'],4)
 
     def test_build_failure_has_no_qualified_receipt(self):
         self.set_mode(buildFail=True);self.rejected();self.assertTrue((self.workspace/'logs/build.log').exists())
@@ -227,6 +234,11 @@ else:
             return original(path,label,max_bytes=max_bytes)
         with patch.object(self.api,'run_owned_command',side_effect=command),patch.object(self.api,'snapshot',side_effect=bounded):self.rejected()
         self.assertTrue(seen)
+
+    def test_long_temporary_socket_path_is_rejected_before_workspace_creation(self):
+        self.workspace=self.root/('long-workspace-'+'x'*100)
+        result=self.rejected();self.assertEqual(result['phase'],'SOCKET_PATH_LENGTH')
+        self.assertFalse(self.workspace.exists())
 
 
 if __name__=='__main__':unittest.main()
