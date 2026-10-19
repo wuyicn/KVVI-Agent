@@ -432,18 +432,25 @@ const intentObject = (value: unknown): value is Record<string, unknown> => typeo
 
 /** Validate the control protocol before a UI may clear or resume any operation. */
 async function intentRequest(target: RecordWriteTarget, method: string, suffix: string, body: unknown,
-  states: readonly string[], key?: string, signal?: AbortSignal): Promise<ApiResult<RecordWriteIntent>> {
-  if (suffix !== '' && (typeof key !== 'string' || !intentKey(key.trim()))) {
+  states: readonly string[], key?: string, signal?: AbortSignal, resource = 'write-intent'): Promise<ApiResult<RecordWriteIntent>> {
+  if ((suffix !== '' || resource === 'write-receipt') && (typeof key !== 'string' || !intentKey(key.trim()))) {
     return { ok: false, status: 400, code: 'KVVI_OPERATION_KEY_INVALID' }
   }
   key = key?.trim()
   const path = `/systems/${encodeURIComponent(target.assetId)}`
-    + (target.recordId === undefined ? '' : `/records/${encodeURIComponent(target.recordId)}`) + '/write-intent' + suffix
+    + (target.recordId === undefined ? '' : `/records/${encodeURIComponent(target.recordId)}`) + '/' + resource + suffix
   const response = await recordWrite<unknown>(method, path, body, key, signal)
   if (!response.ok) return key === undefined ? response : { ...response, idempotencyKey: key }
-  const value = response.value
+  let value = response.value
   const bad = (): ApiResult<RecordWriteIntent> => ({ ok: false, status: 200, code: 'KVVI_BAD_RESPONSE',
     ...(key === undefined ? {} : { idempotencyKey: key, retryWithSameKey: true }) })
+  if (resource === 'write-receipt' && intentObject(value)) {
+    if (value.state === 'UNKNOWN' && value.idempotencyKey === key && value.retryWithSameKey === true) {
+      return { ok: false, status: 202, code: 'KVVI_OPERATION_OUTCOME_UNKNOWN', idempotencyKey: key!, retryWithSameKey: true }
+    }
+    if (value.idempotencyKey !== undefined && value.idempotencyKey !== key) return bad()
+    value = { ...value, idempotencyKey: key }
+  }
   if (!intentObject(value) || typeof value.state !== 'string' || !states.includes(value.state)
     || (value.intentAuditPending !== undefined && typeof value.intentAuditPending !== 'boolean')) return bad()
   const audit = value.intentAuditPending === undefined ? {} : { intentAuditPending: value.intentAuditPending as boolean }
@@ -476,6 +483,9 @@ async function intentRequest(target: RecordWriteTarget, method: string, suffix: 
 
 export function getRecordWriteIntent(target: RecordWriteTarget, signal?: AbortSignal): Promise<ApiResult<RecordWriteIntent>> {
   return intentRequest(target, 'GET', '', undefined, ['EMPTY', 'PREPARED', 'COMMITTED'], undefined, signal)
+}
+export function getRecordWriteReceipt(target: RecordWriteTarget, key: string, signal?: AbortSignal): Promise<ApiResult<RecordWriteIntent>> {
+  return intentRequest(target, 'GET', '', undefined, ['COMMITTED'], key, signal, 'write-receipt')
 }
 export function prepareRecordWriteIntent(target: RecordWriteTarget, input: RecordWriteInput): Promise<ApiResult<RecordWriteIntent>> {
   return intentRequest(target, 'POST', '', input, ['PREPARED', 'COMMITTED'])

@@ -19,7 +19,7 @@ import { KvviListView } from '../src/client/ListView.tsx'
 import { KvviRecordDetail } from '../src/client/RecordDetail.tsx'
 import type { Copy } from '../src/client/FormView.tsx'
 import { createRecord, getRecord, listRecords, updateRecord, readFormFields,
-  getRecordWriteIntent, prepareRecordWriteIntent, cancelRecordWriteIntent, acknowledgeRecordWriteIntent } from '../src/client/api.ts'
+  getRecordWriteIntent, getRecordWriteReceipt, prepareRecordWriteIntent, cancelRecordWriteIntent, acknowledgeRecordWriteIntent } from '../src/client/api.ts'
 import { en, zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)
@@ -501,5 +501,22 @@ it('rejects contradictory terminal states and committed results for a different 
     }
     fetcher.mockResolvedValue(Response.json({...receipt,state:'COMMITTED',statusCode:200}))
     expect(await getRecordWriteIntent({assetId:'form'})).toMatchObject({ok:false,code:'KVVI_BAD_RESPONSE'})
+  } finally {vi.unstubAllGlobals()}
+})
+
+it('looks up the original receipt even after active intent acknowledgement, retaining unknown as uncertainty',async()=>{
+  try {
+    const fetcher=vi.fn().mockResolvedValue(Response.json({state:'COMMITTED',operationId:'operation',statusCode:201,
+      result:{recordId:'record',rowVersion:1},auditPending:false}))
+    vi.stubGlobal('fetch',fetcher)
+    expect(await getRecordWriteReceipt({assetId:'form'},'original')).toEqual({ok:true,value:{state:'COMMITTED',idempotencyKey:'original',operationId:'operation',statusCode:201,result:{recordId:'record',rowVersion:1},auditPending:false}})
+    expect(fetcher.mock.calls[0]?.[0]).toBe('/api/v1/systems/form/write-receipt')
+    expect(fetcher.mock.calls[0]?.[1]?.method).toBe('GET')
+    expect(fetcher.mock.calls[0]?.[1]?.headers).toEqual({'idempotency-key':'original'})
+    fetcher.mockResolvedValue(Response.json({state:'UNKNOWN',idempotencyKey:'original',retryWithSameKey:true},{status:202}))
+    expect(await getRecordWriteReceipt({assetId:'form'},'original')).toMatchObject({ok:false,code:'KVVI_OPERATION_OUTCOME_UNKNOWN',idempotencyKey:'original',retryWithSameKey:true})
+    const count=fetcher.mock.calls.length
+    expect(await getRecordWriteReceipt({assetId:'form'},'')).toMatchObject({ok:false,code:'KVVI_OPERATION_KEY_INVALID'})
+    expect(fetcher.mock.calls).toHaveLength(count)
   } finally {vi.unstubAllGlobals()}
 })

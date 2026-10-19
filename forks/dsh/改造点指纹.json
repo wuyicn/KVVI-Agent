@@ -1,5 +1,5 @@
 {
-  "count": 243,
+  "count": 245,
   "files": {
     "apps/cli/package.json": {
       "sha256": "3a80bdf6c7da3ace285b256accb233212e9991c0335b0a1dd2c489815595801d",
@@ -335,7 +335,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/api.ts": {
-      "sha256": "8fde8339a150a8c3b5202a42bc73e9532624fac4dacfbd19c9b0a4a367672c66",
+      "sha256": "bc45a3a48278db875eca02650fcee883ba32f2b62b714becb6adda78a4dd7b88",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/builder-start.ts": {
@@ -368,6 +368,10 @@
     },
     "packages/client/kvvi-panel/src/client/locales.ts": {
       "sha256": "2baa670a32224be0a41baa39586cec4b7eb5b2a7b11e05fac49a9de5df4bb18d",
+      "status": "A"
+    },
+    "packages/client/kvvi-panel/src/client/record-write.ts": {
+      "sha256": "d09bf5d53677c1ebf096a1c986084d78d142d514b20dac5fab4fd597b09e1512",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/registry.tsx": {
@@ -447,7 +451,11 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/record-views.spec.tsx": {
-      "sha256": "8cf684cd2d5228c4e2abc70b2c62d02b4a2c1d49a6927a523473208e1973032b",
+      "sha256": "38587b73d23d4a15eae0b1a87d1c9ab1f9536f95e2e8992c5cf0216c27a5bb21",
+      "status": "A"
+    },
+    "packages/client/kvvi-panel/tests/record-write.client.spec.ts": {
+      "sha256": "24209e9c9e9ee07db893eed003659ade4f0a445285457f288ba08ba1ddf592be",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/runtime-ui.spec.tsx": {
@@ -1082,7 +1090,7 @@
       "upstream_baseline_sha256": "568b5f6d7d94f9a7d02040ea309ab858e8d2d47c9c5f68a9236a48268ed50d03"
     }
   },
-  "fork_head": "e02bdf9db4ae18a24a6ffbf8a2568a1d551816b7",
+  "fork_head": "e95e256ef18a0fe81ab961384461b8a6376854b8",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "e6a559b1550f5bee359cffc514f6a498710d0697"

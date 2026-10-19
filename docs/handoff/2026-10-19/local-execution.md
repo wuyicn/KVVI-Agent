@@ -308,3 +308,20 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `write-intent-api-real-pg-final2.log`：`a2148cc29e56f9bd38872cb89c1d7c23c904c26e007d1036a0a83787e7dfecb9`。
 - `write-intent-api-g2.log`：`89ca0f204573174aa0a40519b88e1797fa16fafc521bcab7d606ddcbeed95f2d`。
 - `write-intent-api-rebuild.log`：`ffb13469f22aa36795f2c93b252b355a905d5db8da79c9e5b728ab8e494ae6a1`。
+
+## 批次23：身份绑定客户端恢复控制器
+
+- 新record-write.ts实现可订阅状态机；refresh只读，不自动重放。先耐久prepare、再以同key写入；冻结body只存在当前内存，snapshot不包含业务输入，关闭后只能找回服务端元数据。实际成功仍查询原key回执再认定已知提交，peer ACK旧active后也可恢复。取消/ACK明确后停在settled，需重新读取后才能新动作。
+- 每个异步阶段读取实际/auth/session，绑定公司/账号/session/gateway；准备期间dispose、目标/身份已切换的迟到响应不会继续发业务写入或通知新界面。新会话新控制器仍能经同一账号的服务端active恢复，不冒充原浏览器session继续执行。
+- 先RED缺失控制器和原回执SDK，再实现；定向反例发现可变target被改为另一系统，现复制固定目标。独立复核再复现409经refresh重开旧版本retry、恢复/prepare直接COMMITTED未固定key而在peer ACK后丢结果；均追加RED后修复。originalKey只追踪已观察操作，bodyBoundKey只有已确认PREPARED才能绑定冻结body，不能把prepare失败的新输入配到peer旧intent；业务409保持原拒绝与currentRowVersion，直到明确收尾。坏/null身份响应也已先RED后拒绝，避免未处理异常。
+- 15项控制器反例通过。最终固定源20文件227/227、host/client根tsc exit0、完整build exit0。G2 245路径/52登记有效，新鲜重建237覆盖+8删除逐字节一致；固定源基线仍e6a559b，原vendor不改。
+- 实际导入当前controller及SDK，经授权API与隔离PG验证提交后丢响应、旧session被拒、新session控制器找回COMMITTED并ACK；prepare已入库后切到另一账号，迟到响应没有业务写入，新账号无active、原账号保留同key可取消。21项真实PG定向通过，exit0，自有集群停止。最新完整平台生产版本回归仍为批次21的653项；本批平台仅新增测试，不虚构已跑655项。
+- 本批是控制器与SDK基础，尚未由BusinessBody/SystemShell/Agent调用；可见恢复按钮、整页刷新与HTTP悬挂期限仍待接线/验证，不称完整UI恢复通过。真实浏览器、DeepSeek、现有试点部署均未执行。
+
+非敏感日志SHA-256：
+- `write-controller-package-final2.log`：`f566fe44aa22c20920085e8608b46f4fc050c9609e2c5900d2a1a9b9c22f737b`。
+- `write-controller-types-final2.log`：`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`。
+- `write-controller-build-final2.log`：`86fa9e55e21bba51d91ff0f77cd2159d245bb5703c6bdee0c543644e23b25297`。
+- `write-controller-real-pg-final2.log`：`67ea5f6e29c1fa8acc310c38c9d71c06e55d6690574e62b64f9d0758fc5116d3`。
+- `write-controller-g2.log`：`0c085240394f8ff3a2d298b86dcb60cec5ee25183fef34dc355e23426c920571`。
+- `write-controller-rebuild.log`：`5b39a5a579a6cc4db8226183a0f78b8e17c055f1756f347b1a83f5acf7cead26`。

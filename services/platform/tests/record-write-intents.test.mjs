@@ -485,3 +485,55 @@ test('actual client intent SDK traverses authenticated APIs and real PG without 
     assert.equal((await sdk.acknowledgeRecordWriteIntent(patchTarget,patch.value.idempotencyKey)).value.state,'ACKNOWLEDGED')
   } finally {globalThis.fetch=originalFetch}
 })
+
+test('actual client controller recovers a committed lost response after relogin and blocks a late cross-account write',async()=>{
+  await settle()
+  const {createRecordWriteController}=await import('../../../forks/dsh/变更/packages/client/kvvi-panel/src/client/record-write.ts')
+  const originalFetch=globalThis.fetch
+  let session=alice, loseReply=true, pausePrepare=false, preparedKey, releasePrepare, notifyPrepared
+  const prepareGate=new Promise(resolve=>{releasePrepare=resolve}), prepared=new Promise(resolve=>{notifyPrepared=resolve})
+  globalThis.fetch=async(url,init={})=>{
+    if(url==='/auth/session') {
+      const auth=await handleAuth({method:'GET',path:url,body:null,headers:{authorization:'Bearer '+session.raw}})
+      return Response.json(auth.body,{status:auth.status})
+    }
+    const parsed=new URL(url,'http://test'), headers=new Headers(init.headers)
+    const response=await handleApi({method:init.method,path:parsed.pathname,query:parsed.search,body:init.body??null,
+      headers:{authorization:'Bearer '+session.raw,...Object.fromEntries(headers.entries())},
+      loadSession:token=>handleAuth({method:'GET',path:'/auth/session',body:null,headers:{authorization:'Bearer '+token}})})
+    if(pausePrepare&&init.method==='POST'&&parsed.pathname.endsWith('/write-intent')&&response.status===200) {
+      preparedKey=response.body.idempotencyKey;notifyPrepared();await prepareGate
+    }
+    if(loseReply&&init.method==='POST'&&parsed.pathname.endsWith('/records')&&response.status===201) {
+      loseReply=false;throw new Error('injected-controller-lost-reply-after-commit')
+    }
+    return Response.json(response.body,{status:response.status})
+  }
+  const old=createRecordWriteController({assetId:'general_item'}),controllers=[old]
+  try {
+    await old.refresh();assert.equal(old.getSnapshot().phase,'ready')
+    assert.equal(await old.submit({data:{title:'controller committed lost reply'}}),undefined)
+    assert.equal(old.getSnapshot().phase,'pending')
+    assert.equal(await effects('controller committed lost reply'),1)
+    session=await makeSession(A.alice,A.company)
+    await old.refresh()
+    assert.equal(old.getSnapshot().phase,'blocked')
+    const fresh=createRecordWriteController({assetId:'general_item'});controllers.push(fresh)
+    await fresh.refresh()
+    assert.equal(fresh.getSnapshot().phase,'committed')
+    assert.equal(await fresh.acknowledge(),true)
+    assert.equal(fresh.getSnapshot().phase,'settled')
+    await fresh.refresh();assert.equal(fresh.getSnapshot().phase,'ready')
+    pausePrepare=true
+    const submitting=fresh.submit({data:{title:'controller must not cross account'}})
+    await prepared;session=bob;releasePrepare();await submitting
+    assert.equal(fresh.getSnapshot().phase,'blocked')
+    assert.equal(fresh.getSnapshot().error.code,'KVVI_WRITE_IDENTITY_CHANGED')
+    assert.equal(await effects('controller must not cross account'),0)
+    assert.equal((await call(bob,'GET',intent)).body.state,'EMPTY')
+    const original=await call(alice,'GET',intent)
+    assert.equal(original.body.state,'PREPARED')
+    assert.equal(original.body.idempotencyKey,preparedKey)
+    assert.equal((await call(alice,'POST',intent+'/cancel',{},preparedKey)).body.state,'CANCELED')
+  } finally {releasePrepare();for(const c of controllers)c.dispose();globalThis.fetch=originalFetch}
+})
