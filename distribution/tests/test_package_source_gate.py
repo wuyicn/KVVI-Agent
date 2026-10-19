@@ -16,7 +16,7 @@ class FixedPackageSourceGateTests(unittest.TestCase):
         from 工具.lib.package_provenance import qualify_runtime_source
         expected = qualify_runtime_source(Path(self.module.RUNTIME_SOURCE),Path(self.module.GIT_OBJECTS),self.root / 'forks/dsh/改造点指纹.json')
         external = json.loads(Path(self.module.MANIFEST).read_text())
-        self.assertEqual(external['bundleVersion'],'kvvi-macos-pilot/v3')
+        self.assertEqual(external['bundleVersion'],'kvvi-macos-pilot/v4')
         self.assertEqual(external['sourceQualification'],expected)
         with tarfile.open(self.module.ARCHIVE) as archive:
             with archive.extractfile(self.module.TOP + '/发行包清单.json') as handle: internal = json.load(handle)

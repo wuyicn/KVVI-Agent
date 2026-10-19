@@ -13,12 +13,11 @@ import re
 import stat
 
 from .package_inventory import (InventoryError, MAX_MANIFEST_BYTES, fixed_source_index,
-                                load_json, snapshot, validate_rows)
+                                load_json, snapshot, validate_rows, content_digest, validate_client_qualification, CLIENT_LIMITATIONS, regular_entry_paths)
 from .package_provenance import qualify_runtime_source
 
 RECEIPT = '.dsh-build/client-build-environment.json'
-LIMITATIONS = ('source-executable-bits','dependencies','build-causality',
-               'host-native-outputs','catalog-consumption','release-acceptance')
+LIMITATIONS = CLIENT_LIMITATIONS
 
 
 def reject():
@@ -132,11 +131,48 @@ def qualify_client_outputs(source,objects,trusted_manifest,*,include_artifact_ro
         if after_rows != rows or after_digest != digest or _record(root) != (receipt_row,receipt_body,record): return reject()
         result = {'valid':True,'validationScope':'FIXED_SOURCE_CLIENT_RECEIPT','releaseApproved':False,
                   'sourceQualification':proof,'receipt':receipt_row,'environment':expected,
-                  'artifactCount':len(rows),'artifactDigest':'sha256:'+digest,'limitations':list(LIMITATIONS)}
+                  'artifactCount':len(rows),'artifactDigest':'sha256:'+digest,'clientInventoryDigest':content_digest(rows),'limitations':list(LIMITATIONS)}
         if include_artifact_rows is True: result['clientRows'] = rows
         return result
     except (InventoryError,OSError,ValueError,TypeError,KeyError,RecursionError,UnicodeError):
         return reject()
+
+
+def matches_client_path(path):
+    parts = path.split('/')
+    if any(part.startswith('.') for part in parts): return False
+    return (path.startswith('apps/web/dist/') or
+            (len(parts) == 5 and parts[0] == 'packages' and parts[3] == 'lib'
+             and any(fnmatch.fnmatchcase(parts[4],pattern) for pattern in ('client.js','client.js.map','client.*.js','client.*.js.map'))))
+
+
+def client_row_index(client_rows,qualification):
+    validate_client_qualification(qualification)
+    validate_rows(client_rows)
+    if len(client_rows) != qualification['artifactCount'] or content_digest(client_rows) != qualification['clientInventoryDigest']:
+        raise InventoryError('CLIENT_PRIVATE_INVENTORY_INVALID')
+    if any(row['type'] != 'file' or not matches_client_path(row['path']) for row in client_rows):
+        raise InventoryError('CLIENT_PRIVATE_INVENTORY_INVALID')
+    return {row['path']:row for row in client_rows}
+
+
+def bind_client_rows(candidate_rows,client_rows,qualification):
+    """Bind receipt bytes and the complete client set to final candidate rows."""
+    expected = client_row_index(client_rows,qualification)
+    validate_rows(candidate_rows)
+    actual = {row['path'][len('vendor/dsh/'):]:row for row in candidate_rows if row['path'].startswith('vendor/dsh/')}
+    regular = regular_entry_paths(candidate_rows)
+    for path,row in actual.items():
+        if row['type'] != 'symlink' or row['path'] in regular: continue
+        parts = path.split('/')
+        traversed = (path in ('apps','apps/web','apps/web/dist') or path.startswith('apps/web/dist/')
+                     or (parts[0] == 'packages' and (len(parts) <= 3 or len(parts) == 4 and parts[3] == 'lib')))
+        if traversed: raise InventoryError('CLIENT_CANDIDATE_DIRECTORY_LINK')
+    if {path for path in actual if matches_client_path(path)} != set(expected):
+        raise InventoryError('CLIENT_CANDIDATE_SET_MISMATCH')
+    for path,row in list(expected.items()) + [(RECEIPT,qualification['receipt'])]:
+        wanted = dict(row,path='vendor/dsh/'+path)
+        if actual.get(path) != wanted: raise InventoryError('CLIENT_CANDIDATE_ROW_MISMATCH')
 
 
 def main():

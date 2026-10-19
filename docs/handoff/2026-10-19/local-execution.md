@@ -786,3 +786,20 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `package-client-final39-2.log`：`209304277056b648f1f4fffdb8d52372eb9978da4c132ae0dfe8f2ac0a56d44e`。
 - `package-client-fresh-final.json`：`7946864f4831b18b5229aef20435c7ec08c3c0ff50e5e31cc1a05cc94644375c`。
 - `package-client-legacy-final.json`：`cbed0bafd87fb4284b9f30d8f4eadc5eac7f6fbbd4d8f5c7bd688a474e0c5a6c`。
+
+
+## 批次50：v4客户端收据绑定最终候选
+
+- 发行v4内外manifest新增clientQualification，与sourceQualification严格同源。client只读接口新增clientInventoryDigest绑定完整typed私有表；资格/count/path/type/mode/bytes/SHA均验证，候选五模式精确全集及固定收据原字节行必须匹配。build/check初末重取相同完整client资格并再次绑定，旧v3拒绝，缺失/stale/有效但变化的客户端或收据均不发布/不返回通过。
+- .dsh-build仅放行目录遍历及精确client-build-environment.json，其他元数据仍不收。G9源码摘要及CI加入helper/新测试；CLI fixture携helper，全部合成fixture与self-test各自生成Git/source/client收据，不依赖真实252产物。源资格继续明确其自身scope未鉴定client，外层client资格单独给事实，不改成release approval。
+- 初8组先RED（8失败/1错误），修复后8组通过；首次联合117项仅旧source test硬断言v3失败，按新格式更新并补旧v3拒绝等3组。独立复核继而实证空lib暂变内部目录link能让解包Node glob增加别名产物，原build=0；新真实Git反例先RED，再用candidate typed virtual links解析，拒五模式遍历祖先/根/lib目录link，普通文档filelink保留。两位独立重放及额外三级目录别名均拒绝，旧pair保留；源码与实际runtime未改。
+- 最终10模块联合121项在Python3.12/系统3.9.6以-W error::ResourceWarning全通过、exit0（34.479/35.641秒）；两位只读最终59项/28项独立通过，无新增阻断。clone行仍既有受控timeout预期。冻结7文件摘要全通过；本批平台未改，最近平台全回归仍批次40的810项。
+- 最终实际新树只读candidate16048行，12196固定源与252客户端/固定收据全部绑定，main缺失0；client upstream digest985ecc71bbb10cddb314fa9f3f2fd5d50af62c3a60bfe3dd0fde827f77916cb8，typed inventory digest cab36727762b1ae4851967339e2f429a554fa012292bb560e0be6234c920a993。没有运行真实发行build/check/self-test或生成包。完整host/native输出、受控构建因果/依赖/目录消费仍未鉴定，releaseApproved:false，未部署/重启试点、模型验收或勾选12项。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `package-client-gate-red.log`：`ec7592daecd389c7fd7a9e3b5478a24049558930a463fb240ae51b3bccde5367`。
+- `package-client-gate-regression312.log`：`22cfd06b1f0b835fabbebcf97ac60490852cb14264ca5654fbcb5c09001ec5bd`。
+- `package-client-directory-alias-red.log`：`44e99411974a62031ae449d32060692a889ec2c432855ac255831434cc488dc3`。
+- `package-client-gate-final312-2.log`：`98a8ffab6b52ff8d10f689571a50cfed3ba2b65425e14e6170d3369bd24e4e2d`。
+- `package-client-gate-final39-2.log`：`fcb251d0794fc04e46691a253996e23d705d4aa3ddd01509015e43c95bd587d4`。
+- `package-client-candidate-readonly-final.json`：`23a52ff989ac4c35778696382c76142d76e64b7a0ce1060efdf69184d835a26e`。

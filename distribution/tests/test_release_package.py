@@ -21,19 +21,30 @@ def load_package():
     return module
 
 
-def register_runtime_source(module, root):
+def register_runtime_source(module, root, *, with_client_receipt=True):
     """Real, isolated Git baseline for owned source qualification fixtures."""
     objects = root / 'source-objects'
     if objects.exists(): shutil.rmtree(objects)
-    shutil.copytree(module.RUNTIME_SOURCE, objects, symlinks=True)
+    shutil.copytree(module.RUNTIME_SOURCE, objects, symlinks=True, ignore=shutil.ignore_patterns('.dsh-build'))
     environment = {**os.environ,'GIT_CONFIG_GLOBAL':os.devnull,'GIT_CONFIG_SYSTEM':os.devnull}
     def git(*args):
         return subprocess.run(['git','-C',str(objects),*args], env=environment, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True).stdout.strip()
     git('init','--quiet'); git('add','--all')
     git('-c','user.name=Package Fixture','-c','user.email=package@example.invalid','-c','core.hooksPath=/dev/null','-c','commit.gpgsign=false','commit','--quiet','-m','owned source')
     manifest = root / 'forks/dsh/改造点指纹.json'; manifest.parent.mkdir(parents=True,exist_ok=True)
-    manifest.write_text(json.dumps({'upstream_merge_base':git('rev-parse','HEAD'),'count':0,'files':{}}))
+    head = git('rev-parse','HEAD')
+    manifest.write_text(json.dumps({'upstream_merge_base':head,'fork_head':head,'count':0,'files':{}}))
     module.GIT_OBJECTS = str(objects)
+    if with_client_receipt:
+        from 工具.lib.package_client import artifact_snapshots
+        root_source = Path(module.RUNTIME_SOURCE)
+        web = root_source / 'apps/web/dist/index.html'; web.parent.mkdir(parents=True,exist_ok=True)
+        if not web.exists(): web.write_bytes(b'<html>owned client fixture</html>')
+        rows,digest = artifact_snapshots(root_source)
+        version = json.loads((root_source / 'package.json').read_text())['version']
+        record = root_source / '.dsh-build/client-build-environment.json'; record.parent.mkdir(exist_ok=True)
+        record.write_text(json.dumps({'formatVersion':1,'environment':{'DSH_CLIENT_COMMIT_HASH':head[:7],'DSH_CLIENT_VERSION':version},
+                                     'artifacts':{'fileCount':len(rows),'sha256':digest}}))
 
 
 class ReleasePackageTests(unittest.TestCase):
@@ -49,8 +60,10 @@ class ReleasePackageTests(unittest.TestCase):
             path = self.root / rel; path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text('{}\n' if path.suffix == '.json' else 'fixture source\n')
         workspaces = ['vendor/*','packages/*/*','native/system','native/system/packages/*','apps/*','benchmarks','website','python/sdk-runtime']
-        (self.root / 'vendor/dsh/package.json').write_text(json.dumps({'workspaces':workspaces}))
+        (self.root / 'vendor/dsh/package.json').write_text(json.dumps({'version':'1.0.0','workspaces':workspaces}))
         (self.root / 'vendor/dsh/pnpm-workspace.yaml').write_text('packages:\n' + ''.join('  - ' + path + '\n' for path in workspaces))
+        (self.root / 'vendor/dsh/apps/web/vite.config.ts').parent.mkdir(parents=True,exist_ok=True)
+        (self.root / 'vendor/dsh/apps/web/vite.config.ts').write_text('// owned client layout')
         register_runtime_source(self.module,self.root)
         self.assertEqual(self.call(self.module.build), 0)
         self.old = self.pair()

@@ -61,6 +61,7 @@ from 工具.lib.package_outputs import PublicationError, output_guard, publish_p
 from 工具.lib.package_inventory import (InventoryError, VERSION, INTERNAL, MAX_MANIFEST_BYTES,
     snapshot, validate_rows, internal_manifest, verify_archive, load_json, validate_source_qualification, bind_fixed_source_rows, fixed_source_index, regular_entry_paths)
 from 工具.lib.package_provenance import qualify_runtime_source
+from 工具.lib.package_client import qualify_client_outputs, client_row_index, bind_client_rows, artifact_snapshots
 OUT_DIR = os.path.join(ROOT, '交付', '发行')
 ARCHIVE = os.path.join(OUT_DIR, 'kvvi-macos-pilot.tar.gz')
 MANIFEST = os.path.join(OUT_DIR, '发行包清单.json')
@@ -166,6 +167,7 @@ REQUIRED = [
     'vendor/dsh/apps/cli/lib/bin.js',
     'vendor/dsh/packages/compaction/compaction-image-offload/lib/types/projection.js',
     'vendor/dsh/package.json',
+    'vendor/dsh/.dsh-build/client-build-environment.json',
     'contracts/meta-schemas/0a-full-r1/business-schema.v1.schema.json',
     '安装手册.md',
     'docs/操作手册.md',
@@ -180,6 +182,8 @@ def should_skip(source_rel: str, rel: str) -> bool:
     @param rel 相对该内容根的路径
     @returns 跳过时为真
     """
+    if source_rel == 'vendor/dsh' and (rel.strip('/') == '.dsh-build' or rel.startswith('.dsh-build/')):
+        return rel not in ('.dsh-build/','.dsh-build/client-build-environment.json')
     probe = '/' + rel.strip('/') + '/'
     if any(piece in probe for piece in SKIP_ANYWHERE):
         return True
@@ -232,6 +236,15 @@ def selected_source_qualification():
     source_rows = result.pop('sourceRows',None)
     fixed_source_index(source_rows,result)
     return result,source_rows
+
+
+def selected_client_qualification(source_qualification):
+    result = qualify_client_outputs(runtime_source_root(),GIT_OBJECTS,os.path.join(ROOT,'forks/dsh/改造点指纹.json'),include_artifact_rows=True)
+    if result.get('valid') is not True or result.get('sourceQualification') != source_qualification:
+        raise InventoryError('PACKAGE_CLIENT_RECEIPT_REJECTED')
+    client_rows = result.pop('clientRows',None)
+    client_row_index(client_rows,result)
+    return result,client_rows
 
 
 def bind_selected_source(rows, source_rows, qualification):
@@ -294,6 +307,7 @@ def build() -> int:
         runtime_source_root()
         with output_guard(ARCHIVE, MANIFEST):
             source_qualification, source_rows = selected_source_qualification()
+            client_qualification, client_rows = selected_client_qualification(source_qualification)
             if os.path.abspath(OUT_DIR) != os.path.dirname(os.path.abspath(ARCHIVE)):
                 raise PublicationError('PACKAGE_OUTPUT_INVALID')
             if packages_missing_main(source_rows):
@@ -325,8 +339,9 @@ def build() -> int:
                         else: info.type = tarfile.SYMTYPE; info.linkname = row['target']
                         # The scanned snapshot is exactly the body supplied to tar.
                         tar.addfile(info, io.BytesIO(body) if body is not None else None)
-                    internal = internal_manifest(rows,source_qualification)
+                    internal = internal_manifest(rows,source_qualification,client_qualification)
                     bind_selected_source(rows,source_rows,source_qualification)
+                    bind_client_rows(rows,client_rows,client_qualification)
                     if any(row['type'] != 'file' for row in rows if row['path'] in REQUIRED):
                         raise InventoryError('PACKAGE_REQUIRED_FILE_INVALID')
                     payload = json.dumps(internal, ensure_ascii=False, indent=2).encode('utf-8')
@@ -345,6 +360,10 @@ def build() -> int:
                 if after_qualification != source_qualification:
                     raise InventoryError('PACKAGE_FIXED_SOURCE_CHANGED')
                 bind_selected_source(rows,after_source_rows,after_qualification)
+                after_client, after_client_rows = selected_client_qualification(after_qualification)
+                if after_client != client_qualification:
+                    raise InventoryError('PACKAGE_CLIENT_RECEIPT_CHANGED')
+                bind_client_rows(rows,after_client_rows,after_client)
                 if packages_missing_main(after_source_rows,candidate_rows=rows):
                     raise InventoryError('PACKAGE_CANDIDATE_MAIN_MISSING')
                 publish_pair(pending_archive, pending_manifest, ARCHIVE, MANIFEST)
@@ -525,10 +544,13 @@ def _check_existing() -> int:
         return 2
     with open(MANIFEST, 'rb') as handle:
         manifest = load_json(handle.read(MAX_MANIFEST_BYTES + 1))
-    fields = {'bundleVersion','archive','fileCount','contentDigest','entries','archiveSha256','archiveBytes','sourceQualification'}
+    fields = {'bundleVersion','archive','fileCount','contentDigest','entries','archiveSha256','archiveBytes','sourceQualification','clientQualification'}
     if not isinstance(manifest, dict) or set(manifest) != fields or manifest['bundleVersion'] != VERSION:
         raise InventoryError('PACKAGE_MANIFEST_VERSION_OR_SHAPE_INVALID')
     source_qualification, source_rows = selected_source_qualification()
+    client_qualification, client_rows = selected_client_qualification(source_qualification)
+    if client_qualification != manifest['clientQualification']:
+        raise InventoryError('PACKAGE_CLIENT_BINDING_MISMATCH')
     if source_qualification != manifest['sourceQualification']:
         raise InventoryError('PACKAGE_FIXED_SOURCE_BINDING_MISMATCH')
     validate_rows(manifest['entries'])
@@ -538,8 +560,9 @@ def _check_existing() -> int:
         raise InventoryError('PACKAGE_MANIFEST_ARCHIVE_INVALID')
     if manifest['archiveSha256'] != sha256_of(ARCHIVE):
         raise InventoryError('PACKAGE_ARCHIVE_DIGEST_MISMATCH')
-    internal = internal_manifest(manifest['entries'],manifest['sourceQualification'])
+    internal = internal_manifest(manifest['entries'],manifest['sourceQualification'],manifest['clientQualification'])
     bind_selected_source(manifest['entries'],source_rows,source_qualification)
+    bind_client_rows(manifest['entries'],client_rows,client_qualification)
     if internal['contentDigest'] != manifest['contentDigest']:
         raise InventoryError('PACKAGE_INVENTORY_DIGEST_MISMATCH')
     with tarfile.open(ARCHIVE, 'r:gz') as tar:
@@ -564,6 +587,9 @@ def _check_existing() -> int:
     if after_qualification != source_qualification:
         raise InventoryError('PACKAGE_FIXED_SOURCE_CHANGED')
     bind_selected_source(rows,after_source_rows,after_qualification)
+    after_client, after_client_rows = selected_client_qualification(after_qualification)
+    if after_client != client_qualification: raise InventoryError('PACKAGE_CLIENT_RECEIPT_CHANGED')
+    bind_client_rows(rows,after_client_rows,after_client)
     print(f'{C_OK}=== 发行包复核 ==={C_OFF}')
     print(f'  {os.path.relpath(ARCHIVE, ROOT)}：{len(rows)} 个源条目')
     print(f"  内容指纹 {internal['contentDigest'][:32]}")
@@ -691,9 +717,10 @@ def self_test() -> int:
             path = root / rel; path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text('{}\n' if path.suffix == '.json' else 'fixture source\n', encoding='utf-8')
         workspaces = ['vendor/*','packages/*/*','native/system','native/system/packages/*','apps/*','benchmarks','website','python/sdk-runtime']
-        (root / 'vendor/dsh/package.json').write_text(json.dumps({'workspaces':workspaces}))
+        (root / 'vendor/dsh/package.json').write_text(json.dumps({'version':'1.0.0','workspaces':workspaces}))
         (root / 'vendor/dsh/pnpm-workspace.yaml').write_text('packages:\n' + ''.join('  - ' + path + '\n' for path in workspaces))
-        objects = root / 'source-objects'; shutil.copytree(fixture.RUNTIME_SOURCE,objects,symlinks=True)
+        vite = root / 'vendor/dsh/apps/web/vite.config.ts'; vite.parent.mkdir(parents=True,exist_ok=True); vite.write_text('// owned client layout')
+        objects = root / 'source-objects'; shutil.copytree(fixture.RUNTIME_SOURCE,objects,symlinks=True,ignore=shutil.ignore_patterns('.dsh-build'))
         environment = {**os.environ,'GIT_CONFIG_GLOBAL':os.devnull,'GIT_CONFIG_SYSTEM':os.devnull}
         def git(*arguments):
             return subprocess.run(['git','-C',str(objects),*arguments],env=environment,check=True,
@@ -701,8 +728,14 @@ def self_test() -> int:
         git('init','--quiet'); git('add','--all')
         git('-c','user.name=Package Self Test','-c','user.email=package@example.invalid','-c','core.hooksPath=/dev/null','-c','commit.gpgsign=false','commit','--quiet','-m','owned source')
         trusted = root / 'forks/dsh/改造点指纹.json'; trusted.parent.mkdir(parents=True)
-        trusted.write_text(json.dumps({'upstream_merge_base':git('rev-parse','HEAD'),'count':0,'files':{}}))
+        head = git('rev-parse','HEAD')
+        trusted.write_text(json.dumps({'upstream_merge_base':head,'fork_head':head,'count':0,'files':{}}))
         fixture.GIT_OBJECTS = str(objects)
+        web = root / 'vendor/dsh/apps/web/dist/index.html'; web.parent.mkdir(parents=True); web.write_bytes(b'<html>owned self-test</html>')
+        client_rows, client_digest = artifact_snapshots(root / 'vendor/dsh')
+        receipt = root / 'vendor/dsh/.dsh-build/client-build-environment.json'; receipt.parent.mkdir(exist_ok=True)
+        receipt.write_text(json.dumps({'formatVersion':1,'environment':{'DSH_CLIENT_COMMIT_HASH':head[:7],'DSH_CLIENT_VERSION':'1.0.0'},
+                                      'artifacts':{'fileCount':len(client_rows),'sha256':client_digest}}))
         if fixture.build() != 0:
             return 1
         return fixture._self_test_fixture()

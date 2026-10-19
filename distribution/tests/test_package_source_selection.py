@@ -166,7 +166,7 @@ class RuntimeSelectionTests(unittest.TestCase):
     def copy_owned_cli(self):
         directory = self.root / '工具'; (directory / 'lib').mkdir(parents=True)
         shutil.copy2(preservation.SCRIPT, directory / '发行包.py')
-        for name in ('package_outputs.py','package_inventory.py','package_provenance.py','runtime_source.py'):
+        for name in ('package_outputs.py','package_inventory.py','package_provenance.py','runtime_source.py','package_client.py'):
             shutil.copy2(preservation.SCRIPT.parent / 'lib' / name, directory / 'lib' / name)
         return directory / '发行包.py'
 

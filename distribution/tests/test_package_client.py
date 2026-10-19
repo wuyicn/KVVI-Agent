@@ -25,7 +25,7 @@ class PackageClientTests(unittest.TestCase):
         (self.source / 'apps/web').mkdir(parents=True)
         (self.source / 'apps/web/vite.config.ts').write_text('// fixed source')
         module = load_package(); module.RUNTIME_SOURCE = str(self.source)
-        register_runtime_source(module,self.root); self.objects = Path(module.GIT_OBJECTS)
+        register_runtime_source(module,self.root,with_client_receipt=False); self.objects = Path(module.GIT_OBJECTS)
         self.manifest = self.root / 'forks/dsh/改造点指纹.json'
         data = json.loads(self.manifest.read_text()); self.commit = data['upstream_merge_base']
         data['fork_head'] = self.commit; self.manifest.write_text(json.dumps(data))

@@ -41,3 +41,11 @@
 测试使用真实自有Git基线及手工独立计算收据：缺/改/多产物、改环境、重复/超限JSON、路径link、校验中收据/source变化均拒绝；只读核实实际252产物。此接口只证明收据与当前产物完整性，不认证先前构建因果、依赖、host/native或目录消费；随后接v4候选及完整受控重建收据。
 
 批次49实际17组与既有27组共44项双Python通过，独立Node glob/framing边界对照通过；新树252项收据匹配、旧built source拒绝。仅新增只读接口和CI；候选绑定及受控构建仍未完成。
+
+## v4客户端候选绑定（批次50完成）
+
+将客户端只读接口接build/check，不放宽源码资格。v4内外manifest同时绑定sourceQualification和clientQualification，后者source必须等于前者，收据和完整client typed rows以私有表摘要绑定。候选的五模式匹配集合须精确等于已验证表，类型/mode/bytes/SHA逐项相同，固定收据原bytes SHA也必须在候选中；不能临时换产物后还原，不能临时漏收某个chunk或receipt。候选完成前后均重新取得相同客户端资格并重新绑定；旧v3拒绝。
+
+仅对.dsh-build这一目录放行遍历及精确client-build-environment.json，不附带其他元数据；G9源摘要加入新helper。自测与全部合成fixture生成自己的Git/source/client收据，不能借真实252产物假绿。不运行真实发行build/check/self-test。v4仍releaseApproved:false，完整host/native、构建因果、依赖、正式目录消费及产品旅程保持待办。
+
+批次50双Python121项通过；目录型别名反例先RED，修复后两位独立闭环。typed候选图中匹配遍历目录的链接拒绝，文档filelink保留；实际只读16048行中12196固定源/252客户端/收据完整绑定，入口缺失0。未生成真实发行包；下一步完整host/native清单与受控重建凭证，再做目录消费及实际发行旅程。
