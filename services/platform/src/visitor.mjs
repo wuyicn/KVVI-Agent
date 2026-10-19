@@ -32,7 +32,8 @@ import { TOKEN_TTL_MS, ISSUER, TOKEN_ALG } from './signing.mjs'
 import { signingKeys, loadSession } from './identity.mjs'
 import { publicKeysOf, signToken, verifySignature, verifyExpiry } from './signing.mjs'
 import { append } from './audit.mjs'
-import { fieldVisibility } from './authorization.mjs'
+import { fieldVisibility,scopeContext,notWritableFields } from './authorization.mjs'
+import {recordData} from './record-state.mjs'
 import { createRecord } from './refs.mjs'
 import { canAct } from './authorization.mjs'
 
@@ -60,6 +61,7 @@ export class VisitorError extends Error {
 const digestOf = (raw) => createHash('sha256').update(raw).digest('hex')
 const b64url = (b) => Buffer.from(b).toString('base64url')
 const unb64url = (s) => Buffer.from(s, 'base64url')
+const scopesFor=(scope,code)=>new Set([...(scope.scopesByResource?.get('*')??[]),...(scope.scopesByResource?.get(code)??[])])
 
 /**
  * 签发一张访客链接。
@@ -70,7 +72,7 @@ const unb64url = (s) => Buffer.from(s, 'base64url')
  *
  * @param {object} input 入参
  * @param {object} input.ctx 签发人的身份上下文
- * @param {object} input.scope 签发人的授权上下文
+ * @param {object} [input.scope] 旧调用兼容参数；授权范围始终由平台重新派生
  * @param {string} input.formCode 表单
  * @param {string} input.schemaCode 业务系统
  * @param {string[]} input.fields 允许写入的字段集
@@ -82,17 +84,22 @@ const unb64url = (s) => Buffer.from(s, 'base64url')
  * @returns {Promise<object>} 链接信息
  */
 export async function issueLink(input) {
-  const { ctx, scope, formCode, schemaCode, fields, actions, rowScope,
+  const { ctx, formCode, schemaCode, fields, actions, rowScope,
           ttlMs = 24 * 60 * 60 * 1000, maxSubmissions = 1 } = input
 
+  if(!Number.isSafeInteger(ttlMs)||ttlMs<=0)throw new VisitorError('KVVI_LINK_TTL_INVALID')
   if (ttlMs > LINK_TTL_MAX_MS) {
     throw new VisitorError('KVVI_LINK_TTL_TOO_LONG', { max: LINK_TTL_MAX_MS })
   }
-  if (maxSubmissions < 1) throw new VisitorError('KVVI_LINK_SUBMISSIONS_INVALID')
+  if(!Number.isSafeInteger(maxSubmissions)||maxSubmissions<1||maxSubmissions>2147483647)throw new VisitorError('KVVI_LINK_SUBMISSIONS_INVALID')
+  if(!Array.isArray(actions)||actions.length!==1||actions[0]!=='create')throw new VisitorError('KVVI_VISITOR_ACTION_INVALID')
+  if(!Array.isArray(fields)||fields.length===0||new Set(fields).size!==fields.length||!fields.every(field=>typeof field==='string'&&field!==''))throw new VisitorError('KVVI_VISITOR_FIELDS_INVALID')
+  const scope=await scopeContext(ctx)
 
   // ① **签发资格**：不是「已认证」就能签发（v2.15 终审阻断 2）。
   const writable = await canAct(ctx.companyId, ctx.userId, 'FORM', formCode, 'create')
-  if (!writable) {
+  const schemaWritable=formCode===schemaCode?writable:await canAct(ctx.companyId,ctx.userId,'FORM',schemaCode,'create')
+  if (!writable||!schemaWritable) {
     await events(null, ctx, 'REJECTED', { reason: 'KVVI_ISSUER_LACKS_WRITE_PERMISSION',
                                           formCode }, input.sourceIp)
     throw new VisitorError('KVVI_ISSUER_LACKS_WRITE_PERMISSION', { formCode })
@@ -112,8 +119,9 @@ export async function issueLink(input) {
   }
 
   // ③ **行范围只能在签发人自己的可访问集合之内**（§3.5.1 v2.16）
-  const allowed = scope.scopes ?? []
-  const covers = (s) => allowed.includes(s)
+  const allowed=scopesFor(scope,schemaCode)
+  if(allowed.size===0)throw new VisitorError('KVVI_ISSUER_LACKS_WRITE_SCOPE')
+  const covers = (s) => allowed.has(s)
   if (rowScope?.deptId && !(covers('DEPARTMENT') || covers('DEPARTMENT_AND_CHILDREN')
       || covers('COMPANY'))) {
     throw new VisitorError('KVVI_ROW_SCOPE_EXCEEDS_ISSUER', { rowScope })
@@ -280,6 +288,7 @@ export async function revokeLink({ linkId, ctx, reason = 'ISSUER_REVOKED' }) {
 export async function submitAsVisitor(input) {
   const { token, data, sourceIp, nowMs = Date.now(), reachable = true } = input
 
+  recordData(data)
   const sig = verifyLinkSignature(token)
   if (!sig.ok) throw new VisitorError(sig.error)
   const body = sig.body
@@ -300,6 +309,7 @@ export async function submitAsVisitor(input) {
   }
 
   // ③ 绑定项
+  if(!Array.isArray(row.allowed_actions)||row.allowed_actions.length!==1||row.allowed_actions[0]!=='create')throw new VisitorError('KVVI_VISITOR_ACTION_INVALID')
   const fields = Object.keys(data ?? {})
   const outside = fields.filter((f) => !row.allowed_fields.includes(f))
   if (outside.length > 0) {
@@ -330,7 +340,10 @@ export async function submitAsVisitor(input) {
   // 签发人**当前**权限（后续扩权不自动扩大旧链接；回收则按上文失效）
   const stillWritable = await canAct(row.company_id, row.issuer_user_id,
     'FORM', row.form_code, 'create')
-  if (!stillWritable) throw new VisitorError('KVVI_ISSUER_NO_LONGER_WRITABLE')
+  const schemaWritable=row.form_code===row.schema_code?stillWritable:await canAct(row.company_id,row.issuer_user_id,'FORM',row.schema_code,'create')
+  if (!stillWritable||!schemaWritable) throw new VisitorError('KVVI_ISSUER_NO_LONGER_WRITABLE')
+  const deniedFields=await notWritableFields(row.company_id,row.issuer_user_id,fields)
+  if(deniedFields.length)throw new VisitorError('KVVI_FIELD_NOT_WRITABLE',{fields:deniedFields})
 
   // ⑤ 归属唯一性：三预期（§3.5.1 v2.16 终审建议 2）
   const ownership = await resolveOwnership(row)
@@ -343,12 +356,13 @@ export async function submitAsVisitor(input) {
   })
 
   // ⑧ 落库：**正式业务数据**，同等对待（§3.5.3）
+  const currentScope=await scopeContext({companyId:row.company_id,userId:row.issuer_user_id})
+  if(scopesFor(currentScope,row.schema_code).size===0)throw new VisitorError('KVVI_ISSUER_NO_LONGER_WRITABLE')
+  if(currentScope.deptId!==ownership.deptId||currentScope.shopId!==ownership.shopId)throw new VisitorError('KVVI_ROW_SCOPE_MISMATCH')
   const created = await createRecord(
     { companyId: row.company_id, userId: ownership.ownerId, sessionId: null,
       gateway: 'VISITOR' },
-    { companyId: row.company_id, userId: ownership.ownerId,
-      deptId: ownership.deptId, shopId: ownership.shopId,
-      scopes: ['COMPANY'], deptSubtree: [] },
+    currentScope,
     { schemaCode: row.schema_code, data, recordNo: `VIS${Date.now()}` })
 
   await withTransaction('platform', async (client) => {

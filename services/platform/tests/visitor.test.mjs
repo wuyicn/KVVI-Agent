@@ -340,3 +340,67 @@ describe('锚点④ §3.5.2 限流四维度', () => {
     assert.notEqual(r, undefined)
   })
 })
+
+
+describe('visitor write authorization prerequisites',()=>{
+  test('a writable form cannot sign a link into a different unwritable business schema',async()=>{
+    await pool('platform').query("UPDATE visitor_links SET revoked_at=now() WHERE issuer_user_id=$1",[A.alice])
+    await assert.rejects(()=>liveLink({schemaCode:'ungranted_schema'}),error=>error.code==='KVVI_ISSUER_LACKS_WRITE_PERMISSION')
+  })
+  test('an action binding without create cannot be used to submit a business record',async()=>{
+    await assert.rejects(()=>liveLink({actions:['read']}),error=>error.code==='KVVI_VISITOR_ACTION_INVALID')
+  })
+  test('limits and expiry require finite positive integers before any link is issued',async()=>{
+    for(const maxSubmissions of [0,-1,1.5,NaN,Infinity,2147483648])await assert.rejects(()=>liveLink({maxSubmissions}),error=>error.code==='KVVI_LINK_SUBMISSIONS_INVALID')
+    for(const ttlMs of [0,-1,0.5,NaN,Infinity])await assert.rejects(()=>liveLink({ttlMs}),error=>error.code==='KVVI_LINK_TTL_INVALID')
+  })
+  test('a field made READONLY after signing is checked again at the actual visitor write',async()=>{
+    const link=await liveLink()
+    const policy=randomUUID()
+    const role=(await pool('platform').query('SELECT role_id FROM role_members WHERE company_id=$1 AND user_id=$2 LIMIT 1',[A.company,A.alice])).rows[0].role_id
+    await pool('platform').query(`INSERT INTO policies(policy_id,company_id,role_id,dimension,resource_code,field_visibility) VALUES($1,$2,$3,'FIELD','title','READONLY')`,[policy,A.company,role])
+    try{
+      const title='visitor readonly post-sign';const before=(await adminQuery('kvvi_business','SELECT count(*)::int n FROM business_records')).rows[0].n
+      await assert.rejects(()=>submitAsVisitor({token:link.token,data:{title}}),error=>error.code==='KVVI_FIELD_NOT_WRITABLE')
+      assert.equal((await adminQuery('kvvi_business','SELECT count(*)::int n FROM business_records')).rows[0].n,before)
+    }finally{await pool('platform').query("UPDATE policies SET field_visibility='VISIBLE' WHERE policy_id=$1",[policy])}
+  })
+})
+
+test('a caller-supplied COMPANY scope cannot enlarge the issuer actual department scope',async()=>{
+  await assert.rejects(()=>issueLink({ctx:alice.ctx,scope:{scopes:['COMPANY']},formCode:FORM,schemaCode:FORM,
+    fields:['title'],actions:['create'],rowScope:{deptId:A.otherDept}}),error=>error.code==='KVVI_ROW_SCOPE_EXCEEDS_ISSUER')
+})
+test('FORM create permission cannot bypass missing resource data scopes for issue or submission',async()=>{
+  const link=await liveLink()
+  const policies=(await pool('platform').query(`SELECT p.policy_id,p.data_scopes FROM policies p JOIN role_members rm ON rm.role_id=p.role_id
+    WHERE p.company_id=$1 AND rm.user_id=$2 AND p.dimension='DATA' AND p.resource_code IN ('*',$3)`,[A.company,A.alice,FORM])).rows
+  try{
+    for(const policy of policies)await pool('platform').query("UPDATE policies SET data_scopes='{}' WHERE policy_id=$1",[policy.policy_id])
+    await assert.rejects(()=>liveLink(),error=>error.code==='KVVI_ISSUER_LACKS_WRITE_SCOPE')
+    await assert.rejects(()=>submitAsVisitor({token:link.token,data:{title:'no resource data scope'}}),error=>error.code==='KVVI_ISSUER_NO_LONGER_WRITABLE')
+    assert.equal((await adminQuery('kvvi_business',"SELECT count(*)::int n FROM business_records WHERE data->>'title'='no resource data scope'")).rows[0].n,0)
+  }finally{for(const policy of policies)await pool('platform').query('UPDATE policies SET data_scopes=$2 WHERE policy_id=$1',[policy.policy_id,policy.data_scopes])}
+})
+
+test('a membership change between ownership resolution and the write scope cannot change a bound department',async()=>{
+  const link=await liveLink({rowScope:{deptId:A.subDept}})
+  const platform=pool('platform'),original=platform.query
+  let moved=false
+  platform.query=async function(...args){
+    const result=await original.apply(this,args)
+    if(!moved&&typeof args[0]==='string'&&args[0].includes('SELECT user_id, dept_id, shop_id FROM memberships')){
+      moved=true
+      await adminQuery('kvvi_platform','UPDATE memberships SET dept_id=$3 WHERE company_id=$1 AND user_id=$2',[A.company,A.alice,A.otherDept])
+    }
+    return result
+  }
+  try{
+    await assert.rejects(()=>submitAsVisitor({token:link.token,data:{title:'membership window must not write'}}),error=>error.code==='KVVI_ROW_SCOPE_MISMATCH')
+    assert.equal(moved,true)
+    assert.equal((await adminQuery('kvvi_business',"SELECT count(*)::int n FROM business_records WHERE data->>'title'='membership window must not write'")).rows[0].n,0)
+  }finally{
+    platform.query=original
+    await adminQuery('kvvi_platform','UPDATE memberships SET dept_id=$3 WHERE company_id=$1 AND user_id=$2',[A.company,A.alice,A.subDept])
+  }
+})

@@ -409,3 +409,17 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `record-state-bypass-red.log`：`127d460fe112db6b490eb17bed670f3d9420753dd9eb1b70141ce05777129c3b`。
 - `record-state-final-focused.log`：`2a981fa4af55834b228b7a29be61298604489fbd982383b3203299b0e497f5d1`。
 - `record-state-platform-full-final2.log`：`aad9a940ce7cd3ca86fa4f076dea8bbdd86178285fd1f6f69416968d7a873e90`。
+
+
+## 批次29：访客实际写入的授权前置条件
+
+- 修签发资格只查formCode而未查实际schemaCode，现两处分别核对create；当前访客提交只支持create，签发与使用都拒绝其他动作绑定。ttl与max_submissions要求有限正整数并限制到PG integer范围；字段绑定要求非空、不重复字符串，根data沿统一recordData校验。
+- 不再信调用方input.scope或把实际写入上下文强制为COMPANY；签发/提交从平台重新派生scopeContext，按schema本身与*合并的数据档位判，实际create使用同一当前scope。当前字段权限在写入时再检查，签发后变READONLY仍拒绝，不依赖测试手工抬授权版本才生效。
+- 初始4个反例先RED，再27/27通过；增加伪COMPANY scope、无实际资源DATA档位反例。独立复核重现resolveOwnership=A而稍后scopeContext=B导致按B落库却返回A；真实PG在两读间受控变更membership的反例先RED（Missing expected rejection），现写入前比较dept/shop一致性，否则KVVI_ROW_SCOPE_MISMATCH且无业务效果。
+- 最终完整平台670项：669通过、0失败、1既有跳过，exit0，自有PG确认停止；此前669项通过为最后归属修复前的中间版本，不替代最终结果。独立只读审查的归属窗口已补实库反例与修复。
+- 本批只是S9所需授权前置修复，访客用量仍是业务库先创建、平台后计数，尚未实现原key、业务侧原子用量与跨库耐久投影；不能声称max1并发或崩溃一致已经通过。真实访客HTTP/UI入口、DeepSeek及现有试点部署未执行，任务7不勾选。
+
+非敏感日志SHA-256：
+- `visitor-prerequisites-red.log`：`9fb2537de7355b87ca73c2fa5e49e9721e8eddc37c60017e8de3efd45ade88c1`。
+- `visitor-ownership-window-red.log`：`bb2a3771122b7c87a9831837d637b78f410c5cb920a43ddbd7eb3d6d111f4866`。
+- `visitor-prerequisites-platform-final.log`：`3b241fe762a684d17e4d4303cb8b46ad95803fb09b71d0c8001b4ea72058e285`。
