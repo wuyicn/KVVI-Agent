@@ -32,6 +32,18 @@ import { directoryAuditPending } from './business-directory-audit.mjs'
 import { retryDirectoryJobs, buildIntentsPending } from './business-build-intents.mjs'
 import { flushWriteAudit, writeAuditPending } from './record-write-operations.mjs'
 
+import {flushVisitorProjections,visitorProjectionPending} from './visitor-projection.mjs'
+
+let visitorProjectionRunning=false
+const visitorProjectionTimer=setInterval(async()=>{
+  if(visitorProjectionRunning)return
+  visitorProjectionRunning=true
+  try{await flushVisitorProjections()}
+  catch{console.error(JSON.stringify({event:'visitor-projection-retry-unavailable'}))}
+  finally{visitorProjectionRunning=false}
+},10000)
+visitorProjectionTimer.unref()
+
 let directoryAuditRunning=false
 const directoryAuditTimer=setInterval(async()=>{
   if(directoryAuditRunning) return
@@ -345,6 +357,7 @@ async function handleRequest(req, res) {
       schemaReadable: (await schemaState()).error === null,
       directoryAuditPending: await directoryAuditPending().catch(()=>null),
       recordWriteAuditPending: await writeAuditPending().catch(()=>null),
+      visitorProjectionPending: await visitorProjectionPending().catch(()=>null),
       businessBuildPending: await buildIntentsPending().catch(()=>null),
     })
   }
@@ -704,6 +717,7 @@ for (const signal of ['SIGTERM', 'SIGINT']) {
   process.on(signal, () => {
     clearInterval(directoryAuditTimer)
     clearInterval(recordWriteAuditTimer)
+    clearInterval(visitorProjectionTimer)
     console.log(JSON.stringify({ event: 'platform-service-down', signal }))
     server.close(() => process.exit(0))
     // 空闲连接先放掉：它们本来就没有请求在飞，等它们没有意义。

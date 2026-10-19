@@ -35,6 +35,7 @@ import { publicKeysOf, signToken } from './signing.mjs'
 import { fieldVisibility,scopeContext,notWritableFields } from './authorization.mjs'
 import {recordData} from './record-state.mjs'
 import {applyScopeGucs} from './authorization.mjs'
+import {deliverVisitorProjection} from './visitor-projection.mjs'
 import {runtimeProjection} from './runtime-projection.mjs'
 import {writeOperation,WriteOperationError} from './record-write-operations.mjs'
 import { createRecord } from './refs.mjs'
@@ -418,7 +419,8 @@ export async function submitAsVisitor(input) {
             action:'visitor.submit',outcome:'ALLOW',resourceKind:'visitor_link',resourceId:row.link_id,paramsDigest:digestOf(JSON.stringify(fields))}}
       }})
     // A durable company journal now owns platform projection. Never run the business effect again to repair it.
-    return {...result.body,idempotencyKey:key,projectionPending:true}
+    const projected=await deliverVisitorProjection(ctx.companyId,result.body.operationId)
+    return {...result.body,idempotencyKey:key,projectionPending:!projected}
   }catch(error){
     if(error instanceof WriteOperationError){error.key=key;throw error}
     if(error.code==='P0001'&&/^KVVI_[A-Z_]+$/.test(error.message))throw new VisitorError(error.message)

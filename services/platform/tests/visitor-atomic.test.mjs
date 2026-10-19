@@ -26,7 +26,7 @@ test('max1 same-key retries preserve one effect and pinned published workflow wi
   const before=await count('kvvi_visitor_private.admissions')
   const first=await submit(result.token,key,title),second=await submit(result.token,key.toUpperCase(),title)
   assert.equal(first.recordId,second.recordId);assert.equal(first.operationId,second.operationId)
-  assert.equal(first.idempotencyKey,key);assert.equal(first.projectionPending,true)
+  assert.equal(first.idempotencyKey,key);assert.equal(first.projectionPending,false)
   assert.equal(await count('kvvi_visitor_private.admissions'),before+1)
   const record=(await adminQuery('kvvi_business','SELECT state,workflow_version,record_no FROM business_records WHERE record_id=$1',[first.recordId])).rows[0]
   assert.equal(record.state,'collecting');assert.equal(record.workflow_version,1);assert.ok(record.record_no);assert.ok(!record.record_no.startsWith('VIS'))

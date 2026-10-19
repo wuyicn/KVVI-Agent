@@ -30,3 +30,13 @@ SQL40使新列永久默认legacy-unknown；仅新签发明确写kvvi-visitor/v2�
 配额锁后重验，createRecord另提供可信服务端beforeInsert钩子，在form/unique/sequence等已知等待完成后重验链接、当前权限、字段与归属，撤销即整单回滚；原回执恢复也按当前RLS检查原记录，转出可见范围则不暴露recordId。这是已知排队窗口的重验证据，不代表平台吊销与business COMMIT具备跨库原子性；并发授权变更的整体序列化仍属任务1后续验收。
 
 当前成功响应明确projectionPending=true；稳定operationId及metadata投影payload已耐久保存，但后台补投尚未实现。平台submissions/SUBMITTED暂不更新，不把业务再次执行作为补投方式。旧writer可信栅栏、历史窗口基线及现有部署启用仍未实现，private配置默认关闭。HTTP、访客UI、浏览器旅程及实际部署未执行。
+
+## 补投批次32（取代批次31的待投影实现状态）
+
+SQL41平台visitor_projection_receipts按company+operationId去重并保存规范payload摘要，平台receipt、submissions增量、带submission_id的SUBMITTED事件同一事务。业务marker后置，任何确认不明只重投，不调用createRecord；重复正文摘要不一致则保留pending，不覆盖旧计数。used_at取原接纳时刻的最早值，事件也使用接纳时间；即使链接后来过期/吊销，已提交效果仍须准确计入。
+
+原提交返回前做一次有预算投影，失败仍保留确定业务结果及projectionPending=true；已确认投影返回false。领取事务持久增加attempts/退避，释放业务连接后才访问平台；query、连接池checkout均受deadline约束，超时摧毁连接，不保留悬挂事务。10秒后台轮询可由新平台进程继续，SIGTERM/SIGINT清理timer。health仅暴露待投总数，失败为null。
+
+独立复核发现先全公司扫描会因后公司超时丢弃前公司任务，反例先RED再修复：平台保存轮转cursor，先持久推进再进入公司业务查询，取得due行后立即投递；公司失败不回退cursor，全量统计与投递解耦。单轮投递budget最多5秒，末尾统计另有最多5秒，不能把整轮声称为5秒。
+
+14项投影专测包含平台receipt/事件故障回滚、实际platform COMMIT成功丢确认、business marker失败、并发补投、跨公司RLS、payload冲突、连接池耗尽时不持有业务连接、实际平台row lock超时、持久backoff、新平台进程自动补投、后公司统计故障不阻挡前公司。与现有访客共69项定向通过；完整平台722项中721通过、1既有跳过。存量可信切换/历史窗口、访客HTTP/UI/浏览器、跨库权限变更序列化仍待验收，不据此勾选S9或整体12项。

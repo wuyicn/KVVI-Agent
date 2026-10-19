@@ -458,3 +458,19 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `visitor-insert-waits-red.log`：`4138bba0848ee45e68603cec4cdefb9f3e74effa9b95691e58468b2b5e14a993`。
 - `visitor-atomic-final-focused2.log`：`84121a79ac203b521665a22b33cb887b7964cf4d98054860a205e2ca84bd92f1`。
 - `visitor-atomic-platform-full.log`：`30792b8e2d9bfc6ec7840e967a40ba2380acc13ba5d8f5d5dbc3d1d0911e1a46`。
+
+
+## 批次32：访客跨库幂等投影与后台恢复
+
+- SQL41平台独立receipt按company/operationId去重，规范payload摘要拒绝不同内容复用，counter/原时刻SUBMITTED事件与receipt同平台事务；business marker后置。submit原业务已确定时投影故障返回projectionPending，不伪装业务失败，不再执行createRecord来修补；恢复原key也可补投。
+- 新worker先短业务事务领取、持久attempts/backoff，然后释放business连接再访问platform；各query、checkout受预算约束，COMMIT确认不明由receipt判断。平台成功但marker失败只修marker；并发重复不会多加counter/event。平台过期/吊销不抹掉已提交效果。后台每10秒运行，health返回pending数或null，关停清除新增timer。
+- 14项投影PG专测覆盖receipt INSERT失败、event trigger失败使receipt/counter回滚、实际COMMIT成功后丢回复、marker trigger失败、原key恢复、撤销后已提交投影、跨公司RLS、pool耗尽/连接释放、row lock timeout、冲突payload、backoff/batch限制、并发补投、全新平台进程自动补投并结束自有进程。与访客既有用例合计69项定向全通过。
+- 独立复核发现先全公司扫描时B超时会丢弃已取得A任务。两公司真实账本+后公司统计timeout注入反例先RED；改为持久cursor逐公司轮转，推进后查询、找到即投递，全量统计失败只返回null。游标不因单公司故障回退。两名只读复核的去重、连接、关停发现已处理；最末统计有独立最多5秒，投递最多5秒，不声称整个flush只有5秒。
+- 最终完整平台722项：721通过、0失败、1既有跳过，exit0，自有PG确认停止，最终日志摘要在退出后计算。完整命令与批次31相同，最终日志名见下；本批未改DSH，不重复宣称浏览器或构建验收。
+- S9仍缺可信停旧writer/历史额度基线与安全启用、访客HTTP/UI及真实浏览器，平台撤权与business COMMIT的跨库序列化亦未完成；已有试点未部署/迁移/重启，private准入仍默认关闭。整体12项不勾选。
+
+非敏感日志SHA-256：
+- `visitor-projection-red.log`：`e0c26822bcb0c06ec8f123ad8e77303a8a06ef98f34a8f854d881330fea8a53c`。
+- `visitor-projection-progress-red.log`：`3de9aa6da2bdbe5b38666e2db0758b40368d792346bf7f0873cc556cafa15cb2`。
+- `visitor-projection-final-focused2.log`：`596fb9206d71472e404ff2c01218ce2c8d75a8a0438ef1fa2007b4903cc60fef`。
+- `visitor-projection-platform-full.log`：`fee44218877825f4e667412459fc3dc5c620bef058eb8a823fe0d600a07bc0e9`。
