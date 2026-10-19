@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { KvviTranslate } from '../src/client/Panel.tsx'
 import { KvviPanel } from '../src/client/Panel.tsx'
 import { zh } from '../src/client/locales.ts'
+import {businessFetch} from './record-write-server.ts'
 
 /**
  * The dictionary as a plain function, as the slot renderer supplies it.
@@ -29,7 +30,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 describe('business panel navigation', () => {
   it('withholds administration while capabilities load and for an employee', async () => {
     let answer: (value: Response) => void = () => {}
-    vi.stubGlobal('fetch', vi.fn((url: string) => url.endsWith('/capabilities')
+    vi.stubGlobal('fetch', businessFetch((url: string) => url.endsWith('/capabilities')
       ? new Promise<Response>(resolve => { answer = resolve })
       : Promise.resolve(new Response(JSON.stringify({ items: [] })))))
     render(<KvviPanel t={t} onClose={() => {}} />)
@@ -40,7 +41,7 @@ describe('business panel navigation', () => {
   })
 
   it.each(['owner', 'admin'])('keeps administration accessible to %s', async role => {
-    vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(
+    vi.stubGlobal('fetch', businessFetch((url: string) => Promise.resolve(new Response(JSON.stringify(
       url.endsWith('/capabilities') ? caps(role) : { items: [] },
     )))))
     render(<KvviPanel t={t} onClose={() => {}} />)
@@ -51,7 +52,7 @@ describe('business panel navigation', () => {
 
   it('keeps business usable when capabilities fail and lets the user retry', async () => {
     let unavailable = true
-    vi.stubGlobal('fetch', vi.fn((url: string) => {
+    vi.stubGlobal('fetch', businessFetch((url: string) => {
       if (url.endsWith('/capabilities') && unavailable) return Promise.reject(new Error('offline'))
       return Promise.resolve(new Response(JSON.stringify(url.endsWith('/capabilities') ? caps('owner') : { items: [] })))
     }))
@@ -64,7 +65,7 @@ describe('business panel navigation', () => {
   })
 
   it('closes with Escape and exposes a modal dialog', async () => {
-    vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(
+    vi.stubGlobal('fetch', businessFetch((url: string) => Promise.resolve(new Response(JSON.stringify(
       url.endsWith('/capabilities') ? caps(null) : { items: [] },
     )))))
     const close = vi.fn()

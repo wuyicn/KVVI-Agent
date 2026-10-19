@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { KvviSystemShell } from '../src/client/SystemShell.tsx'
 import type { Copy } from '../src/client/FormView.tsx'
 import { zh } from '../src/client/locales.ts'
+import {businessFetch} from './record-write-server.ts'
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
@@ -41,18 +42,15 @@ interface Answer {
  */
 function platform(routes: Readonly<Record<string, Answer>>): { calls: string[] } {
   const calls: string[] = []
-  vi.stubGlobal('fetch', vi.fn((url: string, init?: { method?: string; body?: string }) => {
+  vi.stubGlobal('fetch', businessFetch(async(url: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET'
     calls.push(`${method} ${url}`)
     const answer = routes[`${method} ${url}`]
     if (answer === undefined) {
-      return Promise.resolve({
-        ok: false, status: 404,
-        json: async () => ({ error: 'KVVI_UNKNOWN_ROUTE', route: url }),
-      })
+      return Response.json({ error: 'KVVI_UNKNOWN_ROUTE', route: url },{status:404})
     }
     const status = answer.status ?? 200
-    return Promise.resolve({ ok: status < 400, status, json: async () => answer.body })
+    return Response.json(answer.body,{status})
   }))
   return { calls }
 }
@@ -302,7 +300,7 @@ it('opens a published system beside the conversation through its injected dock a
 
 it('withholds the first form until field permissions return and refuses a failed read', async () => {
   let finish:(response:Response)=>void=()=>{}
-  const fetcher=vi.fn((url:string)=>url.endsWith('/fields')?new Promise<Response>(resolve=>{finish=resolve}):Promise.resolve(Response.json(url.endsWith('/systems')?SYSTEMS:RUNTIME)))
+  const fetcher=businessFetch((url:string)=>url.endsWith('/fields')?new Promise<Response>(resolve=>{finish=resolve}):Promise.resolve(Response.json(url.endsWith('/systems')?SYSTEMS:RUNTIME)))
   vi.stubGlobal('fetch',fetcher)
   render(<KvviSystemShell copy={t} />)
   fireEvent.click(await screen.findByRole('button',{name:zh['systems.open']}))
@@ -320,4 +318,112 @@ it('a field without an explicit visibility does not become editable', async () =
   expect((await screen.findByRole('alert')).textContent).toContain('KVVI_BAD_RESPONSE')
   expect(screen.queryByRole('button',{name:zh['form.submit']})).toBeNull()
   expect(screen.queryByLabelText('title')).toBeNull()
+})
+
+
+it('the legacy shell prepares a durable key before its business create',async()=>{
+  const {calls}=platform(healthy({'POST /api/v1/systems/golden_01/records':{status:201,body:{recordId:'r9',rowVersion:1}}}))
+  render(<KvviSystemShell copy={t}/>)
+  fireEvent.click(await screen.findByRole('button',{name:zh['systems.open']}))
+  fireEvent.change(await screen.findByLabelText('title'),{target:{value:'durable'}})
+  fireEvent.click(screen.getByRole('button',{name:zh['form.submit']}))
+  await waitFor(()=>expect(calls).toContain('POST /api/v1/systems/golden_01/records'))
+  const requests=vi.mocked(globalThis.fetch).mock.calls
+  const prepare=requests.findIndex(([url,init])=>String(url).endsWith('/write-intent')&&init?.method==='POST')
+  const write=requests.findIndex(([url,init])=>String(url).endsWith('/records')&&init?.method==='POST')
+  expect(prepare).toBeGreaterThanOrEqual(0);expect(write).toBeGreaterThan(prepare)
+  expect(new Headers(requests[write]?.[1]?.headers).get('idempotency-key')).toBe('prepared-1')
+})
+
+it('reopening the legacy shell finds a lost result without replay and opens it only explicitly',async()=>{
+  const fetcher=businessFetch(async(url,init)=>Response.json(init?.method==='POST'?{recordId:'r1',rowVersion:3,recordNo:'R000001'}
+    :healthy()[`GET ${url}`]?.body??{error:'KVVI_UNKNOWN_ROUTE'}))
+  vi.stubGlobal('fetch',fetcher);fetcher.loseNextBusinessReply()
+  const mounted=render(<KvviSystemShell copy={t} initialSystem={SYSTEMS.items[0]!}/>)
+  fireEvent.change(await screen.findByLabelText('title'),{target:{value:'lost'}})
+  fireEvent.click(screen.getByRole('button',{name:zh['form.submit']}))
+  await screen.findByText(zh['recovery.uncertain']);mounted.unmount()
+  render(<KvviSystemShell copy={t} initialSystem={SYSTEMS.items[0]!}/>)
+  await screen.findByText(zh['recovery.saved'])
+  expect(screen.queryByText(zh['detail.title'])).toBeNull()
+  fireEvent.click(screen.getByRole('button',{name:zh['recovery.view']}))
+  await screen.findByText(zh['detail.title'])
+  expect(fetcher.mock.calls.filter(([url,init])=>url.endsWith('/records')&&init?.method==='POST')).toHaveLength(1)
+})
+
+
+it('a lost PATCH is acknowledged before reloading the current server record, never merged from old input',async()=>{
+  let row={recordId:'r1',recordNo:'R000001',rowVersion:3,state:'submitted',data:{title:'报销'},fieldVisibility:{title:'VISIBLE'}}
+  const fetcher=businessFetch(async(url,init)=>{
+    if(init?.method==='PATCH') {row={...row,rowVersion:4,data:{title:'server canonical current'}};return Response.json({recordId:'r1',rowVersion:4})}
+    return Response.json(url.endsWith('/records/r1')?row:healthy()[`GET ${url}`]?.body)
+  })
+  vi.stubGlobal('fetch',fetcher);fetcher.loseNextBusinessReply()
+  const mounted=render(<KvviSystemShell copy={t} initialSystem={SYSTEMS.items[0]!}/>)
+  await screen.findByLabelText('title');fireEvent.click(screen.getByRole('button',{name:zh['system.tab.records']}))
+  fireEvent.click(await screen.findByRole('button',{name:zh['list.open']}))
+  fireEvent.change(await screen.findByLabelText('title'),{target:{value:'old frozen local edit'}})
+  fireEvent.click(screen.getByRole('button',{name:zh['detail.save']}))
+  await screen.findByText(zh['recovery.uncertain']);mounted.unmount()
+  render(<KvviSystemShell copy={t} initialSystem={SYSTEMS.items[0]!}/>)
+  await screen.findByLabelText('title');fireEvent.click(screen.getByRole('button',{name:zh['system.tab.records']}))
+  fireEvent.click(await screen.findByRole('button',{name:zh['list.open']}))
+  await screen.findByText(zh['recovery.saved'])
+  fireEvent.click(screen.getByRole('button',{name:zh['recovery.acknowledge']}))
+  await waitFor(()=>expect(screen.getByLabelText('title')).toHaveProperty('value','server canonical current'))
+  expect((screen.getByLabelText('title') as HTMLInputElement).disabled).toBe(false)
+  expect(fetcher.mock.calls.filter(([,init])=>init?.method==='PATCH')).toHaveLength(1)
+})
+
+it('a record read completing after Back cannot reopen the old detail',async()=>{
+  let finish!:(response:Response)=>void
+  const fetcher=businessFetch(async(url)=>url.endsWith('/records/r1')?new Promise<Response>(resolve=>{finish=resolve}):Response.json(healthy()[`GET ${url}`]?.body))
+  vi.stubGlobal('fetch',fetcher)
+  render(<KvviSystemShell copy={t} initialSystem={SYSTEMS.items[0]!}/>)
+  await screen.findByLabelText('title');fireEvent.click(screen.getByRole('button',{name:zh['system.tab.records']}))
+  fireEvent.click(await screen.findByRole('button',{name:zh['list.open']}))
+  await waitFor(()=>expect(finish).toBeTypeOf('function'))
+  fireEvent.click(screen.getByRole('button',{name:zh['detail.back']}))
+  finish(Response.json(healthy()['GET /api/v1/systems/golden_01/records/r1']!.body))
+  await waitFor(()=>expect(screen.getByText('R000001')).toBeTruthy())
+  expect(screen.queryByText(zh['detail.title'])).toBeNull()
+})
+
+it('focus revalidation discards the previous identity and rejects its late create completion',async()=>{
+  let finish!:(response:Response)=>void
+  const fetcher=businessFetch(async(url,init)=>init?.method==='POST'?new Promise<Response>(resolve=>{finish=resolve}):Response.json(healthy()[`GET ${url}`]?.body))
+  vi.stubGlobal('fetch',fetcher)
+  render(<KvviSystemShell copy={t} initialSystem={SYSTEMS.items[0]!}/>)
+  fireEvent.change(await screen.findByLabelText('title'),{target:{value:'previous identity'}})
+  fireEvent.click(screen.getByRole('button',{name:zh['form.submit']}))
+  await waitFor(()=>expect(finish).toBeTypeOf('function'))
+  fetcher.setEntrance({companyId:'new-company',userId:'new-user',sessionId:'new-session',gateway:'USER'})
+  fireEvent.focus(window)
+  await screen.findByRole('button',{name:zh['systems.open']})
+  finish(Response.json({recordId:'previous-identity-record',rowVersion:1,recordNo:'OLD-IDENTITY'}))
+  await waitFor(()=>expect(fetcher.committedCount()).toBe(1))
+  expect(screen.queryByText(/OLD-IDENTITY/u)).toBeNull()
+  expect(screen.queryByLabelText('title')).toBeNull()
+})
+
+
+it.each(['form','detail'])('a transient focus identity failure withholds editing and retains the same-session unsaved %s input',async(mode)=>{
+  const normal=businessFetch(async(url)=>Response.json(healthy()[`GET ${url}`]?.body))
+  let unavailable=false
+  vi.stubGlobal('fetch',vi.fn((url:string,init?:RequestInit)=>url==='/auth/session'&&unavailable
+    ?Promise.resolve(Response.json({error:'KVVI_UNREACHABLE'},{status:503})):normal(url,init)))
+  render(<KvviSystemShell copy={t} initialSystem={SYSTEMS.items[0]!}/>)
+  await screen.findByLabelText('title')
+  if(mode==='detail'){
+    fireEvent.click(screen.getByRole('button',{name:zh['system.tab.records']}))
+    fireEvent.click(await screen.findByRole('button',{name:zh['list.open']}))
+    await screen.findByLabelText('title')
+  }
+  fireEvent.change(screen.getByLabelText('title'),{target:{value:'keep unsaved same session'}})
+  unavailable=true;fireEvent.focus(window)
+  await screen.findByRole('alert')
+  expect(screen.queryByRole('textbox')).toBeNull()
+  expect(screen.getByLabelText('title').closest('[hidden]')?.hasAttribute('inert')).toBe(true)
+  unavailable=false;fireEvent.click(screen.getByRole('button',{name:zh['read.retry']}))
+  await waitFor(()=>expect(screen.getByRole('textbox')).toHaveProperty('value','keep unsaved same session'))
 })

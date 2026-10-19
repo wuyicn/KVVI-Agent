@@ -358,3 +358,22 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `business-write-recovery-build-final.log`：`aac3c2448814506975b461fc055e3e7bbaffd16db06d6a720b7694baed3e3f3a`。
 - `business-write-recovery-g2.log`：`e2edd1fd35a95409d5c9b3c80f4470f799f53529549c2bb50410be0b6842571c`。
 - `business-write-recovery-rebuild-final.log`：`7b047cf4e34c31db4bf0927fb575e3dbc7ed49d79c2f620661ac759b7e8e6fb4`。
+
+
+## 批次26：旧SystemShell入口接入相同恢复协议
+
+- 旧“我的系统”创建与PATCH均改走RecordWriteGuard，不再直接调用createRecord/updateRecord。已提交PATCH只显示已保存，保持禁用直到明确处理原回执；ACK/取消后重读runtime、字段及当前记录，不把旧冻结输入合并进服务器新版本。创建保留原记录号提示；恢复结果通过明确查看才打开。
+- 入口先读实际身份，focus与明确重载重新核对；公司/账号/session/gateway变化按身份key销毁旧Session，初始系统参数不跨身份继承。详情改为独立recordId导航状态+effect读取，列表与详情读取均abort并在回调检查，Back或切换系统后旧结果不能跳回。重载runtime期间停止详情编辑。
+- 公共协议感知测试服务器提取到record-write-server.ts，保留跨store回执、故意丢响应、请求起始身份归属及真实原key字段；面板权限夹具也补实际/auth/session，不将未知路由当身份。
+- 首先新增prepare先行及重开lostcreate反例，原实现2项失败。实现首轮可选prop显式undefined被exactOptionalPropertyTypes拒绝，已修。独立复核实际重现focus一次503会销毁未提交草稿：补RED后保持同身份子树mounted，错误期hidden并设DOM inert，身份恢复后展示；401/403或新身份销毁旧子树。表单/详情两条瞬断保留均通过。React18不认识JSX boolean inert，类型检查也拒绝；已改ref设置真实DOM属性并增加断言，未放宽类型。
+- 最终21文件254/254、host/client根tsc exit0、完整build exit0（252客户端产物）。另覆盖lostPATCH重开→ACK→当前服务端canonical值、记录Back迟到、focus身份变更后旧写迟到。G2 248路径/52登记有效，新鲜重建240覆盖+8删除一致；独立只读审查的输入丢失问题已修复。
+- 这是组件+协议夹具证据，非真实浏览器/实际部署验收。Agent、流程及访客仍未接耐久原key协议，终态/确认后修改规则等仍待实现，任务3/4不勾选完成。原vendor和已有试点未改，DeepSeek未执行。
+
+非敏感日志SHA-256：
+- `legacy-write-recovery-red.log`：`f8ba3b0d6a3a6329db01052a13eafcd831c6c152f3d40de887b100dc0dd5994e`。
+- `legacy-focus-draft-red.log`：`223a410e3715b460ec35fddb47c90b06be3f03b5f7ba3a203ab9ce3a88cfbf1a`。
+- `legacy-write-recovery-package-final3.log`：`1da37f518d8c934b12344ee909eff6771d47a886be2be6623284532b73282c53`。
+- `legacy-write-recovery-types-final3.log`：`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`。
+- `legacy-write-recovery-build-final3.log`：`a52db02c4994da83210ed0ac8f9dc0f9193731b699d4f92914a21c4890ca2cbf`。
+- `legacy-write-recovery-g2.log`：`957753d8019f8c5adbd1af439fe9ca8334fbb47766667d4fc0a194786c276b38`。
+- `legacy-write-recovery-rebuild.log`：`9a8c4240570c68ed0f2ea289aafb8e89bbd2d8084aaec5bcc47a859d821c33f0`。

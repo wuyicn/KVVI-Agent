@@ -21,10 +21,10 @@
  * different fixes. Each keeps its own state, and the refusal codes are shown
  * verbatim because that is what an operator searches for.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
-  createRecord, getRecord, listRecords, listSystems, loadRuntime, readFormFields, updateRecord,
+  getRecord, listRecords, listSystems, loadRuntime, readFormFields, readEntrance,
 } from './api.ts'
 import type { AuthorizedField, PublishedSystem, RecordRow, RecordView, RuntimeProjection } from './api.ts'
 import type { Copy } from './FormView.tsx'
@@ -34,6 +34,7 @@ import { KvviRecordDetail } from './RecordDetail.tsx'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { ReadFailure } from './ReadFailure.tsx'
 import { coerceCreateData } from './values.ts'
+import { RecordWriteGuard } from './RecordWriteGuard.tsx'
 import css from './business.module.css'
 
 /** Props the shell accepts. */
@@ -65,7 +66,43 @@ function describeFailure(code: string, detail?: string): string {
  * @param props - copy from the surrounding panel.
  * @returns the shell.
  */
-export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShellProps): ReactNode {
+export function KvviSystemShell(props: KvviSystemShellProps): ReactNode {
+  const [identity,setIdentity]=useState<string|null>(null)
+  const [error,setError]=useState<string>()
+  const [attempt,setAttempt]=useState(0)
+  const initialIdentity=useRef<string>()
+  useEffect(()=>{
+    let controller:AbortController|undefined
+    const refresh=()=>{
+      controller?.abort();controller=new AbortController()
+      const current=controller
+      void readEntrance(current.signal).then(result=>{
+        if(current.signal.aborted)return
+        if(!result.ok){if(result.status===401||result.status===403)setIdentity(null);setError(result.code);return}
+        const who=result.value
+        if(who===null||typeof who!=='object'||![who.companyId,who.userId,who.sessionId].every(value=>typeof value==='string'&&value!=='')
+          ||!['USER','BUILDER'].includes(who.gateway)) {setError('KVVI_BAD_RESPONSE');return}
+        const scope=JSON.stringify([who.companyId,who.userId,who.sessionId,who.gateway])
+        initialIdentity.current??=scope;setError(undefined);setIdentity(scope)
+      })
+    }
+    refresh();globalThis.addEventListener('focus',refresh)
+    return ()=>{controller?.abort();globalThis.removeEventListener('focus',refresh)}
+  },[attempt])
+  const {initialSystem,...rest}=props
+  // A transient check must not destroy the same session's unsaved inputs.
+  // The retained subtree is inaccessible until the identity is confirmed.
+  return <>
+    {error===undefined?null:<ReadFailure error={error} copy={props.copy} onRetry={()=>{setAttempt(value=>value+1)}}/>}
+    {identity===null?(error===undefined?<p role="status">{props.copy('panel.loading')}</p>:null):
+      <div hidden={error!==undefined} ref={element=>{element?.toggleAttribute('inert',error!==undefined)}}>
+        <SystemShellSession key={identity} {...rest}
+          {...(initialIdentity.current===identity&&initialSystem!==undefined?{initialSystem}:{})}
+          identity={identity} refreshIdentity={()=>{setAttempt(value=>value+1)}}/>
+      </div>}
+  </>
+}
+function SystemShellSession({ copy, onDock, initialSystem, identity, refreshIdentity }: KvviSystemShellProps & {identity:string;refreshIdentity:()=>void}): ReactNode {
   const [systems, setSystems] = useState<readonly PublishedSystem[] | null>(null)
   const [systemsError, setSystemsError] = useState<string | undefined>(undefined)
   const [open, setOpen] = useState<PublishedSystem | null>(initialSystem ?? null)
@@ -83,9 +120,11 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
   const [formAttempt, setFormAttempt] = useState(0)
   const [listError, setListError] = useState<string | undefined>(undefined)
 
+  const [detailId, setDetailId] = useState<string | null>(null)
+  const [detailAttempt, setDetailAttempt] = useState(0)
+  const [listAttempt, setListAttempt] = useState(0)
   const [detail, setDetail] = useState<RecordView | null>(null)
   const [detailError, setDetailError] = useState<string | undefined>(undefined)
-  const [conflictVersion, setConflictVersion] = useState<number | undefined>(undefined)
   const [saved, setSaved] = useState(false)
 
   const [notice, setNotice] = useState<string | null>(null)
@@ -117,25 +156,19 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
     return () => { controller.abort() }
   }, [open, runtimeAttempt])
 
-  const refreshRows = useCallback((): void => {
-    if (open === null) return
-    setBusy(true)
-    void listRecords(open.assetId).then((result) => {
-      setBusy(false)
-      if (result.ok) {
-        setRows(result.value.items)
-        setVisibility(result.value.fieldVisibility)
-        setListError(undefined)
-      } else {
-        setListError(describeFailure(result.code, result.detail))
-      }
-    })
-  }, [open])
-
+  const refreshRows = () => { setListAttempt(value=>value+1) }
   useEffect(() => {
     if (open === null || tab !== 'records') return
-    refreshRows()
-  }, [open, tab, refreshRows])
+    const controller=new AbortController()
+    setBusy(true);setRows([]);setVisibility({});setListError(undefined)
+    void listRecords(open.assetId,controller.signal).then(result=>{
+      if(controller.signal.aborted)return
+      setBusy(false)
+      if(result.ok){setRows(result.value.items);setVisibility(result.value.fieldVisibility)}
+      else setListError(describeFailure(result.code,result.detail))
+    })
+    return ()=>{controller.abort()}
+  }, [open,tab,listAttempt])
 
   // The form's field visibility does not come from the records list: an empty
   // system has no rows, so `listRecords` returns an empty `fieldVisibility` and a
@@ -155,15 +188,23 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
     return () => { controller.abort() }
   }, [open, tab, projection, formAttempt])
 
-  const openRecord = (recordId: string): void => {
-    if (open === null) return
-    setDetailError(undefined)
-    setConflictVersion(undefined)
-    setSaved(false)
-    void getRecord(open.assetId, recordId).then((result) => {
-      if (result.ok) setDetail(result.value)
-      else setDetailError(describeFailure(result.code, result.detail))
+  const openRecord = (recordId:string) => {
+    setDetail(null);setDetailError(undefined);setSaved(false);setDetailId(recordId)
+  }
+  useEffect(()=>{
+    if(open===null||detailId===null)return
+    const controller=new AbortController()
+    setDetail(null);setDetailError(undefined)
+    void getRecord(open.assetId,detailId,controller.signal).then(result=>{
+      if(controller.signal.aborted)return
+      if(result.ok)setDetail(result.value)
+      else setDetailError(describeFailure(result.code,result.detail))
     })
+    return ()=>{controller.abort()}
+  },[open,detailId,detailAttempt])
+  const reloadWrite = () => {
+    refreshIdentity();setRuntimeAttempt(value=>value+1);setFormAttempt(value=>value+1)
+    setDetailAttempt(value=>value+1);setSaved(false);setNotice(null)
   }
 
   const model = projection === null || open === null ? undefined : projection.models[open.assetId]
@@ -210,7 +251,7 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => { setOpen(system); setTab('form'); setRows([]); setDetail(null) }}
+                  onClick={() => { setOpen(system); setTab('form'); setRows([]); setDetail(null);setDetailId(null) }}
                 >
                   {copy('systems.open')}
                 </Button>
@@ -224,46 +265,39 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
   }
 
   // ── One record inside the open system ─────────────────────────────────────
-  if (detail !== null || detailError !== undefined) {
+  if (detailId !== null) {
     return (
       <div>
         <button
           type="button"
           style={{ fontSize: 12, marginBottom: 10 }}
-          onClick={() => { setDetail(null); setDetailError(undefined) }}
+          onClick={() => { setDetail(null); setDetailId(null); setDetailError(undefined) }}
         >
           {copy('detail.back')}
         </button>
-        {detail === null ? (
-          <p role="alert" style={{ fontSize: 12.5 }}>{detailError}</p>
+        {projectionError!==undefined?<ReadFailure error={projectionError} copy={copy} onRetry={()=>{setRuntimeAttempt(value=>value+1)}}/>:projection===null?
+          <p role="status">{copy('panel.loading')}</p>:detail === null ? (
+          <p role={detailError===undefined?"status":"alert"} style={{ fontSize: 12.5 }}>{detailError??copy('panel.loading')}</p>
         ) : (
-          <KvviRecordDetail
+          <RecordWriteGuard target={{assetId:open.assetId,recordId:detail.recordId}} identity={identity}
+            generation={runtimeAttempt+detailAttempt} copy={copy} onReload={reloadWrite}
+            onCommitted={()=>{setSaved(true);setDetailError(undefined)}}>
+          {({busy:writing,submit})=><KvviRecordDetail
+            key={detail.recordId+':'+detail.rowVersion}
             copy={copy}
             record={detail}
             fields={model?.fields}
-            busy={busy}
+            busy={writing}
             saved={saved}
             {...(stateLabel === undefined ? {} : { stateLabel })}
-            {...(conflictVersion === undefined ? {} : { conflictRowVersion: conflictVersion })}
             {...(detailError === undefined ? {} : { error: detailError })}
-            onBack={() => { setDetail(null); setDetailError(undefined) }}
+            onBack={() => { setDetail(null); setDetailId(null); setDetailError(undefined) }}
             onSave={(data, rowVersion) => {
-              setBusy(true)
-              setSaved(false)
-              setConflictVersion(undefined)
-              void updateRecord(open.assetId, detail.recordId, data, rowVersion).then((result) => {
-                setBusy(false)
-                if (result.ok) {
-                  setSaved(true)
-                  setDetailError(undefined)
-                  setDetail({ ...detail, data: { ...detail.data, ...data }, rowVersion: result.value.rowVersion })
-                  return
-                }
-                setDetailError(describeFailure(result.code, result.detail))
-                if (result.currentRowVersion !== undefined) setConflictVersion(result.currentRowVersion)
-              })
+              setSaved(false);setDetailError(undefined)
+              void submit({data,rowVersion})
             }}
-          />
+          />}
+          </RecordWriteGuard>
         )}
       </div>
     )
@@ -273,7 +307,7 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
   return (
     <div>
       <div className={css.systemHeading}>
-        <Button variant="outline" onClick={() => { setOpen(null) }}>
+        <Button variant="outline" onClick={() => { setOpen(null);setDetailId(null);setDetail(null) }}>
           {copy('system.back')}
         </Button>
         <h3 className={css.sectionTitle}>{open.name}</h3>
@@ -316,28 +350,25 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
         ) : formFields === null ? (
           <p role="status">{copy('panel.loading')}</p>
         ) : (
-          <KvviFormView
+          <RecordWriteGuard target={{assetId:open.assetId}} identity={identity} generation={runtimeAttempt+formAttempt} copy={copy}
+            onReload={reloadWrite} onCommitted={result=>{setNotice(copy('form.created',{recordNo:result.recordNo??result.recordId}))}}
+            onView={result=>{openRecord(result.recordId)}}>
+          {({busy:writing,submit})=><KvviFormView
             spec={view}
             copy={copy}
             context={fieldContext}
-            busy={busy}
+            busy={writing}
             onSubmit={(data) => {
-              if (busy) return
+              if (writing) return
               const converted = coerceCreateData(createFields, data, formModes)
               if (converted.invalidFields.length > 0) {
                 setNotice(copy('field.invalidValue', { fields: converted.invalidFields.map(code => model?.fields?.find(field => field.field_code === code)?.label ?? code).join('、') }))
                 return
               }
-              setBusy(true)
-              setNotice(null)
-              void createRecord(open.assetId, converted.data).then((result) => {
-                setBusy(false)
-                setNotice(result.ok
-                  ? copy('form.created', { recordNo: result.value.recordNo ?? result.value.recordId })
-                  : copy('form.failed', { detail: describeFailure(result.code, result.detail) }))
-              })
+              setNotice(null);void submit({data:converted.data})
             }}
-          />
+          />}
+          </RecordWriteGuard>
         )
       ) : (
         <KvviListView
