@@ -28,8 +28,8 @@
  *
  * @module @deepseek-ai/dsh-tool-kvvi-publish
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { basename, join, relative, resolve, sep } from 'node:path'
+import { readFileSync, readdirSync, statSync, lstatSync } from 'node:fs'
+import { join, relative, resolve, sep } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
@@ -156,10 +156,17 @@ function countJsonFiles(dir: string): number {
   let count = 0
   for (const entry of readdirSync(dir).sort()) {
     const path = join(dir, entry)
-    if (statSync(path).isDirectory()) count += countJsonFiles(path)
+    const info = lstatSync(path)
+    if (info.isSymbolicLink()) throw new Error('KVVI_CONTRACT_SYMLINK_UNSUPPORTED')
+    if (info.isDirectory()) count += countJsonFiles(path)
     else if (entry.endsWith('.json')) count += 1
   }
   return count
+}
+
+// UTF-8字节序与CLI一致，避免JS的UTF-16默认排序在非BMP文件名上漂移。
+function comparePaths(a: string, b: string): number {
+  return Buffer.compare(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'))
 }
 
 /**
@@ -179,6 +186,11 @@ export function scanContractTree(tree: string): {
   const skipped: SkippedDir[] = []
   for (const type of CONTRACT_TYPES) out[type] = []
   try {
+    if (lstatSync(tree).isSymbolicLink()) throw new Error('KVVI_CONTRACT_SYMLINK_UNSUPPORTED')
+  } catch (error) {
+    if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT') throw error
+  }
+  try {
     readdirSync(tree)
   } catch {
     // 目录不存在（还没建契约）时返回全空 —— 调用方按「缺哪几份」报，不在这里猜。
@@ -187,6 +199,7 @@ export function scanContractTree(tree: string): {
   const walk = (dir: string): void => {
     for (const entry of readdirSync(dir).sort()) {
       const path = join(dir, entry)
+      if (lstatSync(path).isSymbolicLink()) throw new Error('KVVI_CONTRACT_SYMLINK_UNSUPPORTED')
       if (statSync(path).isDirectory()) {
         const reason = skipReason(entry)
         if (reason !== undefined) {
@@ -221,6 +234,8 @@ export function scanContractTree(tree: string): {
     }
   }
   walk(tree)
+  for (const paths of Object.values(out)) paths.sort(comparePaths)
+  skipped.sort((a, b) => comparePaths(a.path, b.path))
   return { found: out, skipped }
 }
 
@@ -246,6 +261,12 @@ export function contractFiles(tree: string): Record<string, string[]> {
  */
 export function readContracts(tree: string): { contracts: Record<string, unknown>; notes: string[] } {
   const { found, skipped } = scanContractTree(tree)
+  for (const type of CONTRACT_TYPES) {
+    const paths = found[type] ?? []
+    if (type !== 'tool-spec' && paths.length > 1) {
+      throw new Error(`KVVI_CONTRACT_MULTIPLE_UNSUPPORTED: ${type}：${paths.map(p => relativeOf(tree, p)).join('、')}`)
+    }
+  }
   const contracts: Record<string, unknown> = {}
   const notes: string[] = []
   for (const type of CONTRACT_TYPES) {
@@ -263,13 +284,6 @@ export function readContracts(tree: string): { contracts: Record<string, unknown
       }
       continue
     }
-    contracts[type] = JSON.parse(readFileSync(paths[0] ?? '', 'utf8')) as unknown
-    notes.push(`⚠ ${type}：找到 ${String(paths.length)} 份，用了 ${basename(paths[0] ?? '')}，`
-      + `**其余 ${String(paths.length - 1)} 份平台没有位置放**`)
-    // ⚠️ **丢下的每一份都点名。** 只说「其余 N 份没位置放」的话，
-    //    搭建者没法把「丢的是哪一张视图」告诉用户 —— 而那正是这条注记的用处。
-    //    与 CLI 脚手架逐条打印的粒度一致。
-    for (const extra of paths.slice(1)) notes.push(`      丢下的：${relativeOf(tree, extra)}`)
   }
   // ⚠️ 整目录跳过也逐条说。它们和上面「丢下的」是同一件事 —— 目录里**有什么没发上去** ——
   //    只是粒度是目录而不是文件。分开报的理由是粒度和理由都不同，不是因为它更次要。
@@ -316,6 +330,16 @@ export function resolveContractsDir(agent: Agent | undefined, requested?: string
     : resolve(workspace, requested)
   if (target !== workspace && !target.startsWith(workspace + sep)) {
     throw new Error('KVVI_WORKSPACE_ESCAPE: 契约目录必须在工作区内')
+  }
+  let current = workspace
+  for (const part of relative(workspace, target).split(sep).filter(Boolean)) {
+    current = join(current, part)
+    try {
+      if (lstatSync(current).isSymbolicLink()) throw new Error('KVVI_CONTRACT_SYMLINK_UNSUPPORTED')
+    } catch (error) {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') break
+      throw error
+    }
   }
   return target
 }

@@ -21,7 +21,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ToolDefinition, ToolRunContext } from '@deepseek-ai/dsh-tools'
 import { createHmac } from 'node:crypto'
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Agent } from '@deepseek-ai/dsh-agent'
@@ -150,7 +150,7 @@ describe('契约装订：与 CLI 脚手架同一套', () => {
     }
   })
 
-  it('★ 两类里多出来的那份：用了哪张、丢下了什么，逐条报出来', () => {
+  it('multiple views are rejected before silently losing a view', () => {
     const root = tree({
       '契约/01-x-business-schema.json': '{}',
       '契约/02-表单-view-schema.json': '{"which":"form"}',
@@ -161,15 +161,40 @@ describe('契约装订：与 CLI 脚手架同一套', () => {
       '契约/07-x-搭建命令.json': '{}',
     })
     try {
-      const { contracts, notes } = readContracts(root)
-      // 平台每类只存一份 —— 必须挑一份，并说清挑了哪份。
-      expect(contracts['view-schema']).toEqual({ which: 'form' })
-      const dropped = notes.join('\n')
-      expect(dropped).toContain('找到 2 份')
-      expect(dropped).toContain('03-列表-view-schema.json')
+      expect(() => readContracts(root)).toThrow('KVVI_CONTRACT_MULTIPLE_UNSUPPORTED: view-schema')
+      expect(() => readContracts(root)).toThrow('02-表单-view-schema.json')
+      expect(() => readContracts(root)).toThrow('03-列表-view-schema.json')
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
+  })
+
+  it('rejects symbolic links before reading external contract files', () => {
+    const root = tree({ 'outside.json': '{"secret":"do-not-read"}' })
+    try {
+      mkdirSync(join(root, '契约'))
+      symlinkSync(join(root, 'outside.json'), join(root, '契约/view-schema.json'))
+      expect(() => readContracts(join(root, '契约'))).toThrow('KVVI_CONTRACT_SYMLINK_UNSUPPORTED')
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  })
+
+  it('rejects symbolic links even in excluded subtrees', () => {
+    const root = tree({ '契约/_校验/nested/placeholder.json': '{}' })
+    try {
+      symlinkSync(join(root, '契约'), join(root, '契约/_校验/nested/loop'))
+      expect(() => readContracts(join(root, '契约'))).toThrow('KVVI_CONTRACT_SYMLINK_UNSUPPORTED')
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  })
+
+  it('orders all tool paths globally like the CLI', () => {
+    const root = tree({
+      '契约/工具/a/child.json': '{"tool":"child"}',
+      '契约/工具/a.json': '{"tool":"first"}',
+    })
+    try {
+      expect(readContracts(join(root, '契约')).contracts['tool-spec'])
+        .toEqual({ tools: [{ tool: 'first' }, { tool: 'child' }] })
+    } finally { rmSync(root, { recursive: true, force: true }) }
   })
 
   it('★ 整目录跳过的也要报出来：跳了哪个目录、里面几份', () => {
@@ -210,6 +235,15 @@ describe('契约装订：与 CLI 脚手架同一套', () => {
 })
 
 describe('契约目录的边界', () => {
+  it('rejects an existing symlink ancestor inside the workspace', () => {
+    const root = tree({ 'outside/sub/view-schema.json': '{}' })
+    try {
+      mkdirSync(join(root, 'workspace'))
+      symlinkSync(join(root, 'outside'), join(root, 'workspace/bridge'))
+      expect(() => resolveContractsDir(agentWithCwd(join(root, 'workspace')), 'bridge/sub'))
+        .toThrow('KVVI_CONTRACT_SYMLINK_UNSUPPORTED')
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  })
   it('缺省是 <工作区>/契约', () => {
     expect(resolveContractsDir(agentWithCwd('/tmp/ws'))).toBe('/tmp/ws/契约')
   })

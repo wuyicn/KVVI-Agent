@@ -791,7 +791,7 @@
       "status": "A"
     },
     "packages/host/kvvi-mode-router/package.json": {
-      "sha256": "f5fe9ad8b32eebc7b3dc8e03f579384637e43ac13facfa583ed3516b34c4f284",
+      "sha256": "d575a9b7c2fc0689dc9d89b7e9a773805161cd5f1d51027abc4c4cfaf80068e5",
       "status": "A"
     },
     "packages/host/kvvi-mode-router/src/builder-preview.ts": {
@@ -803,7 +803,7 @@
       "status": "A"
     },
     "packages/host/kvvi-mode-router/src/index.ts": {
-      "sha256": "91052373bbf7ea911ba568fdbf9483e5d79174ccdc7c3c725200b76af3f6d7b0",
+      "sha256": "4ad982a669877ae5de8c914aa4344dadec5f34f21b6d6ef47d6dc4c7c5294f01",
       "status": "A"
     },
     "packages/host/kvvi-mode-router/tests/builder-preview.spec.ts": {
@@ -827,7 +827,7 @@
       "status": "A"
     },
     "packages/host/kvvi-mode-router/tsconfig.json": {
-      "sha256": "fb9173b2ac2dc18507949cd89ebd556908bcd0d7c89aa6caec724c4dfa5f3482",
+      "sha256": "88eafd84525e03c417c783b1ddf9c033731b823314150ea9148a4987b89a7eb4",
       "status": "A"
     },
     "packages/host/webserver/README.md": {
@@ -1003,11 +1003,11 @@
       "status": "A"
     },
     "packages/tool/kvvi-publish/src/index.ts": {
-      "sha256": "c5f3ee0f89b795d04c1d44e9d02ad64e3be9608dbf2584e6bd9f78d58c2a9c6c",
+      "sha256": "17204a3cea1bd13c9873f9b246667463ea3f48d6bf899b0c9ff5615648a97011",
       "status": "A"
     },
     "packages/tool/kvvi-publish/tests/publish.spec.ts": {
-      "sha256": "0797cbaefec8fc2cf3d68d514e26c15b77280b86d5e0a94addac00a3b6f21209",
+      "sha256": "8aa443dd14e5d83820504742708929b850dedb656d1b23335071e9c7c9ba8fad",
       "status": "A"
     },
     "packages/tool/kvvi-publish/tsconfig.json": {
@@ -1078,7 +1078,7 @@
       "upstream_baseline_sha256": "568b5f6d7d94f9a7d02040ea309ab858e8d2d47c9c5f68a9236a48268ed50d03"
     }
   },
-  "fork_head": "7b8490d0fa2a91041bffc2584f9d8f8fc730759f",
+  "fork_head": "6deedc207639804df143f48514abccff8650f7e1",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "e6a559b1550f5bee359cffc514f6a498710d0697"

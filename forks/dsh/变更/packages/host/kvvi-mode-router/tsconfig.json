@@ -22,6 +22,15 @@
     },
     {
       "path": "../../interaction/user-approval"
+    },
+    {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../../api/session-controller/tsconfig.host.json"
+    },
+    {
+      "path": "../../preset/agent-presets"
     }
   ]
 }

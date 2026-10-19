@@ -8,6 +8,9 @@ import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-user-approval'
+import type {} from '@deepseek-ai/dsh-api-session-controller'
+import type {} from '@deepseek-ai/dsh-agent-presets'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import { managedBusinessDirectory } from './business-directory.ts'
 import { readManagedDraft } from './builder-preview.ts'
 
@@ -42,30 +45,6 @@ interface SessionSearchValueLike {
   readonly items: readonly SessionSummaryLike[]
   readonly hasMore?: boolean
 }
-interface SessionControllerLike {
-  create(request: SessionCreateRequest): Promise<unknown>
-  list(request: unknown, signal: AbortSignal): Promise<SessionListValueLike>
-  search(request: unknown, signal: AbortSignal): Promise<SessionSearchValueLike>
-  control(signal: AbortSignal): AsyncIterable<unknown>
-}
-
-/**
- * 一次会话能看见的预置清单 —— 只取路由器要收窄的那三个字段。
- *
- * 故意不 import `@deepseek-ai/dsh-agent-presets` 的类型：这个包与它的关系是
- * 「结构上对得上」，与 {@link SessionControllerLike} 同一路数，不为一次收窄多一条依赖。
- */
-interface AgentPresetRosterLike {
-  readonly presets: readonly { readonly id: string }[]
-  readonly authorable: boolean
-  readonly modeSelectionEnabled: boolean
-}
-
-interface AgentPresetsLike {
-  select(agent: unknown, requested: string): Promise<string>
-  remoteExportList(): Promise<AgentPresetRosterLike>
-}
-
 const VERSION = 'v1'
 const OWNED_SESSION_VERSION = 'kvvi1'
 const MAX_AGE_MS = 60_000
@@ -400,8 +379,6 @@ export interface Config {
 declare module '@deepseek-ai/cordis' {
   interface Context {
     kvviModeRouter: KvviModeRouter
-    sessionController: SessionControllerLike
-    agentPresets: AgentPresetsLike
   }
   interface Events {
     'connection/request'(request: IncomingMessage, response: ServerResponse,
@@ -525,8 +502,11 @@ export class KvviModeRouter extends Service {
     const originalList = sessionController.list.bind(sessionController)
     const originalSearch = sessionController.search.bind(sessionController)
     const originalControl = sessionController.control.bind(sessionController)
-    sessionController.create = ((request: SessionCreateRequest) =>
-      originalCreate(enforceCreateRequest(request, this.requireMode()))) as typeof sessionController.create
+    sessionController.create = ((request) => {
+      const mode = this.requireMode()
+      const enforced = enforceCreateRequest({ ...request }, mode)
+      return originalCreate({ ...request, sessionId: SessionId(enforced.sessionId!), agentPreset: mode.preset })
+    }) as typeof sessionController.create
     sessionController.list = (async (request, signal) => {
       const mode = this.requireMode()
       return filterItems(await originalList(request, signal), mode)

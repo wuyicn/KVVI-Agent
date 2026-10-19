@@ -213,7 +213,10 @@ def _skip_reason(name):
 def _count_json(directory):
     """数一个子树里有多少 `.json`。注记要能说出丢了几份，才让人判断得出要不要在意。"""
     count = 0
-    for base, _dirs, files in os.walk(directory):
+    for base, dirs, files in os.walk(directory):
+        for name in dirs + files:
+            if os.path.islink(os.path.join(base, name)):
+                raise CliError('KVVI_CONTRACT_SYMLINK_UNSUPPORTED')
         count += sum(1 for name in files if name.endswith('.json'))
     return count
 
@@ -227,13 +230,17 @@ def _scan_contract_tree(tree):
     @param tree 契约目录
     @returns `(found, skipped)` —— 每类的候选文件表，与被跳过的子树
     """
+    tree = os.path.normpath(tree)
     found = {t: [] for t in CONTRACT_TYPES}
     skipped = []
+    if os.path.islink(tree):
+        raise CliError('KVVI_CONTRACT_SYMLINK_UNSUPPORTED')
     for base, dirs, files in os.walk(tree):
         # 就地剪枝：不剪的话 os.walk 会继续往里走，`skipped` 与「读到的」就对不上了。
-        # 按 `dirs` 原有顺序处理，只做移除 —— 排序会改变 `found` 里同级候选的先后，
-        # 而 `paths[0]` 是要被采用的那一份。
+        # 候选文件在遍历结束后统一按路径排序，与 Agent 保持一致。
         for name in list(dirs):
+            if os.path.islink(os.path.join(base, name)):
+                raise CliError('KVVI_CONTRACT_SYMLINK_UNSUPPORTED')
             reason = _skip_reason(name)
             if reason is None:
                 continue
@@ -245,6 +252,8 @@ def _scan_contract_tree(tree):
                 'files': _count_json(full),
             })
         for name in sorted(files):
+            if os.path.islink(os.path.join(base, name)):
+                raise CliError('KVVI_CONTRACT_SYMLINK_UNSUPPORTED')
             if not name.endswith('.json'):
                 continue
             # ⚠️ 判据是**相对路径**，不只是文件名。
@@ -259,7 +268,9 @@ def _scan_contract_tree(tree):
     # 按路径排序再交出去：`os.walk` 的目录顺序是文件系统给的，工具那边是
     # `readdirSync(...).sort()`。不排序的话同一棵树在两处会得到**同样内容、
     # 不同顺序**的注记，对拍时就分不清「不一致」和「只是顺序不同」。
-    skipped.sort(key=lambda item: item['path'])
+    for paths in found.values():
+        paths.sort(key=lambda path: path.encode('utf-8'))
+    skipped.sort(key=lambda item: item['path'].encode('utf-8'))
     return found, skipped
 
 
@@ -282,27 +293,20 @@ def read_contracts(tree):
     """
     读出六份契约的内容。
 
-    ── 这里要处理一件事：平台的契约存储**装不下真实系统的形状** ──────────────
-    平台的 `published_contracts` 是 **「(类型, 系统代号) 一份」**：
-    `latestContract(companyId, 'view-schema', assetId)` 回来只有一份内容。
-
-    而搭出来的真实系统是：
-      · **两张视图**（登记表单 + 列表）—— 平台每类只存一份；
-      · **七个工具**（`06-工具/*.json`）—— 平台每类只存一份，
-        而契约 schema 的 `tool-spec#/$defs/Spec` 又只描述**一个**工具。
-
-    这不「多几份不占地方」，它是**存储形状与产品形状对不上**：
-    发布能成功，员工看到的却是其中一张视图；其余的工具契约发上去了，
-    而没有任何读取路径会看到它们。
-
-    所以本脚手架**不假装它解决了**，而是两件事都做：
-      1. 按一套**明说的约定**装订（下面 `CONVENTIONS`），让整条链能真的跑一遍；
-      2. 把「装订丢掉了什么」逐条打印出来，交给决定的人。
+    当前平台每种非工具契约只存一份；发现多份时拒绝装订并点名全部文件，
+    避免提交成功却丢失视图或模型。多工具仍完整装订为 `{tools: [...]}`。
+    与 Agent `readContracts` 保持同一判据、错误码与路径顺序。
 
     @param tree 契约目录
-    @returns `(contracts, notes)` —— 内容表，与「装订约定」和「丢掉了什么」的说明
+    @returns `(contracts, notes)` —— 内容表、缺份、多工具装订与目录排除说明
+    @raises CliError 多份非工具契约，码为 KVVI_CONTRACT_MULTIPLE_UNSUPPORTED
     """
     found, skipped = _scan_contract_tree(tree)
+    for contract_type in CONTRACT_TYPES:
+        paths = found[contract_type]
+        if contract_type != 'tool-spec' and len(paths) > 1:
+            raise CliError('KVVI_CONTRACT_MULTIPLE_UNSUPPORTED: %s：%s'
+                           % (contract_type, '、'.join(os.path.relpath(p, tree) for p in paths)))
     contracts, notes = {}, []
     for contract_type in CONTRACT_TYPES:
         paths = found[contract_type]
@@ -324,14 +328,7 @@ def read_contracts(tree):
                          % len(paths))
             continue
 
-        # 其余类型：平台每类只存一份，**必须挑一份**，并说清挑了什么、丢下了什么。
-        contracts[contract_type] = _load(paths[0])
-        notes.append('⚠ %s：找到 %d 份，用了 %s，**其余 %d 份平台没有位置放**'
-                     % (contract_type, len(paths), os.path.basename(paths[0]), len(paths) - 1))
-        for extra in paths[1:]:
-            notes.append('      丢下的：%s' % os.path.relpath(extra, tree))
-    # ⚠️ 整目录跳过也逐条说。它们和上面「丢下的」是同一件事 —— 目录里**有什么没发上去** ——
-    #    只是粒度是目录而不是文件。分开报的理由是粒度和理由都不同，不是因为它更次要。
+    # 整目录排除继续逐条说明，让搭建者知道夹具、片段与隐藏目录未进入发布。
     for item in skipped:
         notes.append('⚠ 整目录跳过：%s（%d 个 .json） —— %s'
                      % (item['path'], item['files'], item['reason']))

@@ -118,3 +118,35 @@
 - 在独立registered-fork从固定基线及镜像建立可核对Git提交，用现有G2生成器生成242路径指纹；G2登记52条/242路径全匹配；新鲜重建234覆盖+8删除全部匹配。原vendor未改；内层仓库没有向任何remote推送。
 - 根host类型检查exit2，共284条诊断；本批两包无诊断。主要是既有Context上的SessionControllerLike/AgentPresetsLike窄声明污染真实服务面；任务11仍须修复，不能将包测试通过写成完整构建通过。
 - 未执行真实DeepSeek：当前进程无DEEPSEEK_API_KEY，工作区settings无DeepSeek配置。已向用户询问安全配置位置，继续独立任务；没有读取聊天中的密钥、调用付费模型、更新试点或刷新历史快照。
+
+## 批次9：真实服务类型与契约装订边界
+
+- 移除mode-router对Context.sessionController/agentPresets的窄全局重声明，引用真实服务类型与对应项目；create保留真实请求字段并构造SessionId。根host类型检查由284条诊断降为0，`pnpm exec tsc -b tsconfig.host.json --pretty false` exit0。
+- CLI与Agent均拒绝多份非工具契约并列出文件，工具契约全部装订；拒绝契约内及被排除子树中的符号链接。新增反例先RED，含排除子树循环链接、全局路径排序。
+- 独立复核另复现非BMP文件名排序差异、CLI根符号链接尾斜杠绕过；追加反例先RED，再统一UTF-8字节排序及规范化根路径。Python/实际TS对拍12/12、三包8文件110/110、exit0；没有以拒绝多视图冒称多视图已实现，也没有宣称覆盖目录并发替换的TOCTOU。
+- `pnpm run build`最初因默认Node24.19.0不带Node-API头文件在native阶段失败；明确PATH选择已安装的Node24.20.0后，最终完整构建exit0（native→host/client库→Web，252个client产物）。没有改依赖版本、刷新历史快照或部署试点。
+- 现有G2生成器使用隔离registered-fork生成242路径指纹，登记52条全有效；新鲜绝对路径重建234覆盖+8删除全部匹配，exit0。相对--into重建会因cwd不一致失败，已记录待修，未把它算成成功。
+- 同期在新建隔离PG17集群重跑p1-blockers/publish-atomicity/field-write-consistency：12/12、exit0。只证明当前这些反例；任务1/2的并发及撤权扩展、任务3的耐久审计与原key恢复仍未关闭。
+- 用户提供的kvvi.env路径存在，关联runtime运行，但只读键名检查未发现DEEPSEEK_API_KEY；不打印配置值，不重启试点，真实模型仍未执行。
+
+本批可复现命令（所有DSH命令均在新建固定源副本执行）：
+
+```sh
+KVVI_PUBLISH_TEST_RUNTIME=<固定源绝对路径> python3 -m unittest 工具.test_publish_contracts
+pnpm exec tsc -b tsconfig.host.json --pretty false
+pnpm exec vitest run packages/host/kvvi-mode-router/tests packages/tool/kvvi-business/tests packages/tool/kvvi-publish/tests
+# PATH首项为已安装的Node24.20.0/bin，pnpm实际11.7.0
+pnpm run build
+python3 工具/fork.py --rebuild --into <新的绝对路径>
+KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node services/platform/tests/run-isolated.mjs node --test --test-concurrency=1 services/platform/tests/p1-blockers.test.mjs services/platform/tests/publish-atomicity.test.mjs services/platform/tests/field-write-consistency.test.mjs
+```
+
+非敏感本地日志摘要（原始日志保留在忽略目录，不作为唯一证据）：
+
+- `contracts-python-green.log`：SHA-256 `fb4f9aa8879de210e18f3e3bedae7d73c00bdeb624b61e619d22b469952a5614`，111字节。
+- `runtime-contracts-typecheck.log`：SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`，0字节。
+- `runtime-contracts-green.log`：SHA-256 `da08e79eb73f8a2acc53921f5024d6382ff6437a2dfc43c9b2eebbb1229bde17`，949字节。
+- `full-build-final.log`：SHA-256 `6f76476dac6895d2de007d77b4073486750d6b8fe52e377af0af3caed9b07807`，352804字节。
+- `contracts-g2.log`：SHA-256 `61029deaffe9ca8282dca037170e05eeac125381f820c7010f3eff1d08c7bc96`，423字节。
+- `contracts-rebuild.log`：SHA-256 `cb6ae68661832a91373f9b415ac267b85446e272b60a99985b17a137ddffe74e`，440字节。
+- `security-publish-fields-current.log`：SHA-256 `040b1056941e13f76f8468b0095af90219d101ccbe8baabeab47d5a99f725e0d`，1620字节。
