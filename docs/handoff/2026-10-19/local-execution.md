@@ -820,3 +820,22 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `package-build-inventory-final312-2.log`：`8a4b690fd8c46bef0ed2dd756c85e6964c7e8401eec1fc57c11e9f64dcf6008e`。
 - `package-build-inventory-final39-2.log`：`0dc49fea56a6d26c569757e30233a792dfe2a51c8474c62550ca7e1cf4bdce1b`。
 - `package-build-inventory-fresh-final2.json`：`a69571fb1dfb250d6db28a48878514990f7c5e75c6c13db330b93b1c4297d26f`。
+
+
+## 批次52：只含固定声明源的新构建输入
+
+- 新增package_build_source，完整sourceRows逐项绑定type/原bytes或linktext SHA后复制；普通文件O_EXCL/NOFOLLOW独占写，规范化mode绑定材料行，链接最后建立并确认内部目标，完整source+材料typed digest验证后才发布新或空目标。禁止相对/非空/文件/link目标及原source/Git对象根内部目标；APFS保护根大小写别名先RED，补祖先dev/ino身份判断后拒绝在保护根创建stage。原built/依赖/收据不写、不清理。
+- 初8组缺模块先RED，初绿后两位复核发现末轮材料读取后的新文件及完整source默认排除的旧输出可夹带。新增未登记文件、node_modules、lib、webdist、收据、空目录6个独立子反例先RED（各自清理自有失败发布目标，防首例失败污染后续）；原source末扫描新增及stage qual返回后注入忽略output亦先RED。材料扫描后完整复验，再核stage真实全部路径严格等于sourceRows及父目录；不只比较固定行或忽略排除项。允许的声明源本身若位于声明目录，仍以精确全集为判据，不把排除列表简单清空作为替代。
+- 独立复核又实证stage完整qual返回后改mode755，材料仍记644；mode/body两独立子反例先RED，再在full stage qual后重新核全部材料行，最后全路径闭包、target身份状态、rename。末材料扫描新增extra也由闭包拒绝。两位独立13/13及原snapshot级注入、mode/body反例闭环，无新增阻断。
+- 最终13新组+output/client/provenance/source/raw既有55共68项，Python3.12/系统3.9.6 -W error::ResourceWarning全部通过、exit0（8.134/8.980秒），当前APFS大小写真实别名正对照通过，无skip。CI加入同入口；clone行仍既有受控timeout预期。packager/平台未改，最近完整对应批次50的121项/批次40的810项，不称为本批新跑。
+- 最终实际只把raw-rebuild-kb2jqs9a固定源复制到新自有clean-build-source-7faca1c02ae1：12196材料项、0未鉴定排除，固定source digest仍e5bd0355fdf46668f7df25509a2c2ea48dfc75623a2ad49d9975fe3ebac99b9e；规范化材料digest ecc7aa6df47e826d7d3bcf2f8df9923528c0be060fbd41a5ad45cf64c4fa8b09。先前自有clean-build-source-0057ec84fa6b保留；原source/对象库未改。没有安装依赖、执行构建/打包/部署/重启或模型验收。材料mode不代表预期exec策略或raw权限资格，releaseApproved:false，12项仍不勾选。下一步受控runner执行固定安装/全构建并关联完整输入/输出凭证。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `package-build-source-red.log`：`013e9feb6dd538b653b3e49f4d17b495d9aa99e658e4836b9411adc8b6977349`。
+- `package-build-source-protected-alias-red.log`：`1982e3dc1efeb44cc65daab7a56e3f9bea4f66473c46c734f44f94b7d3f7071b`。
+- `package-build-source-clean-closure-red2.log`：`39d87a6e479ff7109590eeacb56a913c0e8e085b7eb06387fe14b891ab14d4ad`。
+- `package-build-source-late-extra-red.log`：`0053f7262100887dad8e3090860470b8fa610850fa57dc4867735ceae109ebe8`。
+- `package-build-source-final-material-red.log`：`91cfeb0a936137d91bb4514c39028ff391be71e4e539e2803a3e7279a0b54d8e`。
+- `package-build-source-final312-2.log`：`96c68b2c26fc0b131b7b80bffcf14c0a7eaaabacc08a814e7ee591f49d182b4b`。
+- `package-build-source-final39-2.log`：`d869ff4bbd2dc1d8ee3b16b3b7a7377233b6f1468498f2dd796dd7649890183c`。
+- `package-build-source-real-final.json`：`b1eaeb224072bac277746530ecf2ca4c4ddc405c091b917f2e78e86dbd2f9cb2`。
