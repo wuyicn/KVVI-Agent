@@ -17,7 +17,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { KvviSystemShell } from '../src/client/SystemShell.tsx'
 import type { Copy } from '../src/client/FormView.tsx'
 import { zh } from '../src/client/locales.ts'
-import {businessFetch} from './record-write-server.ts'
+import {businessFetch,entrance} from './record-write-server.ts'
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
@@ -356,7 +356,7 @@ it('a lost PATCH is acknowledged before reloading the current server record, nev
   let row={recordId:'r1',recordNo:'R000001',rowVersion:3,state:'submitted',data:{title:'报销'},fieldVisibility:{title:'VISIBLE'}}
   const fetcher=businessFetch(async(url,init)=>{
     if(init?.method==='PATCH') {row={...row,rowVersion:4,data:{title:'server canonical current'}};return Response.json({recordId:'r1',rowVersion:4})}
-    return Response.json(url.endsWith('/records/r1')?row:healthy()[`GET ${url}`]?.body)
+    return Response.json(url.endsWith('/records/r1')?row:url.endsWith('/records')?{items:[row],fieldVisibility:row.fieldVisibility}:healthy()[`GET ${url}`]?.body)
   })
   vi.stubGlobal('fetch',fetcher);fetcher.loseNextBusinessReply()
   const mounted=render(<KvviSystemShell copy={t} initialSystem={SYSTEMS.items[0]!}/>)
@@ -373,6 +373,8 @@ it('a lost PATCH is acknowledged before reloading the current server record, nev
   await waitFor(()=>expect(screen.getByLabelText('title')).toHaveProperty('value','server canonical current'))
   expect((screen.getByLabelText('title') as HTMLInputElement).disabled).toBe(false)
   expect(fetcher.mock.calls.filter(([,init])=>init?.method==='PATCH')).toHaveLength(1)
+  fireEvent.click(screen.getAllByRole('button',{name:zh['detail.back']})[0]!)
+  await screen.findByText('server canonical current')
 })
 
 it('a record read completing after Back cannot reopen the old detail',async()=>{
@@ -426,4 +428,51 @@ it.each(['form','detail'])('a transient focus identity failure withholds editing
   expect(screen.getByLabelText('title').closest('[hidden]')?.hasAttribute('inert')).toBe(true)
   unavailable=false;fireEvent.click(screen.getByRole('button',{name:zh['read.retry']}))
   await waitFor(()=>expect(screen.getByRole('textbox')).toHaveProperty('value','keep unsaved same session'))
+})
+
+
+it.each([false,true])('identity revalidation withholds the retained subtree until a response (changed=%s)',async(changed)=>{
+  const normal=businessFetch(async(url)=>Response.json(healthy()[`GET ${url}`]?.body))
+  let defer=false,finish!:(response:Response)=>void
+  vi.stubGlobal('fetch',vi.fn((url:string,init?:RequestInit)=>url==='/auth/session'&&defer
+    ?new Promise<Response>(resolve=>{finish=resolve}):normal(url,init)))
+  render(<KvviSystemShell copy={t} initialSystem={SYSTEMS.items[0]!}/>)
+  fireEvent.change(await screen.findByLabelText('title'),{target:{value:'pending identity draft'}})
+  defer=true;fireEvent.focus(window)
+  await waitFor(()=>expect(finish).toBeTypeOf('function'))
+  expect(screen.queryByRole('textbox')).toBeNull()
+  expect(screen.getByLabelText('title').closest('[hidden]')?.hasAttribute('inert')).toBe(true)
+  defer=false
+  if(changed){
+    const next={companyId:'other-company',userId:'other-user',sessionId:'other-session',gateway:'USER'}
+    normal.setEntrance(next);finish(Response.json(next))
+    await screen.findByRole('button',{name:zh['systems.open']})
+    expect(screen.queryByLabelText('title')).toBeNull()
+  }else{
+    finish(Response.json(entrance))
+    await waitFor(()=>expect(screen.getByRole('textbox')).toHaveProperty('value','pending identity draft'))
+  }
+})
+
+
+it('ACK refreshes a list that was already loaded before the PATCH in the same occurrence',async()=>{
+  let row={recordId:'r1',recordNo:'R000001',rowVersion:3,state:'submitted',data:{title:'old list value'},fieldVisibility:{title:'VISIBLE'}}
+  const fetcher=businessFetch(async(url,init)=>{
+    if(init?.method==='PATCH'){row={...row,rowVersion:4,data:{title:'current after patch'}};return Response.json({recordId:'r1',rowVersion:4})}
+    return Response.json(url.endsWith('/records/r1')?row:url.endsWith('/records')?{items:[row],fieldVisibility:row.fieldVisibility}:healthy()[`GET ${url}`]?.body)
+  })
+  vi.stubGlobal('fetch',fetcher)
+  render(<KvviSystemShell copy={t} initialSystem={SYSTEMS.items[0]!}/>)
+  await screen.findByLabelText('title');fireEvent.click(screen.getByRole('button',{name:zh['system.tab.records']}))
+  await screen.findByText('old list value')
+  fireEvent.click(screen.getByRole('button',{name:zh['list.open']}))
+  fireEvent.change(await screen.findByLabelText('title'),{target:{value:'local input'}})
+  fireEvent.click(screen.getByRole('button',{name:zh['detail.save']}))
+  await screen.findByText(zh['detail.saved'])
+  fireEvent.click(screen.getByRole('button',{name:zh['recovery.acknowledge']}))
+  await waitFor(()=>expect(screen.getByRole('textbox')).toHaveProperty('value','current after patch'))
+  fireEvent.click(screen.getAllByRole('button',{name:zh['detail.back']})[0]!)
+  await screen.findByText('current after patch')
+  expect(screen.queryByText('old list value')).toBeNull()
+  expect(fetcher.mock.calls.filter(([,init])=>init?.method==='PATCH')).toHaveLength(1)
 })

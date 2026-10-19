@@ -377,3 +377,19 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `legacy-write-recovery-build-final3.log`：`a52db02c4994da83210ed0ac8f9dc0f9193731b699d4f92914a21c4890ca2cbf`。
 - `legacy-write-recovery-g2.log`：`957753d8019f8c5adbd1af439fe9ca8334fbb47766667d4fc0a194786c276b38`。
 - `legacy-write-recovery-rebuild.log`：`9a8c4240570c68ed0f2ea289aafb8e89bbd2d8084aaec5bcc47a859d821c33f0`。
+
+
+## 批次27：身份检查等待期隔离与确认后的列表重读
+
+- 第二名独立复核在批次26提交后指出：focus检查开始至响应返回间，旧身份内容尚未隐藏；并且PATCH ACK只重读详情，已加载列表不刷新。分别新增延迟身份响应（同身份/新身份）及同occurrence预加载列表→PATCH→ACK→返回列表反例。
+- checking从请求开始即隐藏并设置DOM inert，保留已挂载输入到身份确认；同身份恢复原值，不同身份销毁。ACK/取消重载同时递增列表读取序号。身份测试2项先RED；第一次lostPATCH重开用例的列表已是新值，不能证明旧列表缺陷，因此另补同一次打开内预加载旧列表的用例，在隔离构建源暂去掉列表刷新这一行时明确RED，再恢复实际源码通过。
+- 最终21文件257/257，host/client根tsc exit0，完整build exit0（252产物），G2 248路径/52登记、新鲜240覆盖+8删除一致。不新增自动业务写入，不部署试点。真实浏览器与剩余验收仍未执行。
+
+非敏感日志SHA-256：
+- `legacy-checking-list-red.log`：`6e750ecb8c05bb0dee06314d2c3958e487a9f1289f4730300fa06ddacdbd34db`。
+- `legacy-preloaded-list-red.log`：`d741bec2911600a7fe2bf552d6cc9a4a690091f644a3a78ac2ccc8bb26c85c24`。
+- `legacy-checking-list-package-final.log`：`3f83e20f793d8f260a256d8924ba081e538e8d7e2373f72ed6f7212055940718`。
+- `legacy-checking-list-types-final.log`：`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`。
+- `legacy-checking-list-build-final.log`：`1f185d7d9ec3a5a9b808189741dbba31e94306cd22c765104ea21e7d5cf5dab6`。
+- `legacy-checking-list-g2.log`：`8998762eb35572304ce24a585304135cb47e301aa37ad8bbfff69a9343a3607b`。
+- `legacy-checking-list-rebuild.log`：`9a8c4240570c68ed0f2ea289aafb8e89bbd2d8084aaec5bcc47a859d821c33f0`。

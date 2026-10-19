@@ -68,16 +68,18 @@ function describeFailure(code: string, detail?: string): string {
  */
 export function KvviSystemShell(props: KvviSystemShellProps): ReactNode {
   const [identity,setIdentity]=useState<string|null>(null)
+  const [checking,setChecking]=useState(true)
   const [error,setError]=useState<string>()
   const [attempt,setAttempt]=useState(0)
   const initialIdentity=useRef<string>()
   useEffect(()=>{
     let controller:AbortController|undefined
     const refresh=()=>{
-      controller?.abort();controller=new AbortController()
+      setChecking(true);controller?.abort();controller=new AbortController()
       const current=controller
       void readEntrance(current.signal).then(result=>{
         if(current.signal.aborted)return
+        setChecking(false)
         if(!result.ok){if(result.status===401||result.status===403)setIdentity(null);setError(result.code);return}
         const who=result.value
         if(who===null||typeof who!=='object'||![who.companyId,who.userId,who.sessionId].every(value=>typeof value==='string'&&value!=='')
@@ -93,9 +95,10 @@ export function KvviSystemShell(props: KvviSystemShellProps): ReactNode {
   // A transient check must not destroy the same session's unsaved inputs.
   // The retained subtree is inaccessible until the identity is confirmed.
   return <>
+    {checking?<p role="status">{props.copy('panel.loading')}</p>:null}
     {error===undefined?null:<ReadFailure error={error} copy={props.copy} onRetry={()=>{setAttempt(value=>value+1)}}/>}
     {identity===null?(error===undefined?<p role="status">{props.copy('panel.loading')}</p>:null):
-      <div hidden={error!==undefined} ref={element=>{element?.toggleAttribute('inert',error!==undefined)}}>
+      <div hidden={checking||error!==undefined} ref={element=>{element?.toggleAttribute('inert',checking||error!==undefined)}}>
         <SystemShellSession key={identity} {...rest}
           {...(initialIdentity.current===identity&&initialSystem!==undefined?{initialSystem}:{})}
           identity={identity} refreshIdentity={()=>{setAttempt(value=>value+1)}}/>
@@ -204,7 +207,7 @@ function SystemShellSession({ copy, onDock, initialSystem, identity, refreshIden
   },[open,detailId,detailAttempt])
   const reloadWrite = () => {
     refreshIdentity();setRuntimeAttempt(value=>value+1);setFormAttempt(value=>value+1)
-    setDetailAttempt(value=>value+1);setSaved(false);setNotice(null)
+    setDetailAttempt(value=>value+1);setListAttempt(value=>value+1);setSaved(false);setNotice(null)
   }
 
   const model = projection === null || open === null ? undefined : projection.models[open.assetId]

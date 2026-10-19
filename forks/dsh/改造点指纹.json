@@ -335,7 +335,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/SystemShell.tsx": {
-      "sha256": "03197b9c602ffe7cb62305622df60f594054776ea70aa1775cc756b0d344ec6a",
+      "sha256": "32f1e8f1c90998cefe653b2abd24fa926e7f04de81f209e7ca9264ad28d0ccde",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/api.ts": {
@@ -475,7 +475,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/system-shell.spec.tsx": {
-      "sha256": "4c0212cea774ccbe769cb8b1dffc494723052877974a948a538f0cd98bb2e85c",
+      "sha256": "6e84fce49b9c0b8a5832a502ff5038962cd3d5bafd3bfc62b00cd82834239958",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/values.client.spec.ts": {
@@ -1102,7 +1102,7 @@
       "upstream_baseline_sha256": "568b5f6d7d94f9a7d02040ea309ab858e8d2d47c9c5f68a9236a48268ed50d03"
     }
   },
-  "fork_head": "0552f5e1e4b2fb396442b89d51beceebcee3ba04",
+  "fork_head": "8920b8094ed26cc89922334c835a1e58119b2a6c",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "e6a559b1550f5bee359cffc514f6a498710d0697"
