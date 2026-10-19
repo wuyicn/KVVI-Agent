@@ -31,3 +31,13 @@
 - [x] 7组Git夹具及双Python联合75项通过；实际新树12196项资格通过、旧built树拒绝。success仍releaseApproved:false，明确exec位/依赖/输出/client收据/目录消费/发行验收未鉴定。
 - [x] v3将接口接入candidate前后、manifest内外绑定与G9必需校验；私有完整source表校验自身摘要后绑定candidate正文/链接与必收全集，阻断临时改动再恢复或漏收。main元数据核同表SHA，workspace由表枚举，最终candidate内main须解析到regular file。双Python92项及独立复核通过。
 - [ ] 再接完整host/native/client构建与目录收据；v3现有source资格不代表输出来源或发行资格。
+
+## 客户端收据完整性接口（批次49完成，待接候选）
+
+先增加独立只读接口，不将现有source-only v3提升成构建资格。输入仍为显式runtime-source、Git对象及仓库固定G2。完整source资格成功后，从其表核对package.json原字节，并以同一G2原字节中的fork_head及固定package版本形成唯一允许的两个公开客户端环境值。未知公开变量、格式/重复键/深JSON/非regular收据固定拒绝，不输出原值。
+
+收据固定为.dsh-build/client-build-environment.json。逐项收集上游五种模式的全部当前产物：web dist递归文件，以及packages两级包lib下client.js/client.js.map/client.*.js/client.*.js.map；按上游glob默认排除隐藏路径；web dist内匹配的node_modules也按上游计入，其他host输出不纳入。匹配文件、匹配目录及祖先link均拒绝；packages/CLAUDE.md这类未匹配文档link不读目标正文。按上游JavaScript UTF16排序与path字节长度/内容字节长度分帧重算digest及count，稳定初读/复读收据、完整source前后不变。成功API可显式返回私有typed artifact rows供下一批绑定candidate，失败不得留下部分资格。
+
+测试使用真实自有Git基线及手工独立计算收据：缺/改/多产物、改环境、重复/超限JSON、路径link、校验中收据/source变化均拒绝；只读核实实际252产物。此接口只证明收据与当前产物完整性，不认证先前构建因果、依赖、host/native或目录消费；随后接v4候选及完整受控重建收据。
+
+批次49实际17组与既有27组共44项双Python通过，独立Node glob/framing边界对照通过；新树252项收据匹配、旧built source拒绝。仅新增只读接口和CI；候选绑定及受控构建仍未完成。

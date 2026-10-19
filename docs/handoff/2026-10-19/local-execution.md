@@ -768,3 +768,21 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `package-source-gate-final312-2.log`：`e441765cc41005eeee6e78218968717ae7333f8b495fab3e60897b9312c46033`。
 - `package-source-gate-final39-2.log`：`ef391a99faa8d76e4069229ebf6e2d71868346a8d7a575b725c45e4a90782484`。
 - `package-source-row-binding-fresh-final2.json`：`601c564e9183ae934467e3643b70a5f97ad598a06505ffb1eec31a78de799701`。
+
+
+## 批次49：固定源客户端收据完整性只读接口
+
+- 新增package_client，先完整source资格与私有表，再从同一G2原SHA所绑定fork_head和同sourceRows SHA的根package.json version形成唯一两个公开环境值。固定.dsh-build/client-build-environment.json稳定有界读取，严格格式/类型/重复键/安全整数与摘要；失败固定CLIENT_RECEIPT_REJECTED，无部分source/artifact资格或原始环境值回显。
+- 精确复现上游五模式，按JavaScript UTF16排序、UTF8路径字节长度及正文长度分帧计算摘要；digest与typed rows来自同次snapshot，第二轮路径集合/rows/digest相同，receipt三读原bytes一致，完整source binding前后相同。只读API可显式给私有clientRows，默认不输出全表。匹配产物/目录/祖先link拒绝，未匹配文档filelink不读正文。
+- 初11组缺模块先RED，独立复核再发现dot路径与Unicode数字语义差异；实际首次观测也因固定packages/CLAUDE.md文档link过严拒绝。增加正反夹具后glob轮先RED（5失败/1错误），版本真实Git反例先RED(valid:true)；按Node默认dot:false与ASCII版本修正，保留web dist内node_modules及client..js，真实Node独立8项集合/framing摘要与Python一致。新增源metadata临时变化及产物枚举期间新增反例，始终无部分资格。
+- 最终17新组+provenance/source/raw-export27组共44项，双Python3.12/系统3.9.6 -W error::ResourceWarning全通过、exit0（4.477/4.773秒）；两位只读复核独立34项/15项及额外集合漂移实验闭环，无新增阻断。CI加入客户端入口；末尾clone故障行仍受控timeout反例。既有packager源码未改，不重复声称92项是本批最终命令。
+- 实际只读raw-rebuild-kb2jqs9a通过，252项/摘要985ecc71bbb10cddb314fa9f3f2fd5d50af62c3a60bfe3dd0fde827f77916cb8，与既有上游收据相同；原fixed-dsh因source不符exit1固定拒绝。此接口仍releaseApproved:false，明确build-causality、host-native-outputs等未鉴定，不证明预期组件齐全或构建历史。尚未接packager候选；完整host/native及受控重建因果/目录消费继续。未生成真实包、部署/重启试点或模型验收，12项未勾选。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `package-client-red.log`：`54c5636996ce78d967cf273e00cdc2323a51a4f1702a288cdd72600af0efc377`。
+- `package-client-glob-red.log`：`bac77a3d7b47ee10294a9aec0c44977f467a0e1ddb6eba63c52957eb77db20d5`。
+- `package-client-ascii-version-red.log`：`d167281fefe666f87d9fc4db80a20d04f21260bbcaa13c0f6d3b5200f5bb539a`。
+- `package-client-final312-2.log`：`62d86fd952875587540d0e89ba868ee60575ca3a0a63827947fc51b52450c07d`。
+- `package-client-final39-2.log`：`209304277056b648f1f4fffdb8d52372eb9978da4c132ae0dfe8f2ac0a56d44e`。
+- `package-client-fresh-final.json`：`7946864f4831b18b5229aef20435c7ec08c3c0ff50e5e31cc1a05cc94644375c`。
+- `package-client-legacy-final.json`：`cbed0bafd87fb4284b9f30d8f4eadc5eac7f6fbbd4d8f5c7bd688a474e0c5a6c`。
