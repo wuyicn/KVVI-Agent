@@ -32,6 +32,8 @@ jobs:
           node --test services/platform/tests/canonical.test.mjs services/platform/tests/component-catalog.test.mjs services/platform/tests/view-tree.test.mjs services/platform/tests/production-view.test.mjs
       - name: Test fixed-source inventory boundaries
         run: python -W error::ResourceWarning -m unittest distribution.tests.test_runtime_source distribution.tests.test_raw_git_source distribution.tests.test_package_provenance
+      - name: Test kernel process membership in owned fixtures
+        run: python -W error::ResourceWarning -m unittest distribution.tests.test_process_membership distribution.tests.test_process_identity distribution.tests.test_supervisor
       - name: Test release output preservation in owned fixtures
         run: python -W error::ResourceWarning -m unittest distribution.tests.test_release_package distribution.tests.test_package_inventory distribution.tests.test_package_source_selection distribution.tests.test_evidence_commands distribution.tests.test_package_source_gate distribution.tests.test_package_client distribution.tests.test_package_client_gate distribution.tests.test_package_build_inventory distribution.tests.test_package_build_source
       - name: Validate all 13 protocol machine files

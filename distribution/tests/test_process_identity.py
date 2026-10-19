@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from distribution.lib.supervisor import start_plan, stop_plan, status_report
+from distribution.lib.supervisor import start_plan, stop_plan, status_report, _OWNED_CHILDREN
 
 
 class IdentityBoundaryTest(unittest.TestCase):
@@ -52,15 +52,13 @@ class IdentityBoundaryTest(unittest.TestCase):
         plan = start_plan(self.home, self.release)
         pid = plan._spawn({'program': 'platform', 'argv': [sys.executable, '-c', body]}, self.home / 'log')
         self.assertIsNotNone(pid)
+        child = _OWNED_CHILDREN[pid]
         def cleanup():
-            try:
-                os.kill(pid, 9)
-            except ProcessLookupError:
-                pass
-            try:
-                os.waitpid(pid, 0)
-            except ChildProcessError:
-                pass
+            if child.poll() is None:
+                child.kill()
+            child.wait(timeout=5)
+            if _OWNED_CHILDREN.get(pid) is child:
+                _OWNED_CHILDREN.pop(pid)
         self.addCleanup(cleanup)
         return pid
 

@@ -15,8 +15,8 @@ def parse_pid(value):
     return int(text)
 
 
-def observe(pid):
-    """Return immutable start identity plus UID/PGID, or None for exited/zombie."""
+def _observe_with_parent(pid):
+    """One kernel observation, including the current parent for edge checks."""
     pid = parse_pid(pid)
     if sys.platform == 'darwin':
         # Layout from the platform SDK's sys/proc_info.h (PROC_PIDTBSDINFO=3).
@@ -40,7 +40,7 @@ def observe(pid):
             raise ValueError('KVVI_PROCESS_IDENTITY_UNAVAILABLE')
         if info.status == 5:
             return None
-        return dict(pid=pid, uid=info.uid, pgid=info.pgid,
+        return dict(pid=pid, ppid=info.ppid, uid=info.uid, pgid=info.pgid,
                     startIdentity=f'darwin:{info.start_sec}:{info.start_usec}')
     if sys.platform == 'linux':
         try:
@@ -49,7 +49,7 @@ def observe(pid):
             if fields[0] == 'Z':
                 return None
             boot = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
-            return dict(pid=pid, uid=Path(f'/proc/{pid}').stat().st_uid,
+            return dict(pid=pid, ppid=int(fields[1]), uid=Path(f'/proc/{pid}').stat().st_uid,
                         pgid=int(fields[2]), startIdentity=f'linux:{boot}:{fields[19]}')
         except FileNotFoundError as error:
             if error.filename and (error.filename == f'/proc/{pid}' or error.filename.startswith(f'/proc/{pid}/')):
@@ -58,6 +58,17 @@ def observe(pid):
         except (OSError, ValueError, IndexError):
             raise ValueError('KVVI_PROCESS_IDENTITY_UNAVAILABLE') from None
     raise ValueError('KVVI_PROCESS_IDENTITY_UNSUPPORTED')
+
+
+def _public_identity(value):
+    # PPID is mutable on reparenting and must not become a saved start identity.
+    return {key: value[key] for key in ('pid', 'uid', 'pgid', 'startIdentity')}
+
+
+def observe(pid):
+    """Return immutable start identity plus UID/PGID, or None for exited/zombie."""
+    value = _observe_with_parent(pid)
+    return None if value is None else _public_identity(value)
 
 
 def group_members(pgid):
@@ -70,23 +81,41 @@ def group_members(pgid):
         if len(parts) != 2 or int(parts[1]) != pgid or int(parts[0]) <= 1:
             continue
         identity = observe(int(parts[0]))
-        if identity is not None:
+        if identity is not None and identity['pgid'] == pgid:
             members[identity['pid']] = identity
     return members
 
 
 def descendants(pid):
+    pid = parse_pid(pid)
+    root = observe(pid)
+    if root is None:
+        raise ValueError('KVVI_PROCESS_IDENTITY_UNAVAILABLE')
     result = subprocess.run(['ps', '-axo', 'pid=,ppid='], capture_output=True,
                             text=True, timeout=10, check=True)
     links = [tuple(map(int, line.split())) for line in result.stdout.splitlines() if line.strip()]
-    owned = {pid}
+    owned = {pid: root}
     while True:
-        found = {child for child, parent in links if parent in owned and child > 1}
-        if found <= owned:
+        found = {}
+        for child, parent in links:
+            if child <= 1 or child in owned or parent not in owned:
+                continue
+            # ps is only a hint. Bind each edge to one kernel PPID observation,
+            # bracketed by the already-owned parent's immutable start identity.
+            if not same_process(observe(parent), owned[parent]):
+                raise ValueError('KVVI_PROCESS_IDENTITY_CHANGED')
+            value = _observe_with_parent(child)
+            if not same_process(observe(parent), owned[parent]):
+                raise ValueError('KVVI_PROCESS_IDENTITY_CHANGED')
+            if value is not None and value['ppid'] == parent:
+                found[child] = _public_identity(value)
+        if not found:
             break
         owned.update(found)
-    return {child: identity for child in owned - {pid}
-            if (identity := observe(child)) is not None}
+    if not same_process(observe(pid), root):
+        raise ValueError('KVVI_PROCESS_IDENTITY_CHANGED')
+    del owned[pid]
+    return owned
 
 
 def identity_path(pid_file):

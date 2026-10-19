@@ -839,3 +839,15 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `package-build-source-final312-2.log`：`96c68b2c26fc0b131b7b80bffcf14c0a7eaaabacc08a814e7ee591f49d182b4b`。
 - `package-build-source-final39-2.log`：`d869ff4bbd2dc1d8ee3b16b3b7a7377233b6f1468498f2dd796dd7649890183c`。
 - `package-build-source-real-final.json`：`b1eaeb224072bac277746530ecf2ca4c4ddc405c091b917f2e78e86dbd2f9cb2`。
+
+
+## 批次53：拒绝过期ps快照误认无关进程
+
+- 构建命令执行器复核发现共用process_identity旧归属查询信任ps候选关系，可在旧PID/组/父关系过期时采纳当前无关进程的新起始身份。新增6组回归先RED（2失败/4缺私有接口错误），真实自有双session对照不发送信号；group_members要求当前内核PGID，descendants逐边用内核PPID及父起始身份前后核对，root末复验。public observe保持pid/uid/pgid/startIdentity四字段，正常reparent不改成身份不匹配。
+- 初联合46项exit0但旧身份测试结束时遗留4个Popen对象未标记回收，出现ResourceWarning；只改自有fixture cleanup为捕获Popen句柄wait并移除同一_owned表项，不隐藏warning。最终Python3.12/系统3.9.6以-W error::ResourceWarning跑membership/identity/supervisor共46项全部通过、exit0（1.120/1.188秒），无这些warning。独立复核6项及真实过期group/parent对照通过，无限定范围新增阻断。CI新增相同入口，未运行云CI。
+- WIP命令执行器尚有异常路径清理问题，保持未提交，不宣称已完成；此次修复并未运行真实构建、打包、部署/重启或模型验收。12项仍未勾选。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `process-membership-red.log`：`16b7b9fc1db9e03b9a42e7cc52cc3d56e2b0cf36b6f13611bc3f62e3e95768db`。
+- `process-membership-final312.log`：`f598ee290a9029067b8c1601ac5e473068754d7d484539469926d2c7fbb94c30`。
+- `process-membership-final39.log`：`e53c99688eb9a48fbce0a45f2fdabe7b8c63a72db58b48ad96ed9ecce2825278`。
