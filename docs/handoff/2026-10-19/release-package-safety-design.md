@@ -91,3 +91,16 @@
 正常result也携worker完整已观测身份表，父在root前后核对下合并；worker收到ack须再核自身known无活后代，有遗留转stop/失败。最终无存活组/已观测身份且discovery可确认，才给cleanupConfirmed；命令exit0和worker正常ack退出同时满足才valid。控制故障永不升级成valid，即使已清理。合作取消有界，超限只结束自有直接Popen worker并保持未知，不能声称已清空任意不受控后代。
 
 14项新真实自有进程测试连既有membership/identity/supervisor共66项双Python通过；初缺模块、异常遗留、中断/worker crash、controller死亡、worker观测未合并及ack放行均有RED记录。独立14项及带worker观察日志的父漏报/延迟/误报空三场景均闭环，无存活后代；不执行安装/build或赋予发行资格。
+
+## 新工作区离线完整构建执行器（批次56完成）
+
+仅接受新的独占workspace、显式node/pnpm entrypoint/store；拒已存在目录或source/objects/store内部目标。完整固定源复制到workspace/source，日志、最小HOME/TMP/XDG及pnpm shim均在source外。新源packageManager/engines须匹配固定11.7.0和当前上游Node约束；工具普通文件稳定摘要、实际版本/Node host架构观察及固定离线install/full build命令通过自有会话执行，不继承调用环境/凭据。shim以绝对node/entrypoint带原argv exec，阻止子脚本落到全局pnpm。
+
+成功收据绑定初始完整源码材料行、明确工具entrypoint字节、实际命令退出与完整日志摘要、最终相同source材料及完整输出清单/client收据。失败保留自己的workspace/日志和固定阶段状态，不产生成功收据，不重用或清理旧built目录。入口哈希不鉴定完整工具链/依赖闭包，offline不代表OS网络沙箱；没有工具来源认证、预期输出齐全或产品/目录消费/发行验收声明。
+
+
+批次56收紧：policy package.json读取须等于初始固定材料行，防临时改读后恢复；表/命令metadata以精确canonical正文写后核对并绑定，原日志和pnpm shim最后仍须匹配。所有日志初读前限制16MiB，超限固定失败，不先分配无限正文。package/engines非mapping固定拒绝。
+
+成功收据先写私有build-receipt.candidate.json；候选原正文、输入/工具/shim/记录/日志及第二轮完整输出资格和全rows相同后，最后以os.link独占发布build-receipt.json。候选保留为同inode别名；消费者只认最终路径和后续完整验证。发布是commit点，之后无验证/清理IO；提交点之后的进程中断与准备失败不同。此为单收据原子发布，不声称整文件树原子快照或断电耐久。
+
+23新组及既有来源/材料/输出/进程边界共157项双Python通过，两位独立23项及原政策ABA、晚改输出/外置表/命令metadata/收据故障/中断/大日志等反例闭环。实际仅只读调用固定pnpm store path，确认--store-dir /Users/wuyi-macs/.pnpm-store得到实际/Users/wuyi-macs/.pnpm-store/v11；尚未通过此runner执行真实安装或构建。下一批独占新实际workspace做受控重建，失败原样保留。

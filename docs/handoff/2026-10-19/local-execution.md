@@ -884,3 +884,21 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `owned-build-command-observation-merge-red.log`：`32d8a3833a4b329986da5f56998fdea7742ceaf6283712aa7bbd146f5d268fff`。
 - `owned-build-command-final312.log`：`df6b78624d87280e1c6d0464eae4fef91745b04b471aad1250e142deffc12e98`。
 - `owned-build-command-final39.log`：`8cbba15f5346eebf6c50474e82f5702ae77b3dd49e5dde4bb764a16cd00ceb24`。
+
+
+## 批次56：新工作区受控离线构建与候选收据
+
+- 新增package_clean_build，CLI/API要求新独占workspace、显式node/pnpm entrypoint/store，拒已存在（含空）workspace及source/objects/store内部目标；复制仅固定声明源到source，HOME/TMP/XDG/shim/logs/metadata在外。稳定记录node/pnpm入口字节，实际Node版本与host arch、pnpm11.7.0探针；固定frozen/offline/store-dir安装和run build的绝对argv通过owned会话执行，显式公开env不继承调用凭据/DSH版本/NODE_ENV。pnpm shim绝对exec selected tools，带空格路径独立真实nested pnpm --version探针正确。
+- 固定源packageManager/engines政策必须等于同一初始材料行，避免policy读取临时替换后恢复；类型异常固定失败。每阶段材料/源/工具/shim相同；最终当前完整output/client资格及全typed行绑定。外置source/output表、每命令metadata精确canonical写后核并保存SHA，收据前重核原行及日志；所有日志初读前16MiB上限，超限拒绝，不先read(-1)分配大正文。依赖/完整工具链来源、raw权限、预期输出齐全、网络沙箱及产品/目录/发行验收继续未鉴定。
+- 初13组缺模块先RED，初绿后独立发现最终输出晚变、policy ABA、实际command改外置input表、收据写后读错/中断留valid:true、日志限额前无限读取、engines=[]误记中断。另补日志/命令metadata/输出表/shim变更与部分写反例，共10组先RED（5失败、3失败、1失败1错误三轮）。候选收据先写build-receipt.candidate.json，完整复验后最后os.link独占发布final build-receipt.json，发布后无会落回准备失败的验证/清理IO；候选保留同inode别名，单receipt提交点与整树原子/断电耐久不同。准备失败/中断只留未发布候选和固定阶段证据，保留工作区/日志，不清理旧树。
+- 最终23新组+既有source/material/output/client/provenance/raw/process/supervisor共157项，Python3.12/系统3.9.6 -W error::ResourceWarning全部通过、exit0（34.726/39.194秒），无skip；尾部clone失败仍既有受控timeout反例。两位独立23项exit0（23.003/22.016秒），精确重放原3类policy/输出/外置表及4类receipt/log/shape反例闭环；额外candidate写后改output表、install metadata、host输出均拒绝，无限定范围新增阻断。CI新增合成工具入口，未运行云CI。
+- 实际仅只读执行固定Node+pnpm store path：--store-dir /Users/wuyi-macs/.pnpm-store确返回/Users/wuyi-macs/.pnpm-store/v11，owned会话exit0且清理已确认。没有用新runner做真实install/build、打包/部署/重启或模型验收，12项不勾选。执行器尚未绑定发行包与后续实际产物消费验证。下一批新实际workspace做受控重建并保留全部凭证。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `package-clean-build-red.log`：`b1341dad2662085173b373c9a6d0277c4e0745b9d48a153dcbdf4ab3f3c9a258`。
+- `package-clean-build-publication-red.log`：`dfdc58e9ec09c771b5a1c301dc00c5ed3fffad41418e97d557810bd9a68e55ea`。
+- `package-clean-build-receipt-policy-red.log`：`c28c5c402a15da198a144656c4c20109333a07bdf12bbe198e603c5b37e17a2b`。
+- `package-clean-build-log-policy-shape-red.log`：`56c35f2a1a6f639fbc167caed316faa8ab84431d2651972316c9a1f4acd924f0`。
+- `package-clean-build-final312.log`：`8cbdca063939433a120c184c1ca53cbe4e6645c9231a2911d2a4e98c6136cf7c`。
+- `package-clean-build-final39.log`：`08aa1276b589ff4ade3377d275939e283acf5fa666edeb349b9310c49593fcea`。
+- `controlled-pnpm-store-path.log`：`f47a8983505091375299772f256960d1a470e8f7320a605d7b8929ccce7455e9`。
