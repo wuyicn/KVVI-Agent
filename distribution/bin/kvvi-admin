@@ -72,6 +72,7 @@ from distribution.lib.upgrade import migrations_from_ledger, rollback_plan  # no
 HERE = release_root_path()
 from distribution.lib.supervisor import (  # noqa: E402
     DEGRADATIONS, launchd_plist, readiness_report, start_plan, status_report, stop_plan,
+    _env_file_vars,
 )
 
 EXIT_OK = 0
@@ -98,10 +99,19 @@ def load_config(path):
     @returns 配置字典
     """
     config = {'home': os.path.expanduser(DEFAULT_HOME), 'pg_port': 54329,
-              'platform_port': 7400, 'min_disk_gib': 10.0, 'min_memory_gib': 4.0}
+              'platform_port': 7400, 'runtime_port': 7401,
+              'min_disk_gib': 10.0, 'min_memory_gib': 4.0}
+    explicit = {}
     if path is not None:
         with open(path, encoding='utf-8') as handle:
-            config.update(json.load(handle))
+            explicit = json.load(handle)
+    # JSON > launchd/process environment > installed instance config > defaults.
+    config['home'] = explicit.get('home', os.environ.get('KVVI_HOME', config['home']))
+    installed = _env_file_vars(Path(os.path.expanduser(config['home'])))
+    for key in ('pg_port', 'platform_port', 'runtime_port'):
+        env_key = 'KVVI_' + key.upper()
+        config[key] = int(os.environ.get(env_key, installed.get(env_key, config[key])))
+    config.update(explicit)
     config['home'] = os.path.expanduser(config['home'])
     return config
 
@@ -208,7 +218,7 @@ def cmd_install(args):
     config = load_config(args.config)
     return _apply_or_plan(args, lambda: install_plan(
         home=config['home'], pg_port=config['pg_port'],
-        platform_port=config['platform_port']), 'install')
+        platform_port=config['platform_port'], runtime_port=config['runtime_port']), 'install')
 
 
 def cmd_start(args):
@@ -219,14 +229,16 @@ def cmd_start(args):
     """
     config = load_config(args.config)
     def build():
-        readiness = readiness_report(home=config['home'],
-                                     platform_port=config['platform_port'])
+        readiness = {'ok': True} if args.plan else readiness_report(
+            home=config['home'], platform_port=config['platform_port'],
+            runtime_port=config['runtime_port'])
         if not readiness['ok']:
             for issue in readiness['issues']:
                 print(f"  ✗ {issue['code']}：{issue['guidance']}", file=sys.stderr)
             raise SystemExit(EXIT_PREFLIGHT_FAILED)
         return start_plan(home=config['home'], release_root=HERE,
-                          platform_port=config['platform_port'])
+                          platform_port=config['platform_port'],
+                          runtime_port=config['runtime_port'])
     try:
         return _apply_or_plan(args, build, 'start')
     except SystemExit as stop:
@@ -482,8 +494,9 @@ def main(argv=None):
 
     launchd = sub.add_parser('launchd', help='打印 LaunchAgent plist（不自安装）')
     launchd.add_argument('--config', default=None)
-    launchd.add_argument('--platform-port', type=int, default=7400)
-    launchd.add_argument('--runtime-port', type=int, default=7401)
+    launchd.add_argument('--platform-port', type=int, default=None)
+    launchd.add_argument('--runtime-port', type=int, default=None)
+    launchd.add_argument('--pg-port', type=int, default=None)
 
     for name in PLANNED:
         planned = sub.add_parser(name, help='（尚未实现）')
@@ -517,8 +530,9 @@ def main(argv=None):
     if args.command == 'launchd':
         config = load_config(args.config)
         print(launchd_plist(home=Path(config['home']), release_root=HERE,
-                            platform_port=args.platform_port,
-                            runtime_port=args.runtime_port), end='')
+                            platform_port=args.platform_port or config['platform_port'],
+                            runtime_port=args.runtime_port or config['runtime_port'],
+                            pg_port=args.pg_port or config['pg_port']), end='')
         return EXIT_OK
     if args.command in PLANNED:
         print(f'✗ `{args.command}` 尚未实现（阶段十一后续任务接上）。')

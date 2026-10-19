@@ -91,6 +91,7 @@ CONTENTS = [
 #: 后两份是契约校验器的溯源文件，见下面的说明）。
 EXTRA_FILES = [
     '安装手册.md',
+    'docs/操作手册.md',
     'README.md',
     'package.json',
     # ⚠️ **校验器的两个溯源文件，按固定 sha256 校验，缺一个它就拒绝工作。**

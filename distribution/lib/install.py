@@ -129,6 +129,7 @@ class InstallPlan:
     cluster: ClusterPlan
     databases: DatabasesPlan
     steps: List[dict] = field(default_factory=list)
+    runtime_port: int = 7401
 
     @property
     def config_path(self) -> Path:
@@ -275,6 +276,7 @@ class InstallPlan:
             f'KVVI_HOME={self.home}',
             f'KVVI_PG_PORT={self.pg_port}',
             f'KVVI_PLATFORM_PORT={self.platform_port}',
+            f'KVVI_RUNTIME_PORT={self.runtime_port}',
             f'KVVI_INTERNAL_TOKEN={self.secrets["internalToken"]}',
             # 签名私钥**不进发行包**（§9.4.1），本机安装时生成一份。
             # 不给这一行，平台会去找默认的 /run/kvvi-secrets/signing.key ——
@@ -304,7 +306,8 @@ def install_plan(home: str, pg_port: int = DEFAULT_PG_PORT,
                  platform_port: int = DEFAULT_PLATFORM_PORT,
                  pg_bin: Optional[Path] = None,
                  release_root: Optional[Path] = None,
-                 secrets_map: Optional[Dict[str, str]] = None) -> InstallPlan:
+                 secrets_map: Optional[Dict[str, str]] = None,
+                 runtime_port: int = 7401) -> InstallPlan:
     """
     组一次首次安装的计划。**纯函数**：不建目录、不起进程、不写文件。
     @param home `$KVVI_HOME`
@@ -342,6 +345,6 @@ def install_plan(home: str, pg_port: int = DEFAULT_PG_PORT,
         {'kind': 'write-config', 'writes': True, 'argv': []},
     ]
     return InstallPlan(home=home_path, release_root=root, pg_port=pg_port,
-                       platform_port=platform_port, pg_bin=resolved_bin,
+                       platform_port=platform_port, runtime_port=runtime_port, pg_bin=resolved_bin,
                        secrets=secrets_map, cluster=cluster, databases=databases,
                        steps=read_only + writes)

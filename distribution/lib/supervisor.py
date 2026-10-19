@@ -185,6 +185,15 @@ class ProcessPlan:
     kind: str  # 'start' | 'stop'
     steps: List[dict] = field(default_factory=list)
 
+    def describe(self) -> str:
+        """Display only the plan, never environment values or credentials."""
+        return '\n'.join([
+            f'{self.kind}: {self.home}',
+            f'平台端口 {self.platform_port}；运行时端口 {self.runtime_port}',
+            *[f"  {step['kind']}" for step in self.steps],
+            '仅展示计划；执行前仍须检查配置、端口与进程身份。',
+        ])
+
     def apply(self) -> dict:
         """
         执行。
@@ -675,7 +684,7 @@ def _user_name() -> str:
 
 
 def launchd_plist(home: Path, release_root: Path, platform_port: int,
-                  runtime_port: int) -> str:
+                  runtime_port: int, pg_port: int = 54329) -> str:
     """
     生成 LaunchAgent 的 plist。
 
@@ -695,6 +704,7 @@ def launchd_plist(home: Path, release_root: Path, platform_port: int,
             'KVVI_HOME': str(home),
             'KVVI_PLATFORM_PORT': str(platform_port),
             'KVVI_RUNTIME_PORT': str(runtime_port),
+            'KVVI_PG_PORT': str(pg_port),
             'KVVI_CONFIG_FILE': str(Path(home) / 'kvvi.env'),
         },
         # 崩了要拉起来；登录时也要起（RunAtLoad）。
