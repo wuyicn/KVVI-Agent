@@ -250,3 +250,17 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `typed-create-g2.log`：SHA-256 `1b91d7ad08c96423debaff7edc7097a78a72d7ddc5c997b260cc599c0b1bb2d9`，423字节。
 - `typed-create-rebuild.log`：SHA-256 `ffb13469f22aa36795f2c93b252b355a905d5db8da79c9e5b728ab8e494ae6a1`，440字节。
 - `typed-create-real-pg.log`：SHA-256 `b958f0a4748c2694310c4c52e3aed43252bbcb157bf3daa00f7f1eff54c5719d`，2066字节。
+
+## 批次19：客户端原key传输基础
+
+- createRecord/updateRecord新增显式可选key参数，作为idempotency-key header发送；不生成或自动替换调用方原key。ApiResult保留服务器未知结果的idempotencyKey/retryWithSameKey，成功类型声明operationId/auditPending。
+- 反例先RED；独立复核发现仅允许可见ASCII会拒绝含内部空格的既有原key，改按服务器trim规范及UTF-8 256字节限，保留内部空格并使用浏览器Headers规则验证。空白整体/换行/超限在fetch前拒绝，避免空header被当成新操作。
+- 固定源19文件208/208、host/client根tsc exit0、完整build exit0；G2 243路径/52登记与新鲜235覆盖+8删除重建匹配。
+- 本批是可调用传输基础，UI尚未自动生成/持久保存key；原key不会因本提交自动具备刷新或跨登录恢复能力。下一批补身份绑定恢复状态，未知结果不允许无确认地改用新key。
+
+非敏感日志摘要：
+- `write-key-api-package-final.log`：SHA-256 `97fb3179c1fdd5ebfa2032392a5ed5f0a5ec091f5c1cbf0f51b16e7c2f1ca951`，12547字节。
+- `write-key-api-types-final.log`：SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`，0字节。
+- `write-key-api-build.log`：SHA-256 `0cd7c895bd4198ce33e8346e447d0f25d852d46ba9537aaccf6f15f66528ee74`，352868字节。
+- `write-key-api-g2.log`：SHA-256 `8caf2fdaa716348d377e061ed19c7f4d8201043b86f262b01f1b468d04d92ff6`，423字节。
+- `write-key-api-rebuild.log`：SHA-256 `ffb13469f22aa36795f2c93b252b355a905d5db8da79c9e5b728ab8e494ae6a1`，440字节。

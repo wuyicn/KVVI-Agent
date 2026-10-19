@@ -389,3 +389,49 @@ it('rejects incomplete permission declarations before exposing a creation editor
     }
   } finally { vi.unstubAllGlobals() }
 })
+
+it('sends an explicit original key on both creation and update retries',async()=>{
+  try {
+    const fetcher=vi.fn().mockResolvedValue(Response.json({recordId:'r',rowVersion:2}))
+    vi.stubGlobal('fetch',fetcher)
+    await createRecord('form',{title:'same'},'original-create-key')
+    await createRecord('form',{title:'same'},'original-create-key')
+    await updateRecord('form','r',{title:'same'},1,'original-patch-key')
+    expect(fetcher.mock.calls.map(([,init])=>(init as RequestInit).headers)).toEqual([
+      {'content-type':'application/json','idempotency-key':'original-create-key'},
+      {'content-type':'application/json','idempotency-key':'original-create-key'},
+      {'content-type':'application/json','idempotency-key':'original-patch-key'},
+    ])
+    expect(fetcher.mock.calls[0]?.[1]?.body).toBe(fetcher.mock.calls[1]?.[1]?.body)
+  } finally { vi.unstubAllGlobals() }
+})
+
+it('preserves the server unknown-outcome recovery key and audit pending metadata',async()=>{
+  try {
+    vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({error:'KVVI_OPERATION_OUTCOME_UNKNOWN',idempotencyKey:'original',retryWithSameKey:true},{status:503})))
+    expect(await createRecord('form',{},'original')).toEqual({ok:false,status:503,code:'KVVI_OPERATION_OUTCOME_UNKNOWN',idempotencyKey:'original',retryWithSameKey:true})
+    vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({recordId:'r',rowVersion:1,operationId:'op',auditPending:true})))
+    expect(await createRecord('form',{},'original')).toEqual({ok:true,value:{recordId:'r',rowVersion:1,operationId:'op',auditPending:true}})
+  } finally { vi.unstubAllGlobals() }
+})
+
+it('rejects an unusable explicit write key before any request',async()=>{
+  try {
+    const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher)
+    for(const key of ['', '   ', 'key\n', 'x'.repeat(257)]) {
+      expect(await createRecord('form',{},key)).toEqual({ok:false,status:400,code:'KVVI_OPERATION_KEY_INVALID'})
+      expect(await updateRecord('form','r',{},1,key)).toEqual({ok:false,status:400,code:'KVVI_OPERATION_KEY_INVALID'})
+    }
+    expect(fetcher).not.toHaveBeenCalled()
+  } finally { vi.unstubAllGlobals() }
+})
+
+it('keeps an internal-space original key and uses the server canonical trimming and UTF8 limit',async()=>{
+  try {
+    const fetcher=vi.fn().mockResolvedValue(Response.json({recordId:'r',rowVersion:1}));vi.stubGlobal('fetch',fetcher)
+    await createRecord('form',{},' original key ')
+    expect(fetcher.mock.calls[0]?.[1]?.headers['idempotency-key']).toBe('original key')
+    expect(await createRecord('form',{},'é'.repeat(129))).toEqual({ok:false,status:400,code:'KVVI_OPERATION_KEY_INVALID'})
+    expect(fetcher).toHaveBeenCalledTimes(1)
+  } finally { vi.unstubAllGlobals() }
+})

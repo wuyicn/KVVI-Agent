@@ -165,6 +165,9 @@ export type ApiResult<T> =
      * Shown to the employee so they know how far behind their copy is.
      */
     readonly currentRowVersion?: number
+    /** Server result is uncertain; callers must retain their original key. */
+    readonly idempotencyKey?: string
+    readonly retryWithSameKey?: boolean
     /**
      * Present on a field-level refusal such as `KVVI_BRANDING_INVALID`: which
      * field the platform rejected, and its own reason. Shown verbatim — a code
@@ -196,6 +199,8 @@ async function errorOf(
   code: string
   detail?: string
   currentRowVersion?: number
+  idempotencyKey?: string
+  retryWithSameKey?: boolean
   problems?: readonly ApiProblem[]
 }> {
   let body: unknown
@@ -211,6 +216,8 @@ async function errorOf(
     fields?: unknown
     states?: unknown
     currentRowVersion?: unknown
+    idempotencyKey?: unknown
+    retryWithSameKey?: unknown
     problems?: unknown
   }
   const code = typeof record.error === 'string' ? record.error : `KVVI_HTTP_${String(res.status)}`
@@ -227,6 +234,8 @@ async function errorOf(
     ...(detail === undefined ? {} : { detail }),
     ...(typeof record.currentRowVersion === 'number'
       ? { currentRowVersion: record.currentRowVersion } : {}),
+    ...(typeof record.idempotencyKey === 'string' ? { idempotencyKey: record.idempotencyKey } : {}),
+    ...(typeof record.retryWithSameKey === 'boolean' ? { retryWithSameKey: record.retryWithSameKey } : {}),
     ...(problems === undefined ? {} : { problems }),
   }
 }
@@ -358,8 +367,9 @@ export function getRecord(
 export function createRecord(
   assetId: string,
   data: Readonly<Record<string, unknown>>,
-): Promise<ApiResult<{ recordId: string; rowVersion: number; recordNo?: string }>> {
-  return request('POST', `/systems/${encodeURIComponent(assetId)}/records`, { data })
+  idempotencyKey?: string,
+): Promise<ApiResult<{ recordId: string; rowVersion: number; recordNo?: string; operationId?: string; auditPending?: boolean }>> {
+  return recordWrite('POST', `/systems/${encodeURIComponent(assetId)}/records`, { data }, idempotencyKey)
 }
 
 /**
@@ -378,10 +388,27 @@ export function updateRecord(
   recordId: string,
   data: Readonly<Record<string, unknown>>,
   rowVersion: number,
-): Promise<ApiResult<{ recordId: string; rowVersion: number }>> {
-  return request('PATCH',
+  idempotencyKey?: string,
+): Promise<ApiResult<{ recordId: string; rowVersion: number; operationId?: string; auditPending?: boolean }>> {
+  return recordWrite('PATCH',
     `/systems/${encodeURIComponent(assetId)}/records/${encodeURIComponent(recordId)}`,
-    { data, rowVersion })
+    { data, rowVersion }, idempotencyKey)
+}
+
+function recordWrite<T>(method: string, path: string, body: unknown, key: string | undefined): Promise<ApiResult<T>> {
+  // Reject unusable keys before fetch rather than letting an empty header turn
+  // into a new server-generated operation identity.
+  if (key !== undefined) {
+    try {
+      if (typeof key !== 'string' || /[\r\n]/u.test(key)) throw new Error('invalid header')
+      key = key.trim() // Same canonical identity as the platform's header reader.
+      if (!key || new TextEncoder().encode(key).byteLength > 256) throw new Error('invalid key')
+      new Headers({ 'idempotency-key': key }) // Browser header encoding/control rules.
+    } catch {
+      return Promise.resolve({ ok: false, status: 400, code: 'KVVI_OPERATION_KEY_INVALID' })
+    }
+  }
+  return request(method, path, body, undefined, API, key === undefined ? {} : { 'idempotency-key': key })
 }
 
 // ── 管理 API（阶段十）─────────────────────────────────────────────────────

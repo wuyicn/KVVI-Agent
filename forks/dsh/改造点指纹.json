@@ -335,7 +335,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/api.ts": {
-      "sha256": "7b20b8af5da6f248ed9ec738c0572eeba1589d820068529aff3305f23bd4a216",
+      "sha256": "8db157469e4bded0199c646aa8c6a83119eb7c2c0aa848c3976b720ad85b194d",
       "status": "A"
     },
     "packages/client/kvvi-panel/src/client/builder-start.ts": {
@@ -447,7 +447,7 @@
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/record-views.spec.tsx": {
-      "sha256": "d4347f1d6b087e7fb87645c1bdc7f875dce96b1dcbe18054194d4e7989edca42",
+      "sha256": "3d058828f72b870fa65394ea87d1f402b7c401d8bda310409f98e2cf3dcd149c",
       "status": "A"
     },
     "packages/client/kvvi-panel/tests/runtime-ui.spec.tsx": {
@@ -1082,7 +1082,7 @@
       "upstream_baseline_sha256": "568b5f6d7d94f9a7d02040ea309ab858e8d2d47c9c5f68a9236a48268ed50d03"
     }
   },
-  "fork_head": "bcb070acd2e117dfb0fc7e87f7456334e61a59cd",
+  "fork_head": "d36a130ad64a4131ab2da8848761975f7c6bb105",
   "note": "由 工具/g2_改造点.py --manifest 生成，禁止手改。upstream_baseline_sha256 用于判断上游是否动过我们改过的文件。",
   "upstream_branch": "master",
   "upstream_merge_base": "e6a559b1550f5bee359cffc514f6a498710d0697"
