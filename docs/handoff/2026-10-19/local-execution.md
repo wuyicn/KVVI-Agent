@@ -205,3 +205,24 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node services/platform/test
 - `typed-detail-build-final.log`：SHA-256 `7e03f3744b36b28d3c763bda4eb9e92a7a2a0fee662835f0dbdc2a3d004c6138`，352493字节。
 - `typed-detail-g2-final.log`：SHA-256 `7e57358d193bdf8a986a5c2c5a0f1ec5329148fd8548bd84a82bbf81ec2071bd`，423字节。
 - `typed-detail-rebuild-final.log`：SHA-256 `ffb13469f22aa36795f2c93b252b355a905d5db8da79c9e5b728ab8e494ae6a1`，440字节。
+
+## 批次16：隔离测试库失败与取消收尾
+
+- 真实自有PG探针先复现start实际成功、控制命令返回42后测试库遗留运行；初始化与启动原在finally外。统一外层收尾，取消不依赖start确认标志；仅操作本次mkdtemp明确创建的数据目录。工具初始化/启动/停止有预算，测试命令保留自身退出码。
+- SIGINT/SIGTERM结束当前自有进程组，失败/普通退出也回收测试命令同组子进程；工具命令不套普通测试退出清组规则。fast stop失败保留错误并确认实际状态，必要时immediate fallback；停止/诊断失败不报成功。
+- 独立复核补出initdb错误日志丢失、普通exit43遗留同组子进程两处增量，均追加真实反例。分阶段日志存在数据目录旁的独立目录；诊断不可写时继续stop且非0退出。保留原隔离目标门禁，不放宽到任意目录。
+- 中间日志布局曾引入子目录，完整回归先被既有目标门禁拒绝，后在macOS触发UNIX socket路径过长；已恢复短数据目录，旁置日志。最初取消反例暴露旧runner遗留测试子进程，已按生成脚本与自有临时路径确认并终止；最终反例使用有限寿命子进程及finally清理。
+- 最终13项真实PG17.11定向测试全部通过；最新完整平台625项，624通过、0失败、1个既有跳过，exit0；runner确认自身测试集群停止。覆盖初始化失败、启动前失败/启动成功确认丢失、测试错误/缺失命令、stop确认丢失/fast失败、日志错误、初始化/启动/执行取消、顽固及普通退出遗留子进程。
+- 本批修的是测试runner，不能据此关闭任务6的launchd/真实三库恢复或任务9升级执行器；脱离测试进程组的任意daemon不在本批回收证明内。没有重启或部署试点。
+
+可复现命令：
+
+```sh
+KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node --test --test-concurrency=1 services/platform/tests/runner-lifecycle.test.mjs
+# services/platform目录，显式Node24.20.0 PATH
+KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs npm test
+```
+
+非敏感日志摘要：
+- `runner-lifecycle-final5.log`：SHA-256 `565d992db39603dcc50f5468e2f7962641d52460b768de8df9781fab2f7cd0d8`，1268字节。
+- `platform-runner-final3-full.log`：SHA-256 `17e0311ae88f75fbfc68da996e39249077d6db7e7985ab8ba30668f1668503cd`，63869字节。
