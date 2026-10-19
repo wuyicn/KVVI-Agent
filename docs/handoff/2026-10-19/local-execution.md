@@ -150,3 +150,11 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node services/platform/test
 - `contracts-g2.log`：SHA-256 `61029deaffe9ca8282dca037170e05eeac125381f820c7010f3eff1d08c7bc96`，423字节。
 - `contracts-rebuild.log`：SHA-256 `cb6ae68661832a91373f9b415ac267b85446e272b60a99985b17a137ddffe74e`，440字节。
 - `security-publish-fields-current.log`：SHA-256 `040b1056941e13f76f8468b0095af90219d101ccbe8baabeab47d5a99f725e0d`，1620字节。
+
+## 批次10：独立审计库幂等追加基础
+
+- 新增SQL35操作回执与audit_append_once；同操作ID绑定全部实际审计参数。回执与哈希链条目在同一审计库事务提交，与既有append共用链锁；重复返回原hash，改参数/账号/公司明确拒绝。原无operationId入口保持原语义。
+- 真实隔离PG先重现同ID返回不同hash、16路并发追加16条、改变内容仍放行及缺回执表等失败；修复后审计/结构定向26项，25通过、1个既有跳过，exit0。额外注入receipt存储失败，证明链条目也回滚。
+- 独立复核发现既有provision仍授audit角色public CREATE、新SQL提交后账本未记时不能重跑；收紧provision/grantAudit到USAGE且撤销CREATE，新DDL可重入。新增真实CREATE FUNCTION被拒、模拟SQL已提交但账本未记后的迁移重跑，原回执与hash保留。
+- PostgreSQL的DO INSTEAD NOTHING规则会在权限检查前将UPDATE/DELETE改成空操作；测试核对实际权限为false且内容不变，没有把“不抛异常”误读为可以篡改。
+- 当前仅交付审计库基础与[后续设计](write-recovery-design.md)，业务写入、原key恢复、commands/流程/访客和UI仍待接线。没有宣称跨库原子事务或离线审计签名缓冲已完成。

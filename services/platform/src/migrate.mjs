@@ -147,6 +147,7 @@ async function grantAudit() {
   const client = adminFor('kvvi_audit')
   await client.connect()
   try {
+    await client.query('REVOKE CREATE ON SCHEMA public FROM PUBLIC, kvvi_audit_writer, kvvi_audit_reader')
     // 写者：**只有 EXECUTE**。既没有 SELECT（读不到审计），
     // 也没有 INSERT（绕不过 audit_append 自己写链）——
     // 因此「追加写」不只是一句约定，它是写者唯一的入口。
@@ -155,6 +156,8 @@ async function grantAudit() {
     await client.query(`GRANT USAGE ON SCHEMA public TO kvvi_audit_writer`)
     await client.query(`GRANT EXECUTE ON FUNCTION audit_append(uuid,text,uuid,text,uuid,
       text,text,text,text,text,text,text) TO kvvi_audit_writer`)
+    await client.query(`GRANT EXECUTE ON FUNCTION audit_append_once(uuid,uuid,text,uuid,text,
+      uuid,text,text,text,text,text,text,text) TO kvvi_audit_writer`)
     // 读者：只能读，连 INSERT 都没有。
     await client.query(`GRANT USAGE ON SCHEMA public TO kvvi_audit_reader`)
     await client.query(`GRANT SELECT ON audit_entries TO kvvi_audit_reader`)

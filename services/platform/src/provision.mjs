@@ -140,7 +140,12 @@ export async function provision(options = {}) {
     const c = new Client({ connectionString: dsn.replace('/postgres', `/${dbs[0]}`) })
     await c.connect()
     try {
-      await c.query(`GRANT ALL ON SCHEMA public TO ${role}`)
+      if (role === 'kvvi_audit_writer' || role === 'kvvi_audit_reader') {
+        await c.query(`REVOKE CREATE ON SCHEMA public FROM PUBLIC, ${role}`)
+        await c.query(`GRANT USAGE ON SCHEMA public TO ${role}`)
+      } else {
+        await c.query(`GRANT ALL ON SCHEMA public TO ${role}`)
+      }
     } finally {
       await c.end()
     }

@@ -54,12 +54,19 @@ export function digestOf(value) {
  * @returns {Promise<string>} 本条记录的 hash
  */
 export async function append(entry) {
+  const params = [entry.companyId, entry.actorKind, entry.actorId ?? null, entry.gateway ?? null,
+    entry.sessionId ?? null, entry.action, entry.resourceKind ?? null,
+    entry.resourceId ?? null, entry.outcome, entry.reason ?? null,
+    entry.paramsDigest ?? null, entry.resultDigest ?? null]
+  if (entry.operationId !== undefined) {
+    const { rows } = await pool('audit').query(
+      `SELECT audit_append_once($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) AS hash`,
+      [entry.operationId, ...params])
+    return rows[0].hash
+  }
   const { rows } = await pool('audit').query(
     `SELECT audit_append($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) AS hash`,
-    [entry.companyId, entry.actorKind, entry.actorId ?? null, entry.gateway ?? null,
-     entry.sessionId ?? null, entry.action, entry.resourceKind ?? null,
-     entry.resourceId ?? null, entry.outcome, entry.reason ?? null,
-     entry.paramsDigest ?? null, entry.resultDigest ?? null])
+    params)
   return rows[0].hash
 }
 
