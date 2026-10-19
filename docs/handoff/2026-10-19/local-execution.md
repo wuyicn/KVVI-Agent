@@ -520,3 +520,21 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `visitor-issuance-time-red.log`：`e8bce18c359d5fd2b74759acfd58d291b0d4b0198cc706831ef53c7bd5f47254`。
 - `visitor-issuance-final-focused.log`：`2cb9a3b1f3b693db1c80ad92016772be014df125444e82e784bf758f51663195`。
 - `visitor-issuance-platform-full.log`：`288413c91537e5dfb8d4bf9703bb67d3e5cc553f2269b821f3274917d7727102`。
+
+
+## 批次36：正式目录可复用的规范化协议基础
+
+- 新增无I/O的canonical.mjs，从冻结Node参考提取原parser/整数token/Unicode/UTF-8键序/摘要算法，暴露canonicalizeJson与严格canonicalizeBytes。原始bytes先BOM/UTF8，再profile检查；拒绝重复解码键、孤立代理、非整数和超安全范围token，避免JSON.parse提前丢失信息。冻结参考、向量及contracts.mjs旧存储digest均未改，不把旧digest提升为正式AssetRef。
+- 既有Fake resolver的contentDigest改用同一进程内算法，保留其已解析JSON对象边界与fake_assets查找，未将Fake变为可信生产目录。CI新增22项协议模块定向测试；独立复核确认核心算法逐段一致，并发现双非法输入错误优先级差异，组合反例先RED再修复，复核重跑闭合。
+- 最终22项定向全通过，冻结参考6项通过；双语言完整1049份语料全部匹配字面判据（各运行Node/Python），未刷新历史证据快照。初次语料运行误用无jsonschema的裸Python3.12而出现执行错误，已终止该自有进程（143），改用既有按requirements.lock安装的schema-venv完整重跑，最终exit0、208.016秒；不将初次错误当实现RED。
+- 修正后的最终完整平台774项：773通过、0失败、1既有跳过，实际exit0、runner确认自有PG停止，139.495秒。完整命令同批次31，最终日志如下；先前完整轮虽774项通过，但不作为错误优先级修正后的最终证据。
+- 另按用户后续信息只读核验指定试点run/runtime.pid：存活同用户的登记进程实际脚本位于.worktrees/grouped-business/vendor/dsh/apps/cli/lib/bin.js，缺新式identity sidecar；按内核起始身份前后相同核验该进程及DSH子进程（仅发现登记CLI），ps环境读取成功但无DEEPSEEK_API_KEY键。只输出布尔和脚本路径，无密钥值，未重启/迁移/部署。不能据此声称其他未识别进程的模型配置或真实DeepSeek验收。
+- 本批只建立可导入协议基础；正式目录/共享生产resolver、完整模型身份存储、发布/runtime/蓝图/UI与产物绑定后续继续，设计见production-registry-design.md，任务10/11与整体12项均不勾选。
+
+非敏感日志SHA-256：
+- `canonical-module-red.log`：`ac1936456890c71465349f6ca2420c2aefc3ebad19eff9c5c73e8ea2277dcbf0`。
+- `canonical-error-order-red.log`：`d349af5edfbebec3ad1ab2c976c65c66c8b9e1708389abc14347ffb52bb44e7d`。
+- `canonical-module-final.log`：`cd3e4a2a7c23549a48521e03fa01ab7f389903fded8ea4613f9716752ec784c8`。
+- `canonical-reference-conformance.log`：`ab2830201761cf82f0a3181478dac377fe81724f786dd0b8842193983e768d9b`。
+- `canonical-meta-corpus-final.log`：`33352c1bcac4fdab149e4d464d138652cf0b17b6e8b44797244fa9ccd6478dea`。
+- `canonical-platform-final.log`：`769a3920ec20f104d6935eec2e464636926d26d2439b6f004c7345a939268d3b`。

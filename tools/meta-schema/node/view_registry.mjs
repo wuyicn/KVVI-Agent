@@ -1,32 +1,15 @@
 /** Private exact Fake lookup; centralized scope/history validation follows in T4. */
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { isObject } from "./view_safety.mjs";
+import { canonicalizeJson } from "./canonical.mjs";
 
-const c14n = fileURLToPath(
-  new URL(
-    "../../../protocol/kvvi-json-c14n/v1/evidence-sets/prd-v1.11/node/kvvi-json-c14n.mjs",
-    import.meta.url,
-  ),
-);
 const digestCache = new Map();
 export function contentDigest(content) {
+  // Existing Fake context values are already JSON objects. Production ingress
+  // must canonicalize original bytes before parsing; this is not that boundary.
   const raw = JSON.stringify(content);
   if (digestCache.has(raw)) return digestCache.get(raw);
-  const run = spawnSync(
-    process.execPath,
-    [c14n, "--profile", "kvvi-json-c14n/v1"],
-    {
-      input: raw,
-      encoding: "utf8",
-      timeout: 10000,
-      maxBuffer: 8 * 1024 * 1024,
-    },
-  );
-  if (run.status !== 0 || run.stderr)
-    throw new Error("Fake asset canonicalization failed");
-  const digest = JSON.parse(run.stdout).digest;
+  const digest = canonicalizeJson(raw).digest;
   if (digestCache.size >= 256) digestCache.clear();
   digestCache.set(raw, digest);
   return digest;
