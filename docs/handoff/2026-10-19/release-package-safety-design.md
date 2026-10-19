@@ -126,3 +126,11 @@ runner增加固定tsx socket路径字节长度预检（Darwin104/Linux108，含�
 主代理完整只读复验及两位独立逐行重算闭环：源/材料/输出/client资格相同，7个外置metadata、4log及shim匹配，选定工具入口当前字节一致，四argv/environment正确；41个记录start identity当前全None，无unknown/存活。此批不跑新增测试或再次安装/build。将实际收据SHA、选择路径及事实保存在独立local-build-anchor.json，不覆盖旧观察文件，也不赋予签名、完整工具/依赖或发行认证。
 
 下一批先实现按此固定anchor校验完整当前build receipt的只读接口，再把完整输出表与候选包的实际路径投影绑定；packager尚不消费此anchor，不生成真实包。原有catalog-consumption/expected completeness/模型/角色/macOS等验收待办保留。
+
+## 固定本地构建收据只读资格（批次59完成）
+
+接口显式要求runtime-source/Git objects/可信G2/收据/可信local-build-anchor，绝不从anchor回退选择来源。先有界稳定读取受信anchor并核收据原SHA/bytes，选择的source必须是该已记录workspace/source；再核完整当前source/material/output/client、外置typed表及其count/digest、所有命令metadata/log/shim、当前node/pnpm入口与精确四argv/最小环境/实际版本。JSON全层重复字段拒绝，bool/数字等结构按canonical typed正文或显式类型校验，不能靠Python宽松相等绕过。普通文件与目录祖先不允许link别名，失败只固定码，无部分资格/敏感文本。
+
+先后两轮相同完整输出资格/全表、输入材料/metadata及受信文件原字节不变，才输出固定source绑定、收据/anchor摘要、材料及全输出digest/count、client资格和限制；完整outputRows仅显式私有请求。此接口核对仓库固定SHA所锚定的本地观察与当前实物，不把任意JSON变成执行历史认证/签名或release approval。先用自有synthetic工具完整构建收据做正反夹具；实际成功树只读验证，不再执行测试/安装/build改变它。候选包投影接线留下一批。
+
+独立复核的工具读取资源问题先RED再修复：两轮均严格验证trusted工具typed row，以固定bytes作snapshot上限，工具入口另限512MiB，超大整数/OverflowError固定拒绝。128MiB sparse初始/末轮反例均在正文读取前拒绝，不能复用无界_tools再比较；该限制不是工具来源/执行认证。双Python各182项exit0、无skip/ResourceWarning，两位复核闭环。实际只读CLI exit0，12196材料/9467输出仍与anchor相同，releaseApproved:false；CI加入synthetic收据测试。没有真实打包、部署或产品验收。

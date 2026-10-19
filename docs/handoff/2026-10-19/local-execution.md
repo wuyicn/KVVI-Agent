@@ -942,3 +942,17 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - 实际`logs/pnpm-version.log`：`d7c27e39e223d95b17ed257f80e9e4a27633549a13b62a189d3a17d05f9b1816`。
 - 实际`logs/install.log`：`cdb2b38813de572303574251084c9e90b983e19db8fd97fbf50094106be91566`。
 - 实际`logs/build.log`：`78e12b9164b5de05edbf6f854c7506d5de3eace0ec4aec5b44ab8af55a46f870`。
+
+## 批次59：固定构建收据的完整只读资格
+
+- 新增package_build_receipt API/CLI，来源/objects/receipt显式传入，可信G2和local-build-anchor由仓库选择，不从anchor回退来源。先核raw receipt固定SHA/bytes，严格结构/typed JSON、外置表完整count/digest、源码材料及两轮输出/client全表、命令结果/精确argv/最小env、全部日志/shim/当前工具字节相同才返回资格；失败固定码且无私有表/部分资格。已记录进程身份只验证结构，不发信号，也不把它当签名或历史执行认证。
+- 自有synthetic完整构建夹具新增19项，覆盖未显式选择、收据原SHA、材料/输出缺项、bool替int、离线argv、工具/log/源/输出晚变、metadata目录链接、外置receipt及大小边界。两位独立复核，发现的无界工具读取及2**100引发OverflowError均先RED再关闭；工具typed row.bytes有界读并先限制512MiB，初始/末轮大文件正文未读即拒绝。CI加入该套件。实际成功树没有重跑测试/install/build。
+- 最终必要回归为test_package_build_receipt、test_package_clean_build、test_owned_build_command、test_process_membership、test_process_identity、test_supervisor、test_package_build_source、test_package_build_inventory、test_package_client、test_package_provenance、test_runtime_source、test_raw_git_source。使用`-W error::ResourceWarning -m unittest`，Python3.12.13各182项65.108s、Python3.9.6各182项69.220s，两者实际exit0、无skip。OK后的KVVI_FORK_CLONE_FAILED是既有受控超时反例输出，不能改报真实clone失败。
+- 实际只读CLI选择/Users/wuyi-macs/.kvvi-builds/bf8d91810b031/source、registered-fork对象和该workspace metadata/build-receipt.json，最终exit0；anchor SHA58d8515f87427533c6d54f25f045e561947fdc77d757e351351eeded590662f7，12196材料、9467输出digest仍a9e65ea8d0b36586a3bd915d33de5bf8460cd266bbe1e89fbef19d8e090f1825。releaseApproved:false，packager尚未消费完整build资格。下一批绑定候选完整输出投影；12项/模型/浏览器/干净macOS等仍未验收。
+
+最终非敏感证据SHA-256（实际退出后计算）：
+- `package-build-receipt-tool-bound-red.log`：`1220152438ead4e1c4e52e6eb4ee5b03cd49196904a9b4dfcd604f09b0f3dd65`。
+- `package-build-receipt-tool-size-red.log`：`d2735562f409d924d20d32d93e76f2de5e3ce742f1b8ceb855745ab4be7a80b2`。
+- `package-build-receipt-final312-2.log`：`d3ec08dc20a87bb7f6035a75d302b237c550e809a340d8db13277363ed9906ce`。
+- `package-build-receipt-final39-2.log`：`adc763f6bfabde3d06783d4a0474850bec900a3f5725690b1576c438690db9d8`。
+- `bf8d91810b031-pinned-build-readonly-final2.json`：`193735f05bd5a8552ef01f55b6dea10a3d3675dcab39dc78f8ba2eecb11d0d32`。
