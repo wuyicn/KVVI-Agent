@@ -109,8 +109,9 @@ def _identity(s):
     return s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns, s.st_mode
 
 
-def snapshot(absolute, relative):
+def snapshot(absolute, relative, max_bytes=None):
     _path(relative)
+    if max_bytes is not None and (type(max_bytes) is not int or max_bytes < 0): fail()
     before = os.lstat(absolute)
     if stat.S_ISLNK(before.st_mode):
         target = os.readlink(absolute); _target(relative, target)
@@ -119,7 +120,9 @@ def snapshot(absolute, relative):
     if not stat.S_ISREG(before.st_mode): fail()
     with open(absolute, 'rb', opener=lambda path, flags: os.open(path, flags | os.O_NOFOLLOW | os.O_NONBLOCK)) as handle:
         if _identity(before) != _identity(os.fstat(handle.fileno())): fail()
-        body = handle.read()
+        if max_bytes is not None and before.st_size > max_bytes: fail()
+        body = handle.read() if max_bytes is None else handle.read(max_bytes + 1)
+        if max_bytes is not None and len(body) > max_bytes: fail()
         if _identity(before) != _identity(os.fstat(handle.fileno())) or _identity(before) != _identity(os.lstat(absolute)): fail()
     mode = 0o755 if before.st_mode & 0o111 or relative.endswith('kvvi-admin') else 0o644
     return {'path':relative, 'type':'file', 'mode':mode, 'bytes':len(body), 'sha256':'sha256:' + hashlib.sha256(body).hexdigest()}, body

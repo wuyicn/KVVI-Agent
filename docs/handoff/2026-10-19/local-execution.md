@@ -730,3 +730,20 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `package-selection-final312-2.log`：`a5574c293d56c23f31b7c4d648323faccd034a55ee4e16ec65c51e09f392e27f`。
 - `package-selection-final39-2.log`：`db0a46017391105f7a14303b1adffbd7da2ada3d6dba21abc1152b31520f903b`。
 - `package-selection-readonly-fresh.json`：`168c2caf762f78de5bd0f72d31046f8b60483c85351db6d1c7af9def21a2580b`。
+
+
+## 批次47：固定完整源码资格记录接口
+
+- 新增package_provenance，复用完整declared source checker，将仓库工具指定的可信overlay manifest原字节SHA256、固定baseline与完整inventory profile/digest/count绑定为FIXED_DECLARED_SOURCE记录。manifest前后重新稳定读取，完整valid且count/profile/digest符合才返回；失败固定code，无部分inventoryDigest/sourceEntryCount。CLI使用-m，固定仓库指纹路径，不暴露业务输入选择manifest。
+- 记录始终releaseApproved:false，excludedUnqualified保留原632路径范围，limitations明确exec位/依赖/build/client receipt/catalog consumption/release acceptance均未鉴定；不是构建或发行凭证。尚未接入packager/G9；后续接candidate前后和内外清单。
+- 原6真实Git夹具缺模块先RED、实现后通过，覆盖原始manifest绑定、完整源篡改无partial资格、输出变化不冒充源变化、坏/深JSON/重复键/link/缺Git对象、显式root及校验间manifest变化。独立复核指出snapshot无界读后才限制manifest；128MiB sparse+reader guard先RED，snapshot增加可选max_bytes，在fd身份核对后先拒超限size、最多read(limit+1)，provenance初读/复读及source metadata均传16MiB。第7组含首读和sourcechecker后增长双阶段，普通source文件读取不改。
+- 最终7新组+既有68共75项，Python3.12/系统3.9.6均全通过exit0（9.543/10.054秒），-W error::ResourceWarning；clone失败行仍为受控反例。独立复核分别7项与56项闭环，无新增阻断；CI加入同入口。平台未改，最近全平台仍批次40的810项。
+- 实际最终只读CLI：raw-rebuild-kb2jqs9a exit0，12196条、632未鉴定排除，digest e5bd0355fdf46668f7df25509a2c2ea48dfc75623a2ad49d9975fe3ebac99b9e，manifest raw SHA256 bc7fce56dc0b16c307fddcc549f77a6d12388181af1a0d62800f77d7c5571dbc；原fixed-dsh exit1，仅FIXED_SOURCE_REJECTED、无部分资格字段。两树与试点均未写入、打包或部署，12项不勾选。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `package-provenance-red.log`：`090bce077a16c007950be37f38e0aa53717626bc373b4ea5c818568ba7c30a19`。
+- `package-provenance-bounded-red.log`：`1bbdeb114bcb36940407fcad2b65251d57fcafab5677f53710b81761d1fefc01`。
+- `package-provenance-final312.log`：`dcf27741b989d335bc42bc4f49e06dd2068499f8e7d9ef3ed55adcbc134b8f0c`。
+- `package-provenance-final39.log`：`ce2619f2ddce74255e7b60b482d54dcfc32f93b0edda68ba48d70d5df33c7ee6`。
+- `package-provenance-fresh-final.json`：`643d3a133e240eafe5edbad41ff45da05098e99ffdd7263a0b2e94736931c63a`。
+- `package-provenance-legacy-final.json`：`5f2ed90e1b92a113b7204ff66d646f70436be7308f7a246b0cf00974867a2aa4`。

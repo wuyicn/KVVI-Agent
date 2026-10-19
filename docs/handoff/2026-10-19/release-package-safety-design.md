@@ -22,3 +22,11 @@
 - [x] 元数据必须已收录regular；源package.json顶层重复字段/深JSON拒绝，未使用的nested dependency映射沿Node语义（固定上游llm-retry有同值重复依赖）。这不放宽发行内外manifest的全层重复拒绝。目录含空格、node_modules字样、glob metachar均不可绕过。
 - [x] G6-G9证据命令由shlex解析精确argv，仅解析不执行；新quote记录和G6-G8旧无quote记录均支持，G9新记录必须显式source。无真实collector执行、历史刷新或发行旅程。
 - [ ] 下一批把固定Git完整source资格与完整host/native/client输出、目录/generated收据绑定到candidate和检查，source选择或入口存在本身不够。
+
+
+## 固定源码资格接口（待接入发行流程）
+
+- [x] package_provenance.qualify_runtime_source读取仓库工具指定的可信manifest，绑定其原字节SHA256、固定Git基线与全部declared source清单；只在完整valid、count/profile/digest均符合时输出资格记录。失败仅固定码，无部分digest/count。
+- [x] manifest普通文件稳定初读/复读，均在fd身份核对后拒超限size，读取最多16MiB+1；source workspace元数据同限制。CLI以-m运行，仅固定仓库manifest，不接受业务payload另选manifest。根为管理员控制，不声称原子树快照。
+- [x] 7组Git夹具及双Python联合75项通过；实际新树12196项资格通过、旧built树拒绝。success仍releaseApproved:false，明确exec位/依赖/输出/client收据/目录消费/发行验收未鉴定。
+- [ ] 下一批将此接口接入candidate前后、manifest内外绑定与G9必需校验；再接完整构建与目录收据，不把仅有source资格当发行资格。

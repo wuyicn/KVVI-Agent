@@ -383,7 +383,7 @@ def packages_missing_main() -> list:
         relative = selected_entries.get(os.path.abspath(path))
         if relative is None:
             raise InventoryError('PACKAGE_RUNTIME_MANIFEST_NOT_COLLECTED')
-        row, body = snapshot(path, relative)
+        row, body = snapshot(path, relative, max_bytes=MAX_MANIFEST_BYTES)
         if row['type'] != 'file':
             raise InventoryError('PACKAGE_RUNTIME_MANIFEST_NOT_REGULAR')
         return body
