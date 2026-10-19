@@ -21,3 +21,10 @@
 - [x] 先RED含eol=crlf、可执行源和链接的真实Git fixture，以及不空/外链目标、缺基线/replace；隔离新目录实际完整重建后跑12196项源核验。重建与构建/打包资格分别记录，复核后提交。
 
 文件系统别名以O_EXCL/NOFOLLOW创建和staging实际路径/目录拼写集合核对拒绝，覆盖APFS大小写/Unicode合并；clone异常固定返回False并清理临时对象。最终新raw-rebuild-kb2jqs9a已12196项全部匹配。此树尚未安装依赖或构建，原fixed-dsh仍保留三处失败；网络分支本批只用本地clone夹具，不声称GitHub连通。
+
+
+## 新源完整构建取证
+
+raw-rebuild-kb2jqs9a用锁定pnpm11.7.0离线安装、Node24.20.0完整build通过，测试后源码12196项仍匹配。上游客户端收据252项实际重hash匹配，8个目录sourceFiles匹配；客户端257和host adapters110测试通过。见local-build-observation.json：host anchor不是完整host清单，尚无UI目录消费、正式打包或部署资格。
+
+native builder仅清临时子目录，留下native/system/.release空容器；source checker仅对该精确目录且为空作例外，任何子项/link仍拒。新增反例先RED，19组双Python通过。ResourceWarning复核意见已用with scandir关闭，最终以-W error::ResourceWarning重跑。

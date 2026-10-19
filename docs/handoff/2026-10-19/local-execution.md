@@ -647,3 +647,24 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `raw-source-final-python39-2.log`：`e53bcdd71fa88bf778c3f3185d6125f7d35a82d96cb6c4af6d3352425ea811fb`。
 - `raw-source-final-rebuild.log`：`00c6053b53c73278d72ad1bef1c692f257ec7a0d2afc0d3ffcc2c296a9cdfa4c`。
 - `raw-source-final-qualified.json`：`27e9f25b1970e6fb91ece1755b564b8ae8392555bfa829c313ee842bcebb9b2f`。
+
+
+## 批次43：新源码完整构建与构建后边界复验
+
+- 在raw-rebuild-kb2jqs9a用Node24.20.0/固定pnpm11.7.0执行install --frozen-lockfile --offline，exit0（8.4秒）。GIT_CEILING_DIRECTORIES阻止父仓库发现，DSH_CLIENT_COMMIT_HASH显式绑定固定forkHead 8920b8094ed26cc89922334c835a1e58119b2a6c。安装阶段dsh bin尚未构建的警告不作运行资格；随后完整pnpm run build exit0，native、host/client tsc/tsdown、web Vite均完成，最后写252项收据。
+- 实际调用上游readClientBuildRecord重hash，匹配commit8920b80/version0.1.6-alpha.2（2个公开环境值），产物摘要985ecc71bbb10cddb314fa9f3f2fd5d50af62c3a60bfe3dd0fde827f77916cb8；8文件qualifyComponentAdapter通过，但仅explicit-source-inventory-only，不代表UI已消费目录。
+- 首次postbuild源码12196项全字节匹配，但拒绝额外native/system/.release空容器。已核build.ts:76–90只移除mkdtemp子目录；新Git fixture先RED后仅允许精确空容器，残留/隐藏子项、link或同名文件仍拒绝，不宽泛忽略.release。scandir短路ResourceWarning按复核意见改with关闭。最终19项在3.12/系统3.9.6以-W error::ResourceWarning全通过、exit0（2.287/2.316秒）；两位独立19项及额外边界亦闭环。
+- 新构建目录客户端vitest 21文件257项、host mode-router/business/publish adapters 8文件110项均全通过、exit0（5.95/2.80秒）。客户端夹具仍有既有sessions service unavailable控制台栈，构建有大chunk/plugin timing与插件迁移提示；不声称无控制台错误、真实会话/浏览器或模型通过。
+- 最后全部测试退出后再次核源码与收据：12196/12196、0错误、632依赖/输出排除，source digest仍e5bd0355fdf46668f7df25509a2c2ea48dfc75623a2ad49d9975fe3ebac99b9e；收据/8文件仍匹配。local-build-observation.json存锁摘要、4个host入口anchor和native摘要；取证脚本初次误把CLI bin当main而停止，已按实际package.json的bin.dsh读取。anchor不是完整host表，client252也不覆盖全部native/目录消费者。
+- 不改原built或试点；无真实DeepSeek、认证浏览器/干净用户macOS、打包或部署。最近平台全回归仍批次40的810项。打包器只读复核另重现失败build毁旧archive、check不核tar实际内容等P1；后续先修输出保留/隔离自测，再归档完整性及显式source/收据接线，整体12项不勾选。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `raw-qualified-install-offline.log`：`16191c848a6380e98c4b8cac7909b50d2038a46c4f633c0d1cd15031a7ad9a48`。
+- `raw-qualified-full-build.log`：`f7afbeb5297cf76b9f983897dcb9bbff273ecaa9b238c94df01614497c53e85b`。
+- `raw-qualified-client-tests.log`：`dd69aef384dd4639b4ace0d31efce543b17dc241bdbd5ed95c5bc01530e9b697`。
+- `raw-qualified-host-tests.log`：`2889e15b376727253afdd84b7f18a200594dbbbaa4a070c5aea6d663975c9cf4`。
+- `raw-qualified-after-tests-source.json`：`ae5045a593e9353737d485fb1e3f302d8f4509e3d4f4a281cfa2d94aad978c39`。
+- `raw-qualified-after-tests-client.json`：`152d1e8697367f23a023ba564e0ab0498aa0ff226ee47d7b4c129b54844a28a4`。
+- `native-empty-container-red.log`：`fab2ad0430e611f354107c7ca0d42dad3aff3742a754ad908fde8702eccf7d12`。
+- `native-empty-container-final-unit2.log`：`29908cc09770c6e5b526a1603ad7edceba7612d66d734f00695605fc7ed4f7c8`。
+- `native-empty-container-python39-2.log`：`d3477112acb614505b0da3e010b3bcfd3810aaf50a6b4a1edf1a8a98cc9fcc9a`。

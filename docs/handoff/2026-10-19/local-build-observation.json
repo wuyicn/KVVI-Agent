@@ -1,0 +1,96 @@
+{
+  "evidenceKind": "LOCAL_BUILD_OBSERVATION",
+  "releaseApproved": false,
+  "deployed": false,
+  "sourceDirectoryName": "raw-rebuild-kb2jqs9a",
+  "source": {
+    "baseline": "e6a559b1550f5bee359cffc514f6a498710d0697",
+    "forkHead": "8920b8094ed26cc89922334c835a1e58119b2a6c",
+    "entryCount": 12196,
+    "matchedEntryCount": 12196,
+    "inventoryProfile": "kvvi-declared-source/v1",
+    "inventoryDigest": "sha256:e5bd0355fdf46668f7df25509a2c2ea48dfc75623a2ad49d9975fe3ebac99b9e",
+    "excludedUnqualifiedCount": 632
+  },
+  "environment": {
+    "node": "24.20.0",
+    "pnpm": "11.7.0",
+    "platform": "darwin-arm64",
+    "pnpmLockSha256": "sha256:434eafda69ea3dc591ae24e415bf510e2802b0d371bb35300d7bc1756141021e",
+    "gitParentDiscoveryPrevented": true
+  },
+  "install": {
+    "frozenLockfile": true,
+    "offline": true,
+    "exitCode": 0
+  },
+  "completeBuild": {
+    "command": "pnpm run build",
+    "exitCode": 0
+  },
+  "clientReceipt": {
+    "formatVersion": 1,
+    "environment": {
+      "DSH_CLIENT_COMMIT_HASH": "8920b80",
+      "DSH_CLIENT_VERSION": "0.1.6-alpha.2"
+    },
+    "artifacts": {
+      "fileCount": 252,
+      "sha256": "985ecc71bbb10cddb314fa9f3f2fd5d50af62c3a60bfe3dd0fde827f77916cb8"
+    }
+  },
+  "componentAdapterSourceCheck": {
+    "catalogDigest": "sha256:0760cf6a0bf6446506f8cde8f2ce44d4ccdbcb9fa69fc9a3bb8d1367963e5a7a",
+    "sourceFiles": 8,
+    "evidenceBoundary": "explicit-source-inventory-only"
+  },
+  "hostEntryAnchors": [
+    {
+      "path": "apps/cli/lib/bin.js",
+      "sha256": "sha256:69c49c871735dc7ee81ec51f266bbec129f075fd5066e046374f4b13ab02a705"
+    },
+    {
+      "path": "packages/tool/kvvi-business/lib/index.js",
+      "sha256": "sha256:3413d69471e660ea9414243c5173e4a14a42cebca54921644db39fccb6ba0e6a"
+    },
+    {
+      "path": "packages/tool/kvvi-publish/lib/index.js",
+      "sha256": "sha256:a0e1a51ea1a70eaa9187494a209b553c22ca6693df3856f929bc219f77775a05"
+    },
+    {
+      "path": "packages/host/kvvi-mode-router/lib/index.js",
+      "sha256": "sha256:07056a9a8b457f5ce372b195572a806de0629b69c8ff17245acdfc8ad53b0098"
+    }
+  ],
+  "nativeAddon": {
+    "path": "native/system/packages/darwin-arm64/bin/system.node",
+    "sha256": "sha256:9534cde445a865250eb7bc8cfe5e231f3f91d0fda3f4aaa694e81f3531ad1130"
+  },
+  "tests": {
+    "client": {
+      "files": 21,
+      "passed": 257,
+      "exitCode": 0
+    },
+    "hostAdapters": {
+      "files": 8,
+      "passed": 110,
+      "exitCode": 0
+    },
+    "sourceBoundaryPython312": {
+      "passed": 19,
+      "exitCode": 0
+    },
+    "sourceBoundaryPython39": {
+      "passed": 19,
+      "exitCode": 0
+    }
+  },
+  "limitations": [
+    "hostEntryAnchors are selected entries, not a complete host output inventory",
+    "clientReceipt covers only upstream client artifact patterns",
+    "component adapter check is source inventory only; UI has not consumed the official catalog",
+    "No deployment, authenticated browser, clean-user macOS or real DeepSeek acceptance",
+    "Legacy built source retains its recorded mismatches"
+  ]
+}

@@ -131,6 +131,20 @@ class SourceInventoryTests(unittest.TestCase):
             self.manifest['files'][path] = {'status': 'M', 'sha256': hashlib.sha256(raw).hexdigest()}
             self.reject('SOURCE_BUILD_LAYOUT_UNSUPPORTED')
 
+    def test_declared_native_temporary_container_is_allowed_only_when_empty(self):
+        rel = 'native/system/scripts/build.ts'
+        script = b"mkdirSync(join(root, '.release'), { recursive: true })\n"
+        p = self.objects / rel; p.parent.mkdir(parents=True); p.write_bytes(script)
+        self.git('add', '.'); self.git('-c', 'user.name=Source Test', '-c', 'user.email=source-test@example.invalid',
+            '-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'native build declaration')
+        self.manifest['upstream_merge_base'] = self.git('rev-parse', 'HEAD').strip()
+        p = self.source / rel; p.parent.mkdir(parents=True); p.write_bytes(script)
+        temporary = self.source / 'native/system/.release'; temporary.mkdir()
+        report = self.check(); self.assertTrue(report['valid'], report)
+        self.assertIn('native/system/.release', report['excludedUnqualified'])
+        (temporary / 'interrupted-build.bin').write_bytes(b'partial')
+        self.reject('UNEXPECTED_SOURCE_PATH')
+
 
 if __name__ == '__main__':
     unittest.main()

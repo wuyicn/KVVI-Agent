@@ -168,6 +168,9 @@ def qualify_source(source, objects, manifest):
     if errors:
         return report(expected)
     roots = {'.git'}
+    # The verified native builder removes each mkdtemp child in finally but
+    # leaves its empty container. Never hide interrupted build contents here.
+    empty_roots = {'native/system/.release'} if 'native/system/scripts/build.ts' in expected else set()
     files = {'.dsh-build/client-build-environment.json', 'tsconfig.host.tsbuildinfo', 'tsconfig.client.tsbuildinfo'}
     try:
         for path, raw in configs.items():
@@ -205,13 +208,26 @@ def qualify_source(source, objects, manifest):
     except (ValueError, TypeError, KeyError, UnicodeError):
         error('SOURCE_BUILD_LAYOUT_UNSUPPORTED'); return report(expected)
     parents = set()
-    for path in set(expected) | roots | files:
+    for path in set(expected) | roots | files | empty_roots:
         parents.update(str(p) for p in PurePosixPath(path).parents if str(p) != '.')
 
     def visit(directory, prefix=''):
         for entry in sorted(os.scandir(directory), key=lambda x: os.fsencode(x.name)):
             path = posixpath.join(prefix, entry.name)
             if path in expected:
+                continue
+            if path in empty_roots:
+                if entry.is_symlink():
+                    error('EXCLUDED_ROOT_LINK', path)
+                elif entry.is_dir(follow_symlinks=False):
+                    with os.scandir(entry.path) as children:
+                        empty = next(children, None) is None
+                    if empty:
+                        excluded.append(path)
+                    else:
+                        error('UNEXPECTED_SOURCE_PATH', path)
+                else:
+                    error('UNEXPECTED_SOURCE_PATH', path)
                 continue
             if path in roots or path in files:
                 if entry.is_symlink():
