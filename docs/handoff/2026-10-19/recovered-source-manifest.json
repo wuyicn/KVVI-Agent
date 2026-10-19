@@ -1,0 +1,259 @@
+{
+  "recoveredRef": "refs/remotes/origin/codex/grouped-business",
+  "sameRemoteHeads": [
+    "codex/grouped-business",
+    "fix/p1-grouped"
+  ],
+  "recoveredCommit": "c6fb3f41c3b8babf81355420f325ef04d7cd60e7",
+  "sevenCommitPatchBase": "2653ad1bb33cc129b95a774eb07e25e1b641fad1",
+  "acceptanceCommit": "8184df2673e19f512e666755c476eddc40749c3c",
+  "mergeBase": "0ae8e21ba3aed1f183c839423e7b4ea02936957b",
+  "sourcePaths": [
+    {
+      "path": "distribution/bin/kvvi-admin",
+      "gitMode": "100755",
+      "gitBlob": "b2c3ebb994fda840f142fa3134fac0f83a5eed46",
+      "bytes": 22276,
+      "sha256": "a48bb3f69418fdb0cb458e734134eb1434c2d4b6c740bd27a0c4454aac60b015"
+    },
+    {
+      "path": "distribution/lib/backup.py",
+      "gitMode": "100644",
+      "gitBlob": "2d67d876300eddc39e85f0e3fa31b510aa2596a4",
+      "bytes": 21349,
+      "sha256": "7d8619b99e3494eb6cc5bcaebe6ebcda34c191d4f4c6e0b4c870228870d24eb1"
+    },
+    {
+      "path": "distribution/tests/test_lifecycle_safety.py",
+      "gitMode": "100644",
+      "gitBlob": "9ea52e9686e5552791df53b2e05c4de8b33d9b61",
+      "bytes": 4914,
+      "sha256": "fda0fe937c7427131c65b30d476efd617ad8aee67f82b8dc9b6aeb5add8be975"
+    },
+    {
+      "path": "docs/P1修复交付说明-2026-10-16.md",
+      "gitMode": "100644",
+      "gitBlob": "e50d9bf0091284538f2894c0b290ce086a38e9b1",
+      "bytes": 5023,
+      "sha256": "4a676e77c098c41ceee539e1fd8e7c0d711077418d20fa4d7e0495632d4a11fd"
+    },
+    {
+      "path": "forks/dsh/变更/packages/client/kvvi-panel/src/client/RecordDetail.tsx",
+      "gitMode": "100644",
+      "gitBlob": "40c0afe4de628ed8db4785aaba17984ae3ef028b",
+      "bytes": 7904,
+      "sha256": "45960a5a2d1f8052c9e9bdeb99afe9fcd09f10e1d65f98966dfd2fbc321d738c"
+    },
+    {
+      "path": "forks/dsh/变更/packages/client/kvvi-panel/src/client/SystemShell.tsx",
+      "gitMode": "100644",
+      "gitBlob": "9ec40316d61c228c4b9415f08d4af32ead8b3412",
+      "bytes": 14175,
+      "sha256": "e6f4314e00af21f3dcc644a1d923936368be48e9d8b817bf315a18fa95a6e7cc"
+    },
+    {
+      "path": "forks/dsh/变更/packages/client/kvvi-panel/src/client/api.ts",
+      "gitMode": "100644",
+      "gitBlob": "bdb3aa010c069c9d8b2c6e867608e4f710407aa2",
+      "bytes": 24130,
+      "sha256": "fb63121de126d2d9464620e3646564d111f8735d033494a012421d03006ca281"
+    },
+    {
+      "path": "forks/dsh/变更/packages/client/kvvi-panel/src/client/values.ts",
+      "gitMode": "100644",
+      "gitBlob": "2b9e3374b2095ae68bc603a76ff9833f0e327cee",
+      "bytes": 2339,
+      "sha256": "ca895270e4ef4044dbe0436d2de84e2c0727e11ab071e82eea4a7d9d0b4f0c9c"
+    },
+    {
+      "path": "forks/dsh/变更/packages/client/kvvi-panel/tests/record-views.spec.tsx",
+      "gitMode": "100644",
+      "gitBlob": "350d71a1422b802ef8720bf649b5cdd612e8dd4e",
+      "bytes": 13729,
+      "sha256": "aefdbd930e0beded3cfa50f517870af84db2dca6e5242311fa46501887085e5e"
+    },
+    {
+      "path": "forks/dsh/变更/packages/client/kvvi-panel/tests/system-shell.spec.tsx",
+      "gitMode": "100644",
+      "gitBlob": "7b7204792a5525ab4b6b8c8d51a7b02a74341bbf",
+      "bytes": 13726,
+      "sha256": "f34bd7005c557c886d164b67a865bebb43ca8b761d848537932af1e84268c22b"
+    },
+    {
+      "path": "forks/dsh/变更/packages/preset/agent-presets/presets/kvvi-builder/templates/README.md",
+      "gitMode": "100644",
+      "gitBlob": "a1179bb7f83c4ee1d9d778b81b1aaacd34e8463a",
+      "bytes": 2704,
+      "sha256": "cccc2009f163f9f1fca877910b2ba52e428f564db81cdf8f99a30550e9202d6c"
+    },
+    {
+      "path": "forks/dsh/改造点指纹.json",
+      "gitMode": "100644",
+      "gitBlob": "36ea41cdbfbdd295d33589c4bb977c7f4baebd7e",
+      "bytes": 51838,
+      "sha256": "3761e36b15e2505c96d25e486226a42e74b312cbd93a808c6ac8ed7d9ae9e58a"
+    },
+    {
+      "path": "services/platform/sql/34-scope-by-resource.sql",
+      "gitMode": "100644",
+      "gitBlob": "ab5fad211e074b33b2906b8d84b694462e7c10b6",
+      "bytes": 3254,
+      "sha256": "2eaca5b4782e85b6dd8f2b925d87a195b22393d9c5d1d875c764402aab75f4bd"
+    },
+    {
+      "path": "services/platform/src/admin-api.mjs",
+      "gitMode": "100644",
+      "gitBlob": "0991153ae6f6e764a6aab5897b33822f7d85b8b5",
+      "bytes": 32908,
+      "sha256": "af408b825e9a159665d218aa81e37aa3827c3b24e0453edf9ded08b79dcde2ac"
+    },
+    {
+      "path": "services/platform/src/authorization.mjs",
+      "gitMode": "100644",
+      "gitBlob": "8e4e9a5cd6a4fa1f63709b3f7f412e6b77d134a4",
+      "bytes": 23670,
+      "sha256": "6788f3044babbd1f63e92f8e7c2b09777452082f9e5c74fc3e5916d2755b7d93"
+    },
+    {
+      "path": "services/platform/src/publish-api.mjs",
+      "gitMode": "100644",
+      "gitBlob": "11ceb1604df23a3fca92a7391cacff173de4543a",
+      "bytes": 18578,
+      "sha256": "9a20eca97a4c58cb6c2cab2aa1f04f636aa6c1f86cf2e74b060a9ada8964f855"
+    },
+    {
+      "path": "services/platform/src/publish.mjs",
+      "gitMode": "100644",
+      "gitBlob": "3c01e189945159ebce4e0400a009f8a0f5399b5c",
+      "bytes": 19234,
+      "sha256": "84f8dc38539efae655e7d170fc024ec44b8132f7b2c4835643e67fc361d945b5"
+    },
+    {
+      "path": "services/platform/src/refs.mjs",
+      "gitMode": "100644",
+      "gitBlob": "9a5ac8eb8da68b3d5f96666885e6c000d2828bab",
+      "bytes": 16120,
+      "sha256": "e1cd8b082cc4a7ad36c4e7f50f1784f43a7dc42d35ecb1a158ddf2834434cc20"
+    },
+    {
+      "path": "services/platform/src/sql-manifest.mjs",
+      "gitMode": "100644",
+      "gitBlob": "900f441d64b96c00720ad6a8ea570db606562e51",
+      "bytes": 3163,
+      "sha256": "d195e1988d35cce3ba7de1d97c983921c671a779155e87235e5b904914b254ce"
+    },
+    {
+      "path": "services/platform/src/system-api.mjs",
+      "gitMode": "100644",
+      "gitBlob": "612675e3df9b4be6368e9a6c0d5e3d652f616e90",
+      "bytes": 29489,
+      "sha256": "2df5e7857f8949fad4eb0b1fe568f914d84025b7d346d1e65c06aed7ae421838"
+    },
+    {
+      "path": "services/platform/tests/business-lifecycle.test.mjs",
+      "gitMode": "100644",
+      "gitBlob": "85f40444f511aea65438e11ec9a668f128133ec9",
+      "bytes": 7115,
+      "sha256": "9bf2f710ee102608734272645a7bf22e413ae08ced24a86c01bcf22132335a39"
+    },
+    {
+      "path": "services/platform/tests/field-write-consistency.test.mjs",
+      "gitMode": "100644",
+      "gitBlob": "ae2c34936499643c67c5f0470923f4b8d106796a",
+      "bytes": 7125,
+      "sha256": "783936c7a8611e785cad030649d9e2c21f870bafb2d97fef743058d8819100cf"
+    },
+    {
+      "path": "services/platform/tests/p1-blockers.test.mjs",
+      "gitMode": "100644",
+      "gitBlob": "b2499e265706c2c786520a59b5d977859fec5a30",
+      "bytes": 6756,
+      "sha256": "4c8ef4688f39e652b16a4578303b4644f39bf2dcf9ddebc8eae2541dbdfac9f9"
+    },
+    {
+      "path": "services/platform/tests/publish-atomicity.test.mjs",
+      "gitMode": "100644",
+      "gitBlob": "a4353119a69a6f1b45207b57eaab2ca4e41097fc",
+      "bytes": 5044,
+      "sha256": "b04385b8d037722628bad1966652e28ad8465799047a53eefd2b5460e4661cc9"
+    },
+    {
+      "path": "services/platform/tests/ui-agent-e2e.test.mjs",
+      "gitMode": "100644",
+      "gitBlob": "090f1035744be52e2617324198f3c48d730a122f",
+      "bytes": 25235,
+      "sha256": "c6a6f82e81041a92f1538d642ce561b4d2f97c31375672a06d8778a0a5a38f5e"
+    },
+    {
+      "path": "工具/check_blueprint.py",
+      "gitMode": "100644",
+      "gitBlob": "b30b14870de53f25c34aea799a672c7285853083",
+      "bytes": 21351,
+      "sha256": "dfc635d983a6305ae7654de176fdde4d3046bc6387bb4a8ee5076caad481c21a"
+    },
+    {
+      "path": "工具/check_blueprint_自测.sh",
+      "gitMode": "100644",
+      "gitBlob": "7a701226261c2d18d1e5c86e083b6ffefefc5474",
+      "bytes": 7030,
+      "sha256": "0a46efd9f1cc4a2afbfa4d9a20970feb0dc86a6af0ae0d5c6816925a6b4ba576"
+    },
+    {
+      "path": "工具/lib/蓝图.py",
+      "gitMode": "100644",
+      "gitBlob": "564b61af8b544392ef4d2f8493b48122233c8c7b",
+      "bytes": 13164,
+      "sha256": "59fc50c0ee0c08cf22cc6b465db98893cff748cc71efa6b2ad35f87e99b65b5d"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "fc492425a39aee68a8ff7be2fb766a7418a29303",
+      "date": "2026-10-16",
+      "title": "fix(platform): 关闭验收 P1 缺陷 S1/S2/S5（grouped-business 线）"
+    },
+    {
+      "sha": "3a531d129a2f481c25826d25b53142d5f21f259f",
+      "date": "2026-10-16",
+      "title": "fix(platform): 关闭验收 P1 缺陷 S4（多系统策略共存）"
+    },
+    {
+      "sha": "e8a3e3d8c75468651200c1be62299935254a8b76",
+      "date": "2026-10-16",
+      "title": "fix(platform): 关闭验收 P1/P2 缺陷 S6/S7/S8（字段可写性与审计）"
+    },
+    {
+      "sha": "c12750ba40bcc7d9c6890510260e59db3945f2e0",
+      "date": "2026-10-16",
+      "title": "fix(distribution): 关闭验收 P1 缺陷 D1/D2/D3（恢复/卸载生命周期）"
+    },
+    {
+      "sha": "72c422ad51acf3c3cc09a1ff6e5591ab56d45da2",
+      "date": "2026-10-16",
+      "title": "fix(工具/fork): 关闭验收 B1/B2/B3（蓝图绑定一致性 + Builder 模板）"
+    },
+    {
+      "sha": "384df46cedb3d410cc705d8316235a8ff6817f8f",
+      "date": "2026-10-16",
+      "title": "fix(kvvi-panel): 关闭验收 U1/U2/U3（字段类型/可见性/写策略）"
+    },
+    {
+      "sha": "c6fb3f41c3b8babf81355420f325ef04d7cd60e7",
+      "date": "2026-10-16",
+      "title": "docs: 汇总本轮 P1 修复交付说明"
+    }
+  ],
+  "verification": "Current source paths compared against recovered remote Git blobs; no product test suite rerun during recovery/handoff.",
+  "notRecovered": [
+    "53f9e968870a603f3b74d67f2270e42dd6c6189e",
+    "codex/acceptance-remediation-cloud",
+    "previous uncommitted all12 workspace and evidence"
+  ],
+  "historyAccess": "Thread listing works, read_thread failed: durable host unavailable",
+  "oldHeadLookup": "Git fetch not our ref; GitHub API 422 no commit found",
+  "handoffBranch": "codex/local-handoff-20261019",
+  "previousCheckoutAtRecovery": "efde72935e029535763d9d3a5da32cbe1bb4193c",
+  "handoffCheckoutBase": "c6fb3f41c3b8babf81355420f325ef04d7cd60e7",
+  "currentProductCheckoutUnchangedDuringRecovery": true,
+  "pushedArtifactsPolicy": "Source is present directly in this branch; previous temporary archives are not required. No secrets, local state, service logs, caches, or database files included."
+}

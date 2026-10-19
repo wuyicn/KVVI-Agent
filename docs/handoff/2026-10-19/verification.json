@@ -1,0 +1,73 @@
+{
+  "scope": "handoff documents and recovery metadata only; no product feature implementation in this commit",
+  "verifiedAt": "2026-10-19T10:25:12.378189+08:00",
+  "timezone": "Asia/Shanghai",
+  "branch": "codex/local-handoff-20261019",
+  "productBase": "c6fb3f41c3b8babf81355420f325ef04d7cd60e7",
+  "originalAcceptance": "8184df2673e19f512e666755c476eddc40749c3c",
+  "originalAcceptanceFileSHA256": "80f7ec8566f1186e117f609e47f9583ba0f14a2f1ff005c408b8093e04b36b70",
+  "recoveredSourceBlobsVerified": 28,
+  "recoveredCommits": 7,
+  "taskIdsVerified": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "localMarkdownLinksVerified": 5,
+  "productSourcesMatchRecoveredCommit": true,
+  "fileScopeCheck": "NUL-delimited Git names match explicit handoff allowlist",
+  "initialCheckerFailure": "Git quoted non-ASCII pathname did not equal unquoted expected path; corrected checker to use NUL-delimited paths, without product edits",
+  "newFilesBasicSecretPatternCheck": "no matched private-key/token/credential-DSN patterns; no credential files read",
+  "productTests": "NOT_RERUN",
+  "build": "NOT_RUN",
+  "realModelAcceptance": "NOT_RUN",
+  "servicesStarted": false,
+  "databaseMigrationsRun": false,
+  "deploymentPerformed": false,
+  "handoffFiles": [
+    {
+      "path": "docs/交接-本地Codex-2026-10-19.md",
+      "bytes": 7240,
+      "sha256": "fa87a73c65aeb53d5b018d6d7725260a918c5ccc4983a7f9d6baee2a310f49a4"
+    },
+    {
+      "path": "docs/交接-Codex.md",
+      "bytes": 19308,
+      "sha256": "7a8d779274c9dc70125bd53a092c0d56e0ecd73db720f0c897436512e2afd779"
+    },
+    {
+      "path": "docs/整体验收报告-2026-10-13.md",
+      "bytes": 16661,
+      "sha256": "80f7ec8566f1186e117f609e47f9583ba0f14a2f1ff005c408b8093e04b36b70"
+    },
+    {
+      "path": "docs/handoff/2026-10-19/history-leads.md",
+      "bytes": 3705,
+      "sha256": "7a21eb023f7fcb69cfd09d49352a07f153313e00f8c5d5caf63a5c4c2420aa1d"
+    },
+    {
+      "path": "docs/handoff/2026-10-19/recovered-source-manifest.json",
+      "bytes": 10218,
+      "sha256": "abc04c052b748f1b8ae6d35e34c956c6c78fb9fe14f1c691ec8bb568f8a2e191"
+    },
+    {
+      "path": "docs/handoff/2026-10-19/recovery-findings.md",
+      "bytes": 2468,
+      "sha256": "761e378da01e4a7f22dce58a53313cc692da507a7697e64dc5ac40491a7b4754"
+    },
+    {
+      "path": "docs/handoff/2026-10-19/remaining-tasks.md",
+      "bytes": 8450,
+      "sha256": "b98c93fc9fa28e82ff39c3d5572dfc38dc66a5a1e3796dabdca88278d566b8b5"
+    }
+  ]
+}
