@@ -422,4 +422,6 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 非敏感日志SHA-256：
 - `visitor-prerequisites-red.log`：`9fb2537de7355b87ca73c2fa5e49e9721e8eddc37c60017e8de3efd45ade88c1`。
 - `visitor-ownership-window-red.log`：`bb2a3771122b7c87a9831837d637b78f410c5cb920a43ddbd7eb3d6d111f4866`。
-- `visitor-prerequisites-platform-final.log`：`3b241fe762a684d17e4d4303cb8b46ad95803fb09b71d0c8001b4ea72058e285`。
+- `visitor-prerequisites-platform-final.log`：`59fc990592dab715fb83f092b708f2f9712fba03c268c5288f52d76c197bd4ba`。
+
+批次29证据补正：047c1030保存账本时完整进程仍在运行，原日志摘要取自未结束文件。现已实际收到exit0，核对最终670项（669通过、0失败、1既有跳过）及PG停止，再以最终日志字节重算以上SHA-256；源码未变。本补正不沿用提前写入时的证据判断。
