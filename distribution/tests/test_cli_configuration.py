@@ -8,11 +8,13 @@ import os
 import plistlib
 import tempfile
 import unittest
+import socket
 from pathlib import Path
 from unittest.mock import patch
 
 from distribution.lib.supervisor import launchd_plist, start_plan
 from distribution.lib.install import install_plan
+from distribution.lib.preflight import preflight
 
 CLI = Path(__file__).resolve().parents[1] / 'bin' / 'kvvi-admin'
 loader = importlib.machinery.SourceFileLoader('kvvi_admin_test_config', str(CLI))
@@ -51,6 +53,32 @@ class ConfigurationTest(unittest.TestCase):
                                     'KVVI_RUNTIME_PORT': '19501', 'KVVI_PG_PORT': '19502'}, clear=True):
             self.assertEqual({k: admin.load_config(self.config)[k] for k in self.values}, self.values)
 
+    def test_json_overrides_invalid_lower_priority_ports(self):
+        self.home.mkdir()
+        (self.home / 'kvvi.env').write_text('KVVI_RUNTIME_PORT=invalid\n')
+        with patch.dict(os.environ, {'KVVI_PLATFORM_PORT': 'invalid'}, clear=True):
+            self.assertEqual({k: admin.load_config(self.config)[k] for k in self.values}, self.values)
+
+    def test_start_refuses_mismatched_installed_pg_port(self):
+        self.home.mkdir()
+        for line in ('KVVI_PG_PORT=19402\n',
+                     'KVVI_BUSINESS_DSN=postgres://test@127.0.0.1:19402/kvvi_business\n'):
+            with self.subTest(line=line):
+                (self.home / 'kvvi.env').write_text(line)
+                with self.assertRaisesRegex(ValueError, 'KVVI_INSTANCE_PORT_MISMATCH'):
+                    start_plan(self.home, self.root, pg_port=18402)
+
+    def test_preflight_probes_configured_runtime_port(self):
+        with socket.socket() as listener:
+            listener.bind(('127.0.0.1', 0))
+            listener.listen()
+            config = dict(self.values, runtime_port=listener.getsockname()[1],
+                          min_disk_gib=0, min_memory_gib=0)
+            result = preflight(config, self.root)
+            self.assertTrue(any(e['code'] == 'KVVI_PORT_IN_USE' and
+                                e['port'] == config['runtime_port'] for e in result['errors']))
+            self.assertEqual(result['ports']['runtime'], config['runtime_port'])
+
     def test_launchd_cli_preserves_explicit_json_ports(self):
         with contextlib.redirect_stdout(io.StringIO()) as out:
             self.assertEqual(admin.main(['launchd', '--config', str(self.config)]), 0)
@@ -62,6 +90,7 @@ class ConfigurationTest(unittest.TestCase):
     def test_install_config_persists_custom_runtime_port(self):
         plan = install_plan(str(self.home), pg_port=18402, platform_port=18400,
                             runtime_port=18401, pg_bin=Path('/unused'), release_root=CLI.parents[2])
+        self.assertIn('18401', plan.describe())
         self.home.mkdir()
         plan._write_config()
         with patch.dict(os.environ, {'KVVI_HOME': str(self.home)}, clear=True):

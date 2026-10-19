@@ -206,7 +206,7 @@ def _busy(port: int) -> bool:
         return probe.connect_ex(('127.0.0.1', port)) == 0
 
 
-def observe_host() -> HostEnv:
+def observe_host(config: Optional[dict] = None) -> HostEnv:
     """
     读一次真实主机。**只读**：不建目录、不写文件、不改任何配置。
     @returns 当前主机事实
@@ -227,8 +227,10 @@ def observe_host() -> HostEnv:
     #    KVVI 的 docker 栈，十条用例平白多出一个 `KVVI_PORT_IN_USE`。
     #    那不是被测代码的问题，是**判定里混进了对真实世界的读取**。
     #    判定只该消费 `HostEnv`；谁去探测，谁负责填。
-    candidates = (int(os.environ.get('KVVI_PG_PORT', 54329)),
-                  int(os.environ.get('KVVI_PLATFORM_PORT', 7400)))
+    config = config or {}
+    candidates = tuple(int(config.get(key, os.environ.get('KVVI_' + key.upper(), default)))
+                       for key, default in (('pg_port', 54329), ('platform_port', 7400),
+                                            ('runtime_port', 7401)))
     node_from_path = shutil.which('node')
     node_path = Path(node_from_path) if node_from_path is not None else None
     pnpm_from_path = shutil.which('pnpm')
@@ -334,8 +336,9 @@ def _collect(config: dict, root: Path, env: HostEnv) -> list:
             f'系统时间看起来不对（{env.year} 年）。令牌到期与审计顺序都依赖时钟，请先校准。',
             found=env.year, required=f'>= {MIN_CLOCK_YEAR}'))
 
-    for key, label in (('pg_port', 'PostgreSQL'), ('platform_port', '平台服务')):
-        port = int(config[key])
+    for key, label in (('pg_port', 'PostgreSQL'), ('platform_port', '平台服务'),
+                       ('runtime_port', '运行时')):
+        port = int(config.get(key, 7401))
         if port in set(env.busy_ports):
             errors.append(_error(
                 'KVVI_PORT_IN_USE',
@@ -356,7 +359,7 @@ def preflight(config: dict, root: Path, env: Optional[HostEnv] = None) -> dict:
     @param env 主机事实；缺省时读真实主机
     @returns `{ok, errors, requiredPostgresMajor, hardware, postgres, paths}`
     """
-    env = env if env is not None else observe_host()
+    env = env if env is not None else observe_host(config)
     errors = _collect(config, root, env)
     return {
         'ok': not errors,
@@ -380,5 +383,6 @@ def preflight(config: dict, root: Path, env: Optional[HostEnv] = None) -> dict:
                   'pgDataDir': str(Path(config['home']) / 'pgdata'),
                   'pgSocketDir': str(Path(config['home']) / 'run')},
         'ports': {'postgres': int(config['pg_port']),
-                  'platform': int(config['platform_port'])},
+                  'platform': int(config['platform_port']),
+                  'runtime': int(config.get('runtime_port', 7401))},
     }

@@ -156,6 +156,7 @@ class InstallPlan:
         lines += ['', f'  配置       {self.config_path}（0600）',
                   f'  密钥       {self.secrets_dir}（0600）',
                   f'  平台端口   {self.platform_port}',
+                  f'  运行时端口 {self.runtime_port}',
                   f'  初始化令牌 {self.secrets_dir / "bootstrap.token"}（0600）'
                   f'　← 首次打开界面时要填它',
                   '', '不会碰到：',

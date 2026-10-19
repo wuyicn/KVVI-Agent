@@ -506,7 +506,7 @@ def readiness_report(home: Path, platform_port: int, runtime_port: int = DEFAULT
 
 def start_plan(home: Path, release_root: Path, platform_port: int = DEFAULT_PLATFORM_PORT,
                runtime_port: int = DEFAULT_RUNTIME_PORT, internal_token: str = '',
-               pg_bin: Optional[Path] = None) -> ProcessPlan:
+               pg_bin: Optional[Path] = None, pg_port: Optional[int] = None) -> ProcessPlan:
     """
     组一个启动计划。**纯函数**。只读步骤（就绪检查）排在全部启动步骤之前。
     @param home `$KVVI_HOME`
@@ -535,6 +535,15 @@ def start_plan(home: Path, release_root: Path, platform_port: int = DEFAULT_PLAT
     # 逐键挑的失效模式是「下一个加进配置文件的键，悄悄到不了进程」——
     # 而那句话在配置文件的注释里永远是对的。整份传过去，就没有这个类别。
     env_file = _env_file_vars(home)
+    if pg_port is not None:
+        from urllib.parse import urlsplit
+        declared = env_file.get('KVVI_PG_PORT')
+        if declared is not None and int(declared) != pg_port:
+            raise ValueError('KVVI_INSTANCE_PORT_MISMATCH: 配置与已安装数据库端口不一致')
+        for key, value in env_file.items():
+            if key.startswith('KVVI_') and '_DSN' in key:
+                if urlsplit(value).port != pg_port:
+                    raise ValueError('KVVI_INSTANCE_PORT_MISMATCH: 数据库连接与实例端口不一致')
     if internal_token == '':
         internal_token = env_file.get('KVVI_INTERNAL_TOKEN', '')
 

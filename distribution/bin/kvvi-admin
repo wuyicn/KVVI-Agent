@@ -110,7 +110,7 @@ def load_config(path):
     installed = _env_file_vars(Path(os.path.expanduser(config['home'])))
     for key in ('pg_port', 'platform_port', 'runtime_port'):
         env_key = 'KVVI_' + key.upper()
-        config[key] = int(os.environ.get(env_key, installed.get(env_key, config[key])))
+        config[key] = int(explicit.get(key, os.environ.get(env_key, installed.get(env_key, config[key]))))
     config.update(explicit)
     config['home'] = os.path.expanduser(config['home'])
     return config
@@ -238,11 +238,14 @@ def cmd_start(args):
             raise SystemExit(EXIT_PREFLIGHT_FAILED)
         return start_plan(home=config['home'], release_root=HERE,
                           platform_port=config['platform_port'],
-                          runtime_port=config['runtime_port'])
+                          runtime_port=config['runtime_port'], pg_port=config['pg_port'])
     try:
         return _apply_or_plan(args, build, 'start')
     except SystemExit as stop:
         return int(stop.code)
+    except ValueError as error:
+        print(f'✗ {error}', file=sys.stderr)
+        return EXIT_PREFLIGHT_FAILED
 
 
 def cmd_stop(args):
