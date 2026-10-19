@@ -521,7 +521,7 @@ async function setPlatformRole(actor, userId, roleCode, grant) {
       const owners = await client.query(
         `SELECT rm.user_id FROM role_members rm
           WHERE rm.role_id = $1 FOR UPDATE`, [roleId])
-      if (owners.rows.length <= 1 && owners.rows.some((r) => r.user_id === userId)) {
+      if (roleCode === 'owner' && owners.rows.length <= 1 && owners.rows.some((r) => r.user_id === userId)) {
         throw new AdminError('KVVI_LAST_OWNER', { userId })
       }
       await client.query(

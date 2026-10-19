@@ -1055,3 +1055,14 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `auth-target-boundary-final2.log`：`8bbe0634fbd7f91bd2e20314104ff9c464b450fe6ad7cd01a2b7a6a461cc02f4`。
 - `auth-target-boundary-independent.log`：`e33f0a48b1ab01cbc63d599a55aeb0942af912be4cdd74478bda9a4eb83ac3e3`。
 - `auth-target-platform-full.log`：`3cdf3f3d28d80d6829d1b1c954390765a3903f924762469e464579db822b34e5`。
+
+## 批次67：唯一委托admin可以被owner撤权
+
+- 真实隔离PG发现setPlatformRole把最后owner保护无差别用于admin。最终RED2三项中1失败：owner撤销唯一admin返回409，admin成员仍1且原真实签名token可用；最后owner保护及已无admin成员的对照通过。初版RED还因没有admin角色而404，已补明确角色夹具，不把此夹具问题称产品缺陷。
+- 最小修复只把KVVI_LAST_OWNER条件限定roleCode为owner；原DELETE、authz_version递增、会话结束/事件写入保留。独立只读审阅确认判据；真实定向platform-role-revocation/admin-api/admin/auth-target-boundary/mode-policy五文件47项全通过、exit0（6208.682708ms），无skip，自有PG停止确认。唯一admin成功撤销且旧token失效，最后owner仍409且其token有效。
+- 本批不重复继承818项为最终一行后的新完整回归；角色写入与操作人撤权/自授权phantom的并发协议、活跃owner数量以及委托范围仍下一批。静态发布旁路/12项与模型等验收状态不变。
+
+实际退出后非敏感证据SHA-256：
+- 初版`platform-role-revocation-red.log`：`60d85880312aa53d5908cdb855273adfa8dd8861618a83475115813009d4e939`。
+- 最终`platform-role-revocation-red2.log`：`ff4012366b60db03cb4ea37e13cedd0244d83e65e3c2e3a8516b9f8a820437cb`。
+- `platform-role-revocation-final.log`：`4445dc9d94b151d03ff4519b10d9edc67b94fff0d318a5dc896e4a6e86b8f8bd`。
