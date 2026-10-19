@@ -224,13 +224,18 @@ export async function approveDraft({ ctx, draftId, decision, opinion = null, cha
     return refuse('KVVI_APPROVAL_DIGEST_MISMATCH')
   }
 
-  await withTransaction('platform', async (client) => {
-    await client.query(
+  const claimed = await withTransaction('platform', async (client) => {
+    const updated = await client.query(
       `UPDATE publish_drafts SET status = $2, approved_by = $3, approved_at = now(),
               approval_opinion = $4
-        WHERE draft_id = $1`,
-      [draftId, decision === 'APPROVE' ? 'APPROVED' : 'REJECTED', ctx.userId, opinion])
+        WHERE draft_id = $1 AND company_id = $5 AND status = 'AWAITING_APPROVAL'
+          AND change_digest = $6
+        RETURNING draft_id`,
+      [draftId, decision === 'APPROVE' ? 'APPROVED' : 'REJECTED', ctx.userId, opinion,
+        ctx.companyId, draft.change_digest])
+    return updated.rowCount === 1
   })
+  if (!claimed) return refuse('KVVI_DRAFT_NOT_AWAITING_APPROVAL')
   await append({
     companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
     gateway: ctx.gateway, sessionId: ctx.sessionId,

@@ -1,0 +1,15 @@
+# 发布审批状态并发整改
+
+原12项清单第2项要求发布前后状态与审批相符。当前approveDraft先独立SELECT待审批草案，再在另一个事务内无状态条件UPDATE；旧审批请求若在读取后暂停，另一owner可完成审批与发布，旧请求恢复会将PUBLISHED改回APPROVED/REJECTED，APPROVED还可重复发布。
+
+先在新的自有PG17集群真实调用submit/approve/commit复现。仅延迟第一次真实SELECT结果的交回，不伪造数据库内容或审批结果：一名owner的旧审批保留原返回行，另一名owner完成真实审批/发布，再恢复旧请求。分别验证APPROVE/REJECT，记录迟到响应、恢复后的草案状态、再次发布响应、发布记录数与契约版本数；合法owner发布作正向对照。测试必须通过隔离runner与安全目标marker，禁止继承/连接试点DSN。
+
+最小实现将审批写入改为事务内条件认领：同一公司、同一读取摘要且仍AWAITING_APPROVAL才更新审批状态，未认领不能返回成功或记录ALLOW。旧已批准/已发布/已拒绝状态保持，不允许旧请求覆盖。先保留原预检查与错误合同，增加必要数据库反例并复核现有publish/API/原子回滚回归。
+
+这一批只处理审批状态认领；当前owner/Builder撤权与管理写锁序、草案基准版本/真实registry消费以及跨库审计原key恢复仍需独立实现和验收。新真实v5包仅代表d718c456时的包一致性，后续生产源码变更后须重新生成包，不把它当最终发行验收。
+
+实际RED：两个反例均失败且整体exit1。迟到APPROVE返回200，将PUBLISHED改回APPROVED，再次commit返回201，实际publish_records与business-schema版本均变为2；迟到REJECT返回200并将PUBLISHED改为REJECTED。均由新自有PG17执行并确认集群停止，日志保留，不伪造数据库返回值。
+
+实现仅用同公司/同摘要/AWAITING条件UPDATE RETURNING认领，0行时追加固定DENY并在ALLOW前返回。最终定向28项全部通过，含获胜者/时间戳/意见不变、迟到actor只有一条固定DENY且无ALLOW；独立新PG两项复核通过。生产代码最终完整平台回归812项/811通过/1既有skip（响应已开始后的失败尚无稳定装置），exit0，所有自有集群确认停止。完整回归后仅增强上述测试断言，再跑定向28项；未重复完整回归为另一组新证据。
+
+静态check_publish_channel实际exit1，仍报admin-api.mjs原有直接DELETE/INSERT policies路径；本批没有修改该路径。冻结PRD限定搭建者/员工不能旁路，owner人工管理与委托admin必须分开核验，后续应修真实权限入口并对应改检查，不能只移动SQL使regex变绿。任务1/2仍待完成，不能因审批状态反例通过称发布通道整体已验收。

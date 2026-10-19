@@ -1025,3 +1025,18 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `real-v5-d718c456-summary.json`：`e8223e07abac85610e45fad947014ce4b8405f68442d92486f6c2d522d2c4a4d`。
 - `read-only-v5-d718c456-baseline-review.json`：`5fdcd4d0144b0162ed3661f4bbfdf6951bf8f9590b78c9aec805ba175d0e3520`。
 - `batch64-independent-jvv25i35/read-only-binding.json`：`06e6855552a7f5ff6c8f0c510156b5c5bde60903b56cd8b4b384cd3feff92a55`。
+
+## 批次65：迟到审批不能覆盖终态或重复发布
+
+- 新自有PG17真实submit/approve/commit反例，仅延迟第一次真实SELECT结果交回。原实现APPROVE迟到返回200，将另一owner已发布草案恢复APPROVED，重发201并留下2条publish_records和2个business-schema版本；REJECT迟到返回200并将PUBLISHED改REJECTED。两个反例实际RED/exit1，集群停止确认，原结果保留。
+- approveDraft事务内UPDATE新增公司、读取摘要、AWAITING_APPROVAL条件及RETURNING；0行拒绝KVVI_DRAFT_NOT_AWAITING_APPROVAL，不追加ALLOW。最终两个交错均保持PUBLISHED、重发409、只有1条发布记录/1个版本；获胜审批人/时间戳/意见保持，迟到actor恰一条固定DENY。原合法owner完整审批发布仍作正向对照。该条件认领不代表当前owner/Builder撤权、基准版本或registry消费已补齐。
+- Node24.20.0与PG17显式隔离runner，env -i只传工具PATH/HOME/TMPDIR/LANG/PG目录，不继承试点DSN或模型凭据。首次相关28项全通过/exit0（2145.634375ms），独立代理新集群2/2 exit0；完整平台812项、811通过、0失败、1既有skip，exit0（194234.264666ms）。skip为响应已开始后错误尚无稳定装置。完整回归后仅加强上述获胜者及审计断言，定向28项再全通过/exit0（2096.8135ms），不将其称又一轮完整回归。所有自有集群由runner确认停止。
+- 静态check_publish_channel exit1：admin-api原有直接DELETE/INSERT policies仍被报出；本批未改该路径。后续按冻结PRD分别核owner合法人工管理与非owner委托admin旁路，修入口并完善门禁，不仅换SQL文件掩盖结果。任务1/2未勾选，真实模型/角色UI/干净Mac等仍待验收。批次64实际包保留为d718快照，本批生产改动后不再声称它与当前源码匹配。
+
+实际退出后非敏感证据SHA-256：
+- `publish-approval-concurrency-red.log`：`b3ea04c81c5dc92dbfb79df36e8c392ddf2bf6287612b03fb4a2321dbae168d2`。
+- `publish-approval-concurrency-green.log`：`ed642a34032d8b01c98e107842f7c8f54d107983d737cfb7d790c4792862948a`。
+- `publish-approval-concurrency-final.log`：`71763d8fdd79bc895472486ae95e51d7b21629a4d59d9c6c86d27ce6abb60148`。
+- `publish-approval-platform-full.log`：`906dd425f2a3bf22e75eecdf08c102855ac123afd32f65e4f3e820075a3f1342`。
+- `publish-approval-channel-check.log`：`a0b09b680f936877c827cf12f7dbc6f9a8be0bb6358418ee645b40c900d567b7`。
+- 独立`batch65-independent-dzopqzwj/publish-approval-concurrency-independent-tool-output.log`：`f2719db1475cd547d4fb925ff975b49025fff5cad8ed489e0b4ed70f000fefbf`（持久保存自原工具捕获输出，未重跑）。
