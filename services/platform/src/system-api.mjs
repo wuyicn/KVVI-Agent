@@ -28,6 +28,7 @@ import { readDirectory, isDirectoryBuilder } from './business-directory.mjs'
 import { withActiveForm } from './business-lifecycle.mjs'
 import { idempotencyKeyOf } from './idempotency.mjs'
 import { writeOperation, readWriteOperation } from './record-write-operations.mjs'
+import { recordWriteIntent } from './record-write-intents.mjs'
 import { step, nextActions, submitterOf, WorkflowError } from './workflow.mjs'
 import { append, digestOf } from './audit.mjs'
 
@@ -249,7 +250,7 @@ async function recordGet(ctx, assetId, recordId) {
  * @param payload 请求体（身份字段已在入口剥掉）
  * @returns {Promise<{status: number, body: object}>}
  */
-async function authorizeRecordWrite(ctx, assetId, data, action, recordId=null, client) {
+async function authorizeRecordWrite(ctx, assetId, data, action, recordId=null, client, auditDenied=true) {
   if (!await canAct(ctx.companyId, ctx.userId, 'FORM', assetId, action)) {
     return { status: 403, body: { error: 'KVVI_NOT_ALLOWED',
       detail: `没有 ${assetId} 的 ${action} 动作权限` } }
@@ -260,7 +261,9 @@ async function authorizeRecordWrite(ctx, assetId, data, action, recordId=null, c
   }
   const blocked=await notWritableFields(ctx.companyId,ctx.userId,Object.keys(data??{}))
   if (blocked.length > 0) {
-    await append({
+    // Metadata-only intent reads/controls do not attempt this business write.
+    // Their permitted state changes have their own transactional audit outbox.
+    if (auditDenied) await append({
       companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
       gateway: ctx.gateway, sessionId: ctx.sessionId,
       action: `record.${action}`, resourceKind: 'record', resourceId: recordId,
@@ -525,6 +528,21 @@ export async function systemRoutes({ method, path, payload, session, headers = {
     // 字段声明：从 HTTP 外面读「这个系统有哪些字段」的唯一出口。
     if (method === 'GET' && parts.length === 3 && parts[2] === 'fields') {
       return systemFields(ctx, assetId)
+    }
+
+    const createIntent=parts[2]==='write-intent' && (parts.length===3 || parts.length===4)
+    const patchIntent=parts[2]==='records' && parts[4]==='write-intent' && (parts.length===5 || parts.length===6)
+    if ((createIntent||patchIntent) && ['GET','POST'].includes(method)) {
+      const suffix=createIntent?parts[3]:parts[5]
+      const action=suffix===undefined?(method==='GET'?'get':'prepare'):suffix
+      if (suffix!==undefined && (!['cancel','acknowledge'].includes(suffix)||method!=='POST')) return fail('KVVI_BAD_REQUEST')
+      const recordId=patchIntent?decodeURIComponent(parts[3]).toLowerCase():null
+      if (action==='prepare' && (payload?.data===null || (payload?.data!==undefined && (typeof payload.data!=='object'||Array.isArray(payload.data)))
+        || (recordId!==null && typeof payload?.rowVersion!=='number'))) return fail('KVVI_BAD_REQUEST')
+      const endpoint=recordId===null?`POST /systems/${assetId}/records`:`PATCH /systems/${assetId}/records/${recordId}`
+      return recordWriteIntent({ctx,endpoint,action,request:payload??{},key:idempotencyKeyOf(headers),
+        authorize:(fields,client,receipt)=>authorizeRecordWrite(ctx,assetId,Object.fromEntries(fields.map(field=>[field,null])),
+          recordId===null?'create':'update',recordId??receipt?.response.recordId??null,client,action==='prepare')})
     }
 
     if (method==='GET' && ((parts.length===3 && parts[2]==='write-receipt')

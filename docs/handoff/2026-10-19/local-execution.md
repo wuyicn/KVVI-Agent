@@ -277,3 +277,18 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 非敏感日志摘要：
 - `write-receipt-lookup-final.log`：SHA-256 `2b75800bf9ab82f182afb049ea4983fb66e35bacc4fbe2f78988378643c63413`，4480字节。
 - `platform-write-receipt-full.log`：SHA-256 `020780685401bead4383e0610bd44364edac8a2e167a4c49083879c1557f064b`，64901字节。
+
+## 批次21：服务端耐久写入意图与安全封存
+
+- SQL38新增公司RLS内的record_write_intents，只存身份/端点/gateway/原key/请求摘要/字段编码及状态，不存业务字段值。prepare在写入前耐久保留同身份端点唯一active；GET可由同账号重新登录找回，写入将业务效果、原回执与COMMITTED标记放在同一事务。
+- cancel与实际写入共用原key锁：先提交者决定最终为一条已知效果或CANCELED tombstone。ACK只允许已知提交，原回执与tombstone不删、不按年龄过期。prepare/cancel/ACK各自同事务写审计outbox；审计不可用不重跑业务效果。
+- 独立复核与反例发现并修正：active期间不同/省略key可绕过；服务端key可被另一账号或接口当legacy key执行；尚未读到intent时超时回显未绑定header。现控制与写入统一actor/endpoint→原key锁序，阻止其他key；保留namespace同时核对owner/gateway及同endpoint真实intent行；未确立耐久key不回显任意header。
+- 撤权曾使本人旧active无法cancel/ACK，阻挡后续允许动作。GET受限结果仅返回state/key/resultRestricted，本人可封存未提交元数据或ACK已提交元数据，不返回原result/字段名，取消不回滚已提交效果。字段撤权＋审计不可用的组合反例也先RED：元数据控制不伪装成被拒业务写入，其允许状态变更独立经outbox保留；权限查询失败仍抛错，未被当成可例外。认证、系统入口及gateway门禁保留。
+- 19项真实隔离PG定向全部通过，exit0，含12路并发prepare、重新登录、6次取消/写入竞态、实际缺header、跨人/网关/端点/伪造key、控制/marker存储故障完整回滚、prepare COMMIT确认丢失、两种5秒锁超时、审计故障恢复及转交后受限确认。最终完整平台653项：652通过、0失败、1个既有跳过，exit0；runner确认自有集群停止。之前649/652项中间回归不替代此最终源码回归。
+- 本批仅完成服务端协议；UI和Agent仍未调用prepare/GET/cancel/ACK，关开Panel与整页刷新完整恢复尚未验收，任务3/4不勾选完成。未部署或迁移已有试点，真实DeepSeek仍未执行。
+
+可复现：显式Node24.20.0与KVVI_TEST_PG_BIN运行隔离runner；定向入口`node --test --test-concurrency=1 services/platform/tests/record-write-intents.test.mjs`；完整入口为services/platform下`node tests/run-isolated.mjs npm test`。
+
+非敏感日志摘要：
+- `write-intents-final3.log`：SHA-256 `23e0689a051276c7de61b479d9f2259be14c5278b2f57e71a8d9fca99271ca0a`，2213字节。
+- `platform-write-intents-final3-full.log`：SHA-256 `32a5adb9b24386efa773817575226ed6038768d0911e80063ed2823dc90d5868`，66734字节。

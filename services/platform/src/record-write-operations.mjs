@@ -13,6 +13,8 @@ function canonical(value) {
   }
   return value
 }
+export const writeRequestDigest=(ctx,request)=>digestOf(canonical({gateway:ctx.gateway,request}))
+export const writeIntentKeyPrefix=ctx=>`kvvi-intent.v1.${ctx.companyId}.${ctx.userId}.${ctx.gateway}.`
 const companyScope = (client, companyId) => client.query("SELECT set_config('kvvi.company_id',$1,true)", [companyId])
 
 /** The callback must use this client for all business effects; it returns {status,body,audit}. */
@@ -20,22 +22,39 @@ export async function writeOperation({ ctx, endpoint, key=randomUUID(), request,
   if (typeof key !== 'string' || !key || Buffer.byteLength(key)>256) {
     throw new WriteOperationError('KVVI_OPERATION_KEY_INVALID',400,key)
   }
-  const digest=digestOf(canonical({ gateway:ctx.gateway, request }))
+  const digest=writeRequestDigest(ctx,request)
   const args=[ctx.companyId,ctx.userId,endpoint,key]
   const client=await pool('business').connect()
   let committing=false, broken=false, row
   try {
     await client.query('BEGIN')
     await companyScope(client,ctx.companyId)
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [JSON.stringify(['record-write-intent',ctx.companyId,ctx.userId,endpoint])])
     await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [JSON.stringify(['record-write',...args])])
     // A queued request or a replay also needs current permissions.
     const refusal=await authorize(client)
     if (refusal) { await client.query('ROLLBACK'); return refusal }
+    const intent=(await client.query(`SELECT * FROM record_write_intents
+      WHERE company_id=$1 AND actor_id=$2 AND endpoint=$3 AND idempotency_key=$4`,args)).rows[0]
+    if (intent?.status==='CANCELED') throw new WriteOperationError('KVVI_OPERATION_CANCELED',409,key)
+    if (intent && (intent.gateway!==ctx.gateway || intent.request_digest!==digest)) {
+      throw new WriteOperationError('KVVI_OPERATION_KEY_CONFLICT',409,key)
+    }
     row=(await client.query(`SELECT * FROM record_write_operations
       WHERE company_id=$1 AND actor_id=$2 AND endpoint=$3 AND idempotency_key=$4`,args)).rows[0]
     if (row) {
       if (row.request_digest!==digest) throw new WriteOperationError('KVVI_OPERATION_KEY_CONFLICT',409,key)
     } else {
+      // The namespace identifies server-issued intents. Claims only select an
+      // owner: an actual intent row for this endpoint is still required.
+      if (key.startsWith('kvvi-intent.v1.')) {
+        if (!key.startsWith(writeIntentKeyPrefix(ctx))) throw new WriteOperationError('KVVI_NOT_ALLOWED',403,key)
+        if (!intent) throw new WriteOperationError('KVVI_OPERATION_INTENT_NOT_FOUND',409,key)
+      }
+      const active=(await client.query(`SELECT idempotency_key FROM record_write_intents
+        WHERE company_id=$1 AND actor_id=$2 AND endpoint=$3 AND status IN ('PREPARED','COMMITTED')`,args.slice(0,3))).rows[0]
+      if (active && active.idempotency_key!==key) throw new WriteOperationError('KVVI_OPERATION_PENDING',409,key)
+      if (intent && intent.status!=='PREPARED') throw new WriteOperationError('KVVI_OPERATION_OUTCOME_UNKNOWN',503,key)
       // Historical successes lack a payload digest/audit receipt. Never silently execute them again.
       const legacy=await pool('platform').query(`SELECT 1 FROM idempotency_keys
         WHERE company_id=$1 AND user_id=$2 AND endpoint=$3 AND idem_key=$4`,args)
@@ -50,6 +69,8 @@ export async function writeOperation({ ctx, endpoint, key=randomUUID(), request,
         operation_id,request_digest,response,status_code,audit_payload,request_fields) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
       [...args,operationId,digest,result.body,result.status,{...result.audit,resultDigest:digestOf(canonical(result.body))},Object.keys(request?.data??{}).sort()])).rows[0]
     }
+    if (intent?.status==='PREPARED') await client.query(`UPDATE record_write_intents SET status='COMMITTED',updated_at=now()
+      WHERE company_id=$1 AND actor_id=$2 AND endpoint=$3 AND idempotency_key=$4`,args)
     committing=true
     await client.query('COMMIT')
     committing=false
@@ -183,4 +204,17 @@ export async function flushWriteAudit({limit=20}={}) {
   let delivered=0
   for (const row of rows.slice(0,limit)) if (await deliverWriteAudit(row.company_id,row.actor_id,row.operation_id)) delivered++
   return {delivered,pending:await writeAuditPending()}
+}
+
+
+export async function saveWriteControlAudit(client,ctx,endpoint,key,request,response,action) {
+  const operationId=randomUUID(), digest=writeRequestDigest(ctx,request)
+  const payload={companyId:ctx.companyId,actorKind:'USER',actorId:ctx.userId,gateway:ctx.gateway,
+    sessionId:ctx.sessionId,action,resourceKind:'write-intent',resourceId:key,outcome:'ALLOW',
+    paramsDigest:digest,resultDigest:digestOf(canonical(response))}
+  await client.query(`INSERT INTO record_write_operations(company_id,actor_id,endpoint,idempotency_key,
+    operation_id,request_digest,response,status_code,audit_payload,request_fields)
+    VALUES($1,$2,$3,$4,$5,$6,$7,200,$8,'{}')`,
+    [ctx.companyId,ctx.userId,endpoint,key,operationId,digest,response,payload])
+  return operationId
 }

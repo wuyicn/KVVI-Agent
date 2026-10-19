@@ -61,6 +61,9 @@ const SEGMENT_ROLE = Object.freeze({
  */
 const ROUTES = Object.freeze([
   { segments: ['systems', 'system', 'records', 'id'], kind: IDENTIFIER.RECORD },
+  { segments: ['systems', 'system', 'records', 'id', 'write-intent'], kind: IDENTIFIER.RECORD },
+  { segments: ['systems', 'system', 'records', 'id', 'write-intent', 'cancel'], kind: IDENTIFIER.RECORD },
+  { segments: ['systems', 'system', 'records', 'id', 'write-intent', 'acknowledge'], kind: IDENTIFIER.RECORD },
   { segments: ['systems', 'system', 'records', 'id', 'write-receipt'], kind: IDENTIFIER.RECORD },
   { segments: ['systems', 'system', 'records', 'id', 'actions'], kind: IDENTIFIER.RECORD },
   { segments: ['systems', 'system', 'records', 'id', 'transitions'], kind: IDENTIFIER.RECORD },
