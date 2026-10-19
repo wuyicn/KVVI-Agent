@@ -1,0 +1,1049 @@
+{
+  "canonicalization_profile": "kvvi-json-c14n/v1",
+  "ref": {
+    "scope_type": "PLATFORM_CONTROL",
+    "scope_id": "kvvi-platform",
+    "app_id": null,
+    "module_id": null,
+    "asset_type": "COMPONENT_REGISTRY",
+    "asset_id": "kvvi_react_core",
+    "version": 1,
+    "digest": "sha256:0760cf6a0bf6446506f8cde8f2ce44d4ccdbcb9fa69fc9a3bb8d1367963e5a7a"
+  },
+  "content": {
+    "version": 1,
+    "state": "PUBLISHED",
+    "adapter": {
+      "adapterId": "kvvi.react.core",
+      "framework": "react",
+      "frameworkVersion": "18.3.1",
+      "license": "MIT",
+      "origin": "kvvi-overlay-on-dsh",
+      "upstreamBase": "e6a559b1550f5bee359cffc514f6a498710d0697",
+      "evidenceBoundary": "explicit-source-inventory-only",
+      "sourceFiles": [
+        {
+          "path": "packages/client/kvvi-panel/src/client/registry.tsx",
+          "sha256": "0057cfafb84a72c6a1b7a9d797dc84238cdea6efe2ea3815f589a077e157cd94"
+        },
+        {
+          "path": "packages/client/kvvi-panel/src/client/FormView.tsx",
+          "sha256": "1fb60792703c0ab4121596c52a0f8588d02116dc21671af8edb0d01c388a56bd"
+        },
+        {
+          "path": "packages/client/kvvi-panel/src/client/values.ts",
+          "sha256": "7e7e522224feaa06e3560719f4b92b4f06b0691512debd5728fe18efaa930c59"
+        },
+        {
+          "path": "packages/client/kvvi-panel/src/client/locales.ts",
+          "sha256": "04b43f937c2e223da7d31acfc286d388968bfff653e4b78a8a4c81c96f102dd0"
+        },
+        {
+          "path": "packages/client/kvvi-panel/src/client/business.module.css",
+          "sha256": "9be62c76a0932a033495028c46f429daa32aaa349bd1acc6dc1f1ef88b9f0496"
+        }
+      ],
+      "integrationWitnesses": [
+        {
+          "path": "packages/client/kvvi-panel/src/client/BusinessBody.tsx",
+          "sha256": "24a69ac5318b5be6e75dc654be184535ba33373754c111e661490c52b8005962"
+        },
+        {
+          "path": "packages/client/kvvi-panel/src/client/SystemShell.tsx",
+          "sha256": "32f1e8f1c90998cefe653b2abd24fa926e7f04de81f209e7ca9264ad28d0ccde"
+        },
+        {
+          "path": "packages/client/kvvi-panel/src/client/RecordDetail.tsx",
+          "sha256": "4ec131da59f610dca3c71ef56aacb24970b5575dcb2d74fe40dff16d84f9dda3"
+        }
+      ],
+      "requires": [
+        "dsh-host-theme",
+        "ui-primitives",
+        "model-field-permissions",
+        "typed-value-coercion"
+      ]
+    },
+    "unsupported": [
+      "Table",
+      "SaveDraftButton",
+      "SubmitButton",
+      "CancelButton",
+      "OpenRecordLink",
+      "condition",
+      "loop",
+      "actions",
+      "queries",
+      "i18n"
+    ],
+    "components": [
+      {
+        "componentName": "FormPage",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "layout",
+        "propsSchema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "bindingPositions": {},
+        "allowedParents": [
+          "$root"
+        ],
+        "allowedChildren": [
+          "Section",
+          "Grid",
+          "ShortTextField",
+          "LongTextField",
+          "BooleanField",
+          "IntegerField",
+          "DecimalField",
+          "MoneyField",
+          "DateField",
+          "DateTimeField",
+          "SingleSelectField",
+          "MultiSelectField",
+          "Text",
+          "Description",
+          "StatusBadge"
+        ],
+        "maxChildren": 500,
+        "viewTypes": [
+          "FORM"
+        ],
+        "fieldTypes": [],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "ListPage",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "layout",
+        "propsSchema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "bindingPositions": {},
+        "allowedParents": [
+          "$root"
+        ],
+        "allowedChildren": [
+          "Section",
+          "Grid",
+          "ShortTextField",
+          "LongTextField",
+          "BooleanField",
+          "IntegerField",
+          "DecimalField",
+          "MoneyField",
+          "DateField",
+          "DateTimeField",
+          "SingleSelectField",
+          "MultiSelectField",
+          "Text",
+          "Description",
+          "StatusBadge"
+        ],
+        "maxChildren": 500,
+        "viewTypes": [
+          "LIST"
+        ],
+        "fieldTypes": [],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "DetailPage",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "layout",
+        "propsSchema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "bindingPositions": {},
+        "allowedParents": [
+          "$root"
+        ],
+        "allowedChildren": [
+          "Section",
+          "Grid",
+          "ShortTextField",
+          "LongTextField",
+          "BooleanField",
+          "IntegerField",
+          "DecimalField",
+          "MoneyField",
+          "DateField",
+          "DateTimeField",
+          "SingleSelectField",
+          "MultiSelectField",
+          "Text",
+          "Description",
+          "StatusBadge"
+        ],
+        "maxChildren": 500,
+        "viewTypes": [
+          "DETAIL"
+        ],
+        "fieldTypes": [],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "Section",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "layout",
+        "propsSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "maxLength": 5000
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "bindingPositions": {},
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [
+          "Section",
+          "Grid",
+          "ShortTextField",
+          "LongTextField",
+          "BooleanField",
+          "IntegerField",
+          "DecimalField",
+          "MoneyField",
+          "DateField",
+          "DateTimeField",
+          "SingleSelectField",
+          "MultiSelectField",
+          "Text",
+          "Description",
+          "StatusBadge"
+        ],
+        "maxChildren": 500,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "Grid",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "layout",
+        "propsSchema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "bindingPositions": {},
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [
+          "Section",
+          "Grid",
+          "ShortTextField",
+          "LongTextField",
+          "BooleanField",
+          "IntegerField",
+          "DecimalField",
+          "MoneyField",
+          "DateField",
+          "DateTimeField",
+          "SingleSelectField",
+          "MultiSelectField",
+          "Text",
+          "Description",
+          "StatusBadge"
+        ],
+        "maxChildren": 500,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "ShortTextField",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "field",
+        "propsSchema": {
+          "type": "object",
+          "properties": {
+            "fieldBinding": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "FieldRef"
+                },
+                "fieldRef": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "fieldRef"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "fieldBinding"
+          ],
+          "additionalProperties": false
+        },
+        "bindingPositions": {
+          "fieldBinding": [
+            "FieldRef"
+          ]
+        },
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [],
+        "maxChildren": 0,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [
+          "short_text"
+        ],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "LongTextField",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "field",
+        "propsSchema": {
+          "type": "object",
+          "properties": {
+            "fieldBinding": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "FieldRef"
+                },
+                "fieldRef": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "fieldRef"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "fieldBinding"
+          ],
+          "additionalProperties": false
+        },
+        "bindingPositions": {
+          "fieldBinding": [
+            "FieldRef"
+          ]
+        },
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [],
+        "maxChildren": 0,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [
+          "long_text"
+        ],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "BooleanField",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "field",
+        "propsSchema": {
+          "type": "object",
+          "properties": {
+            "fieldBinding": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "FieldRef"
+                },
+                "fieldRef": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "fieldRef"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "fieldBinding"
+          ],
+          "additionalProperties": false
+        },
+        "bindingPositions": {
+          "fieldBinding": [
+            "FieldRef"
+          ]
+        },
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [],
+        "maxChildren": 0,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [
+          "boolean"
+        ],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "IntegerField",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "field",
+        "propsSchema": {
+          "type": "object",
+          "properties": {
+            "fieldBinding": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "FieldRef"
+                },
+                "fieldRef": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "fieldRef"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "fieldBinding"
+          ],
+          "additionalProperties": false
+        },
+        "bindingPositions": {
+          "fieldBinding": [
+            "FieldRef"
+          ]
+        },
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [],
+        "maxChildren": 0,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [
+          "integer"
+        ],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "DecimalField",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "field",
+        "propsSchema": {
+          "type": "object",
+          "properties": {
+            "fieldBinding": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "FieldRef"
+                },
+                "fieldRef": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "fieldRef"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "fieldBinding"
+          ],
+          "additionalProperties": false
+        },
+        "bindingPositions": {
+          "fieldBinding": [
+            "FieldRef"
+          ]
+        },
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [],
+        "maxChildren": 0,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [
+          "decimal"
+        ],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "MoneyField",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "field",
+        "propsSchema": {
+          "type": "object",
+          "properties": {
+            "fieldBinding": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "FieldRef"
+                },
+                "fieldRef": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "fieldRef"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "fieldBinding"
+          ],
+          "additionalProperties": false
+        },
+        "bindingPositions": {
+          "fieldBinding": [
+            "FieldRef"
+          ]
+        },
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [],
+        "maxChildren": 0,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [
+          "money"
+        ],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "DateField",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "field",
+        "propsSchema": {
+          "type": "object",
+          "properties": {
+            "fieldBinding": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "FieldRef"
+                },
+                "fieldRef": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "fieldRef"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "fieldBinding"
+          ],
+          "additionalProperties": false
+        },
+        "bindingPositions": {
+          "fieldBinding": [
+            "FieldRef"
+          ]
+        },
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [],
+        "maxChildren": 0,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [
+          "date"
+        ],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "DateTimeField",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "field",
+        "propsSchema": {
+          "type": "object",
+          "properties": {
+            "fieldBinding": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "FieldRef"
+                },
+                "fieldRef": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "fieldRef"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "fieldBinding"
+          ],
+          "additionalProperties": false
+        },
+        "bindingPositions": {
+          "fieldBinding": [
+            "FieldRef"
+          ]
+        },
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [],
+        "maxChildren": 0,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [
+          "datetime"
+        ],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "SingleSelectField",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "field",
+        "propsSchema": {
+          "type": "object",
+          "properties": {
+            "fieldBinding": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "FieldRef"
+                },
+                "fieldRef": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "fieldRef"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "fieldBinding"
+          ],
+          "additionalProperties": false
+        },
+        "bindingPositions": {
+          "fieldBinding": [
+            "FieldRef"
+          ]
+        },
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [],
+        "maxChildren": 0,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [
+          "single_select"
+        ],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "MultiSelectField",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "field",
+        "propsSchema": {
+          "type": "object",
+          "properties": {
+            "fieldBinding": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "FieldRef"
+                },
+                "fieldRef": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "fieldRef"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "fieldBinding"
+          ],
+          "additionalProperties": false
+        },
+        "bindingPositions": {
+          "fieldBinding": [
+            "FieldRef"
+          ]
+        },
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [],
+        "maxChildren": 0,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [
+          "multi_select"
+        ],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "Text",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "value",
+        "propsSchema": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 5000
+            },
+            "value": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "FieldRef"
+                },
+                "fieldRef": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "fieldRef"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [],
+          "additionalProperties": false,
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "value": false
+              },
+              "required": [
+                "text"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "object"
+                },
+                "text": false
+              },
+              "required": [
+                "value"
+              ]
+            }
+          ]
+        },
+        "bindingPositions": {
+          "value": [
+            "FieldRef"
+          ]
+        },
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [],
+        "maxChildren": 0,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "Description",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "value",
+        "propsSchema": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "FieldRef"
+                },
+                "fieldRef": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "fieldRef"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "bindingPositions": {
+          "value": [
+            "FieldRef"
+          ]
+        },
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [],
+        "maxChildren": 0,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [],
+        "events": {},
+        "loopSupported": false
+      },
+      {
+        "componentName": "StatusBadge",
+        "version": 1,
+        "state": "PUBLISHED",
+        "kind": "value",
+        "propsSchema": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "FieldRef"
+                },
+                "fieldRef": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "type",
+                "fieldRef"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "bindingPositions": {
+          "value": [
+            "FieldRef"
+          ]
+        },
+        "allowedParents": [
+          "FormPage",
+          "ListPage",
+          "DetailPage",
+          "Section",
+          "Grid"
+        ],
+        "allowedChildren": [],
+        "maxChildren": 0,
+        "viewTypes": [
+          "FORM",
+          "LIST",
+          "DETAIL"
+        ],
+        "fieldTypes": [],
+        "events": {},
+        "loopSupported": false
+      }
+    ]
+  }
+}

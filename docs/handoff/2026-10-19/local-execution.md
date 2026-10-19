@@ -538,3 +538,21 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `canonical-reference-conformance.log`：`ab2830201761cf82f0a3181478dac377fe81724f786dd0b8842193983e768d9b`。
 - `canonical-meta-corpus-final.log`：`33352c1bcac4fdab149e4d464d138652cf0b17b6e8b44797244fa9ccd6478dea`。
 - `canonical-platform-final.log`：`769a3920ec20f104d6935eec2e464636926d26d2439b6f004c7345a939268d3b`。
+
+
+## 批次37：中立静态组件目录与双语言受控加载
+
+- 新增contracts/component-catalog/v1独立目录与schema，完整PLATFORM_CONTROL/kvvi-platform/kvvi_react_core/v1引用，app/module为null，content的kvvi-json-c14n/v1摘要为sha256:0760cf6a0bf6446506f8cde8f2ce44d4ccdbcb9fa69fc9a3bb8d1367963e5a7a。目录18项仅实际静态能力：3根、Section/Grid、10字段、3值；未执行props、Table/4按钮、condition/loop/actions/queries/i18n明确不支持。真实React18.3.1身份，不冒用vue_element_approved/no-renderer。
+- Node/Python固定安装根加载同一JSON/schema，完整8字段精确比较；完整性验证器不授上传文档信任。Node深冻结返回对象，Python每次返回新对象，调用者不能污染后续读取。原始bytes先严格c14n再parse，未知props schema关键词由共享子集拒绝，拒绝远程/导入ref。sourceFiles5核心+integrationWitnesses3接线见证，逻辑路径相对DSH根；只核显式源码清单，不声称传递闭包、依赖许可审计或bundle资格。
+- 初始缺模块先RED；复核补出Python忽略未知Schema关键词而Node拒绝，反例先RED再用同一schema子集收敛。另一复核指出BOM/非法UTF8错误代码及Python不可序列化ref异常差异；先RED后统一为CATALOG_DOCUMENT_INVALID / CATALOG_REFERENCE_MISMATCH，独立重跑7项目录测试闭合。
+- 最终协议22+目录7共29项定向通过，包含完整ref缺/多字段、Fake/篡改/重复/未知组件/危险路径、真实props Schema验证、十字段type绑定、目录返回隔离、自有安装复制件缺失/软链接/过大/Schema软链接两语言code断言、自有源码目录改字节/缺失/软链接拒绝。fixed-dsh与registered-fork8文件实际摘要匹配，独立只读亦核对overlay8文件；没有重新构建或声称产物已含目录。CI加入目录测试，Python使用已有requirements.lock依赖。
+- 最终完整平台781项：780通过、0失败、1既有跳过，实际exit0、138.995秒，runner确认自有PG停止，之后才计算最终日志摘要。完整命令同批次31；本批未改既有Fake语义、冻结语料/参考、DSH源码或已有试点。
+- PUBLISHED表示本目录资产注册内容，不能替代消费者迁移/审批/部署。本批发布/runtime/蓝图/UI尚未接入目录，模型完整身份存储、共用节点/引用判据与生成副本/构建发行绑定继续；旧视图不得自动改latest或补伪身份，同版本目录不得由更新器覆盖。整体12项不勾选。
+
+非敏感日志SHA-256：
+- `component-catalog-red.log`：`6a0b83265b27cc70e8f2640205d1eb75d6d58e58cd2f50eb0fa8183317159acc`。
+- `component-catalog-schema-parity-red.log`：`4eb33513dfac9756fd7554f3d9484c53d3868f9234b4b3a4bea588c84e0ad21e`。
+- `component-catalog-errors-red.log`：`0ab6337934ecfc69b5d3c1ca058d595db741c72edc908bbf951871094bba22c1`。
+- `component-catalog-final-focused.log`：`ed85ef54d7c73ae95f82734004e4d74d55f24975ae97176bb9c755a40e2706b1`。
+- `component-catalog-source-qualification.log`：`36309f0a693b743d7106b987300aa01b2a8dc27139bacfa8a10a39c6dc7ab92a`。
+- `component-catalog-platform-full.log`：`9d025998ca51cc61560778d968685d19a1b6bfaa3b6294385803cb3bfe70fc07`。

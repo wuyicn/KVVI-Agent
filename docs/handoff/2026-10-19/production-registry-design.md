@@ -11,6 +11,13 @@
 
 ## 后续批次的边界
 
+### 第二批：目录文件与受控加载
+
+- [x] 新增contracts/component-catalog/v1/catalog.json及catalog.schema.json，完整PLATFORM_CONTROL/kvvi-platform/kvvi_react_core/v1引用，内容使用kvvi-json-c14n/v1摘要。目录声明18个静态组件，props仅实际读取语义；源清单分别记录5个核心文件和3个接线见证，不称传递闭包，明确React/DSH依赖和source-only证据界限。
+- [x] tools/meta-schema/node/component_catalog.mjs提供readInstalledComponentCatalog()、resolveComponentCatalog(ref)、validateCatalogDocument(bytes)及qualifyComponentAdapter(runtimeRoot)。前两者只读固定受控目录，拒绝未知版本、错误摘要及不完整/额外身份字段；validate仅判断文档完整性，不授上传文档信任。返回深冻结对象，不接受caller fake_assets。
+- [x] tools/meta-schema/python/component_catalog.py按同一schema/参考c14n提供等价读取、引用解析、文档完整性与源码清单核验。受控读取逐级拒绝软链接、非普通文件、缺失与过大文件；源码资格只覆盖清单条目，返回不声称bundle身份。
+- [x] 新增真实Node/Python互操作测试：正式ref与18组件集、Fake/未知版本/篡改/重复键、unsupported组件与props、调用者不能改已加载内容；自有重建源清单匹配及逐项改字节/丢失/链接反例。CI运行两种实现。平台完整回归、独立复核后提交推送；本批不改DSH，不声称renderer已消费目录。
+
 中立权威JSON放contracts/component-catalog/v1；包含完整PLATFORM_CONTROL引用、真实React适配器身份/许可/源码闭包摘要与严格能力声明。现23个映射中Table不可用、表单按钮节点未执行；仅可登记实际实现的子集，loop/condition/queries/action/i18n等未实现能力明确拒绝。不能沿用vue_element_approved或no-renderer来声称满足冻结Vue适配器要求。
 
 Node/Python直接读取同一目录，DSH内生成携带相同目录摘要的TS元数据并核对显式renderer集合；平台不加载DSH插件。生产resolver只信受控安装目录，不信上传者fake_assets或production自声明；保留现有Fake完整校验入口。正式目录、共享校验与各消费端分别先失败反例、再实现。

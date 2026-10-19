@@ -1,0 +1,416 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kvvi:component-catalog:v1",
+  "type": "object",
+  "properties": {
+    "canonicalization_profile": {
+      "const": "kvvi-json-c14n/v1"
+    },
+    "ref": {
+      "type": "object",
+      "properties": {
+        "scope_type": {
+          "const": "PLATFORM_CONTROL"
+        },
+        "scope_id": {
+          "const": "kvvi-platform"
+        },
+        "app_id": {
+          "const": null
+        },
+        "module_id": {
+          "const": null
+        },
+        "asset_type": {
+          "const": "COMPONENT_REGISTRY"
+        },
+        "asset_id": {
+          "const": "kvvi_react_core"
+        },
+        "version": {
+          "const": 1
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}(?![\\s\\S])"
+        }
+      },
+      "required": [
+        "scope_type",
+        "scope_id",
+        "app_id",
+        "module_id",
+        "asset_type",
+        "asset_id",
+        "version",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "content": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "state": {
+          "const": "PUBLISHED"
+        },
+        "adapter": {
+          "type": "object",
+          "properties": {
+            "adapterId": {
+              "const": "kvvi.react.core"
+            },
+            "framework": {
+              "const": "react"
+            },
+            "frameworkVersion": {
+              "const": "18.3.1"
+            },
+            "license": {
+              "const": "MIT"
+            },
+            "origin": {
+              "const": "kvvi-overlay-on-dsh"
+            },
+            "upstreamBase": {
+              "const": "e6a559b1550f5bee359cffc514f6a498710d0697"
+            },
+            "evidenceBoundary": {
+              "const": "explicit-source-inventory-only"
+            },
+            "requires": {
+              "const": [
+                "dsh-host-theme",
+                "ui-primitives",
+                "model-field-permissions",
+                "typed-value-coercion"
+              ]
+            },
+            "sourceFiles": {
+              "type": "array",
+              "minItems": 5,
+              "maxItems": 5,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "enum": [
+                      "packages/client/kvvi-panel/src/client/registry.tsx",
+                      "packages/client/kvvi-panel/src/client/FormView.tsx",
+                      "packages/client/kvvi-panel/src/client/values.ts",
+                      "packages/client/kvvi-panel/src/client/locales.ts",
+                      "packages/client/kvvi-panel/src/client/business.module.css"
+                    ]
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "integrationWitnesses": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "enum": [
+                      "packages/client/kvvi-panel/src/client/BusinessBody.tsx",
+                      "packages/client/kvvi-panel/src/client/SystemShell.tsx",
+                      "packages/client/kvvi-panel/src/client/RecordDetail.tsx"
+                    ]
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "adapterId",
+            "framework",
+            "frameworkVersion",
+            "license",
+            "origin",
+            "upstreamBase",
+            "evidenceBoundary",
+            "sourceFiles",
+            "integrationWitnesses",
+            "requires"
+          ],
+          "additionalProperties": false
+        },
+        "unsupported": {
+          "const": [
+            "Table",
+            "SaveDraftButton",
+            "SubmitButton",
+            "CancelButton",
+            "OpenRecordLink",
+            "condition",
+            "loop",
+            "actions",
+            "queries",
+            "i18n"
+          ]
+        },
+        "components": {
+          "type": "array",
+          "minItems": 18,
+          "maxItems": 18,
+          "items": {
+            "type": "object",
+            "properties": {
+              "componentName": {
+                "enum": [
+                  "FormPage",
+                  "ListPage",
+                  "DetailPage",
+                  "Section",
+                  "Grid",
+                  "ShortTextField",
+                  "LongTextField",
+                  "BooleanField",
+                  "IntegerField",
+                  "DecimalField",
+                  "MoneyField",
+                  "DateField",
+                  "DateTimeField",
+                  "SingleSelectField",
+                  "MultiSelectField",
+                  "Text",
+                  "Description",
+                  "StatusBadge"
+                ]
+              },
+              "version": {
+                "const": 1
+              },
+              "state": {
+                "const": "PUBLISHED"
+              },
+              "kind": {
+                "enum": [
+                  "layout",
+                  "field",
+                  "value"
+                ]
+              },
+              "propsSchema": {
+                "$ref": "#/$defs/ObjectPropsSchema"
+              },
+              "bindingPositions": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "const": "FieldRef"
+                  },
+                  "maxItems": 1,
+                  "minItems": 1
+                }
+              },
+              "allowedParents": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "$root",
+                    "FormPage",
+                    "ListPage",
+                    "DetailPage",
+                    "Section",
+                    "Grid"
+                  ]
+                }
+              },
+              "allowedChildren": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "Section",
+                    "Grid",
+                    "ShortTextField",
+                    "LongTextField",
+                    "BooleanField",
+                    "IntegerField",
+                    "DecimalField",
+                    "MoneyField",
+                    "DateField",
+                    "DateTimeField",
+                    "SingleSelectField",
+                    "MultiSelectField",
+                    "Text",
+                    "Description",
+                    "StatusBadge"
+                  ]
+                }
+              },
+              "maxChildren": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 500
+              },
+              "viewTypes": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "FORM",
+                    "LIST",
+                    "DETAIL"
+                  ]
+                },
+                "minItems": 1
+              },
+              "fieldTypes": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "short_text",
+                    "long_text",
+                    "boolean",
+                    "integer",
+                    "decimal",
+                    "money",
+                    "date",
+                    "datetime",
+                    "single_select",
+                    "multi_select"
+                  ]
+                }
+              },
+              "events": {
+                "type": "object",
+                "maxProperties": 0
+              },
+              "loopSupported": {
+                "const": false
+              }
+            },
+            "required": [
+              "componentName",
+              "version",
+              "state",
+              "kind",
+              "propsSchema",
+              "bindingPositions",
+              "allowedParents",
+              "allowedChildren",
+              "maxChildren",
+              "viewTypes",
+              "fieldTypes",
+              "events",
+              "loopSupported"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "version",
+        "state",
+        "adapter",
+        "unsupported",
+        "components"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "canonicalization_profile",
+    "ref",
+    "content"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "PropsSchema": {
+      "anyOf": [
+        {
+          "const": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "object",
+                "string"
+              ]
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/PropsSchema"
+              }
+            },
+            "required": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "additionalProperties": {
+              "const": false
+            },
+            "minLength": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "maxLength": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "const": {},
+            "oneOf": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "$ref": "#/$defs/PropsSchema"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "minProperties": 1
+        }
+      ]
+    },
+    "ObjectPropsSchema": {
+      "$ref": "#/$defs/PropsSchema",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "object"
+        },
+        "additionalProperties": {
+          "const": false
+        }
+      },
+      "required": [
+        "type",
+        "additionalProperties"
+      ]
+    }
+  }
+}
