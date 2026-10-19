@@ -46,10 +46,9 @@
 ## ⚠️ 上游来源：默认用**本地**副本
 
 `--upstream local`（默认）从 `vendor/dsh` 自己的 git 对象里导出基线提交的干净副本 ——
-**不需要网络**。`--upstream git` 从 GitHub 克隆。
-
-**本机当前无法访问 GitHub**（`git ls-remote` 超时），所以本次演练走的是 local 路径。
-`git` 路径**未演练**，见 N23。
+**不需要网络**。`--upstream git` 从产品仓库的 `vendor-dsh` 分支取得Git对象，
+再检出指纹清单固定的导入基线。该导入提交不在官方DSH仓库中。
+分支仅提供Git对象；不使用分支最新内容替换固定基线。
 
 用法：
 
@@ -225,12 +224,14 @@ def pristine(upstream: str, into: str) -> bool:
     m = manifest()
     base = m['upstream_merge_base']
     if upstream == 'git':
-        url = 'https://github.com/deepseek-ai/deepseek-harness.git'
-        r = sh('git clone --quiet %s %s' % (url, into), timeout=3600)
+        url = 'https://github.com/wuyicn/KVVI-Agent.git'
+        r = subprocess.run(['git', 'clone', '--quiet', '--single-branch', '--branch',
+                            'vendor-dsh', url, into], capture_output=True, text=True, timeout=3600)
         if r.returncode != 0:
             print('%s✗ 从上游克隆失败：%s%s' % (C_BAD, r.stderr.strip()[:200], C_OFF))
             return False
-        r = sh('git checkout --quiet %s' % base, cwd=into)
+        r = subprocess.run(['git', 'checkout', '--quiet', base], cwd=into,
+                           capture_output=True, text=True, timeout=1800)
         if r.returncode != 0:
             print('%s✗ 基线提交 %s 在克隆里不存在%s' % (C_BAD, base[:12], C_OFF))
             return False

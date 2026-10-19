@@ -99,3 +99,12 @@
 - 先复制到0700私有目录下的0600快照，再让校验、预检、解包及receipt摘要全部使用同一份字节。即使原路径/内容在停止回调中改变，仍恢复A，receipt也绑定A。
 - 预检新增成员父路径类型冲突与现存目标父文件检查，全部在stop/导库前拒绝。
 - 上述两条反例先RED；全distribution167/167、exit0。没有更改历史备份或现有实例。
+
+## 批次7：恢复固定CI清单与网络fork来源
+
+- 从23515852逐字恢复CI已引用的 `docs/baselines/README.md` 与 `prd-v1.11-go0.sha256`，没有根据当前文件重新生成历史摘要；7/7 SHA-256匹配，参考c14n协议6/6通过。
+- 仅整合fork网络获取源：从产品仓库vendor-dsh分支获取Git对象后检出固定导入SHA，仍叠加当前232文件与8删除；clone/checkout使用参数数组。
+- 实际网络 `python3 工具/fork.py --rebuild --upstream git --into <忽略目录>/network-fixed-dsh` 及再次 `--verify` 均exit0，232指纹与8删除匹配。没有推送忽略的vendor或上游仓库。
+- MetaSchema结构测试最初因系统Python3.9缺jsonschema失败；在独立Python3.12 venv按现有requirements.lock及哈希安装后，结构6/6通过。冻结清单与依赖版本未改。
+- 独立fixed-dsh按现有锁文件离线安装，使用实际pnpm11.7.0，exit0；mode-router/business/publish三包基线6文件81测试通过。这是固定源测试，不是原vendor已更新或试点已部署。
+- efde7293的九份Web fixture当前blob已相同，删除核对已有等效测试；原8184报告副本相同，无需覆盖。b146的后台身份/确认与有损装订拒绝仍需继续整合，任务0不关闭。
