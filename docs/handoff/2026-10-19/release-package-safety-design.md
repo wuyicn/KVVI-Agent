@@ -74,7 +74,13 @@
 
 6项新回归含真实自有双session的过期组/父子快照、父/root身份变化及拒绝扩展无关孙进程；连既有身份/supervisor共46项双Python通过，独立复核真实对照闭环。只修共用归属发现，不声称WIP命令执行器异常清理已完成。
 
-## 受控构建命令生命周期（批次54计划）
+## macOS原生枚举与根退出确认（批次54完成）
+
+持续worker/父查询实证短命setuid ps的内核身份读取可报EPERM，不能作为已退出忽略。Darwin改用libproc的proc_listpgrppids/proc_listchildpids，不再为归属发现创建ps后代；wrapper返回PID个数，buffersize是字节，每次清errno，零+errno/非法count/满容量无法完整读取均拒绝，满缓冲区扩容重读。返回语义按本机SDK及[Apple libproc源码](https://github.com/apple-oss-distributions/xnu/blob/main/libsyscall/wrappers/libproc/libproc.c)核实。Linux仍从ps取候选；两平台都保留内核当前关系与起始身份校验。
+
+已确认为None的非root中间父不再扩展其旧候选边，身份变更/不可读/root退出仍失败。更快的原生枚举暴露了组已空但根子进程退出通知尚未到达的时窗；supervisor需同时确认根退出，不能只凭空组提前返回。6组新增测试连原身份/supervisor共52项双Python通过；真实自有进程及未知errno/扩容/截断边界验证，不是试点验收。
+
+## 受控构建命令生命周期（批次55计划）
 
 构建器先增加自有命令会话：父进程以结构化argv、显式cwd/env和新日志启动短小worker，worker创建独立session并在go握手前不启动命令。父进程先记录并核对worker内核起始身份；命令结束后worker保留session leader直到父进程确认组及已观测逃逸子进程退出，避免拿已回收PID做组信号。
 

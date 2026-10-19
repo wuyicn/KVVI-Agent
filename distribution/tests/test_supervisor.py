@@ -450,6 +450,7 @@ class StopReallyEndsTheProcessTest(unittest.TestCase):
         def _reap() -> None:
             if process.poll() is None:
                 process.kill()
+            process.wait(timeout=5)
             if process.stdout is not None:
                 process.stdout.close()
         self.addCleanup(_reap)
@@ -486,6 +487,12 @@ class StopReallyEndsTheProcessTest(unittest.TestCase):
                                               '旧进程会继续服务撤权前就开着的那一页')
         # 升级这件事必须**看得见**：静默升级会让平台的关停路径有 bug 而没人知道。
         self.assertIn('SIGKILL', ' '.join(result['steps']))
+
+    def test_empty_kernel_group_waits_for_root_exit_notification(self):
+        plan = stop_plan(home=self.home, release_root=self.root)
+        with mock.patch('distribution.lib.supervisor.group_members', return_value={}), \
+             mock.patch('distribution.lib.supervisor._process_alive', return_value=True):
+            self.assertFalse(plan._await_group_exit(20001, 0.01))
 
     def test_a_cooperative_process_is_stopped_without_escalation(self):
         cooperative = self._child('import time\ntime.sleep(120)\n')

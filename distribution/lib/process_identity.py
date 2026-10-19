@@ -71,16 +71,48 @@ def observe(pid):
     return None if value is None else _public_identity(value)
 
 
-def group_members(pgid):
-    """Only live members; a query failure is unknown, never an empty success."""
+def _darwin_pid_candidates(function, pid):
+    """libproc wrappers return a PID count (not bytes); never truncate a list."""
+    lib = ctypes.CDLL('/usr/lib/libproc.dylib', use_errno=True)
+    query = getattr(lib, function)
+    query.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
+    query.restype = ctypes.c_int
+    capacity = 64
+    while capacity <= 1024 * 1024:
+        buffer = (ctypes.c_int * capacity)()
+        ctypes.set_errno(0)
+        count = query(pid, buffer, ctypes.sizeof(buffer))
+        if ctypes.get_errno() or count < 0 or count > capacity:
+            raise ValueError('KVVI_PROCESS_MEMBERSHIP_UNAVAILABLE')
+        if count < capacity:
+            return [value for value in buffer[:count] if value > 1]
+        capacity *= 2
+    raise ValueError('KVVI_PROCESS_MEMBERSHIP_UNAVAILABLE')
+
+
+def _candidate_group_pids(pgid):
+    if sys.platform == 'darwin':
+        return _darwin_pid_candidates('proc_listpgrppids', pgid)
     result = subprocess.run(['ps', '-axo', 'pid=,pgid='], capture_output=True,
                             text=True, timeout=10, check=True)
+    return [int(parts[0]) for line in result.stdout.splitlines()
+            if len(parts := line.split()) == 2 and int(parts[1]) == pgid and int(parts[0]) > 1]
+
+
+def _candidate_child_pids(pid):
+    if sys.platform == 'darwin':
+        return _darwin_pid_candidates('proc_listchildpids', pid)
+    result = subprocess.run(['ps', '-axo', 'pid=,ppid='], capture_output=True,
+                            text=True, timeout=10, check=True)
+    return [int(parts[0]) for line in result.stdout.splitlines()
+            if len(parts := line.split()) == 2 and int(parts[1]) == pid and int(parts[0]) > 1]
+
+
+def group_members(pgid):
+    """Only live members; a query failure is unknown, never an empty success."""
     members = {}
-    for line in result.stdout.splitlines():
-        parts = line.split()
-        if len(parts) != 2 or int(parts[1]) != pgid or int(parts[0]) <= 1:
-            continue
-        identity = observe(int(parts[0]))
+    for pid in _candidate_group_pids(pgid):
+        identity = observe(pid)
         if identity is not None and identity['pgid'] == pgid:
             members[identity['pid']] = identity
     return members
@@ -91,27 +123,29 @@ def descendants(pid):
     root = observe(pid)
     if root is None:
         raise ValueError('KVVI_PROCESS_IDENTITY_UNAVAILABLE')
-    result = subprocess.run(['ps', '-axo', 'pid=,ppid='], capture_output=True,
-                            text=True, timeout=10, check=True)
-    links = [tuple(map(int, line.split())) for line in result.stdout.splitlines() if line.strip()]
     owned = {pid: root}
-    while True:
-        found = {}
-        for child, parent in links:
-            if child <= 1 or child in owned or parent not in owned:
+    pending = [pid]
+    while pending:
+        parent = pending.pop()
+        for child in _candidate_child_pids(parent):
+            if child <= 1 or child in owned:
                 continue
-            # ps is only a hint. Bind each edge to one kernel PPID observation,
+            # Enumeration is only a hint. Bind each edge to kernel PPID,
             # bracketed by the already-owned parent's immutable start identity.
-            if not same_process(observe(parent), owned[parent]):
+            current_parent = observe(parent)
+            if not same_process(current_parent, owned[parent]):
+                if parent != pid and current_parent is None:
+                    break  # A confirmed exited intermediate cannot own new rows.
                 raise ValueError('KVVI_PROCESS_IDENTITY_CHANGED')
             value = _observe_with_parent(child)
-            if not same_process(observe(parent), owned[parent]):
+            current_parent = observe(parent)
+            if not same_process(current_parent, owned[parent]):
+                if parent != pid and current_parent is None:
+                    break
                 raise ValueError('KVVI_PROCESS_IDENTITY_CHANGED')
             if value is not None and value['ppid'] == parent:
-                found[child] = _public_identity(value)
-        if not found:
-            break
-        owned.update(found)
+                owned[child] = _public_identity(value)
+                pending.append(child)
     if not same_process(observe(pid), root):
         raise ValueError('KVVI_PROCESS_IDENTITY_CHANGED')
     del owned[pid]

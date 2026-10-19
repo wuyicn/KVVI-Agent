@@ -851,3 +851,18 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `process-membership-red.log`：`16b7b9fc1db9e03b9a42e7cc52cc3d56e2b0cf36b6f13611bc3f62e3e95768db`。
 - `process-membership-final312.log`：`f598ee290a9029067b8c1601ac5e473068754d7d484539469926d2c7fbb94c30`。
 - `process-membership-final39.log`：`e53c99688eb9a48fbce0a45f2fdabe7b8c63a72db58b48ad96ed9ecce2825278`。
+
+
+## 批次54：macOS原生进程枚举和根退出通知
+
+- WIP命令执行器正常detached/timeout用例间歇失败，父_collect实际报KVVI_PROCESS_IDENTITY_UNAVAILABLE；独立探针捕获errno=EPERM且同PID随后None，本机/bin/ps为root setuid，worker/父持续查询会撞到彼此的短命ps。保留未知权限失败规则，Darwin改用libproc两个原生PID列表wrapper，从源头不生成归属查询ps。签名按本机SDK、count/bytes返回语义按Apple OSS核实（见安全设计链接）；每次清errno，0+errno和负/越界count拒绝，缓冲区满扩容重读，上限仍满则拒绝，不把截断清单作全集。
+- 两平台枚举仅作候选，当前kernel PGID/PPID和parent start前后校验不变；Linux仍用ps候选。中间父已确认None时不沿旧PID扩边，root缺失、真实身份变化、未知查询继续拒绝，不增加未观测逃逸覆盖声明。新增5组含真实自有会话且断言无subprocess ps、errno/扩容/超上限及中间父自然退出。
+- 快枚举又使既有stubborn stop反例稳定暴露：group已空、observeNone时Popen.poll仍None；自有两次实证。新根退出通知反例先RED，supervisor等待现需确认根实际退出/回收；已有自有fixture cleanup补wait，避免异常用例Popen析构warning。最终membership/identity/supervisor共52项，Python3.12/系统3.9.6 -W error::ResourceWarning全部通过、exit0（1.228/1.285秒）。WIP命令执行器仍另待审，不并作完成。
+- 独立复核相关44项exit0，额外自有保活root+短命子进程500轮原生group/descendants枚举无错误且无subprocess ps；空组但根_alive序列True/True/False确等到第三次才退出，无限定范围新增阻断。
+- 无试点环境/模型/源码构建或打包执行。12项仍未勾选。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `owned-build-command-focused3.log`（正常用例失败的定位记录）：`475b58927f330815ae50c3b58d6bee46c7405a7d812c95d97ae792855769ecb9`。
+- `process-kernel-root-notification-red.log`：`cd5ad6ce01a9b7f56557fe1b5037f7dfd9fa750117427f7c601d6d9719b91139`。
+- `process-kernel-enumeration-final312-2.log`：`fb52b9449758756e595df03ea16cd5c20cea75710e111a3a3b2f304933bd98fd`。
+- `process-kernel-enumeration-final39-2.log`：`ebcf379880bb5be21c2469dcb34472484537280888844da0640b050c6b0eccb4`。

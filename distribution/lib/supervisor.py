@@ -209,12 +209,15 @@ class ProcessPlan:
                 ended = not group_members(pid) and not any(same_process(observe(key), value) for key, value in children.items())
             except (OSError, ValueError, subprocess.SubprocessError):
                 return None
-            if ended:
-                _process_alive(pid)  # Reap an owned child if it has exited.
+            if ended and not _process_alive(pid):
+                # Native enumeration can already see an empty group during
+                # kernel teardown, before the parent's child-exit notification.
                 return True
             time.sleep(STOP_POLL_SECONDS)
         try:
-            return not group_members(pid) and not any(same_process(observe(key), value) for key, value in children.items())
+            return (not group_members(pid)
+                    and not any(same_process(observe(key), value) for key, value in children.items())
+                    and not _process_alive(pid))
         except (OSError, ValueError, subprocess.SubprocessError):
             return None
 
