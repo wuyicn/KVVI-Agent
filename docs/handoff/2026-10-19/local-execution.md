@@ -169,3 +169,8 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node services/platform/test
 - 完整平台首轮595项：592通过、2个新增测试失败、1个既有跳过；失败均为测试使用repo相对路径，npm工作目录下子进程找不到源码。修为基于import.meta.url的绝对路径后重跑：597项，596通过、0失败、1个既有跳过，exit0。runner与npm子进程明确使用Node24.20.0，PG17.11。
 - `python3 -m unittest discover -s distribution/tests`：167/167、exit0。非敏感命令、输入文件与日志摘要另存[本批验证记录](verification-write-recovery.json)。
 - 任务3仍未关闭：commands、流程、访客尚未接入本回执；UI/Agent的身份绑定原key持久保存属于任务4，仍需实现。撤销与写入并发的完整栅栏、离线签名审计批次也未完成。旧回执人工恢复路径另需交付，不建议用新key覆盖未知历史结果。
+
+## 批次12：fork重建目标路径
+
+- 批次9已记录的相对目标路径失败已单独修复。使用自有临时Git基线，实际复现相对路径、空格路径、中文空格路径三种失败，再将local导出改为独立参数数组及临时归档，不经shell拼接；rebuild入口规范化绝对目标路径。
+- `python3 -m unittest 工具.test_fork_paths`：1项测试含3个子场景全部通过，exit0；`python3 工具/fork.py --rebuild --into '.local-remediation-evidence/relative fork rebuilt'`：234覆盖与8删除全部匹配当前242路径指纹，exit0。原vendor及其remote未改。

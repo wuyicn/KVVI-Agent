@@ -66,6 +66,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DSH = os.path.join(ROOT, 'vendor', 'dsh')
@@ -242,7 +243,15 @@ def pristine(upstream: str, into: str) -> bool:
     # 这条路**不需要网络**，但它证的是「重建逻辑对」，
     # 不是「GitHub 能连上」—— 后者见 N23。
     os.makedirs(into, exist_ok=True)
-    r = sh('git archive %s | tar -x -C %s' % (base, into), cwd=DSH, timeout=900)
+    with tempfile.TemporaryFile() as archive:
+        exported = subprocess.run(['git', 'archive', base], cwd=DSH, stdout=archive,
+                                  stderr=subprocess.PIPE, text=True, timeout=900)
+        if exported.returncode != 0:
+            print('%s✗ 从本地对象导出基线失败：%s%s' % (C_BAD, exported.stderr.strip()[:200], C_OFF))
+            return False
+        archive.seek(0)
+        r = subprocess.run(['tar', '-x', '-C', os.path.abspath(into)], stdin=archive,
+                           capture_output=True, text=True, timeout=900)
     if r.returncode != 0:
         print('%s✗ 从本地对象导出基线失败：%s%s' % (C_BAD, r.stderr.strip()[:200], C_OFF))
         return False
@@ -250,6 +259,7 @@ def pristine(upstream: str, into: str) -> bool:
 
 
 def rebuild(into: str, upstream: str, changes: str = CHANGES) -> int:
+    into = os.path.abspath(into)
     if os.path.exists(into):
         shutil.rmtree(into)
     os.makedirs(into)
