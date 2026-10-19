@@ -591,3 +591,22 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `production-view-boundaries-green.log`：`4d68198cf0e75046b090be5083d52fde3edd64c2102bf16221ea8d06844a409c`。
 - `production-view-final-focused.log`：`26ce3d6a8fd7a1d66680522e26d4b7c3fbeda1c292e0a4749f114522a1cd4365`。
 - `batch39-platform-final.log`：`a0b88814ac59ca1c4d967701979feb746d90f6aaa45f9bf4a0f95471690795db`。
+
+
+## 批次40：不可变业务模型身份预留
+
+- 新增SQL42 private schema/NOLOGIN owner与business_identities，TENANT/company/app/module/BUSINESS_SCHEMA/asset_id映射数据库default生成UUID与不可变schema_code。nullable分量保留，与字符串null不同；同namespace code不可复用，同身份重试保留初次UUID/创建人/会话/DB clock时间/trace。内部SHA256索引桶不是公开c14n/spec摘要，命中后逐项比较原值，支持超长StableId而不依赖btree文本长度。
+- 私有表不受public blanket grant影响，平台角色无表读写/CREATE/SET ROLE，只获具体函数EXECUTE；FORCE RLS限制owner按transaction company读取，immutable statement trigger拒绝UPDATE/DELETE/TRUNCATE。SQL函数仅证明company/user/session GUC调用一致，不能独立证明最终用户授权；无外部HTTP/AI入口，不声称app/module完整scope策略已实现。
+- Node内部reserveBusinessIdentity在任何await前复制ctx/参数，拒绝省略分量或伪造UUID/version/lifecycle等额外字段，namespace来自服务端计划而非code猜测。先获namespace锁，再锁当前user/session/membership，并在借入同一client上重用实际Builder资格。loadSession/isDirectoryBuilder/requireDirectoryBuilder最小增加可选client，避免32并发持连接时嵌套checkout；等待撤权后必须拒绝，标准users→sessions撤销与本批锁序一致。
+- 初始缺模块RED后8项真PG通过；扩展测试曾多写一个括号导致语法错误，修正后再跑，不计为产品RED。自查孤立代理被pg传输替换成UFFFD而产生身份混淆，真实反例先RED，再用官方c14n拒绝非法Unicode，并明确拒绝PG text不能表达的NUL；合法UFFFD正对照不误拒。
+- 独立复核指出42 DDL COMMIT后、迁移器另写ledger前中断的窗口，保留实际身份行仅删42账本再迁移先RED（schema already exists）。修为schema/table IF NOT EXISTS、owner/ACL/RLS重置、policy/trigger事务内重建、functions OR REPLACE；重放不改身份数据。独立复核分别重跑12项及迁移窄用例，确认原阻断闭环，无新增确定阻断。
+- 最终12项真PG定向全通过，exit0、11.277秒：32同身份并发、12不同asset争code、公司/app/module/null、超长ID、code漂移、伪元数据、员工/跨公司/结束/过期会话、user锁与namespace锁后实际撤权、缺/错GUC、私有直写与不可变、事务回滚、owner RLS、正常增量及缺ledger重放。迁移测试先造真实legacy发布行，不以空表证明不回填。
+- 最终完整平台810项：809通过、0失败、1既有跳过，实际exit0、199.139秒；runner确认自有PG停止，所有最终退出后才计算以下摘要。完整命令同批次31，定向通过run-isolated.mjs运行business-identity.test.mjs。没有改变既有试点、DSH或正式目录版本。
+- 本批仅身份预留，不存spec、不分配发布版本，也不返回PUBLISHED/批准。真实版本正文/审批来源、生产resolver与发布/runtime接线、固定fork完整源码/构建收据/打包资格及其他12项继续；所有整体任务仍不勾选。
+
+非敏感日志SHA-256：
+- `business-identity-red.log`：`6634028cfe48c602ac55478120f55fb73b8f5b77d2517add6a6d9b90aaac817d`。
+- `business-identity-unicode-red.log`：`ed3bbc0454aeda84d853bf62c82743d9cb2eee268ae6083642d327c0965ad081`。
+- `business-identity-migration-gap-red.log`：`20f49160d46e29e05df79490f2975efb8a835dd4c5db962003e69a1aed0ceaf9`。
+- `business-identity-final-focused2.log`：`c3d032e647ed20b88631e9102579ab8da82d0f6550a783d5e592c2a158f16096`。
+- `batch40-platform-final.log`：`feef347d43d7c516fb154b73ec0055b9a2864fa6aac92dcc51afb87564be94cb`。

@@ -13,16 +13,16 @@ export class DirectoryError extends Error {
 const fail=code=>{throw new DirectoryError(code)}
 const invalid=()=>fail('KVVI_DIRECTORY_INVALID')
 export const uuid=value=>typeof value==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value)
-export async function isDirectoryBuilder(ctx) {
+export async function isDirectoryBuilder(ctx, client) {
   if (ctx?.gateway!=='BUILDER' || !uuid(ctx.sessionId)) return false
-  const live=await loadSession(ctx.sessionId)
+  const live=await loadSession(ctx.sessionId,client)
   return live?.state==='ACTIVE' && live.userStatus==='ACTIVE'
     && live.companyId===ctx.companyId && live.userId===ctx.userId && live.gateway==='BUILDER'
     && live.authzVersion===live.currentAuthzVersion
-    && (await allowedGateways(ctx.companyId,ctx.userId)).includes('BUILDER')
+    && (await allowedGateways(ctx.companyId,ctx.userId,client)).includes('BUILDER')
 }
-export async function requireDirectoryBuilder(ctx) {
-  if (!await isDirectoryBuilder(ctx)) fail('KVVI_BUILDER_REQUIRED')
+export async function requireDirectoryBuilder(ctx, client) {
+  if (!await isDirectoryBuilder(ctx,client)) fail('KVVI_BUILDER_REQUIRED')
 }
 export async function directoryTransaction(companyId, fn) {
   return withTransaction('business',async c=>{

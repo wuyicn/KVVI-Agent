@@ -41,4 +41,11 @@ Node/Python直接读取同一目录，DSH内生成携带相同目录摘要的TS�
 - [x] 返回{valid,errors,dependencies,validationScope:'STATIC_VIEW_AND_REFERENCE',releaseApproved:false}，不作为审批/激活/权限结论。单元测试可用受控resolver夹具验证接口语义，不能把它冒称真实PG登记或生产发布验收；真实存储、prepare/final publish/runtime接线在后批单独实现。
 - [x] 先RED覆盖同名不同公司/app/module、缺/错版本摘要、缺登记来源/自报PUBLISHED、UUID/代码漂移、未知历史/unsupported特性/不可用resolver、原始JSON与异步输入变动；跨语言定向及完整必要回归、复核后提交推送。
 
+### 第五批：不可变模型身份预留
+
+- [x] 新增SQL42，private schema/NOLOGIN owner持有TENANT/company/app/module/BUSINESS_SCHEMA/asset_id到数据库生成schema_id与固定schema_code的映射。null维度保留，名称与UUID不是彼此别名；同一身份重试复用UUID，改code或同namespace重复code拒绝。
+- [x] 平台角色不能直写/修改/删除/截断映射，只能调用受控reserve函数；函数核transaction GUC公司/账号/会话一致，表强制RLS与不可变trigger。数据库时间记录创建人、会话和trace，旧published_contracts不回填，不记录spec/version/lifecycle/批准。
+- [x] Node内部reserveBusinessIdentity接服务端已解析namespace和会话；复用现有Builder资格判据，给loadSession/isDirectoryBuilder/requireDirectoryBuilder最小增加借入client，避免32并发耗尽连接池。事务锁定当前user/session/membership后在同client重验，防止等待期间的撤权被旧上下文放行；不新增HTTP/AI接口，不声称完整app/module授权或发布来源已实现。
+- [x] 真PG先RED：并发同身份、不同公司/app/module/null、code漂移/碰撞、额外伪造元数据、缺/错GUC、直写/改删拒绝、过期/员工/跨公司会话、排队撤权及增量迁移不生成历史登记。定向、完整回归、独立复核后保存。下一批再做版本正文/审批发布来源，不能把预留映射当作已发布模型。
+
 发行包须显式选择固定fork源，核完整源码inventory、生成目录、实际host/client输出及构建收据；解包和HTTP实服务摘要另验。源测试、Git提交、构建成功、发行和产品验收各自取证。目录摘要嵌入bundle，bundle摘要放独立manifest避免循环。当前仍缺这些实现，不勾选任务10/11。

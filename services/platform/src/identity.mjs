@@ -151,8 +151,8 @@ export async function createSession({ userId, companyId, gateway, sourceSessionI
  * @param {string} sessionId 会话
  * @returns {Promise<object|null>} 会话上下文
  */
-export async function loadSession(sessionId) {
-  const { rows } = await pool('platform').query(
+export async function loadSession(sessionId, client = pool('platform')) {
+  const { rows } = await client.query(
     `SELECT s.session_id, s.user_id, s.company_id, s.gateway, s.state, s.authz_version,
             s.created_at, s.last_seen_at, u.status AS user_status, u.authz_version AS current_authz,
             m.dept_id, m.shop_id
