@@ -610,3 +610,22 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `business-identity-migration-gap-red.log`：`20f49160d46e29e05df79490f2975efb8a835dd4c5db962003e69a1aed0ceaf9`。
 - `business-identity-final-focused2.log`：`c3d032e647ed20b88631e9102579ab8da82d0f6550a783d5e592c2a158f16096`。
 - `batch40-platform-final.log`：`feef347d43d7c516fb154b73ec0055b9a2864fa6aac92dcc51afb87564be94cb`。
+
+
+## 批次41：固定fork完整声明源码清单核验
+
+- 新增只读工具/lib/runtime_source.py，固定指纹完整baseline e6a559b1550f5bee359cffc514f6a498710d0697，Git禁用replace objects，以NUL分隔ls-tree取12072条（12048普通、9可执行、15链接）；叠加132新增/108覆盖/8删除，预期12196条。基线按原始Git blob hash、overlay按已登记SHA256，所有预期项先核，不能被输出忽略规则跳过。可执行位本批不鉴定。
+- 普通文件及父目录不允许symlink，链接按固定blob原始target字节并核目标留在清单/根内；15个相对链接中的.claude/skills目录别名不递归，其真实目标源码独立核。删除用lexists，broken link亦拒绝。然后扫描额外项，只从已匹配package.json、tsconfig显式outDir、prebuilds清单导出依赖/输出排除，精确列excludedUnqualified；不执行源中脚本、不加载源码依赖、不借.gitignore放宽。声明输出/依赖并未获得产物资格。
+- 初始缺模块先RED，7组fixture绿；独立复核实测补循环target的RuntimeError、非对象配置的AttributeError、.git FIFO三个反例先RED，修为固定SOURCE_LINK_UNAVAILABLE / SOURCE_BUILD_LAYOUT_UNSUPPORTED与元数据类型拒绝。最终10组分别在Python3.12和系统3.9.6全通过，均实际exit0；独立两人亦重跑10项闭环。CI加入同一unittest。源清单选定根需管理员控制，不声称原子树快照或抗并发目录攻击。
+- 最终实际fixed-dsh只读核验exit1、12193/12196，正确保留3个SOURCE_DIGEST_MISMATCH：apps/desktop/scripts/node-bin/node.cmd（94字节/3个CRLF，blob91字节/LF）、apps/desktop/scripts/windows-sign.cmd（995字节/17个CRLF，blob978字节/LF）、packages/tool/kvvi-business/package.json（scripts与outer overlay不同，非仅换行）。未修改该目录、未放宽字节规则，也不能把其先前构建结果称合格发行源码；因为未全部匹配，此次没有继续到它的输出排除扫描。
+- 另在自有canonical-source-2abj9z7w参考目录，从禁replace的固定Git cat-file原始blob分批导出（非checkout/archive EOL转换），应用已验SHA的240 overlay与8删除；实际最终12196/12196、exit0、0错误/0排除，inventoryDigest sha256:e5bd0355fdf46668f7df25509a2c2ea48dfc75623a2ad49d9975fe3ebac99b9e。独立复核重新核对同摘要。该参考树没有构建产物，不是原built树修复/部署或发行验收。
+- 更正本批前的只读口头判断：rg未包含ignored文件而漏看fixed-dsh/.dsh-build/client-build-environment.json。实际直接读取并调用上游readClientBuildRecord成功，252客户端产物摘要e0f13ae686f10844d746733c9e06a877c81e9a036cc03bd0a98ee8baa9778f7b仍匹配；registered-fork无收据。它未绑定本批完整源清单、host产物与打包，不能覆盖上述3处源码差异。
+- 工具报告只为DECLARED_SOURCE_INVENTORY、releaseApproved=false。失败inventoryDigest仅覆盖匹配子集，不是整树资格。固定源码重建接线/实际完整重构建、显式runtime-source打包、目录/host/收据/解包服务身份继续。本批未改平台/DSH/试点；最近平台全回归为批次40的810项，不冒称本批重跑。整体12项仍未完成。
+
+最终非敏感日志SHA-256（均实际退出后计算）：
+- `runtime-source-red.log`：`ce1fb62fa3b7a78e059fceff50faff496baba36c954e01ef1e35f9cfb8fa9595`。
+- `runtime-source-boundaries-red2.log`：`4dacdbd4bd77f45856acca6a148d7416772dde5cd0b9ff8b5b532f452dd5ccfc`。
+- `runtime-source-final-unit.log`：`6eca4f5012d6a8987ead5eba6d93c63b759274db17ef48b71855bf3f5e79a44f`。
+- `runtime-source-python39.log`：`3433635765e32e7fb02fd2e11a6ecb5bec430b0ff175d2be9756cde0d7ba4f97`。
+- `runtime-source-final-built-rejected.json`：`11b3f7fecd4f166c0a55be75ad517a8d24bd11e760d1f10afe22cef2cf9a06d7`。
+- `runtime-source-final-canonical.json`：`27e9f25b1970e6fb91ece1755b564b8ae8392555bfa829c313ee842bcebb9b2f`。
