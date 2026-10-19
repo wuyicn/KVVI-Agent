@@ -434,3 +434,54 @@ test('field revocation plus audit outage still seals own metadata through the du
     await settle()
   }
 })
+
+test('actual client intent SDK traverses authenticated APIs and real PG without replay on recovery',async()=>{
+  await settle()
+  const sdk=await import('../../../forks/dsh/变更/packages/client/kvvi-panel/src/client/api.ts')
+  const originalFetch=globalThis.fetch, calls=[]
+  let session=alice, dropWriteReply=true
+  globalThis.fetch=async(url,init={})=>{
+    const parsed=new URL(url,'http://test'), headers=new Headers(init.headers)
+    calls.push([init.method,parsed.pathname,headers.get('idempotency-key')])
+    const response=await handleApi({method:init.method,path:parsed.pathname,query:parsed.search,body:init.body??null,
+      headers:{authorization:'Bearer '+session.raw,...Object.fromEntries(headers.entries())},
+      loadSession:token=>handleAuth({method:'GET',path:'/auth/session',body:null,headers:{authorization:'Bearer '+token}})})
+    if(dropWriteReply && init.method==='POST'&&parsed.pathname.endsWith('/records')&&response.status===201) {
+      dropWriteReply=false
+      throw new Error('injected-lost-client-response-after-business-commit')
+    }
+    return Response.json(response.body,{status:response.status})
+  }
+  try {
+    const target={assetId:'general_item'}, input={data:{title:'actual intent SDK'}}
+    assert.deepEqual(await sdk.getRecordWriteIntent(target),{ok:true,value:{state:'EMPTY'}})
+    const prepared=await sdk.prepareRecordWriteIntent(target,input)
+    assert.equal(prepared.ok,true)
+    assert.equal(prepared.value.state,'PREPARED')
+    const key=prepared.value.idempotencyKey
+    const created=await sdk.createRecord(target.assetId,input.data,key)
+    assert.equal(created.ok,false)
+    assert.equal(created.code,'KVVI_UNREACHABLE')
+    session=await makeSession(A.alice,A.company)
+    const recovered=await sdk.getRecordWriteIntent(target)
+    assert.equal(recovered.ok,true)
+    assert.equal(recovered.value.state,'COMMITTED')
+    assert.equal(recovered.value.idempotencyKey,key)
+    assert.equal(typeof recovered.value.result.recordId,'string')
+    assert.equal(await effects(input.data.title),1)
+    assert.equal((await sdk.acknowledgeRecordWriteIntent(target,key)).value.state,'ACKNOWLEDGED')
+    assert.equal((await sdk.getRecordWriteIntent(target)).value.state,'EMPTY')
+    const next=await sdk.prepareRecordWriteIntent(target,{data:{title:'SDK cancel without effect'}})
+    assert.equal((await sdk.cancelRecordWriteIntent(target,next.value.idempotencyKey)).value.state,'CANCELED')
+    assert.equal(await effects('SDK cancel without effect'),0)
+    assert.equal(calls.filter(([method,path])=>method==='POST'&&path.endsWith('/records')).length,1)
+    const patchTarget={assetId:'general_item',recordId:recovered.value.result.recordId}
+    const patch=await sdk.prepareRecordWriteIntent(patchTarget,{data:{title:'SDK PATCH'},rowVersion:1})
+    assert.equal(patch.ok,true)
+    const update=await sdk.updateRecord(patchTarget.assetId,patchTarget.recordId,{title:'SDK PATCH'},1,patch.value.idempotencyKey)
+    assert.equal(update.ok,true)
+    assert.equal(update.value.rowVersion,2)
+    assert.equal((await sdk.getRecordWriteIntent(patchTarget)).value.result.rowVersion,2)
+    assert.equal((await sdk.acknowledgeRecordWriteIntent(patchTarget,patch.value.idempotencyKey)).value.state,'ACKNOWLEDGED')
+  } finally {globalThis.fetch=originalFetch}
+})

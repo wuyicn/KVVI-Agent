@@ -18,7 +18,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { KvviListView } from '../src/client/ListView.tsx'
 import { KvviRecordDetail } from '../src/client/RecordDetail.tsx'
 import type { Copy } from '../src/client/FormView.tsx'
-import { createRecord, getRecord, listRecords, updateRecord, readFormFields } from '../src/client/api.ts'
+import { createRecord, getRecord, listRecords, updateRecord, readFormFields,
+  getRecordWriteIntent, prepareRecordWriteIntent, cancelRecordWriteIntent, acknowledgeRecordWriteIntent } from '../src/client/api.ts'
 import { en, zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)
@@ -434,4 +435,71 @@ it('keeps an internal-space original key and uses the server canonical trimming 
     expect(await createRecord('form',{},'é'.repeat(129))).toEqual({ok:false,status:400,code:'KVVI_OPERATION_KEY_INVALID'})
     expect(fetcher).toHaveBeenCalledTimes(1)
   } finally { vi.unstubAllGlobals() }
+})
+
+it('uses the durable intent endpoints and original headers without generating or replaying a business write',async()=>{
+  try {
+    const fetcher=vi.fn().mockImplementation(()=>Promise.resolve(Response.json({state:'PREPARED',idempotencyKey:'server-key'})))
+    vi.stubGlobal('fetch',fetcher)
+    const target={assetId:'业务/1',recordId:'记录/2'}, input={data:{title:'frozen',flag:false},rowVersion:7}
+    const controller=new AbortController()
+    expect(await getRecordWriteIntent(target,controller.signal)).toEqual({ok:true,value:{state:'PREPARED',idempotencyKey:'server-key'}})
+    expect(await prepareRecordWriteIntent(target,input)).toEqual({ok:true,value:{state:'PREPARED',idempotencyKey:'server-key'}})
+    fetcher.mockResolvedValue(Response.json({state:'CANCELED',idempotencyKey:'server-key',intentAuditPending:true}))
+    expect(await cancelRecordWriteIntent(target,'server-key')).toEqual({ok:true,value:{state:'CANCELED',idempotencyKey:'server-key',intentAuditPending:true}})
+    fetcher.mockResolvedValue(Response.json({state:'ACKNOWLEDGED',idempotencyKey:'server-key'}))
+    await acknowledgeRecordWriteIntent(target,'server-key')
+    expect(fetcher.mock.calls.map(([url,init])=>[url,init.method,init.headers,init.body])).toEqual([
+      ['/api/v1/systems/%E4%B8%9A%E5%8A%A1%2F1/records/%E8%AE%B0%E5%BD%95%2F2/write-intent','GET',{},undefined],
+      ['/api/v1/systems/%E4%B8%9A%E5%8A%A1%2F1/records/%E8%AE%B0%E5%BD%95%2F2/write-intent','POST',{'content-type':'application/json'},JSON.stringify(input)],
+      ['/api/v1/systems/%E4%B8%9A%E5%8A%A1%2F1/records/%E8%AE%B0%E5%BD%95%2F2/write-intent/cancel','POST',{'content-type':'application/json','idempotency-key':'server-key'},'{}'],
+      ['/api/v1/systems/%E4%B8%9A%E5%8A%A1%2F1/records/%E8%AE%B0%E5%BD%95%2F2/write-intent/acknowledge','POST',{'content-type':'application/json','idempotency-key':'server-key'},'{}'],
+    ])
+    expect(fetcher.mock.calls[0]?.[1]?.signal).toBe(controller.signal)
+  } finally {vi.unstubAllGlobals()}
+})
+
+it('rejects malformed or mismatched durable states and preserves uncertainty instead of inventing a fresh key',async()=>{
+  try {
+    const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher)
+    for(const body of [{state:'UNKNOWN'},{state:'PREPARED'},{state:'PREPARED',idempotencyKey:' '},
+      {state:'COMMITTED',idempotencyKey:'k'}, {state:'COMMITTED',idempotencyKey:'k',resultRestricted:true,result:{recordId:'secret'}},
+      {state:'ACKNOWLEDGED',idempotencyKey:'k'}]) {
+      fetcher.mockResolvedValue(Response.json(body))
+      expect(await getRecordWriteIntent({assetId:'form'})).toMatchObject({ok:false,code:'KVVI_BAD_RESPONSE'})
+    }
+    fetcher.mockResolvedValue(Response.json({state:'COMMITTED',idempotencyKey:'k',resultRestricted:true}))
+    expect(await getRecordWriteIntent({assetId:'form'})).toEqual({ok:true,value:{state:'COMMITTED',idempotencyKey:'k',resultRestricted:true}})
+    fetcher.mockResolvedValue(Response.json({state:'CANCELED',idempotencyKey:'different'}))
+    expect(await cancelRecordWriteIntent({assetId:'form'},'original')).toMatchObject({ok:false,code:'KVVI_BAD_RESPONSE',idempotencyKey:'original',retryWithSameKey:true})
+    fetcher.mockResolvedValue(Response.json({error:'KVVI_OPERATION_OUTCOME_UNKNOWN',idempotencyKey:'wrong-server-hint',retryWithSameKey:true},{status:503}))
+    expect(await cancelRecordWriteIntent({assetId:'form'},'original')).toMatchObject({ok:false,code:'KVVI_OPERATION_OUTCOME_UNKNOWN',idempotencyKey:'original'})
+    const count=fetcher.mock.calls.length
+    expect(await acknowledgeRecordWriteIntent({assetId:'form'},'')).toMatchObject({ok:false,code:'KVVI_OPERATION_KEY_INVALID'})
+    expect(fetcher.mock.calls).toHaveLength(count)
+  } finally {vi.unstubAllGlobals()}
+})
+
+it('rejects contradictory terminal states and committed results for a different write target',async()=>{
+  try {
+    const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher)
+    const receipt={idempotencyKey:'original',operationId:'op',statusCode:201,result:{recordId:'a',rowVersion:1},auditPending:false}
+    for(const state of ['EMPTY','PREPARED','CANCELED','ACKNOWLEDGED']) {
+      fetcher.mockResolvedValue(Response.json({state,...receipt}))
+      const result=state==='CANCELED'?await cancelRecordWriteIntent({assetId:'form'},'original')
+        :state==='ACKNOWLEDGED'?await acknowledgeRecordWriteIntent({assetId:'form'},'original')
+        :await getRecordWriteIntent({assetId:'form'})
+      expect(result).toMatchObject({ok:false,code:'KVVI_BAD_RESPONSE'})
+    }
+    const target={assetId:'form',recordId:'11111111-1111-4111-8111-111111111111'}
+    for(const body of [
+      {...receipt,state:'COMMITTED',statusCode:200,result:{recordId:'22222222-2222-4222-8222-222222222222',rowVersion:2}},
+      {...receipt,state:'COMMITTED',statusCode:201,result:{recordId:target.recordId,rowVersion:2}},
+    ]) {
+      fetcher.mockResolvedValue(Response.json(body))
+      expect(await getRecordWriteIntent(target)).toMatchObject({ok:false,code:'KVVI_BAD_RESPONSE'})
+    }
+    fetcher.mockResolvedValue(Response.json({...receipt,state:'COMMITTED',statusCode:200}))
+    expect(await getRecordWriteIntent({assetId:'form'})).toMatchObject({ok:false,code:'KVVI_BAD_RESPONSE'})
+  } finally {vi.unstubAllGlobals()}
 })

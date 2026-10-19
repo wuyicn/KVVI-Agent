@@ -292,3 +292,19 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 非敏感日志摘要：
 - `write-intents-final3.log`：SHA-256 `23e0689a051276c7de61b479d9f2259be14c5278b2f57e71a8d9fca99271ca0a`，2213字节。
 - `platform-write-intents-final3-full.log`：SHA-256 `32a5adb9b24386efa773817575226ed6038768d0911e80063ed2823dc90d5868`，66734字节。
+
+## 批次22：客户端耐久意图协议传输与解析
+
+- api.ts新增GET/prepare/cancel/ACK明确接口，create与PATCH端点保持分开、路径编码，控制操作携带原key；不产生业务写入、不本地保存payload或自动铸造替代key。GET接受取消signal。空/非法控制key在fetch前拒绝；控制失败始终保留调用方原key，不能被错误响应hint替换。
+- 先RED新增接口，再实现状态联合与严格解析。独立复核重现混合EMPTY/CANCELED/ACK+receipt会被清洗成可继续状态、PATCH结果可以指另一记录；补RED后拒绝互斥组合、受限结果携带receipt、错误成功状态码及规范UUID目标不一致。restricted COMMITTED只能返回元数据。
+- 实际导入当前客户端SDK，通过真实授权API及隔离PG执行prepare/写入：数据库已提交后适配器抛出模拟丢失响应，客户端明确UNREACHABLE；重新登录GET找回原key及已知结果，数据库只有一条效果；ACK、仅取消无效果、PATCH版本2均核对。20项真实PG测试通过、exit0；这是适配器故障注入，尚非真实浏览器网络断连旅程。
+- 最终固定源19文件211/211、host/client根tsc exit0、Node24.20.0/pnpm11.7.0完整build exit0，252客户端产物。G2 243路径/52登记有效，新鲜固定源重建235覆盖+8删除逐字节一致。最初SDK测试重复使用已消费的Response导致第二次解析失败，已修正夹具每次返回新Response；不据该夹具错误更改产品协议。
+- 本批新增平台代码仅测试；平台生产实现仍为批次21最终653项回归版本。UI/Agent尚未调用这些SDK函数，不宣称刷新恢复完成；原vendor及已有试点未改。
+
+非敏感日志SHA-256：
+- `write-intent-api-package-final2.log`：`fd18df64fc756783a587bb99bf5f167dff68b7dae9b55d53e30047275c444562`。
+- `write-intent-api-types-final2.log`：`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`。
+- `write-intent-api-build-final2.log`：`094477c93a8887ba6e79bff0276fb67c806d8489e17daf9941e85de10a06613f`。
+- `write-intent-api-real-pg-final2.log`：`a2148cc29e56f9bd38872cb89c1d7c23c904c26e007d1036a0a83787e7dfecb9`。
+- `write-intent-api-g2.log`：`89ca0f204573174aa0a40519b88e1797fa16fafc521bcab7d606ddcbeed95f2d`。
+- `write-intent-api-rebuild.log`：`ffb13469f22aa36795f2c93b252b355a905d5db8da79c9e5b728ab8e494ae6a1`。

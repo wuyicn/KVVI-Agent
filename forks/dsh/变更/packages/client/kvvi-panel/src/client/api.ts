@@ -395,7 +395,7 @@ export function updateRecord(
     { data, rowVersion }, idempotencyKey)
 }
 
-function recordWrite<T>(method: string, path: string, body: unknown, key: string | undefined): Promise<ApiResult<T>> {
+function recordWrite<T>(method: string, path: string, body: unknown, key: string | undefined, signal?: AbortSignal): Promise<ApiResult<T>> {
   // Reject unusable keys before fetch rather than letting an empty header turn
   // into a new server-generated operation identity.
   if (key !== undefined) {
@@ -408,7 +408,83 @@ function recordWrite<T>(method: string, path: string, body: unknown, key: string
       return Promise.resolve({ ok: false, status: 400, code: 'KVVI_OPERATION_KEY_INVALID' })
     }
   }
-  return request(method, path, body, undefined, API, key === undefined ? {} : { 'idempotency-key': key })
+  return request(method, path, body, signal, API, key === undefined ? {} : { 'idempotency-key': key })
+}
+
+export interface RecordWriteTarget { readonly assetId: string; readonly recordId?: string }
+export interface RecordWriteInput { readonly data: Readonly<Record<string, unknown>>; readonly rowVersion?: number }
+export interface RecordWriteResult { readonly recordId: string; readonly rowVersion: number; readonly recordNo?: string }
+export type RecordWriteIntent = (
+  | { readonly state: 'EMPTY' }
+  | { readonly state: 'PREPARED'; readonly idempotencyKey: string; readonly resultRestricted?: true }
+  | { readonly state: 'COMMITTED'; readonly idempotencyKey: string; readonly resultRestricted: true }
+  | { readonly state: 'COMMITTED'; readonly idempotencyKey: string; readonly operationId: string;
+    readonly statusCode: number; readonly result: RecordWriteResult; readonly auditPending: boolean }
+  | { readonly state: 'CANCELED' | 'ACKNOWLEDGED'; readonly idempotencyKey: string }
+) & { readonly intentAuditPending?: boolean }
+
+function intentKey(value: unknown): value is string {
+  if (typeof value !== 'string' || !value || value !== value.trim() || /[\r\n]/u.test(value)
+    || new TextEncoder().encode(value).byteLength > 256) return false
+  try { new Headers({ 'idempotency-key': value }); return true } catch { return false }
+}
+const intentObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/** Validate the control protocol before a UI may clear or resume any operation. */
+async function intentRequest(target: RecordWriteTarget, method: string, suffix: string, body: unknown,
+  states: readonly string[], key?: string, signal?: AbortSignal): Promise<ApiResult<RecordWriteIntent>> {
+  if (suffix !== '' && (typeof key !== 'string' || !intentKey(key.trim()))) {
+    return { ok: false, status: 400, code: 'KVVI_OPERATION_KEY_INVALID' }
+  }
+  key = key?.trim()
+  const path = `/systems/${encodeURIComponent(target.assetId)}`
+    + (target.recordId === undefined ? '' : `/records/${encodeURIComponent(target.recordId)}`) + '/write-intent' + suffix
+  const response = await recordWrite<unknown>(method, path, body, key, signal)
+  if (!response.ok) return key === undefined ? response : { ...response, idempotencyKey: key }
+  const value = response.value
+  const bad = (): ApiResult<RecordWriteIntent> => ({ ok: false, status: 200, code: 'KVVI_BAD_RESPONSE',
+    ...(key === undefined ? {} : { idempotencyKey: key, retryWithSameKey: true }) })
+  if (!intentObject(value) || typeof value.state !== 'string' || !states.includes(value.state)
+    || (value.intentAuditPending !== undefined && typeof value.intentAuditPending !== 'boolean')) return bad()
+  const audit = value.intentAuditPending === undefined ? {} : { intentAuditPending: value.intentAuditPending as boolean }
+  const hasReceipt = ['result', 'operationId', 'statusCode', 'auditPending'].some(field => value[field] !== undefined)
+  if (value.state !== 'COMMITTED' && hasReceipt) return bad()
+  if (['EMPTY', 'CANCELED', 'ACKNOWLEDGED'].includes(value.state) && value.resultRestricted !== undefined) return bad()
+  if (value.state === 'EMPTY' && value.idempotencyKey !== undefined) return bad()
+  if (value.state === 'EMPTY') return { ok: true, value: { state: 'EMPTY', ...audit } }
+  if (!intentKey(value.idempotencyKey) || (key !== undefined && value.idempotencyKey !== key)) return bad()
+  const common = { idempotencyKey: value.idempotencyKey, ...audit }
+  if (value.state === 'CANCELED' || value.state === 'ACKNOWLEDGED') return { ok: true, value: { state: value.state, ...common } }
+  if (value.resultRestricted === true) {
+    if (hasReceipt) return bad()
+    return { ok: true, value: { state: value.state as 'PREPARED' | 'COMMITTED', resultRestricted: true, ...common } }
+  }
+  if (value.resultRestricted !== undefined) return bad()
+  if (value.state === 'PREPARED') return { ok: true, value: { state: 'PREPARED', ...common } }
+  if (!intentObject(value.result) || typeof value.result.recordId !== 'string' || !value.result.recordId
+    || !Number.isSafeInteger(value.result.rowVersion) || (value.result.rowVersion as number) < 1
+    || (value.result.recordNo !== undefined && typeof value.result.recordNo !== 'string')
+    || typeof value.operationId !== 'string' || !value.operationId || value.statusCode !== (target.recordId === undefined ? 201 : 200)
+    || typeof value.auditPending !== 'boolean') return bad()
+  if (target.recordId !== undefined && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/iu.test(target.recordId)
+    && value.result.recordId.toLowerCase() !== target.recordId.toLowerCase()) return bad()
+  return { ok: true, value: { state: 'COMMITTED', ...common, operationId: value.operationId,
+    statusCode: value.statusCode as number, auditPending: value.auditPending,
+    result: { recordId: value.result.recordId, rowVersion: value.result.rowVersion as number,
+      ...(value.result.recordNo === undefined ? {} : { recordNo: value.result.recordNo as string }) } } }
+}
+
+export function getRecordWriteIntent(target: RecordWriteTarget, signal?: AbortSignal): Promise<ApiResult<RecordWriteIntent>> {
+  return intentRequest(target, 'GET', '', undefined, ['EMPTY', 'PREPARED', 'COMMITTED'], undefined, signal)
+}
+export function prepareRecordWriteIntent(target: RecordWriteTarget, input: RecordWriteInput): Promise<ApiResult<RecordWriteIntent>> {
+  return intentRequest(target, 'POST', '', input, ['PREPARED', 'COMMITTED'])
+}
+export function cancelRecordWriteIntent(target: RecordWriteTarget, key: string): Promise<ApiResult<RecordWriteIntent>> {
+  return intentRequest(target, 'POST', '/cancel', {}, ['CANCELED', 'COMMITTED'], key)
+}
+export function acknowledgeRecordWriteIntent(target: RecordWriteTarget, key: string): Promise<ApiResult<RecordWriteIntent>> {
+  return intentRequest(target, 'POST', '/acknowledge', {}, ['ACKNOWLEDGED'], key)
 }
 
 // ── 管理 API（阶段十）─────────────────────────────────────────────────────
