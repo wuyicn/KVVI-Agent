@@ -248,7 +248,7 @@ export function KvviSystemShell({ copy, onDock, initialSystem }: KvviSystemShell
                 if (result.ok) {
                   setSaved(true)
                   setDetailError(undefined)
-                  setDetail({ ...detail, rowVersion: result.value.rowVersion })
+                  setDetail({ ...detail, data: { ...detail.data, ...data }, rowVersion: result.value.rowVersion })
                   return
                 }
                 setDetailError(describeFailure(result.code, result.detail))

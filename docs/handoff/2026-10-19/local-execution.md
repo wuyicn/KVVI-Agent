@@ -174,3 +174,11 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node services/platform/test
 
 - 批次9已记录的相对目标路径失败已单独修复。使用自有临时Git基线，实际复现相对路径、空格路径、中文空格路径三种失败，再将local导出改为独立参数数组及临时归档，不经shell拼接；rebuild入口规范化绝对目标路径。
 - `python3 -m unittest 工具.test_fork_paths`：1项测试含3个子场景全部通过，exit0；`python3 工具/fork.py --rebuild --into '.local-remediation-evidence/relative fork rebuilt'`：234覆盖与8删除全部匹配当前242路径指纹，exit0。原vendor及其remote未改。
+
+## 批次13：详情dirty PATCH与无操作保存
+
+- 先以6个失败断言复现：保存携带未变字段、原值恢复后仍写、缺失策略可编辑、不可变字段仅在发送时剔除却仍可编辑。详情现在只提交VISIBLE且MUTABLE的实际变化；no-op/revert禁用保存且不回调，HIDDEN/缺失策略不显示编辑器，CREATE_ONLY/SYSTEM/READONLY/MASKED锁定。
+- SystemShell保存成功同时合并本次data与新rowVersion，使再次保存相同内容不再发PATCH；增加真实组件回路断言。旧“无改动也要保存”测试改为先修改字段，保留MASKED/HIDDEN排除、版本冲突及原类型不被连带写入的验证目标。
+- 独立只读复核未发现增量问题。固定源`pnpm exec vitest run packages/client/kvvi-panel/tests`：18文件186/186、exit0；`pnpm exec tsc -b tsconfig.host.json tsconfig.client.json --pretty false`：exit0；明确Node24.20.0的完整`pnpm run build`：exit0。
+- G2由隔离registered-fork生成，242路径/52登记匹配；新鲜重建234覆盖+8删除匹配。原vendor不变，试点未部署。
+- 任务4仍未关闭：十类型编辑（尤其decimal/money精确结构）、未知/非法值拒绝、终态规则、迟到响应与身份绑定持久原key仍待实现。组件测试不冒称真实浏览器/数据库端到端验收。

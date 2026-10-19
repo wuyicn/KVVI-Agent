@@ -110,7 +110,7 @@ describe('记录详情', () => {
       onSave={onSave} onBack={noop} />)
     fireEvent.change(screen.getByLabelText('title'), { target: { value: '报销（改）' } })
     fireEvent.click(screen.getByRole('button', { name: zh['detail.save'] }))
-    expect(onSave).toHaveBeenCalledWith({ title: '报销（改）', amount: '500' }, 3)
+    expect(onSave).toHaveBeenCalledWith({ title: '报销（改）' }, 3)
   })
 
   it('★ MASKED 的值不进 payload —— 否则掩码会被写成真值', () => {
@@ -119,8 +119,9 @@ describe('记录详情', () => {
       record={{ ...record, data: { title: '报销', amount: '••••' },
         fieldVisibility: { title: 'VISIBLE', amount: 'MASKED' } }}
       onSave={onSave} onBack={noop} />)
+    fireEvent.change(screen.getByLabelText('title'), { target: { value: '改过的标题' } })
     fireEvent.click(screen.getByRole('button', { name: zh['detail.save'] }))
-    expect(onSave).toHaveBeenCalledWith({ title: '报销' }, 3)
+    expect(onSave).toHaveBeenCalledWith({ title: '改过的标题' }, 3)
   })
 
   it('平台没返回的字段既不显示也不提交', () => {
@@ -129,8 +130,9 @@ describe('记录详情', () => {
       record={{ ...record, data: { title: '报销' }, fieldVisibility: { title: 'VISIBLE', amount: 'HIDDEN' } }}
       onSave={onSave} onBack={noop} />)
     expect(screen.queryByLabelText('amount')).toBeNull()
+    fireEvent.change(screen.getByLabelText('title'), { target: { value: '改过的标题' } })
     fireEvent.click(screen.getByRole('button', { name: zh['detail.save'] }))
-    expect(onSave).toHaveBeenCalledWith({ title: '报销' }, 3)
+    expect(onSave).toHaveBeenCalledWith({ title: '改过的标题' }, 3)
   })
 
   it('★ 冲突显示的是「别人改过」，不是「保存失败」', () => {
@@ -164,7 +166,7 @@ describe('记录详情', () => {
         fieldVisibility: { flag: 'VISIBLE', count: 'VISIBLE', tags: 'VISIBLE', note: 'VISIBLE' } }}
       onSave={onSave} onBack={noop} />)
     fireEvent.click(screen.getByRole('button', { name: zh['detail.save'] }))
-    expect(onSave).toHaveBeenCalledWith({ flag: true, count: 7, tags: ['a', 'b'], note: null }, 1)
+    expect(onSave).not.toHaveBeenCalled()
   })
 
   it('★ U2：改动的数字输入被还原成数字类型', () => {
@@ -175,7 +177,7 @@ describe('记录详情', () => {
       onSave={onSave} onBack={noop} />)
     fireEvent.change(screen.getByLabelText('amount'), { target: { value: '900' } })
     fireEvent.click(screen.getByRole('button', { name: zh['detail.save'] }))
-    expect(onSave).toHaveBeenCalledWith({ title: '报销', amount: 900 }, 1)
+    expect(onSave).toHaveBeenCalledWith({ amount: 900 }, 1)
   })
 
   it('★ U3：CREATE_ONLY 字段不进更新 payload（改标题不牵连编号）', () => {
@@ -197,6 +199,40 @@ describe('记录详情', () => {
     render(<KvviRecordDetail copy={t} record={record} fields={FIELDS} saved
       onSave={noop} onBack={noop} />)
     expect(screen.getByText(zh['detail.saved'])).toBeTruthy()
+  })
+
+  it('reverting an edit creates no write and disables save again', () => {
+    const onSave=vi.fn()
+    render(<KvviRecordDetail copy={t} record={record} fields={FIELDS} onSave={onSave} onBack={noop} />)
+    fireEvent.change(screen.getByLabelText('title'),{target:{value:'changed'}})
+    fireEvent.change(screen.getByLabelText('title'),{target:{value:'报销'}})
+    const save=screen.getByRole('button',{name:zh['detail.save']}) as HTMLButtonElement
+    expect(save.disabled).toBe(true)
+    fireEvent.click(save)
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it('missing or hidden field policy cannot expose an editor or enter a patch', () => {
+    const onSave=vi.fn()
+    render(<KvviRecordDetail copy={t} record={{...record,fieldVisibility:{amount:'HIDDEN'}}}
+      fields={FIELDS} onSave={onSave} onBack={noop} />)
+    expect(screen.queryByLabelText('title')).toBeNull()
+    expect(screen.queryByLabelText('amount')).toBeNull()
+    fireEvent.click(screen.getByRole('button',{name:zh['detail.save']}))
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it('nonmutable fields are visibly locked as well as omitted from PATCH', () => {
+    const onSave=vi.fn()
+    const fields=[{field_code:'title',type:'short_text',write_policy:'CREATE_ONLY'},
+      {field_code:'amount',type:'money',write_policy:'SYSTEM'}]
+    render(<KvviRecordDetail copy={t} record={record} fields={fields} onSave={onSave} onBack={noop} />)
+    for(const code of ['title','amount']) {
+      const input=screen.getByLabelText(code) as HTMLInputElement
+      expect(input.disabled || input.readOnly).toBe(true)
+    }
+    fireEvent.click(screen.getByRole('button',{name:zh['detail.save']}))
+    expect(onSave).not.toHaveBeenCalled()
   })
 })
 

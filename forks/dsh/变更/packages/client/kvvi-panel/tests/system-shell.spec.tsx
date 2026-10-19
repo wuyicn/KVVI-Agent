@@ -252,13 +252,18 @@ describe('我的系统', () => {
     await waitFor(() => { expect(screen.getByText('R000001')).toBeTruthy() })
     fireEvent.click(screen.getByRole('button', { name: zh['list.open'] }))
     await waitFor(() => { expect(screen.getByText(zh['detail.title'])).toBeTruthy() })
+    fireEvent.change(screen.getByLabelText('title'), { target: { value: '报销（改）' } })
     fireEvent.click(screen.getByRole('button', { name: zh['detail.save'] }))
     await waitFor(() => { expect(screen.getByText(zh['detail.saved'])).toBeTruthy() })
 
     const spy = vi.mocked(globalThis.fetch)
     const patch = spy.mock.calls.find(c => c[1]?.method === 'PATCH')
     // 不带版本号 = 「最后写入者获胜」，别人的改动会被静默覆盖。
-    expect(JSON.parse(String(patch?.[1]?.body))).toEqual({ data: { title: '报销' }, rowVersion: 3 })
+    expect(JSON.parse(String(patch?.[1]?.body))).toEqual({ data: { title: '报销（改）' }, rowVersion: 3 })
+    const save=screen.getByRole('button',{name:zh['detail.save']}) as HTMLButtonElement
+    expect(save.disabled).toBe(true)
+    fireEvent.click(save)
+    expect(spy.mock.calls.filter(call=>call[1]?.method==='PATCH')).toHaveLength(1)
     expect(calls).toContain('PATCH /api/v1/systems/golden_01/records/r1')
   })
 
@@ -276,6 +281,7 @@ describe('我的系统', () => {
     await waitFor(() => { expect(screen.getByText('R000001')).toBeTruthy() })
     fireEvent.click(screen.getByRole('button', { name: zh['list.open'] }))
     await waitFor(() => { expect(screen.getByText(zh['detail.title'])).toBeTruthy() })
+    fireEvent.change(screen.getByLabelText('title'), { target: { value: '报销（冲突）' } })
     fireEvent.click(screen.getByRole('button', { name: zh['detail.save'] }))
     await waitFor(() => {
       expect(screen.getByRole('alert').textContent).toContain(zh['detail.conflict'].replace('{currentRowVersion}', '9'))

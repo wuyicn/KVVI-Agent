@@ -47,7 +47,7 @@ function editorFor(
   mode: string,
   set: (next: string) => void,
 ): ReactNode {
-  const locked = mode === 'READONLY' || mode === 'MASKED'
+  const locked = mode !== 'VISIBLE'
   const code = field.type ?? 'short_text'
   const numeric = code === 'integer' || code === 'decimal' || code === 'money'
   if (code === 'boolean') {
@@ -124,7 +124,19 @@ export function KvviRecordDetail({
   // Only fields the platform actually returned are shown. A field missing from
   // `data` was hidden for this session, and adding an empty input for it would
   // both display its existence and invite a write the platform would refuse.
-  const shown = (fields ?? []).filter(f => record.data[f.field_code] !== undefined)
+  const shown = (fields ?? []).filter(f => record.data[f.field_code] !== undefined
+    && ['VISIBLE','READONLY','MASKED'].includes(record.fieldVisibility[f.field_code] ?? 'HIDDEN'))
+  const writable = (field: ModelField): boolean => record.fieldVisibility[field.field_code] === 'VISIBLE'
+    && (field.write_policy ?? 'MUTABLE') === 'MUTABLE'
+  const patch: Record<string, unknown> = {}
+  for (const field of shown) {
+    if (!writable(field)) continue
+    const str = values[field.field_code] ?? ''
+    const original = record.data[field.field_code]
+    if (str === displayString(original)) continue
+    const next = coerceValue(field.type, str)
+    if (JSON.stringify(next) !== JSON.stringify(original)) patch[field.field_code] = next
+  }
 
   return (
     <div>
@@ -157,7 +169,7 @@ export function KvviRecordDetail({
         {shown.map(field => (
           <label key={field.field_code} style={{ display: 'block', marginBottom: 10 }}>
             <span style={{ display: 'block', fontSize: 12, opacity: .7 }}>{field.label ?? field.field_code}</span>
-            {editorFor(field, values[field.field_code] ?? '', record.fieldVisibility[field.field_code] ?? 'VISIBLE',
+            {editorFor(field, values[field.field_code] ?? '', writable(field) ? 'VISIBLE' : 'READONLY',
               (next) => { if (busy !== true) setValues(v => ({ ...v, [field.field_code]: next })) })}
           </label>
         ))}
@@ -165,27 +177,10 @@ export function KvviRecordDetail({
 
       <button
         type="button"
-        disabled={busy === true}
+        disabled={busy === true || Object.keys(patch).length === 0}
         onClick={() => {
-          if (busy === true) return
-          const data: Record<string, unknown> = {}
-          for (const field of shown) {
-            // A masked field is displayed as a mask. Posting the mask back would
-            // store the mask as the value, so it is left out of the payload.
-            if (['MASKED', 'READONLY'].includes(record.fieldVisibility[field.field_code] ?? 'VISIBLE')) continue
-            // A CREATE_ONLY or SYSTEM field cannot change after creation, so it
-            // is left out of an update rather than re-posted unchanged (acceptance U3).
-            const policy = field.write_policy ?? 'MUTABLE'
-            if (policy === 'CREATE_ONLY' || policy === 'SYSTEM') continue
-            const str = values[field.field_code] ?? ''
-            const original = record.data[field.field_code]
-            // Unchanged keeps the original value and its type; a changed input is
-            // coerced from the string back to the field's type (acceptance U2).
-            data[field.field_code] = str === displayString(original)
-              ? original
-              : coerceValue(field.type, str)
-          }
-          onSave(data, record.rowVersion)
+          if (busy === true || Object.keys(patch).length === 0) return
+          onSave(patch, record.rowVersion)
         }}
         style={{ marginTop: 8 }}
       >
