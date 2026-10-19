@@ -1,0 +1,123 @@
+{
+  "clientCount": 252,
+  "clientDigest": "sha256:aff77058197447590750f1c1b14bb2a737ac973eca816e41fc1ad9c29999deed",
+  "clientEnvironment": {
+    "DSH_CLIENT_COMMIT_HASH": "8920b80",
+    "DSH_CLIENT_VERSION": "0.1.6-alpha.2"
+  },
+  "commands": [
+    {
+      "cleanupConfirmed": true,
+      "exitCode": 0,
+      "log": {
+        "bytes": 58,
+        "mode": 420,
+        "path": "logs/node-version.log",
+        "sha256": "sha256:e5eaac70f3edb1fe875bc61e2baad509733ef581703d7fe80980775ea1cd100a",
+        "type": "file"
+      },
+      "name": "node-version"
+    },
+    {
+      "cleanupConfirmed": true,
+      "exitCode": 0,
+      "log": {
+        "bytes": 7,
+        "mode": 420,
+        "path": "logs/pnpm-version.log",
+        "sha256": "sha256:d7c27e39e223d95b17ed257f80e9e4a27633549a13b62a189d3a17d05f9b1816",
+        "type": "file"
+      },
+      "name": "pnpm-version"
+    },
+    {
+      "cleanupConfirmed": true,
+      "exitCode": 0,
+      "log": {
+        "bytes": 7526,
+        "mode": 420,
+        "path": "logs/install.log",
+        "sha256": "sha256:cdb2b38813de572303574251084c9e90b983e19db8fd97fbf50094106be91566",
+        "type": "file"
+      },
+      "name": "install"
+    },
+    {
+      "cleanupConfirmed": true,
+      "exitCode": 0,
+      "log": {
+        "bytes": 461804,
+        "mode": 420,
+        "path": "logs/build.log",
+        "sha256": "sha256:78e12b9164b5de05edbf6f854c7506d5de3eace0ec4aec5b44ab8af55a46f870",
+        "type": "file"
+      },
+      "name": "build"
+    }
+  ],
+  "formatVersion": "kvvi-local-build-anchor/v1",
+  "inputMaterialDigest": "sha256:ecc7aa6df47e826d7d3bcf2f8df9923528c0be060fbd41a5ad45cf64c4fa8b09",
+  "limitations": [
+    "tool-origin-authentication",
+    "toolchain-transitive-dependencies",
+    "dependency-content-authentication",
+    "raw-filesystem-permissions",
+    "source-executable-policy",
+    "network-sandbox",
+    "expected-output-completeness",
+    "catalog-consumption",
+    "release-acceptance",
+    "signed-attestation",
+    "unobserved-daemon-escape",
+    "packager-consumption"
+  ],
+  "nativeOutput": {
+    "bytes": 52232,
+    "mode": 493,
+    "path": "native/system/packages/darwin-arm64/bin/system.node",
+    "sha256": "sha256:9534cde445a865250eb7bc8cfe5e231f3f91d0fda3f4aaa694e81f3531ad1130",
+    "type": "file"
+  },
+  "nodeHost": {
+    "arch": "arm64",
+    "platform": "darwin",
+    "version": "v24.20.0"
+  },
+  "outputBoundaryCount": 316,
+  "outputCount": 9467,
+  "outputDigest": "sha256:a9e65ea8d0b36586a3bd915d33de5bf8460cd266bbe1e89fbef19d8e090f1825",
+  "overlayManifestSha256": "sha256:bc7fce56dc0b16c307fddcc549f77a6d12388181af1a0d62800f77d7c5571dbc",
+  "readOnlyReverificationSha256": "sha256:c344f84824077f4b426c4cd8ac376bacff41c882aaaaa89d9d3b499979336a4b",
+  "receiptBytes": 75374,
+  "receiptPath": "/Users/wuyi-macs/.kvvi-builds/bf8d91810b031/metadata/build-receipt.json",
+  "receiptSha256": "sha256:eab2bbc1148d0daf5c7668ae715de06234bcd0554e4dee5bf173ce303ccc7198",
+  "releaseApproved": false,
+  "runnerCommit": "4bc471322c351147110e90489fc71990b8b4d773",
+  "runtimeSource": "/Users/wuyi-macs/.kvvi-builds/bf8d91810b031/source",
+  "sourceEntryCount": 12196,
+  "sourceInventoryDigest": "sha256:e5bd0355fdf46668f7df25509a2c2ea48dfc75623a2ad49d9975fe3ebac99b9e",
+  "tools": {
+    "node": {
+      "path": "/Users/wuyi-macs/.local/opt/node-v24.20.0/bin/node",
+      "row": {
+        "bytes": 121911744,
+        "mode": 493,
+        "path": "node",
+        "sha256": "sha256:9d050fd455b56426e25d4d603c7c501cbb2630348e836cf221dcce748e90588a",
+        "type": "file"
+      }
+    },
+    "pnpm": {
+      "path": "/Users/wuyi-macs/Documents/KVVI-Agent/.local-remediation-evidence/fixed-dsh/node_modules/.pnpm/pnpm@11.7.0/node_modules/pnpm/bin/pnpm.cjs",
+      "row": {
+        "bytes": 105,
+        "mode": 420,
+        "path": "pnpm",
+        "sha256": "sha256:67b035e322203961795e8e34ca63a08c37a4386eda94107fb3d28f3246d882ad",
+        "type": "file"
+      }
+    }
+  },
+  "validationScope": "OBSERVED_LOCAL_BUILD",
+  "workspace": "/Users/wuyi-macs/.kvvi-builds/bf8d91810b031"
+}

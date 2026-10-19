@@ -115,3 +115,14 @@ runner增加固定tsx socket路径字节长度预检（Darwin104/Linux108，含�
 
 
 批次57诊断安全补充：不调用str(error)，只从BaseException原生args descriptor取得单个原生字符串并匹配白名单，其他固定fallback；实际不可格式化ValueError及覆写args属性反例不打断清理。新增build-input.json在所有命令之前保存工具、最小环境及材料观测，失败也保留，成功收据及最终行核验同时绑定；首次失败没有该新文件，不能事后回填当历史证据。
+
+
+## 真实短路径构建首个完整收据（批次58完成）
+
+在新持久短目录/Users/wuyi-macs/.kvvi-builds/bf8d91810b031执行相同run_clean_build API。Node24.20.0/darwin-arm64和pnpm11.7.0探针、frozen/offline安装、完整run build均由owned会话取得exit0且cleanupConfirmed:true，无timeout/升级/诊断错误。最终成功收据75374bytes、SHA eab2bbc1148d0daf5c7668ae715de06234bcd0554e4dee5bf173ce303ccc7198；candidate/final同inode、nlink2，未有failure/interrupted记录。首次长路径失败保留，其控制原因仍UNKNOWN。
+
+12196材料digest仍ecc7aa6d...4fa8b09，固定source inventory e5bd0355...99b9e；新实际316边界9467输出digest a9e65ea8d0b36586a3bd915d33de5bf8460cd266bbe1e89fbef19d8e090f1825，252客户端upstream digest aff77058197447590750f1c1b14bb2a737ac973eca816e41fc1ad9c29999deed，公开commit/version仍8920b80与0.1.6-alpha.2。它与旧built输出digest不同，不声称位级等价；native声明输出SHA仍9534cde4...1130。
+
+主代理完整只读复验及两位独立逐行重算闭环：源/材料/输出/client资格相同，7个外置metadata、4log及shim匹配，选定工具入口当前字节一致，四argv/environment正确；41个记录start identity当前全None，无unknown/存活。此批不跑新增测试或再次安装/build。将实际收据SHA、选择路径及事实保存在独立local-build-anchor.json，不覆盖旧观察文件，也不赋予签名、完整工具/依赖或发行认证。
+
+下一批先实现按此固定anchor校验完整当前build receipt的只读接口，再把完整输出表与候选包的实际路径投影绑定；packager尚不消费此anchor，不生成真实包。原有catalog-consumption/expected completeness/模型/角色/macOS等验收待办保留。

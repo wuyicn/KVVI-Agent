@@ -925,3 +925,20 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `clean-build-input-observation-red.log`：`ea00f4037ffa1e1940f274d55e08294416b99929ebe0f7e860ace77180247fc6`。
 - `clean-build-runtime-boundaries-final312-2.log`：`2acca47ef300df6b672f7651e2973d8bc7ee97f6a81fd876ae361983696be97f`。
 - `clean-build-runtime-boundaries-final39-2.log`：`adb57682a0ec5a658d19245e4fb178e8348bdc993ca1a3aee7238e29f9db79a2`。
+
+
+## 批次58：真实短路径重建和完整当前绑定复验
+
+- 使用批次57代码4bc471322c351147110e90489fc71990b8b4d773，在新持久短路径/Users/wuyi-macs/.kvvi-builds/bf8d91810b031调用run_clean_build；未重用失败树。固定Node/Pnpm探针、实际install --frozen-lockfile --offline --store-dir /Users/wuyi-macs/.pnpm-store、run build四命令均由owned进程wait取得exit0、valid:true/cleanupConfirmed:true，无timeout/TERM升级/诊断错误，整体API进程exit0。原生host addon、host/client及web构建完成，记录252客户端/2公开值；工具告警保留在461804bytes完整build.log。没有继承API Key等调用环境，也没有调用模型或重启服务。
+- 最终receipt75374bytes/SHA eab2bbc1148d0daf5c7668ae715de06234bcd0554e4dee5bf173ce303ccc7198，candidate/final同inode普通文件、nlink2，无failure/interrupted记录。12196固定声明材料digest ecc7aa6df47e826d7d3bcf2f8df9923528c0be060fbd41a5ad45cf64c4fa8b09，source inventory e5bd0355fdf46668f7df25509a2c2ea48dfc75623a2ad49d9975fe3ebac99b9e、可信G2仍bc7fce56dc0b16c307fddcc549f77a6d12388181af1a0d62800f77d7c5571dbc。完整316边界9467文件digest a9e65ea8d0b36586a3bd915d33de5bf8460cd266bbe1e89fbef19d8e090f1825，分类252 client/1 native/326metadata/8888other；252客户端upstream digest aff77058197447590750f1c1b14bb2a737ac973eca816e41fc1ad9c29999deed。与旧built digest不同，不声称等价。native/system/packages/darwin-arm64/bin/system.node为52232bytes/规范mode755、SHA9534cde445a865250eb7bc8cfe5e231f3f91d0fda3f4aaa694e81f3531ad1130。
+- 主代理在实际退出后重新完整qualify source/output/client、逐材料/full output rows比对，7metadata/4logs/shim共12行raw SHA/mode/bytes核验，工具入口当前字节一致，4命令metadata与receipt相同；41去重start identities当前均已退出。原输入raw-rebuild-kb2jqs9a声明源完整资格仍相同。两位独立只读复核全部同样闭环，精确环境/argv/实际版本/工具入口及客户端UTF16 framing重算一致，当前0同start存活/0unknown，无限定范围新增阻断。此批无额外测试/install/build重跑，不把批次57的163项称本批新测试。
+- 新增独立local-build-anchor.json记录实际receipt SHA、源/材料/输出/client和选择路径，保留旧local-build-observation.json及长路径失败树，不回填其UNKNOWN控制原因。anchor是仓库内本地观察锚，不是签名认证；工具transitive闭包/依赖auth、raw权限、source exec策略、网络沙箱、expected completeness、未观测daemon逃逸及catalog/发行验收继续未鉴定。尚未接packager、未生成真实包、部署/重启、浏览器/角色或DeepSeek验收，12项未勾选。下一批先实现受此固定SHA约束的完整只读build receipt核验，再绑定候选包完整输出投影。
+
+最终非敏感证据SHA-256（实际退出后计算）：
+- `bf8d91810b031-result.json`：`d19d65dac27be48d378d7d6b270a00f48a57191877704854136632c0fea7558a`。
+- `bf8d91810b031-reverification.json`：`c344f84824077f4b426c4cd8ac376bacff41c882aaaaa89d9d3b499979336a4b`。
+- 实际`metadata/build-receipt.json`：`eab2bbc1148d0daf5c7668ae715de06234bcd0554e4dee5bf173ce303ccc7198`。
+- 实际`logs/node-version.log`：`e5eaac70f3edb1fe875bc61e2baad509733ef581703d7fe80980775ea1cd100a`。
+- 实际`logs/pnpm-version.log`：`d7c27e39e223d95b17ed257f80e9e4a27633549a13b62a189d3a17d05f9b1816`。
+- 实际`logs/install.log`：`cdb2b38813de572303574251084c9e90b983e19db8fd97fbf50094106be91566`。
+- 实际`logs/build.log`：`78e12b9164b5de05edbf6f854c7506d5de3eace0ec4aec5b44ab8af55a46f870`。
