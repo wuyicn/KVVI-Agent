@@ -31,4 +31,14 @@ Node/Python直接读取同一目录，DSH内生成携带相同目录摘要的TS�
 
 模型引用须有真实TENANT/company/app/module/asset/version/digest身份。目前published_contracts没有完整身份；另加不可变元数据及profile，不从schema_code猜app或回填旧摘要。view只可引用明确存在且内容摘要一致的版本；发布API prepare和最终publish事务均复验，runtime拒绝已升级模型与旧view错配，要求显式修订审批重发。
 
+### 第四批：生产静态校验器与内部resolver契约
+
+- [x] 新增Node production_view.mjs及Python production_view.py，factory只接受服务端装配的resolvePublishedBusiness函数；check接收原始view JSON bytes及服务端trustedContext，不从正文接snapshot、目录路径或批准标志。固定使用已安装目录与共用树core，显式拒绝v1未实现特性。
+- [x] trustedContext包含sourceIdentity（完整6分量VIEW_SCHEMA身份）、expectedBusinessRef（实际计划/激活的8字段模型引用）及已知deletedNodeIds；缺历史拒绝，不把null当空数组。公司/app/module从该上下文绑定，不从模型名或请求体推导。
+- [x] deletedNodeIds逐项使用公共ViewNode.id schema；私有发布/审批record_id使用ASCII `[A-Za-z0-9][A-Za-z0-9._:-]{0,127}`，不用宿主trim/strip推断。check的校验依赖缺失/损坏统一返回DEPENDENCY_VALIDATOR_UNAVAILABLE，不抛带安装路径的异常。
+- [x] resolver按精确8字段查真实登记/发布来源，返回私有{ref,registered,registration,publication}或null。registration含identity六分量、schema_id与schema_code；publication含同一reference、schema_id/schema_code、published_record_id/approved_record_id（非空字符串）。checker核对这些映射、registered形状/生命周期/profile/版本/audit与官方正文摘要；resolver本身须实际验证来源记录与正文绑定，不能仅从上传数据拼这些对象。
+- [x] 此私有返回结构不改冻结RegisteredContract外壳。asset_id不要求UUID，也不强制等于schema_code；schema_id才是服务端稳定UUID。真实存储与适配器尚缺时必须返回null，旧published_contracts不得补造身份成为可信结果。
+- [x] 返回{valid,errors,dependencies,validationScope:'STATIC_VIEW_AND_REFERENCE',releaseApproved:false}，不作为审批/激活/权限结论。单元测试可用受控resolver夹具验证接口语义，不能把它冒称真实PG登记或生产发布验收；真实存储、prepare/final publish/runtime接线在后批单独实现。
+- [x] 先RED覆盖同名不同公司/app/module、缺/错版本摘要、缺登记来源/自报PUBLISHED、UUID/代码漂移、未知历史/unsupported特性/不可用resolver、原始JSON与异步输入变动；跨语言定向及完整必要回归、复核后提交推送。
+
 发行包须显式选择固定fork源，核完整源码inventory、生成目录、实际host/client输出及构建收据；解包和HTTP实服务摘要另验。源测试、Git提交、构建成功、发行和产品验收各自取证。目录摘要嵌入bundle，bundle摘要放独立manifest避免循环。当前仍缺这些实现，不勾选任务10/11。

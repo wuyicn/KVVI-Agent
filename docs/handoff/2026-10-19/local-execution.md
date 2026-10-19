@@ -573,3 +573,21 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `view-tree-final-focused.log`：`0e91278937b3dbf5064ca1ba2b79715f0bee75408d1595dea3a3a36fde0a3c59`。
 - `view-tree-meta-corpus.log`：`5153d9c064630799a086dcf2478ad2e713d92e023aee685114a1a543c0085ccf`。
 - `view-tree-platform-full.log`：`a71f9ba5bd0c46e23c71b715d8ecafd90f17b29b5a3738649dc8591e723cdf76`。
+
+
+## 批次39：生产静态视图校验与内部登记解析契约
+
+- 新增Node production_view.mjs与Python production_view.py的factory/check。factory只接收服务端装配的可执行resolvePublishedBusiness；check原始bytes先按官方c14n判据解析，使用固定安装目录和共用树core，拒绝未支持的queries/i18n/condition/loop/actions。原始输入和trustedContext在第一次await前隔离，不接受正文自带snapshot/批准标志/目录路径。
+- 服务端上下文必须含VIEW_SCHEMA完整六分量身份、实际计划/激活模型的完整八字段expectedBusinessRef及已知deletedNodeIds；公司/app/module、asset/version/digest精确绑定，不猜同名、UUID别名或latest。resolver私有结果核对ref、登记身份→schema_id/schema_code映射、真实发布/审批记录标识、冻结registered形状与生命周期、profile和重算正文摘要；该metadata仅是内部契约，resolver仍须实际查验来源与正文，不能由上传内容拼成。
+- 冻结公共RegisteredContract不加私有app/module字段；external asset_id可不同于schema_code和服务端UUID。旧published_contracts缺身份/来源不得自动补造。报告始终validationScope=STATIC_VIEW_AND_REFERENCE、releaseApproved=false；本批无真实SQL来源适配器、发布/runtime接线或部署，受控resolver夹具不冒充审批证据。
+- 初始缺模块RED；补Python布尔true与整数1比较反例先RED，再用严格协议比较。独立复核补出Unicode空白trim/strip差异和损坏bundle抛错问题，均先RED：history ID改用冻结公共ViewNode.id schema、私有record_id固定ASCII规则，public check统一关闭报告且不泄露cause/安装路径。复制安装fixture先有效bundle作对照，再missing/tampered；另测异步等待期间原始bytes/context被改不影响此次判据。首次定向中的只读目录夹具误改已冻结ref导致错误，修复测试复制后重跑，不计为产品缺陷。
+- 最终11项双语言定向全部通过，exit0、27.893秒。独立复核分别重跑11项与相关3项，确认发现闭环，无本批新增确定阻断。最终完整平台798项：797通过、0失败、1既有跳过，实际exit0、184.228秒，runner确认自有PG停止。完整命令同批次31；最终退出后才计算以下摘要。CI加入此定向文件。冻结参考/语料及DSH未改，1049语料的最近新鲜完整结果为批次38，未声称本批重跑。
+- 真实登记映射/不可变来源、prepare/final publish/runtime接线及其余12项继续；整体任务仍不勾选。DeepSeek仍缺本机可用凭据，未执行真实模型验收。
+
+非敏感日志SHA-256：
+- `production-view-red.log`：`d9527b1bd4baad3d73b26016cd9730b50364c7d62f51d905d62f791a6909abaf`。
+- `production-view-scalar-red.log`：`411fc4f71c24c116e485c2237bcaeb3365251868fef38ab3bdd9a76024182b10`。
+- `production-view-boundaries-red.log`：`7bfe36edec320fd44cb68980c5aed62609991084f4b75d99125f4cb46788d338`。
+- `production-view-boundaries-green.log`：`4d68198cf0e75046b090be5083d52fde3edd64c2102bf16221ea8d06844a409c`。
+- `production-view-final-focused.log`：`26ce3d6a8fd7a1d66680522e26d4b7c3fbeda1c292e0a4749f114522a1cd4365`。
+- `batch39-platform-final.log`：`a0b88814ac59ca1c4d967701979feb746d90f6aaa45f9bf4a0f95471690795db`。
