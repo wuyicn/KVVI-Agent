@@ -88,7 +88,9 @@ class MajorUpgradePlan:
         执行。步骤实现见阶段十一后续任务；此处只保证计划本身可判定。
         @returns `{ok, steps, errors}`
         """
-        return {'ok': True, 'steps': ['plan-only'], 'errors': []}
+        return {'ok': False, 'steps': [], 'errors': [{
+            'code': 'KVVI_UPGRADE_EXECUTOR_UNAVAILABLE',
+            'detail': '尚无已验证的数据库大版本迁移执行器；没有修改数据库或切换实例。'}]}
 
 
 def major_upgrade_plan(home: Path, old_pg_bin: Path, new_pg_bin: Path, new_port: int,

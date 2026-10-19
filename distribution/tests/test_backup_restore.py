@@ -146,6 +146,14 @@ class UpgradePlanTest(unittest.TestCase):
         # 而且要**说得出理由** —— 一个「就是不用它」的实现，下一个人会加回去。
         self.assertIn('就地', plan.rationale)
 
+    def test_unimplemented_upgrade_does_not_report_success(self):
+        plan = major_upgrade_plan(self.home, Path('/pg17/bin'), Path('/pg18/bin'),
+                                  18402, 'test', 'test-only', ('kvvi_platform',))
+        result = plan.apply()
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['errors'][0]['code'], 'KVVI_UPGRADE_EXECUTOR_UNAVAILABLE')
+        self.assertFalse(self.home.exists())
+
     def test_major_upgrade_starts_with_a_dump(self):
         plan = major_upgrade_plan(home=self.home, old_pg_bin=Path('/pg17/bin'),
                                   new_pg_bin=Path('/pg18/bin'), new_port=54412,

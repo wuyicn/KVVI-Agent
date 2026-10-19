@@ -76,3 +76,13 @@ class RecoveryCliTest(unittest.TestCase):
                 code = admin.cmd_uninstall(self.args)
             self.assertEqual(code, admin.EXIT_APPLY_FAILED)
             plan.return_value.apply.assert_not_called()
+
+    def test_unknown_migration_ledger_blocks_rollback(self):
+        self.args.target_version = 'old'
+        for output in (SimpleNamespace(returncode=1, stdout=''),
+                       SimpleNamespace(returncode=0, stdout='not-json'),
+                       SimpleNamespace(returncode=0, stdout='')):
+            with self.subTest(output=output), patch.object(admin, 'pg_bin_dir', return_value=self.root), \
+                 patch('subprocess.run', return_value=output), \
+                 contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(admin.cmd_rollback(self.args), admin.EXIT_PREFLIGHT_FAILED)

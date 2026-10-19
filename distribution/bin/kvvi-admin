@@ -52,6 +52,7 @@ argparse 的用法错误改到 1。
 import argparse
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -432,7 +433,11 @@ def cmd_rollback(args):
     @returns 退出码
     """
     config = load_config(args.config)
-    migrations = _applied_migrations(config)
+    try:
+        migrations = _applied_migrations(config)
+    except (OSError, RuntimeError, ValueError, subprocess.SubprocessError):
+        print('✗ KVVI_MIGRATION_LEDGER_UNAVAILABLE：无法核实迁移账本，拒绝回滚。', file=sys.stderr)
+        return EXIT_PREFLIGHT_FAILED
     plan = rollback_plan(home=Path(config['home']), migrations=migrations,
                          target_version=args.target_version or '(上一个版本)')
     print(plan.describe())
@@ -455,12 +460,15 @@ def _applied_migrations(config):
          "SELECT json_agg(row_to_json(t)) FROM (" + query + ") t"],
         capture_output=True, text=True, env=env, timeout=60)
     if result.returncode != 0 or not result.stdout.strip():
-        return []
+        raise RuntimeError('KVVI_MIGRATION_LEDGER_UNAVAILABLE')
     import json as _json
     try:
-        return migrations_from_ledger(_json.loads(result.stdout.strip()))
-    except ValueError:
-        return []
+        rows = _json.loads(result.stdout.strip())
+        if rows is not None and not isinstance(rows, list):
+            raise ValueError('invalid migration ledger')
+        return migrations_from_ledger(rows or [])
+    except (ValueError, TypeError, KeyError):
+        raise RuntimeError('KVVI_MIGRATION_LEDGER_UNAVAILABLE') from None
 
 
 def main(argv=None):
