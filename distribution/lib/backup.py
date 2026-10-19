@@ -31,7 +31,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
@@ -232,6 +232,9 @@ def _safe_members(tar: tarfile.TarFile, target: Path, preserve_credentials=False
     target = Path(target).resolve()
     selected = []
     seen = set()
+    files = set()
+    destinations = [(target / m.name.replace('\\', '/')).resolve() for m in tar.getmembers()]
+    files.update(path for path, member in zip(destinations, tar.getmembers()) if member.isfile())
     for member in tar.getmembers():
         name = member.name.replace('\\', '/')
         if name.startswith('/') or '..' in name.split('/'):
@@ -247,6 +250,9 @@ def _safe_members(tar: tarfile.TarFile, target: Path, preserve_credentials=False
         if destination in seen:
             raise ValueError(f'KVVI_BACKUP_DUPLICATE_MEMBER: {member.name}')
         seen.add(destination)
+        if any(parent in files or (parent.exists() and not parent.is_dir())
+               for parent in destination.parents if parent == target or target in parent.parents):
+            raise ValueError(f'KVVI_BACKUP_PARENT_NOT_DIRECTORY: {member.name}')
         if preserve_credentials and _protected_path(name):
             continue
         current = target / name
@@ -392,6 +398,27 @@ class RestorePlan:
         ])
 
     def apply(self, pg_bin: Path, stop_services=None) -> dict:
+        """Bind verification, extraction and receipts to one private byte snapshot."""
+        if not self.archive.is_file():
+            return {'ok': False, 'steps': [], 'errors': [{
+                'kind': 'verify', 'code': 'KVVI_BACKUP_MISSING'}]}
+        with tempfile.TemporaryDirectory(prefix='kvvi-restore-source-') as directory:
+            snapshot = Path(directory) / 'source.tar.gz'
+            try:
+                with open(self.archive, 'rb') as source, open(snapshot, 'wb') as target:
+                    os.chmod(snapshot, 0o600)
+                    shutil.copyfileobj(source, target)
+                    target.flush()
+                    os.fsync(target.fileno())
+                sidecar = self.archive.with_suffix(self.archive.suffix + '.sha256')
+                if sidecar.is_file():
+                    snapshot.with_suffix(snapshot.suffix + '.sha256').write_bytes(sidecar.read_bytes())
+            except OSError:
+                return {'ok': False, 'steps': [], 'errors': [{
+                    'kind': 'verify', 'code': 'KVVI_BACKUP_UNREADABLE'}]}
+            return replace(self, archive=snapshot)._apply_snapshot(pg_bin, stop_services)
+
+    def _apply_snapshot(self, pg_bin: Path, stop_services=None) -> dict:
         """
         执行恢复。
         @param pg_bin PostgreSQL 二进制目录

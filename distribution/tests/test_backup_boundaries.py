@@ -99,3 +99,28 @@ class ArchiveBoundaryTest(unittest.TestCase):
         with tarfile.open(fileobj=raw) as tar:
             with self.assertRaises(ValueError):
                 safe_extract(tar, self.root / 'target')
+
+    def test_restore_uses_the_verified_bytes_when_original_path_is_replaced(self):
+        archive = self.archive([('notes.txt', b'verified-A')])
+        original = archive.read_bytes()
+        original_sha = sha256_file(archive)
+        self.archive([('notes.txt', b'unverified-B')])
+        replacement = archive.read_bytes()
+        archive.write_bytes(original)
+        archive.with_suffix(archive.suffix + '.sha256').write_text(original_sha)
+        def stop():
+            archive.write_bytes(replacement)
+            archive.with_suffix(archive.suffix + '.sha256').write_text(sha256_file(archive))
+            return {'ok': True}
+        target = self.root / 'target'
+        result = restore_plan(archive, target, 1, 'test', 'test-only').apply(Path('/unused'), stop)
+        self.assertTrue(result['ok'], result)
+        self.assertEqual((target / 'notes.txt').read_bytes(), b'verified-A')
+        self.assertEqual(json.loads(Path(result['journalPath']).read_text())['archiveSha256'], original_sha)
+
+    def test_conflicting_parent_file_is_rejected_before_stopping(self):
+        archive = self.archive([('a', b'file'), ('a/b', b'impossible')])
+        stop = unittest.mock.Mock(return_value={'ok': True})
+        result = restore_plan(archive, self.root / 'target', 1, 'test', 'test-only').apply(Path('/unused'), stop)
+        self.assertFalse(result['ok'])
+        stop.assert_not_called()
