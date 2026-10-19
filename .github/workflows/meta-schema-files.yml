@@ -32,5 +32,7 @@ jobs:
           node --test services/platform/tests/canonical.test.mjs services/platform/tests/component-catalog.test.mjs services/platform/tests/view-tree.test.mjs services/platform/tests/production-view.test.mjs
       - name: Test fixed-source inventory boundaries
         run: python -m unittest distribution.tests.test_runtime_source distribution.tests.test_raw_git_source
+      - name: Test release output preservation in owned fixtures
+        run: python -W error::ResourceWarning -m unittest distribution.tests.test_release_package
       - name: Validate all 13 protocol machine files
         run: python tests/meta-schema-full/0a-full-r1/test_structure.py

@@ -42,14 +42,20 @@
 """
 
 import hashlib
+import importlib.util
+import io
 import json
 import os
 import re
 import shutil
 import sys
 import tarfile
+import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+from 工具.lib.package_outputs import PublicationError, output_guard, publish_pair
 OUT_DIR = os.path.join(ROOT, '交付', '发行')
 ARCHIVE = os.path.join(OUT_DIR, 'kvvi-macos-pilot.tar.gz')
 MANIFEST = os.path.join(OUT_DIR, '发行包清单.json')
@@ -225,70 +231,56 @@ def collect() -> list:
 
 
 def build() -> int:
-    """
-    生成发行包与清单。
-    @returns 退出码
-    """
-    os.makedirs(OUT_DIR, exist_ok=True)
-    entries = collect()
-    print(f'{C_OK}=== 打包 ==={C_OFF}')
-    print(f'  收进 {len(entries)} 个文件')
-
-    missing = scan_required(entries)
-    if missing:
-        for path in missing:
-            print(f'{C_BAD}✗ 缺必需文件：{path}{C_OFF}')
+    """Build a candidate without truncating the previous published pair."""
+    try:
+        with output_guard(ARCHIVE, MANIFEST):
+            if os.path.abspath(OUT_DIR) != os.path.dirname(os.path.abspath(ARCHIVE)):
+                raise PublicationError('PACKAGE_OUTPUT_INVALID')
+            entries = collect()
+            print(f'{C_OK}=== 打包 ==={C_OFF}')
+            print(f'  收进 {len(entries)} 个文件')
+            missing = scan_required(entries)
+            if missing:
+                for path in missing:
+                    print(f'{C_BAD}✗ 缺必需文件：{path}{C_OFF}')
+                return 1
+            digest = hashlib.sha256()
+            with tempfile.TemporaryDirectory(prefix='kvvi-package-candidate-', dir=OUT_DIR) as candidate:
+                pending_archive = os.path.join(candidate, 'candidate.tar.gz')
+                pending_manifest = os.path.join(candidate, 'candidate-manifest.json')
+                with tarfile.open(pending_archive, 'w:gz') as tar:
+                    for absolute, rel in entries:
+                        with open(absolute, 'rb') as handle:
+                            body = handle.read()
+                        for pattern, what in FORBIDDEN:
+                            if pattern.search(body):
+                                print(f'{C_BAD}✗ 包中禁止内容：{rel} —— {what}{C_OFF}')
+                                return 1
+                        digest.update(rel.encode('utf-8')); digest.update(b'\0')
+                        digest.update(hashlib.sha256(body).hexdigest().encode('ascii')); digest.update(b'\0')
+                        info = tar.gettarinfo(absolute, arcname=TOP + '/' + rel)
+                        info.uid = info.gid = 0; info.uname = info.gname = 'root'
+                        info.mode = 0o755 if rel.endswith('kvvi-admin') else 0o644
+                        if info.isfile():
+                            info.size = len(body)
+                        # The scanned snapshot is exactly the body supplied to tar.
+                        tar.addfile(info, io.BytesIO(body))
+                    payload = json.dumps({'bundleVersion': 'kvvi-macos-pilot/v1', 'fileCount': len(entries),
+                        'files': [rel for _absolute, rel in entries]}, ensure_ascii=False, indent=2).encode('utf-8')
+                    info = tarfile.TarInfo(TOP + '/发行包清单.json'); info.size = len(payload); info.mode = 0o644
+                    tar.addfile(info, io.BytesIO(payload))
+                size = os.path.getsize(pending_archive) / (1024 ** 2)
+                with open(pending_manifest, 'w', encoding='utf-8') as handle:
+                    json.dump({'bundleVersion': 'kvvi-macos-pilot/v1', 'archive': os.path.relpath(ARCHIVE, ROOT),
+                        'fileCount': len(entries), 'contentDigest': 'sha256:' + digest.hexdigest(),
+                        'archiveSha256': sha256_of(pending_archive), 'archiveBytes': os.path.getsize(pending_archive)},
+                        handle, ensure_ascii=False, indent=2)
+                    handle.write('\n')
+                publish_pair(pending_archive, pending_manifest, ARCHIVE, MANIFEST)
+    except (PublicationError, OSError, ValueError, tarfile.TarError) as error:
+        code = str(error) if isinstance(error, PublicationError) else 'PACKAGE_BUILD_FAILED'
+        print(f'{C_BAD}✗ {code}{C_OFF}')
         return 1
-
-    problems = []
-    digest = hashlib.sha256()
-    with tarfile.open(ARCHIVE, 'w:gz') as tar:
-        for absolute, rel in entries:
-            with open(absolute, 'rb') as handle:
-                body = handle.read()
-            for pattern, what in FORBIDDEN:
-                if pattern.search(body):
-                    problems.append((rel, what))
-            digest.update(rel.encode('utf-8'))
-            digest.update(b'\0')
-            digest.update(hashlib.sha256(body).hexdigest().encode('ascii'))
-            digest.update(b'\0')
-            info = tar.gettarinfo(absolute, arcname=TOP + '/' + rel)
-            info.uid = info.gid = 0
-            info.uname = info.gname = 'root'
-            info.mode = 0o755 if rel.endswith('kvvi-admin') else 0o644
-            with open(absolute, 'rb') as handle:
-                tar.addfile(info, handle)
-        # 手册与 README 之外，再放一份「包里有什么」的清单进去 ——
-        # 客户机器上没有本仓库，而核对内容需要它。
-        payload = json.dumps({
-            'bundleVersion': 'kvvi-macos-pilot/v1',
-            'fileCount': len(entries),
-            'files': [rel for _absolute, rel in entries],
-        }, ensure_ascii=False, indent=2).encode('utf-8')
-        import io
-        info = tarfile.TarInfo(TOP + '/发行包清单.json')
-        info.size = len(payload)
-        info.mode = 0o644
-        tar.addfile(info, io.BytesIO(payload))
-
-    if problems:
-        print(f'{C_BAD}✗ 包里有不该出现的内容：{C_OFF}')
-        for rel, what in problems[:10]:
-            print(f'    {rel} —— {what}')
-        os.remove(ARCHIVE)
-        return 1
-
-    size = os.path.getsize(ARCHIVE) / (1024 ** 2)
-    with open(MANIFEST, 'w', encoding='utf-8') as handle:
-        json.dump({'bundleVersion': 'kvvi-macos-pilot/v1',
-                   'archive': os.path.relpath(ARCHIVE, ROOT),
-                   'fileCount': len(entries),
-                   'contentDigest': 'sha256:' + digest.hexdigest(),
-                   'archiveSha256': sha256_of(ARCHIVE),
-                   'archiveBytes': os.path.getsize(ARCHIVE)},
-                  handle, ensure_ascii=False, indent=2)
-        handle.write('\n')
     print(f'{C_OK}✓ {os.path.relpath(ARCHIVE, ROOT)}（{size:.1f} MB，'
           f'{len(entries)} 个文件）{C_OFF}')
     print(f'  内容指纹 sha256:{digest.hexdigest()[:24]}')
@@ -380,6 +372,18 @@ def packages_missing_main(root_rel: str = 'vendor/dsh') -> list:
 
 
 def check() -> int:
+    if not os.path.isdir(OUT_DIR):
+        print(f'{C_BAD}✗ 发行包不存在（先跑 --build）{C_OFF}')
+        return 2
+    try:
+        with output_guard(ARCHIVE, MANIFEST):
+            return _check_existing()
+    except (PublicationError, OSError):
+        print(f'{C_BAD}✗ PACKAGE_OUTPUT_UNAVAILABLE_OR_RECOVERY_REQUIRED{C_OFF}')
+        return 1
+
+
+def _check_existing() -> int:
     """
     校验已有发行包。
     @returns 退出码
@@ -460,7 +464,7 @@ def check() -> int:
     return 0
 
 
-def self_test() -> int:
+def _self_test_fixture() -> int:
     """
     反向测试：逐项破坏，检查器必须变红。
     @returns 退出码
@@ -560,6 +564,27 @@ def self_test() -> int:
         return 1
     print(f'{C_OK}✓ {len(cases)} 项全部符合{C_OFF}')
     return 0
+
+
+def self_test() -> int:
+    """Run destructive probes only on a generated disposable source/package pair."""
+    from pathlib import Path
+    with tempfile.TemporaryDirectory(prefix='kvvi-package-self-test-') as temporary:
+        root = Path(temporary)
+        spec = importlib.util.spec_from_file_location('_owned_package_self_test', __file__)
+        fixture = importlib.util.module_from_spec(spec); spec.loader.exec_module(fixture)
+        fixture.ROOT = str(root); fixture.OUT_DIR = str(root / 'out')
+        fixture.ARCHIVE = str(root / 'out/pilot.tar.gz'); fixture.MANIFEST = str(root / 'out/manifest.json')
+        for source, _ in fixture.CONTENTS:
+            (root / source).mkdir(parents=True, exist_ok=True)
+        for rel in fixture.REQUIRED + fixture.EXTRA_FILES + ['vendor/dsh/packages/fixture/build/lib/types/probe.js']:
+            if Path(rel).is_absolute() or '..' in Path(rel).parts:
+                return 1
+            path = root / rel; path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('{}\n' if path.suffix == '.json' else 'fixture source\n', encoding='utf-8')
+        if fixture.build() != 0:
+            return 1
+        return fixture._self_test_fixture()
 
 
 def main() -> int:

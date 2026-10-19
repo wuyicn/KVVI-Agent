@@ -668,3 +668,22 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `native-empty-container-red.log`：`fab2ad0430e611f354107c7ca0d42dad3aff3742a754ad908fde8702eccf7d12`。
 - `native-empty-container-final-unit2.log`：`29908cc09770c6e5b526a1603ad7edceba7612d66d734f00695605fc7ed4f7c8`。
 - `native-empty-container-python39-2.log`：`d3477112acb614505b0da3e010b3bcfd3810aaf50a6b4a1edf1a8a98cc9fcc9a`。
+
+
+## 批次44：发行失败保留旧包与隔离破坏测试
+
+- 新增package_outputs：同输出目录私有candidate完成tar/清单后才发布，扫描与tar写入取同一次body。缺必需项、FORBIDDEN、tar/清单失败保留旧pair；OS锁串行本工具build/check，旧pair备份与固定journal先于rename，第二rename或进程中断在下一次本工具调用恢复。回滚自身失败保留journal和旧副本；先验全部恢复路径/类型/摘要/当前字节，拒绝意外外部修改。只保证受控进程中断恢复，不声称两文件对外部读取原子或断电耐久。
+- self-test改为新模块+合成最小仓库/包，所有破坏仅自有临时资产；原包、清单与server.mjs的bytes/mtime保持，无真实包亦可跑。未执行真实发行目录build/check/self-test，也未更新试点。
+- 原8组先RED（4失败/4错误），最初8组修复通过后补真实锁冲突、丢失第二rename确认、回滚故障/损坏backup与一次读取快照。独立复核再复现candidate普通文件验证过晚、APFS case/Unicode输出别名覆盖、嵌套JSON异常及FIFO锁FD泄漏；反例先RED后前移类型验证、目标FS独占创建实测别名、固定恢复错误和仅已锁定才unlock/独立close。二轮复核另发现输出可别名内部journal而被删，新反例先RED后对NFC+casefold后的保留前缀保守拒绝，覆盖内部锁/journal/candidate命名空间。嵌套深度最终10000覆盖Python3.12，早期1500不足以令该版本红；FIFO测试按实际FD关闭验证，避免把临时名称probe的close次数误算为泄漏。
+- 最终16组在Python3.12/系统3.9.6分别全通过、exit0（5.495/5.598秒），-W error::ResourceWarning；两位只读复核分别15/15与最终16/16闭环，无新增阻断；CI加入同入口。平台未改，最近全平台仍批次40的810项。清单所述tar实际正文/类型/路径与全集校验、显式runtime-source及完整产物/目录收据绑定仍待后续，不把此批当发行或12项验收。
+- 用户再次提到安全配置路径后，仅输出布尔重新读取指定kvvi.env及登记DSH进程环境，文件存在、键仍非空缺失，登记进程内核身份前后稳定、环境可读但无非空DEEPSEEK_API_KEY；没有输出值或重启进程，真实模型仍未执行。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `package-preservation-red.log`：`a79576f61b38b451e6008efe65a076851ad05095eccac660e29e606a14947c50`。
+- `package-review-red.log`：`5b1bedad38d4223d47392fc88b3ac13eec4d9ad28b2b2c3619eea1d9ea450fbe`。
+- `package-journal-nesting-red.log`：`d3b69c2ddd6f96856957f28b0b47b4e0ea72bdc4af118cc0c2f93a145e65dd01`。
+- `package-preservation-final312.log`：`d3f95274da58ff9f01a6d100d3e0a00c0ae8795df3217efbfb70f28e69d252e6`。
+- `package-preservation-final39.log`：`d92fd079a7a587d097d2ddc89571eb83a4a73319ca8b962e3c7bd4d7f0d5f108`。
+- `package-control-alias-red.log`：`42a6061a792c443fbca7dc25c84c2e35e3194628b1464078922c5e6fb4a8c206`。
+- `package-preservation-final312-2.log`：`5cee0b4a34dbbc6e05eb0ef87a512e8f2877b80007186f603738139ff6b19325`。
+- `package-preservation-final39-2.log`：`a2db70f82a49b999eb26ee8146c2311a92a706eafcc72fcc88d6096b90f148ab`。
