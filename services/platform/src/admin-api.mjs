@@ -289,7 +289,8 @@ async function suspendMember(actor, userId) {
     'SELECT status FROM users WHERE user_id = $1', [userId])
   if (rows.length !== 1) throw new AdminError('KVVI_NO_SUCH_MEMBER', { userId })
   if (rows[0].status === 'SUSPENDED') throw new AdminError('KVVI_MEMBER_SUSPENDED', { userId })
-  const ended = await suspendAccount(userId)
+  const ended = await suspendAccount(userId, { companyId: actor.companyId })
+  if (ended === null) throw new AdminError('KVVI_NO_SUCH_MEMBER', { userId })
   await record(actor, 'admin.suspendMember', 'USER', userId, { ended })
   return { userId, endedSessions: ended }
 }

@@ -1040,3 +1040,18 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `publish-approval-platform-full.log`：`906dd425f2a3bf22e75eecdf08c102855ac123afd32f65e4f3e820075a3f1342`。
 - `publish-approval-channel-check.log`：`a0b09b680f936877c827cf12f7dbc6f9a8be0bb6358418ee645b40c900d567b7`。
 - 独立`batch65-independent-dzopqzwj/publish-approval-concurrency-independent-tool-output.log`：`f2719db1475cd547d4fb925ff975b49025fff5cad8ed489e0b4ed70f000fefbf`（持久保存自原工具捕获输出，未重跑）。
+
+## 批次66：身份管理目标公司绑定与原子停用
+
+- 新真实签名actor token+handleAuth路由+隔离PG反例，5项中3失败/exit1：A owner跨公司停用B Dave返回200，实际账号SUSPENDED、会话ENDED、token撤销及事件各1；跨公司会话吊销也200并改变目标。真实session_events触发器报错时，旧停用留下SUSPENDED但会话ACTIVE，部分结果已提交。两项同公司及自吊销对照通过。
+- suspendAccount改单平台事务：users FOR UPDATE后复查并FOR SHARE锁定显式公司成员，直到提交；账号状态、按顺序结束全部活动会话、委派token撤销和事件共用同client。endSession支持借用client，公开吊销最终UPDATE仍限定公司。旧auth及新admin公开停用均传当前公司；外公司/不存在统一404/DENY，无目标改变。本公司已结束会话保留409、自吊销保持可用。没有把操作人撤权交错、共享账号全局停用语义、受保护owner及跨库审计宣称解决。
+- 初次六文件58项全通过/exit0（5681.07425ms）；补真实排队成员移除测试时夹具用平台连接DELETE memberships被42501拒绝，保留失败日志，改用自有安全目标维护连接，不授予生产DELETE。最终auth-target-boundary/auth/admin/admin-api/identity/mode-policy六文件59/59通过，exit0（6273.823959ms）；pg_blocking_pids证明真实锁等待，等待期间A成员被移除后404，B账号/会话/令牌/事件保持原样。独立原5项exit0（2573.233167ms），日志已从自有临时目录复制为持久证据，不重跑。
+- 最终完整平台818项/817通过/0失败/1既有skip，exit0（195472.696709ms），skip仍为响应开始后错误尚无稳定装置；所有自有集群runner确认停止。新platform-role-revocation三项在完整回归枚举后创建，其RED是下一批待修，不计入818。本批无部署/试点重启/真实模型调用，12项仍未全部验收。
+
+实际退出后非敏感证据SHA-256：
+- `auth-target-boundary-red.log`：`13e38d9677d09c6f950cfdb21ee63d1f28167782902eb77bab03b76d65ed5f8e`。
+- `auth-target-boundary-green.log`：`08020725ee13b21826321d3d4515c0bdb0640760f05ee5143c6c3b8eddbb350c`。
+- 夹具权限失败`auth-target-boundary-final.log`：`34027b1ca958764d82dc56ad13e7fb9f19cbd1257f3226b83c8299ab4fa444e1`。
+- `auth-target-boundary-final2.log`：`8bbe0634fbd7f91bd2e20314104ff9c464b450fe6ad7cd01a2b7a6a461cc02f4`。
+- `auth-target-boundary-independent.log`：`e33f0a48b1ab01cbc63d599a55aeb0942af912be4cdd74478bda9a4eb83ac3e3`。
+- `auth-target-platform-full.log`：`3cdf3f3d28d80d6829d1b1c954390765a3903f924762469e464579db822b34e5`。

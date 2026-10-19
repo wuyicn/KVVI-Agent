@@ -436,14 +436,14 @@ export async function handleAuth({ method, path, body, headers }) {
   // 所以现在是**与**：进程间令牌（调用方来自受控进程）**且**调用者持有平台角色。
   const adminCtx = await verifyToken(actorToken({ headers }))
 
-  const denyAdmin = async (action, reason, extra = {}) => {
+  const denyAdmin = async (action, reason, extra = {}, status = 403) => {
     await appendDenial({
       companyId: adminCtx?.companyId ?? '00000000-0000-0000-0000-000000000000',
       actorKind: 'USER', actorId: adminCtx?.userId ?? null, gateway: adminCtx?.gateway ?? null,
       sessionId: adminCtx?.sessionId ?? null, action, outcome: 'DENY', reason,
       paramsDigest: digestOf(extra),
     })
-    return { status: 403, body: { error: reason } }
+    return { status, body: { error: reason } }
   }
 
   async function requireAdmin(action, extra = {}) {
@@ -458,7 +458,10 @@ export async function handleAuth({ method, path, body, headers }) {
   if (suspend && method === 'POST') {
     const refused = await requireAdmin('auth.suspendAccount', { userId: suspend[1] })
     if (refused) return refused
-    const ended = await suspendAccount(suspend[1])
+    const ended = await suspendAccount(suspend[1], { companyId: adminCtx.companyId })
+    if (ended === null) {
+      return denyAdmin('auth.suspendAccount', 'KVVI_NO_SUCH_MEMBER', { userId: suspend[1] }, 404)
+    }
     await append({
       companyId: adminCtx.companyId, actorKind: 'USER', actorId: adminCtx.userId,
       gateway: adminCtx.gateway, sessionId: adminCtx.sessionId,
@@ -478,7 +481,10 @@ export async function handleAuth({ method, path, body, headers }) {
       if (refused) return refused
     }
     const session = await loadSession(revoke[1])
-    const ok = await revokeSession(revoke[1])
+    if (!session || session.companyId !== adminCtx.companyId) {
+      return denyAdmin('auth.revokeSession', 'KVVI_NO_SUCH_SESSION', { sessionId: revoke[1] }, 404)
+    }
+    const ok = await revokeSession(revoke[1], { companyId: adminCtx.companyId })
     if (session) {
       await append({
         companyId: session.companyId, actorKind: 'USER',

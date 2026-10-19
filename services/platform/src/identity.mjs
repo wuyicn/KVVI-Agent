@@ -175,16 +175,18 @@ export async function loadSession(sessionId, client = pool('platform')) {
  * 结束会话，并记录**是哪一类事件**结束的（§4.6.5 五类）。
  * @param {string} sessionId 会话
  * @param {'LOGOUT'|'TIMEOUT'|'ACCOUNT_SUSPENDED'|'ADMIN_REVOKED'} kind 事件类型
+ * @param {object} [options] 可借用当前事务；公开管理端点须限定companyId
  * @returns {Promise<boolean>} 是否确实结束了一个活动会话
  */
-export async function endSession(sessionId, kind) {
+export async function endSession(sessionId, kind, { client: transactionClient, companyId } = {}) {
   const allowed = ['LOGOUT', 'TIMEOUT', 'ACCOUNT_SUSPENDED', 'ADMIN_REVOKED']
   if (!allowed.includes(kind)) throw new Error(`KVVI_BAD_EVENT_KIND: ${kind}`)
-  return withTransaction('platform', async (client) => {
+  const apply = async (client) => {
     const { rows } = await client.query(
       `UPDATE sessions SET state = 'ENDED', ended_by = $2, ended_at = now()
         WHERE session_id = $1 AND state = 'ACTIVE'
-        RETURNING user_id, company_id`, [sessionId, kind])
+          AND ($3::uuid IS NULL OR company_id = $3)
+        RETURNING user_id, company_id`, [sessionId, kind, companyId ?? null])
     if (rows.length !== 1) return false
     // 实质机制是令牌撤销（§4.6.5「平台→运行时的终止通知」）：
     // 通道失去可用令牌即失效，不依赖运行时进程的配合。
@@ -196,7 +198,8 @@ export async function endSession(sessionId, kind) {
        VALUES ($1, $2, $3, $4, '{}'::jsonb)`,
       [sessionId, rows[0].user_id, rows[0].company_id, kind])
     return true
-  })
+  }
+  return transactionClient ? apply(transactionClient) : withTransaction('platform', apply)
 }
 
 /**
@@ -219,16 +222,28 @@ export async function reapIdleSessions(now = new Date()) {
 /**
  * 停用账号：**该账号的全部活动会话一并结束**（§4.6.5 第四类事件）。
  * @param {string} userId 账号
- * @returns {Promise<number>} 被结束的会话数
+ * @param {object} [options] companyId限定当前公司成员，在事务内核验并锁至提交
+ * @returns {Promise<number|null>} 被结束的会话数；指定公司但无成员时null
  */
-export async function suspendAccount(userId) {
-  await pool('platform').query('UPDATE users SET status = $2 WHERE user_id = $1',
-    [userId, 'SUSPENDED'])
-  const { rows } = await pool('platform').query(
-    `SELECT session_id FROM sessions WHERE user_id = $1 AND state = 'ACTIVE'`, [userId])
-  let n = 0
-  for (const row of rows) if (await endSession(row.session_id, 'ACCOUNT_SUSPENDED')) n += 1
-  return n
+export async function suspendAccount(userId, { companyId } = {}) {
+  return withTransaction('platform', async (client) => {
+    // Lock the account before sessions, matching createSession's lock order.
+    const user = await client.query('SELECT user_id FROM users WHERE user_id=$1 FOR UPDATE', [userId])
+    if (user.rowCount !== 1) return companyId === undefined ? 0 : null
+    if (companyId !== undefined) {
+      const member = await client.query(
+        'SELECT 1 FROM memberships WHERE company_id=$1 AND user_id=$2 FOR SHARE', [companyId, userId])
+      if (member.rowCount !== 1) return null
+    }
+    await client.query('UPDATE users SET status = $2 WHERE user_id = $1', [userId, 'SUSPENDED'])
+    const { rows } = await client.query(
+      `SELECT session_id FROM sessions WHERE user_id = $1 AND state = 'ACTIVE' ORDER BY session_id`, [userId])
+    let n = 0
+    for (const row of rows) {
+      if (await endSession(row.session_id, 'ACCOUNT_SUSPENDED', { client })) n += 1
+    }
+    return n
+  })
 }
 
 /**
@@ -236,8 +251,8 @@ export async function suspendAccount(userId) {
  * @param {string} sessionId 会话
  * @returns {Promise<boolean>} 是否结束成功
  */
-export async function revokeSession(sessionId) {
-  return endSession(sessionId, 'ADMIN_REVOKED')
+export async function revokeSession(sessionId, { companyId } = {}) {
+  return endSession(sessionId, 'ADMIN_REVOKED', { companyId })
 }
 
 /**
