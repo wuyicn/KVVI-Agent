@@ -264,3 +264,16 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `write-key-api-build.log`：SHA-256 `0cd7c895bd4198ce33e8346e447d0f25d852d46ba9537aaccf6f15f66528ee74`，352868字节。
 - `write-key-api-g2.log`：SHA-256 `8caf2fdaa716348d377e061ed19c7f4d8201043b86f262b01f1b468d04d92ff6`，423字节。
 - `write-key-api-rebuild.log`：SHA-256 `ffb13469f22aa36795f2c93b252b355a905d5db8da79c9e5b728ab8e494ae6a1`，440字节。
+
+## 批次20：原key受权回执查询
+
+- SQL37将实际写请求字段编码随业务回执同事务保存，不存完整字段值。新增GET /systems/:asset/write-receipt及/records/:id/write-receipt，用header原key按公司/账号/端点查询；与实际写入共用key串行锁。返回已知COMMITTED原结果或UNKNOWN，不调用业务run。
+- 重新登录仍由同一账号/公司找回，gateway、当前动作/字段/行范围重验；隐藏字段拒绝不返回字段名。独立复核发现创建回执未检查记录当前行范围，追加真实转交RED反例后使用服务端保存recordId检查，不能从旧回执绕过新范围。
+- 缺回执只记UNKNOWN，不能推出失败或许可新key。旧业务回执缺request_fields、旧平台idempotency记录均409要求人工核对，不猜测字段授权。API标识符门禁登记PATCH回执记录段。
+- 实际PG复验原结果无重复业务效果、不同账号/公司无结果、PATCH/创建撤字段/动作权限及记录转交拒绝；持有原key锁模拟原写入在途，查询5秒超时保持原key，释放后原写入只执行一次并能恢复原结果。此处未宣称整个鉴权链路全局5秒预算，也未关闭任务1的并发撤权栅栏。
+- 定向38/38、exit0；新增动作撤销/跨公司断言后最新完整平台634项：633通过、0失败、1个既有跳过，exit0；隔离runner确认自有集群停止。曾把不存在的schema.test.mjs列入定向命令，该文件未执行；正式schema-guard包含在本次完整回归，不将该拼写计作额外验证。
+- [客户端恢复设计](client-write-recovery-design.md)明确后续采用服务端耐久intent，避免浏览器保存业务payload，并规定取消必须写原key tombstone。当前批只交付查询基础，UI journal、取消/确认与Agent接线尚未实现，不能宣称刷新恢复完成。
+
+非敏感日志摘要：
+- `write-receipt-lookup-final.log`：SHA-256 `2b75800bf9ab82f182afb049ea4983fb66e35bacc4fbe2f78988378643c63413`，4480字节。
+- `platform-write-receipt-full.log`：SHA-256 `020780685401bead4383e0610bd44364edac8a2e167a4c49083879c1557f064b`，64901字节。

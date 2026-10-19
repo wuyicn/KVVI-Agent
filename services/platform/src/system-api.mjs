@@ -27,7 +27,7 @@ import { publishedSystems } from './publish.mjs'
 import { readDirectory, isDirectoryBuilder } from './business-directory.mjs'
 import { withActiveForm } from './business-lifecycle.mjs'
 import { idempotencyKeyOf } from './idempotency.mjs'
-import { writeOperation } from './record-write-operations.mjs'
+import { writeOperation, readWriteOperation } from './record-write-operations.mjs'
 import { step, nextActions, submitterOf, WorkflowError } from './workflow.mjs'
 import { append, digestOf } from './audit.mjs'
 
@@ -525,6 +525,16 @@ export async function systemRoutes({ method, path, payload, session, headers = {
     // 字段声明：从 HTTP 外面读「这个系统有哪些字段」的唯一出口。
     if (method === 'GET' && parts.length === 3 && parts[2] === 'fields') {
       return systemFields(ctx, assetId)
+    }
+
+    if (method==='GET' && ((parts.length===3 && parts[2]==='write-receipt')
+      || (parts.length===5 && parts[2]==='records' && parts[4]==='write-receipt'))) {
+      const recordId=parts.length===5?decodeURIComponent(parts[3]).toLowerCase():null
+      const action=recordId===null?'create':'update'
+      const endpoint=recordId===null?`POST /systems/${assetId}/records`:`PATCH /systems/${assetId}/records/${recordId}`
+      return readWriteOperation({ctx,endpoint,key:idempotencyKeyOf(headers),
+        authorize:(fields,client,row)=>authorizeRecordWrite(ctx,assetId,Object.fromEntries(fields.map(field=>[field,null])),action,
+          recordId??row?.response.recordId??null,client)})
     }
 
     if (parts.length === 3 && parts[2] === 'records') {

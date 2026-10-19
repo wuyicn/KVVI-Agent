@@ -374,3 +374,125 @@ test('the actual client create converter uses authorized metadata and reaches re
   assert.equal(created.status,201)
   assert.deepEqual((await adminQuery('kvvi_business','SELECT data FROM business_records WHERE record_id=$1',[created.body.recordId])).rows[0].data,expected)
 })
+
+test('authenticated original-key lookup recovers a committed create without replaying its business effect',async()=>{
+  const key=randomUUID(), data={title:'lookup create'}
+  const created=await call(alice,'POST',path,{data},key)
+  assert.equal(created.status,201)
+  const fresh=await makeSession(A.alice,A.company)
+  const recovered=await call(fresh,'GET','/systems/general_item/write-receipt',undefined,key)
+  assert.equal(recovered.status,200)
+  assert.equal(recovered.body.state,'COMMITTED')
+  assert.equal(recovered.body.result.recordId,created.body.recordId)
+  assert.equal(recovered.body.operationId,created.body.operationId)
+  assert.equal(recovered.body.statusCode,201)
+  assert.equal(await count(data.title),1)
+  assert.equal(JSON.stringify(recovered.body).includes(data.title),false)
+  const fields=(await adminQuery('kvvi_business','SELECT request_fields FROM record_write_operations WHERE idempotency_key=$1',[key])).rows[0].request_fields
+  assert.deepEqual(fields,['title'])
+})
+
+test('receipt lookup stays unknown for absent/different-owner keys without creating any effect',async()=>{
+  const key=randomUUID()
+  const created=await call(alice,'POST',path,{data:{title:'scoped receipt'}},key)
+  const other=await call(bob,'GET','/systems/general_item/write-receipt',undefined,key)
+  assert.equal(other.status,202)
+  assert.equal(other.body.state,'UNKNOWN')
+  assert.equal(JSON.stringify(other.body).includes(created.body.recordId),false)
+  const absent=await call(alice,'GET','/systems/general_item/write-receipt',undefined,randomUUID())
+  assert.equal(absent.status,202)
+  assert.equal(absent.body.state,'UNKNOWN')
+  assert.equal(await count('scoped receipt'),1)
+})
+
+test('lookup of a PATCH receipt returns its original result and rechecks current field authorization',async()=>{
+  const created=await call(alice,'POST',path,{data:{title:'patch lookup'}})
+  const key=randomUUID()
+  const updated=await call(alice,'PATCH',`${path}/${created.body.recordId}`,{data:{title:'patch lookup changed'},rowVersion:1},key)
+  assert.equal(updated.status,200)
+  const url=`${path}/${created.body.recordId}/write-receipt`
+  const read=await call(alice,'GET',url,undefined,key)
+  assert.equal(read.status,200)
+  assert.deepEqual(read.body.result,{recordId:updated.body.recordId,rowVersion:2})
+  const role=(await pool('platform').query(`SELECT role_id FROM role_members WHERE company_id=$1 AND user_id=$2 LIMIT 1`,[A.company,A.alice])).rows[0].role_id
+  const policy=randomUUID()
+  await pool('platform').query(`INSERT INTO policies(policy_id,company_id,role_id,dimension,resource_code,field_visibility) VALUES($1,$2,$3,'FIELD','title','HIDDEN')`,[policy,A.company,role])
+  try {
+    const denied=await call(alice,'GET',url,undefined,key)
+    assert.equal(denied.status,403)
+    assert.equal(denied.body.error,'KVVI_NOT_ALLOWED')
+    assert.equal(denied.body.fields,undefined)
+    assert.equal(denied.body.result,undefined)
+  } finally {await pool('platform').query('DELETE FROM policies WHERE policy_id=$1',[policy])}
+})
+
+test('a create receipt with a row transferred outside current scope no longer exposes its result',async()=>{
+  const key=randomUUID()
+  const created=await call(alice,'POST',path,{data:{title:'receipt moved outside scope'}},key)
+  assert.equal(created.status,201)
+  assert.equal((await call(alice,'GET','/systems/general_item/write-receipt',undefined,key)).status,200)
+  await adminQuery('kvvi_business','UPDATE business_records SET owner_id=$1,dept_id=NULL,shop_id=NULL WHERE record_id=$2',[A.bob,created.body.recordId])
+  const hidden=await call(alice,'GET','/systems/general_item/write-receipt',undefined,key)
+  assert.ok([403,404].includes(hidden.status))
+  assert.equal(hidden.body.result,undefined)
+})
+
+test('older receipts without field recovery metadata require manual review rather than unknown/new execution',async()=>{
+  const key=randomUUID(), created=await call(alice,'POST',path,{data:{title:'metadata legacy receipt'}},key)
+  assert.equal(created.status,201)
+  await adminQuery('kvvi_business','UPDATE record_write_operations SET request_fields=NULL WHERE idempotency_key=$1',[key])
+  const legacy=await call(alice,'GET','/systems/general_item/write-receipt',undefined,key)
+  assert.equal(legacy.status,409)
+  assert.equal(legacy.body.error,'KVVI_OPERATION_LEGACY_RECEIPT')
+  assert.equal(legacy.body.result,undefined)
+  assert.equal(await count('metadata legacy receipt'),1)
+  const oldKey=randomUUID()
+  await pool('platform').query(`INSERT INTO idempotency_keys(company_id,user_id,endpoint,idem_key,response,status_code) VALUES($1,$2,$3,$4,$5,201)`,
+    [A.company,A.alice,'POST /systems/general_item/records',oldKey,{recordId:randomUUID(),rowVersion:1}])
+  const old=await call(alice,'GET','/systems/general_item/write-receipt',undefined,oldKey)
+  assert.equal(old.status,409)
+  assert.equal(old.body.error,'KVVI_OPERATION_LEGACY_RECEIPT')
+})
+
+test('receipt lookup times out safely behind an in-flight original key, then recovers that one result',async()=>{
+  const key=randomUUID(), lock=await pool('business').connect()
+  let creating
+  await lock.query('BEGIN')
+  await lock.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[JSON.stringify(['record-write',A.company,A.alice,'POST /systems/general_item/records',key])])
+  try {
+    creating=call(alice,'POST',path,{data:{title:'inflight lookup'}},key)
+    const started=Date.now()
+    const status=await call(alice,'GET','/systems/general_item/write-receipt',undefined,key)
+    assert.equal(status.status,503)
+    assert.equal(status.body.error,'KVVI_OPERATION_OUTCOME_UNKNOWN')
+    assert.equal(status.body.idempotencyKey,key)
+    assert.equal(status.body.retryWithSameKey,true)
+    assert.ok(Date.now()-started<6500)
+  } finally {await lock.query('ROLLBACK');lock.release()}
+  const created=await creating
+  assert.equal(created.status,201)
+  const recovered=await call(alice,'GET','/systems/general_item/write-receipt',undefined,key)
+  assert.equal(recovered.status,200)
+  assert.equal(recovered.body.result.recordId,created.body.recordId)
+  assert.equal(await count('inflight lookup'),1)
+})
+
+test('receipt lookup refuses a revoked create action and never returns a foreign company result',async()=>{
+  const key=randomUUID(), created=await call(alice,'POST',path,{data:{title:'lookup action revoked'}},key)
+  assert.equal(created.status,201)
+  const foreign=await call(other,'GET','/systems/general_item/write-receipt',undefined,key)
+  assert.ok([403,404].includes(foreign.status))
+  assert.equal(JSON.stringify(foreign.body).includes(created.body.recordId),false)
+  const policies=(await pool('platform').query(`SELECT p.policy_id,p.actions FROM policies p
+    JOIN role_members r ON r.role_id=p.role_id AND r.company_id=p.company_id
+    WHERE p.company_id=$1 AND r.user_id=$2 AND p.dimension='FORM'`,[A.company,A.alice])).rows
+  try {
+    for(const policy of policies) await pool('platform').query("UPDATE policies SET actions=array_remove(actions,'create') WHERE policy_id=$1",[policy.policy_id])
+    const denied=await call(alice,'GET','/systems/general_item/write-receipt',undefined,key)
+    assert.equal(denied.status,403)
+    assert.equal(denied.body.error,'KVVI_NOT_ALLOWED')
+    assert.equal(denied.body.result,undefined)
+  } finally {
+    for(const policy of policies) await pool('platform').query('UPDATE policies SET actions=$2 WHERE policy_id=$1',[policy.policy_id,policy.actions])
+  }
+})

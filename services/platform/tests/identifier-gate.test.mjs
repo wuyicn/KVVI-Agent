@@ -380,6 +380,9 @@ describe('缺陷 33 · 闸覆盖的路径由一份清单决定', () => {
     const slots = (p) => identifierSlots(p)
     assert.deepEqual(slots('/systems/s1/records/r1'),
       [{ index: 3, kind: IDENTIFIER.RECORD, assetId: 's1' }])
+    assert.deepEqual(slots('/systems/s1/records/r1/write-receipt'),
+      [{ index: 3, kind: IDENTIFIER.RECORD, assetId: 's1' }])
+    assert.deepEqual(slots('/systems/s1/write-receipt'), [])
     assert.deepEqual(slots('/systems/s1/records/r1/actions'),
       [{ index: 3, kind: IDENTIFIER.RECORD, assetId: 's1' }])
     assert.deepEqual(slots('/systems/s1/records/r1/transitions'),

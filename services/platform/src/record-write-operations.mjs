@@ -47,8 +47,8 @@ export async function writeOperation({ ctx, endpoint, key=randomUUID(), request,
         throw new Error('KVVI_OPERATION_AUDIT_REQUIRED')
       }
       row=(await client.query(`INSERT INTO record_write_operations(company_id,actor_id,endpoint,idempotency_key,
-        operation_id,request_digest,response,status_code,audit_payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [...args,operationId,digest,result.body,result.status,{...result.audit,resultDigest:digestOf(canonical(result.body))}])).rows[0]
+        operation_id,request_digest,response,status_code,audit_payload,request_fields) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      [...args,operationId,digest,result.body,result.status,{...result.audit,resultDigest:digestOf(canonical(result.body))},Object.keys(request?.data??{}).sort()])).rows[0]
     }
     committing=true
     await client.query('COMMIT')
@@ -64,6 +64,55 @@ export async function writeOperation({ ctx, endpoint, key=randomUUID(), request,
   } finally { client.release(broken) }
   const delivered=await deliverWriteAudit(ctx.companyId,ctx.userId,row.operation_id)
   return {status:row.status_code,body:{...row.response,operationId:row.operation_id,auditPending:!delivered}}
+}
+
+
+/** Read a known result without needing to persist business values in the browser.
+ * Absence remains UNKNOWN: an original request might not have arrived yet.
+ */
+export async function readWriteOperation({ctx,endpoint,key,authorize}) {
+  if (typeof key!=='string'||!key||Buffer.byteLength(key)>256) {
+    throw new WriteOperationError('KVVI_OPERATION_KEY_INVALID',400,key)
+  }
+  const deadline=Date.now()+5000, args=[ctx.companyId,ctx.userId,endpoint,key]
+  const client=await connectBefore('business',deadline)
+  let broken=true
+  const query=(text,values=[])=>{
+    const remaining=deadline-Date.now()
+    if (remaining<1) throw new Error('KVVI_OPERATION_LOOKUP_TIMEOUT')
+    return client.query({text,values,query_timeout:remaining})
+  }
+  try {
+    await query('BEGIN')
+    await query("SELECT set_config('kvvi.company_id',$1,true),set_config('statement_timeout','5000',true)",[ctx.companyId])
+    await query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[JSON.stringify(['record-write',...args])])
+    const row=(await query(`SELECT * FROM record_write_operations
+      WHERE company_id=$1 AND actor_id=$2 AND endpoint=$3 AND idempotency_key=$4`,args)).rows[0]
+    if (row && row.audit_payload.gateway!==ctx.gateway) {
+      await query('ROLLBACK');broken=false
+      return {status:403,body:{error:'KVVI_NOT_ALLOWED'}}
+    }
+    const refusal=await authorize(row?.request_fields??[],client,row)
+    if (refusal) {
+      await query('ROLLBACK');broken=false
+      // Revoked hidden field names must not be exposed by a receipt query.
+      return {status:refusal.status,body:{error:'KVVI_NOT_ALLOWED'}}
+    }
+    if (row && !Array.isArray(row.request_fields)) throw new WriteOperationError('KVVI_OPERATION_LEGACY_RECEIPT',409,key)
+    if (!row && (await queryBefore('platform',`SELECT 1 FROM idempotency_keys
+      WHERE company_id=$1 AND user_id=$2 AND endpoint=$3 AND idem_key=$4`,args,deadline)).rows.length) {
+      throw new WriteOperationError('KVVI_OPERATION_LEGACY_RECEIPT',409,key)
+    }
+    await query('COMMIT');broken=false
+    if (!row) return {status:202,body:{state:'UNKNOWN',idempotencyKey:key,retryWithSameKey:true}}
+    return {status:200,body:{state:'COMMITTED',operationId:row.operation_id,statusCode:row.status_code,
+      result:row.response,auditPending:row.audit_delivered_at===null}}
+  } catch (error) {
+    if (error.code==='57014'||error.message==='Query read timeout'||error.message==='KVVI_OPERATION_LOOKUP_TIMEOUT') {
+      throw new WriteOperationError('KVVI_OPERATION_OUTCOME_UNKNOWN',503,key)
+    }
+    throw error
+  } finally {client.release(broken)}
 }
 
 async function deliveryTransaction(companyId,deadline,fn) {
