@@ -173,6 +173,7 @@ STAGE11_SOURCES = [
     '工具/lib/package_inventory.py',
     '工具/lib/package_provenance.py',
     '工具/lib/package_client.py',
+    '工具/lib/package_policy.py',
     '工具/lib/runtime_source.py',
     'forks/dsh/改造点指纹.json',
     '工具/check_stage11.py',

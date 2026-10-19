@@ -166,7 +166,7 @@ class RuntimeSelectionTests(unittest.TestCase):
     def copy_owned_cli(self):
         directory = self.root / '工具'; (directory / 'lib').mkdir(parents=True)
         shutil.copy2(preservation.SCRIPT, directory / '发行包.py')
-        for name in ('package_outputs.py','package_inventory.py','package_provenance.py','runtime_source.py','package_client.py'):
+        for name in ('package_outputs.py','package_inventory.py','package_provenance.py','runtime_source.py','package_client.py','package_policy.py'):
             shutil.copy2(preservation.SCRIPT.parent / 'lib' / name, directory / 'lib' / name)
         return directory / '发行包.py'
 
@@ -182,7 +182,7 @@ class RuntimeSelectionTests(unittest.TestCase):
         selected = self.select_another(); script = self.copy_owned_cli()
         for action in ('--build','--check'):
             result = subprocess.run([sys.executable,str(script),action,'--runtime-source',str(selected),'--git-objects',self.module.GIT_OBJECTS], capture_output=True, timeout=15)
-            self.assertEqual(result.returncode, 0, result.stdout.decode(errors='replace'))
+            self.assertEqual(result.returncode, 0, (result.stdout+result.stderr).decode(errors='replace'))
         with tarfile.open(self.root / '交付/发行/kvvi-macos-pilot.tar.gz') as archive:
             with archive.extractfile(self.module.TOP + '/vendor/dsh/apps/cli/lib/bin.js') as handle:
                 self.assertEqual(handle.read(), b'explicit new runtime\n')

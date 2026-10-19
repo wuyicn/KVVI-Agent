@@ -956,3 +956,18 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `package-build-receipt-final312-2.log`：`d3ec08dc20a87bb7f6035a75d302b237c550e809a340d8db13277363ed9906ce`。
 - `package-build-receipt-final39-2.log`：`adc763f6bfabde3d06783d4a0474850bec900a3f5725690b1576c438690db9d8`。
 - `bf8d91810b031-pinned-build-readonly-final2.json`：`193735f05bd5a8552ef01f55b6dea10a3d3675dcab39dc78f8ba2eecb11d0d32`。
+
+## 批次60：完整输出表与候选政策投影绑定
+
+- 新增package_build_binding严格验证build资格和完整私有typed outputRows的count/digest，再投影政策选中输出；候选vendor/dsh全集必须精确等于内部从完整sourceRows推导的政策集合与投影输出并集，输出每行bytes/mode/SHA相同，source正文仍按固定全表核验。源/输出不能重叠、不能凭excluded边界让未核host/native文件进入候选，漏收或注入均拒。来源、构建历史及发行认证仍由上游资格和显式限制定义，该模块不独立认证任意JSON。
+- 抽出package_policy给原v4 collect和新绑定共用should_skip，不放宽依赖/Git/cache/后缀/lib types规则；G9来源指纹补policy，CI加14个纯typed绑定反例。独立复核复现caller少报included source和收据覆盖client.log被skip两个缺口，先RED后补内部完整集合推导/client投影闭包。源links按单个归档path文件政策，无is_dir查询；后续v5统一collect的该语义，目前实际树无差异。原CLI owned copy夹具漏policy导致正例失败，补精确模块和stderr诊断后通过。
+- 必要回归test_package_build_binding/build_receipt、test_release_package/package_inventory/package_source_selection/package_source_gate/package_client_gate/package_build_inventory/package_client/package_provenance/runtime_source/raw_git_source/evidence_commands；Python3.12.13 165项62.475s、Python3.9.6 165项65.053s，两者`-W error::ResourceWarning -m unittest`实际exit0、无skip。两位独立定向14项和两集合/源link反例闭环。无平台改动，不继承旧完整平台测试为本批新测。
+- 实际成功树只读qualify_build_receipt(include_output_rows=True)+完整sourceRows+collect/snapshot，bind_build_rows通过、进程exit0。12196源码全收，9467完整输出digest仍a9e65ea8d0b36586a3bd915d33de5bf8460cd266bbe1e89fbef19d8e090f1825；政策投影2869输出digest983695f615526e82bebef27528a98010b1c8d2de1d8301f30aa7b00c5146dfc2，runtime候选15065条，总候选16055条digestfc90a3cd1bf0bc730a371e748acfabf43fa9092851255735004a008162470840。未生成归档。build/check与v5内外manifest接线留下一批，releaseApproved:false，12项验收继续未完成。
+
+最终非敏感证据SHA-256（实际退出后计算）：
+- `package-build-binding-red.log`：`3e3f2ae16b8113c02b9a0361bfee7c8ab0d59122aef568e5e485d34c76d80ec3`。
+- `package-build-binding-source-client-red.log`：`ff382c852083b0dfd3eb0286360f1412e870d5abe093723796aa0d5e811142fa`。
+- `package-build-binding-final312-2.log`：`76ee10586bc546a4f6d2a75657204b80b2ba3d99e544c9a621083d84cb9eaac6`。
+- `package-build-binding-final39-2.log`：`e78b66f9c6ab025fac739388490db6f6d08a4196b16983ba1e3b9867e85134da`。
+- `bf8d91810b031-candidate-projection-final.json`：`d0998d0df953ba3d8383c80021de6b5c9b68ac89a1fcea67067341bc13e7d9f1`。
+- 只读脚本`read_build_candidate_projection.py`：`82cc63d4e88661ad1bfd645868288eb85f96f0a44b8e2073f3ac5827f196fa3b`。

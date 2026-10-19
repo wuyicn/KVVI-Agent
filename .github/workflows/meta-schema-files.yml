@@ -37,6 +37,6 @@ jobs:
       - name: Test owned clean build receipts with synthetic tools
         run: python -W error::ResourceWarning -m unittest distribution.tests.test_package_clean_build distribution.tests.test_package_build_receipt
       - name: Test release output preservation in owned fixtures
-        run: python -W error::ResourceWarning -m unittest distribution.tests.test_release_package distribution.tests.test_package_inventory distribution.tests.test_package_source_selection distribution.tests.test_evidence_commands distribution.tests.test_package_source_gate distribution.tests.test_package_client distribution.tests.test_package_client_gate distribution.tests.test_package_build_inventory distribution.tests.test_package_build_source
+        run: python -W error::ResourceWarning -m unittest distribution.tests.test_release_package distribution.tests.test_package_inventory distribution.tests.test_package_source_selection distribution.tests.test_evidence_commands distribution.tests.test_package_source_gate distribution.tests.test_package_client distribution.tests.test_package_client_gate distribution.tests.test_package_build_inventory distribution.tests.test_package_build_source distribution.tests.test_package_build_binding
       - name: Validate all 13 protocol machine files
         run: python tests/meta-schema-full/0a-full-r1/test_structure.py

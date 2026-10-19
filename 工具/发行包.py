@@ -62,6 +62,7 @@ from 工具.lib.package_inventory import (InventoryError, VERSION, INTERNAL, MAX
     snapshot, validate_rows, internal_manifest, verify_archive, load_json, validate_source_qualification, bind_fixed_source_rows, fixed_source_index, regular_entry_paths)
 from 工具.lib.package_provenance import qualify_runtime_source
 from 工具.lib.package_client import qualify_client_outputs, client_row_index, bind_client_rows, artifact_snapshots
+from 工具.lib.package_policy import should_skip, PORTABLE_DEPENDENCIES
 OUT_DIR = os.path.join(ROOT, '交付', '发行')
 ARCHIVE = os.path.join(OUT_DIR, 'kvvi-macos-pilot.tar.gz')
 MANIFEST = os.path.join(OUT_DIR, '发行包清单.json')
@@ -122,8 +123,7 @@ EXTRA_FILES = [
 ]
 
 #: 整树收录时排除的路径片段。缓存与 Git 元数据一律不进包。
-SKIP_ANYWHERE = ('/.git/', '/__pycache__/', '/.cache/',
-                 '/.pytest_cache/', '/.venv/', '/.dsh-build/')
+# The executable policy lives in package_policy.py and is shared with build binding.
 
 #: ⚠️ `node_modules` **不能一律排除**，要按来源分开判：
 #:
@@ -138,10 +138,10 @@ SKIP_ANYWHERE = ('/.git/', '/__pycache__/', '/.cache/',
 #: 第一版把 `node_modules` 写进 `SKIP_ANYWHERE`，于是平台的依赖也被甩掉，
 #: 而那些必需文件是在 `--build` 之后才被 `REQUIRED` 检查抓到的 ——
 #: **一个把该带的东西也甩掉的规则，与一个把不该带的东西带上的规则，同样坏。**
-PORTABLE_DEPENDENCIES = ('services/platform', 'tools/meta-schema')
+# PORTABLE_DEPENDENCIES is imported from the same shared policy.
 
 #: 只保留构建产物、不保留源码树里的临时文件。
-SKIP_SUFFIX = ('.pyc', '.log', '.tsbuildinfo')
+# Suffix filtering is also defined by the shared policy.
 
 #: 绝不允许出现在包里的内容。私钥不进发行包（§9.4.1）。
 FORBIDDEN = [
@@ -173,47 +173,6 @@ REQUIRED = [
     'docs/操作手册.md',
     'README.md',
 ]
-
-
-def should_skip(source_rel: str, rel: str) -> bool:
-    """
-    该路径是否不进包。
-    @param source_rel 它来自哪个顶层内容（`CONTENTS` 的第一列）
-    @param rel 相对该内容根的路径
-    @returns 跳过时为真
-    """
-    if source_rel == 'vendor/dsh' and (rel.strip('/') == '.dsh-build' or rel.startswith('.dsh-build/')):
-        return rel not in ('.dsh-build/','.dsh-build/client-build-environment.json')
-    probe = '/' + rel.strip('/') + '/'
-    if any(piece in probe for piece in SKIP_ANYWHERE):
-        return True
-    if '/node_modules/' in probe:
-        # 只有被显式列为「可移植依赖」的那一份才进包。见 PORTABLE_DEPENDENCIES。
-        return not any(source_rel == keep or source_rel.startswith(keep + '/')
-                       or keep.startswith(source_rel + '/')
-                       for keep in PORTABLE_DEPENDENCIES)
-    if rel.endswith(SKIP_SUFFIX):
-        return True
-    if '/lib/types/' in probe and not rel.endswith('/') and not rel.endswith('.js'):
-        # ⚠️ **`lib/types/` 不能整目录甩掉，目录本身更不能被剪掉。**
-        #
-        # 这里原来写的是「`lib/types/` 一律不进包」，理由是一句想当然：
-        # 「`.d.ts` 是编译中间产物，运行时用不到」。**前提是错的。**
-        # DSH 的 tsconfig 用 `outDir: lib/types`，所以 tsc 把**编译后的 `.js` 也落在那里**，
-        # 而包与包之间正是按 `.js` 相对路径互相 import 的：
-        # `.../session-format-catalog/lib/index.js`
-        #   → `.../dsh-compaction-image-offload/lib/types/projection.js`。
-        #
-        # 代价：源树里 `lib/types/**` 有 1946 个 `.js`、1946 个 `.d.ts`、3892 个 `.map`；
-        # 整目录一甩，1946 个运行时 `.js` 全没了（实测少 7785 个文件）。
-        # 症状极具误导性：**安装成功、界面 HTTP 200、登录成功**，
-        # 但运行时的 12 个条目 `failed to import`，24 个前端条目永远在等 `sessions` 服务 ——
-        # 界面打开是「Failed to load plugins」和一整屏待激活清单，对话区根本出不来。
-        # 而 G9 的验收只看 HTTP 200，于是这条一路绿灯。
-        #
-        # 现在只甩类型与 sourcemap（`.d.ts`、`.map`），`.js` 留下。
-        return True
-    return False
 
 
 def runtime_source_root():

@@ -134,3 +134,13 @@ runner增加固定tsx socket路径字节长度预检（Darwin104/Linux108，含�
 先后两轮相同完整输出资格/全表、输入材料/metadata及受信文件原字节不变，才输出固定source绑定、收据/anchor摘要、材料及全输出digest/count、client资格和限制；完整outputRows仅显式私有请求。此接口核对仓库固定SHA所锚定的本地观察与当前实物，不把任意JSON变成执行历史认证/签名或release approval。先用自有synthetic工具完整构建收据做正反夹具；实际成功树只读验证，不再执行测试/安装/build改变它。候选包投影接线留下一批。
 
 独立复核的工具读取资源问题先RED再修复：两轮均严格验证trusted工具typed row，以固定bytes作snapshot上限，工具入口另限512MiB，超大整数/OverflowError固定拒绝。128MiB sparse初始/末轮反例均在正文读取前拒绝，不能复用无界_tools再比较；该限制不是工具来源/执行认证。双Python各182项exit0、无skip/ResourceWarning，两位复核闭环。实际只读CLI exit0，12196材料/9467输出仍与anchor相同，releaseApproved:false；CI加入synthetic收据测试。没有真实打包、部署或产品验收。
+
+## 候选运行时的完整输出投影（批次60完成）
+
+先抽出单一发行收录策略供现有collect和新绑定共用，保持现行规则：排除依赖/Git/cache、.tsbuildinfo/log、lib/types内非.js文件，.dsh-build只收client-build-environment.json。投影必须检查所有祖先目录的排除规则，不用仅文件名判断。此批不升级现有v4包格式或运行真实打包，先建立可复用的严格build资格结构/全表和候选绑定接口。
+
+完整outputRows必须严格typed、普通文件、路径唯一并与固定build资格的完整count/digest相同；client子表/收据仍满足原client绑定。候选vendor/dsh路径全集应精确等于按策略选中的固定sourceRows与已验证outputRows的并集，不能靠excluded输出目录放行未验证新文件；任何包含的输出bytes/mode/SHA必须逐行相同。固定源码路径仍按完整sourceRows绑定正文；source exec/raw权限限制保留。全输出先验证、再投影，不能仅验证可打包子集而丢失未打包输出的证据。自有纯数据正反例后，实际成功树只读collect/snapshot及完整资格比对，留下一批接入build/check与v5内外manifest。
+
+独立反例先RED后关闭两个集合缺口：内部从完整sourceRows按共享runtime_file_included推导必收集合，caller set只能精确相等，不能少报源码放行；若政策会剔除client收据覆盖项（如web covered.log），投影固定拒绝该不支持布局，不能留下收据却缺文件。源link作为单个archive entry按路径文件政策处理，不用is_dir观察；因此带跳过后缀的目录alias也不能扩大收录，后续v5统一该规则。现有v4 collect仅共用原should_skip，尚未强制消费build资格。
+
+14专项及必要回归双Python各165项exit0，无skip/ResourceWarning，两位独立反例闭环。原CLI夹具漏复制新policy模块导致真实子命令失败，补齐夹具和stderr诊断后通过，未放宽产品门禁。实际只读完整资格+collect/snapshot绑定：12196源码、9467全输出，投影2869输出digest983695f615526e82bebef27528a98010b1c8d2de1d8301f30aa7b00c5146dfc2，runtime候选15065条、总候选16055条，无缺失/额外运行时路径。没有生成归档、部署或试点验收。
