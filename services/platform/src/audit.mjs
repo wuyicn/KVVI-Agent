@@ -19,7 +19,7 @@
  */
 import { createHash } from 'node:crypto'
 import pg from 'pg'
-import { pool, dsns } from './db.mjs'
+import { pool, dsns, queryBefore } from './db.mjs'
 
 /**
  * 审计库的**超级用户**连接，仅供篡改模拟使用。
@@ -38,6 +38,11 @@ async function adminOnAudit() {
 /** 链的起点。显式常量比「空值」更难被悄悄替换成任意值。 */
 const GENESIS = '0'.repeat(64)
 
+async function boundedAuditQuery(text, values, timeoutMs) {
+  if (!Number.isSafeInteger(timeoutMs)||timeoutMs<1) throw new Error('KVVI_AUDIT_TIMEOUT_INVALID')
+  return queryBefore('audit',text,values,Date.now()+timeoutMs)
+}
+
 /** 参数/结果的摘要。**不记明文**，所以这里只收已经序列化好的值。 */
 export function digestOf(value) {
   return createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value))
@@ -53,15 +58,15 @@ export function digestOf(value) {
  * @param {object} entry 审计条目
  * @returns {Promise<string>} 本条记录的 hash
  */
-export async function append(entry) {
+export async function append(entry, {queryTimeoutMs}={}) {
   const params = [entry.companyId, entry.actorKind, entry.actorId ?? null, entry.gateway ?? null,
     entry.sessionId ?? null, entry.action, entry.resourceKind ?? null,
     entry.resourceId ?? null, entry.outcome, entry.reason ?? null,
     entry.paramsDigest ?? null, entry.resultDigest ?? null]
   if (entry.operationId !== undefined) {
-    const { rows } = await pool('audit').query(
-      `SELECT audit_append_once($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) AS hash`,
-      [entry.operationId, ...params])
+    const text=`SELECT audit_append_once($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) AS hash`
+    const values=[entry.operationId,...params]
+    const { rows } = await (queryTimeoutMs===undefined?pool('audit').query(text,values):boundedAuditQuery(text,values,queryTimeoutMs))
     return rows[0].hash
   }
   const { rows } = await pool('audit').query(

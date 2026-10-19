@@ -30,6 +30,7 @@ import { pool } from './db.mjs'
 import { schemaDelta } from './sql-manifest.mjs'
 import { directoryAuditPending } from './business-directory-audit.mjs'
 import { retryDirectoryJobs, buildIntentsPending } from './business-build-intents.mjs'
+import { flushWriteAudit, writeAuditPending } from './record-write-operations.mjs'
 
 let directoryAuditRunning=false
 const directoryAuditTimer=setInterval(async()=>{
@@ -43,6 +44,16 @@ const directoryAuditTimer=setInterval(async()=>{
   finally { directoryAuditRunning=false }
 }, 10000)
 directoryAuditTimer.unref()
+
+let recordWriteAuditRunning=false
+const recordWriteAuditTimer=setInterval(async()=>{
+  if (recordWriteAuditRunning) return
+  recordWriteAuditRunning=true
+  try { await flushWriteAudit() }
+  catch { console.error(JSON.stringify({event:'record-write-audit-retry-unavailable'})) }
+  finally { recordWriteAuditRunning=false }
+},10000)
+recordWriteAuditTimer.unref()
 
 const PORT = Number(process.env.KVVI_PLATFORM_PORT ?? 7400)
 const HOST = process.env.KVVI_PLATFORM_HOST ?? '0.0.0.0'
@@ -333,6 +344,7 @@ async function handleRequest(req, res) {
       schemaExtra: (await schemaState()).extra.length,
       schemaReadable: (await schemaState()).error === null,
       directoryAuditPending: await directoryAuditPending().catch(()=>null),
+      recordWriteAuditPending: await writeAuditPending().catch(()=>null),
       businessBuildPending: await buildIntentsPending().catch(()=>null),
     })
   }
@@ -691,6 +703,7 @@ const SHUTDOWN_GRACE_MS = Number(process.env.KVVI_SHUTDOWN_GRACE_MS ?? 5000)
 for (const signal of ['SIGTERM', 'SIGINT']) {
   process.on(signal, () => {
     clearInterval(directoryAuditTimer)
+    clearInterval(recordWriteAuditTimer)
     console.log(JSON.stringify({ event: 'platform-service-down', signal }))
     server.close(() => process.exit(0))
     // 空闲连接先放掉：它们本来就没有请求在飞，等它们没有意义。

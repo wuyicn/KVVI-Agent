@@ -73,11 +73,11 @@ export function buildHandle(ctx, logical) {
  * @param {object} logical 逻辑引用
  * @returns {Promise<object|null>} 记录，或 null
  */
-export async function readRecord(ctx, scope, logical) {
+export async function readRecord(ctx, scope, logical, {client: transactionClient} = {}) {
   const handle = buildHandle(ctx, logical)
-  const client = await pool('business').connect()
+  const client = transactionClient ?? await pool('business').connect()
   try {
-    await client.query('BEGIN')
+    if (!transactionClient) await client.query('BEGIN')
     await applyScopeGucs(client, scope)
     const { rows } = await client.query(
       `SELECT record_id, company_id, schema_code, dept_id, shop_id, owner_id,
@@ -89,7 +89,7 @@ export async function readRecord(ctx, scope, logical) {
       await lockFormLifecycle(client,handle.companyId,rows[0].schema_code,'read')
       await assertFormActive(client,handle.companyId,rows[0].schema_code)
     }
-    await client.query('COMMIT')
+    if (!transactionClient) await client.query('COMMIT')
     if (rows.length !== 1) return null
     const r = rows[0]
     return {
@@ -102,10 +102,10 @@ export async function readRecord(ctx, scope, logical) {
       workflowVersion: r.workflow_version === null ? null : Number(r.workflow_version),
     }
   } catch (error) {
-    await client.query('ROLLBACK')
+    if (!transactionClient) await client.query('ROLLBACK')
     throw error
   } finally {
-    client.release()
+    if (!transactionClient) client.release()
   }
 }
 
@@ -214,8 +214,10 @@ async function visibleFieldCodes(ctx, model) {
   return codes.filter((code) => (visibility[code] ?? 'HIDDEN') !== 'HIDDEN')
 }
 
-export async function createRecord(ctx, scope, input) {
-  return withTransaction('business', async (client) => {
+const writeTransaction = (client, fn) => client ? fn(client) : withTransaction('business', fn)
+
+export async function createRecord(ctx, scope, input, {client: transactionClient} = {}) {
+  return writeTransaction(transactionClient, async (client) => {
     await applyScopeGucs(client, scope)
     await lockFormLifecycle(client,ctx.companyId,input.schemaCode,'write')
     await assertFormActive(client,ctx.companyId,input.schemaCode)
@@ -271,9 +273,9 @@ export async function createRecord(ctx, scope, input) {
  * @param {object} patch 补丁
  * @returns {Promise<{recordId: string, rowVersion: number}|null>} 结果
  */
-export async function updateRecord(ctx, scope, logical, patch) {
+export async function updateRecord(ctx, scope, logical, patch, {client: transactionClient} = {}) {
   const handle = buildHandle(ctx, logical)
-  return withTransaction('business', async (client) => {
+  return writeTransaction(transactionClient, async (client) => {
     await applyScopeGucs(client, scope)
     const existing=(await client.query('SELECT schema_code FROM business_records WHERE company_id=$1 AND record_id=$2 AND ($3::text IS NULL OR schema_code = $3)',[handle.companyId,handle.id,handle.schemaCode ?? null])).rows[0]
     if(!existing) return null

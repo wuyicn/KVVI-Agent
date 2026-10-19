@@ -13,11 +13,12 @@ export async function assertFormActive(client,companyId,assetId) {
   const {rows}=await client.query('SELECT archived_at FROM business_form_directory WHERE company_id=$1 AND asset_id=$2',[companyId,assetId])
   if(rows[0]?.archived_at) throw new FormArchivedError()
 }
-export async function withActiveForm(companyId,assetId,fn) {
-  return withTransaction('business',async c=>{
+export async function withActiveForm(companyId,assetId,fn,{client}={}) {
+  const run=async c=>{
     await c.query("SELECT set_config('kvvi.company_id',$1,true)",[companyId])
     await lockFormLifecycle(c,companyId,assetId,'read')
     await assertFormActive(c,companyId,assetId)
     return fn(c)
-  })
+  }
+  return client ? run(client) : withTransaction('business',run)
 }

@@ -158,3 +158,14 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node services/platform/test
 - 独立复核发现既有provision仍授audit角色public CREATE、新SQL提交后账本未记时不能重跑；收紧provision/grantAudit到USAGE且撤销CREATE，新DDL可重入。新增真实CREATE FUNCTION被拒、模拟SQL已提交但账本未记后的迁移重跑，原回执与hash保留。
 - PostgreSQL的DO INSTEAD NOTHING规则会在权限检查前将UPDATE/DELETE改成空操作；测试核对实际权限为false且内容不变，没有把“不抛异常”误读为可以篡改。
 - 当前仅交付审计库基础与[后续设计](write-recovery-design.md)，业务写入、原key恢复、commands/流程/访客和UI仍待接线。没有宣称跨库原子事务或离线审计签名缓冲已完成。
+
+## 批次11：创建/PATCH业务回执与原key恢复
+
+- 新增SQL36：公司/账号/规范化端点/key唯一回执，保存请求摘要、原响应、服务端operationId、原审计payload及投递进度。业务记录、单号序列、回执在同一business事务提交；原key不按24小时过期自动重做，同key改payload拒绝409。历史平台回执没有摘要，明确拒绝再次写入，保留人工核对需求。
+- refs读写、runtimeProjection及表单生命周期支持显式复用同一client，原调用方式保留。首次并发回归发现嵌套借连接耗尽池等待，已定位到投影另开business连接并修正；修正后12路同key只有一条效果。PATCH回放在当前动作/字段/行范围检查之后、旧rowVersion重新执行之前；大写UUID与属性顺序变化仍命中原操作。
+- 审计不可用时已知business提交返回原结果及auditPending；业务回执存储失败则业务行和序列全部回滚。COMMIT已成功但确认丢失的真实事务反例返回503/KVVI_OPERATION_OUTCOME_UNKNOWN和原key，重连后同key找回原结果。新session重试仍投递原session审计payload；换账号/公司、动作撤权均不得读回别人的回执。
+- 原审计已提交但marker更新失败的真实触发器反例，按原operationId重投仍只留一条审计。后台使用独立timer和有限批量；重试时间持久化并退避。真实新平台进程自动重投已保存回执，并可在healthz观察pending计数；测试只启动自有临时服务及集群。
+- 独立复核真实复现audit池8连接占满时，旧query_timeout不覆盖checkout；补统一5秒deadline（连接/SQL/行锁/审计/marker），迟到连接不用即归还，SKIP LOCKED立即返回pending，审计网络I/O期间不持有business连接。枚举查询也纳入deadline，真实表级锁超时后可再次运行。
+- 完整平台首轮595项：592通过、2个新增测试失败、1个既有跳过；失败均为测试使用repo相对路径，npm工作目录下子进程找不到源码。修为基于import.meta.url的绝对路径后重跑：597项，596通过、0失败、1个既有跳过，exit0。runner与npm子进程明确使用Node24.20.0，PG17.11。
+- `python3 -m unittest discover -s distribution/tests`：167/167、exit0。非敏感命令、输入文件与日志摘要另存[本批验证记录](verification-write-recovery.json)。
+- 任务3仍未关闭：commands、流程、访客尚未接入本回执；UI/Agent的身份绑定原key持久保存属于任务4，仍需实现。撤销与写入并发的完整栅栏、离线签名审计批次也未完成。旧回执人工恢复路径另需交付，不建议用新key覆盖未知历史结果。

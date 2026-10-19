@@ -2,6 +2,7 @@ import { before, after, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { append, verifyChain } from '../src/audit.mjs'
 import { pool, closeAll } from '../src/db.mjs'
 import { A, B, resetDatabase, adminQuery } from './harness.mjs'
@@ -86,6 +87,6 @@ test('migration retry after SQL commit but before ledger recording preserves del
   const operationId = randomUUID()
   const hash = await append({ ...entry, operationId })
   await adminQuery('kvvi_audit', "DELETE FROM schema_migrations WHERE file='35-audit-operation-receipts.sql'")
-  execFileSync(process.execPath, ['services/platform/src/migrate.mjs'], { env: process.env, stdio: 'pipe' })
+  execFileSync(process.execPath, [fileURLToPath(new URL('../src/migrate.mjs',import.meta.url))], { env: process.env, stdio: 'pipe' })
   assert.equal(await append({ ...entry, operationId }), hash)
 })

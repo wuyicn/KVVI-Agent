@@ -43,9 +43,36 @@ export function pool(name) {
   if (pools.has(name)) return pools.get(name)
   const dsn = process.env[`KVVI_${name.toUpperCase()}_DSN`] ?? DEFAULTS[name]
   if (!dsn) throw new Error(`缺少 ${name} 的连接串`)
-  const p = new Pool({ connectionString: dsn, max: 8 })
+  const p = new Pool({ connectionString: dsn, max: 8, connectionTimeoutMillis:5000 })
   pools.set(name, p)
   return p
+}
+
+/** A late checkout is returned unused; no query may run after its caller's deadline. */
+export async function connectBefore(name, deadline) {
+  const remaining=deadline-Date.now()
+  if (remaining<1) throw new Error('KVVI_DB_CONNECTION_TIMEOUT')
+  let abandoned=false, timer
+  const acquisition=pool(name).connect().then(client=>{
+    if (abandoned) { client.release(); throw new Error('KVVI_DB_CONNECTION_TIMEOUT') }
+    return client
+  })
+  try {
+    return await Promise.race([acquisition,new Promise((_,reject)=>{
+      timer=setTimeout(()=>{abandoned=true;reject(new Error('KVVI_DB_CONNECTION_TIMEOUT'))},remaining)
+    })])
+  } finally { clearTimeout(timer) }
+}
+
+export async function queryBefore(name,text,values,deadline) {
+  const client=await connectBefore(name,deadline)
+  let broken=false
+  try {
+    const remaining=deadline-Date.now()
+    if (remaining<1) throw new Error('KVVI_DB_QUERY_TIMEOUT')
+    return await client.query({text,values,query_timeout:remaining})
+  } catch (error) { broken=true; throw error }
+  finally { client.release(broken) }
 }
 
 /** 所有库的连接串（迁移与诊断用）。 */

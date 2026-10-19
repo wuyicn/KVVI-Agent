@@ -26,7 +26,8 @@ import { runtimeProjection } from './runtime-projection.mjs'
 import { publishedSystems } from './publish.mjs'
 import { readDirectory, isDirectoryBuilder } from './business-directory.mjs'
 import { withActiveForm } from './business-lifecycle.mjs'
-import { idempotencyKeyOf, withIdempotency } from './idempotency.mjs'
+import { idempotencyKeyOf } from './idempotency.mjs'
+import { writeOperation } from './record-write-operations.mjs'
 import { step, nextActions, submitterOf, WorkflowError } from './workflow.mjs'
 import { append, digestOf } from './audit.mjs'
 
@@ -244,68 +245,51 @@ async function recordGet(ctx, assetId, recordId) {
  * @param payload 请求体（身份字段已在入口剥掉）
  * @returns {Promise<{status: number, body: object}>}
  */
-async function recordUpdate(ctx, assetId, recordId, payload) {
-  if (typeof payload?.rowVersion !== 'number') {
-    return fail('KVVI_BAD_REQUEST', { detail: 'rowVersion 必填（乐观并发）' })
-  }
-  // ★ 动作授权：这一条是本层**必须做**的判定，不是重复实现。
-  //
-  // `updateRecord` 只带乐观并发（`row_version`），**不做动作授权** ——
-  // 它假定调用方已经判过了。本模块最初漏了这一步，于是**只读用户改了记录
-  // 还返回 200**；是测试抓到的。
-  //
-  // 判据用 `canAct`（唯一判据），本模块只负责在写之前调用它。
-  if (!await canAct(ctx.companyId, ctx.userId, 'FORM', assetId, 'update')) {
+async function authorizeRecordWrite(ctx, assetId, data, action, recordId=null, client) {
+  if (!await canAct(ctx.companyId, ctx.userId, 'FORM', assetId, action)) {
     return { status: 403, body: { error: 'KVVI_NOT_ALLOWED',
-      detail: `没有 ${assetId} 的 update 动作权限` } }
+      detail: `没有 ${assetId} 的 ${action} 动作权限` } }
   }
-
-  const scope = await scopeContext(ctx)
-
-  // 先读一次：既用于判定「能不能改这个字段」，也用于把「无权改」与
-  // 「记录不存在」分开。读不到就是 404，不往下走。
-  const current = await readRecord(ctx, scope, {
-    companyId: ctx.companyId, schemaCode: assetId, id: recordId,
-  })
-  if (current === null) return fail('KVVI_NO_SUCH_RECORD', { recordId })
-
-  // 字段可见性：可写 ⟺ VISIBLE（HIDDEN / MASKED / READONLY 都不可写）。
-  // 这不是第二份授权 —— 它是**字段级**的约束，`notWritableFields` 是唯一判据，
-  // 与命令执行器（commands.execute）、访客链路共用同一份（验收 S7/S8）。
-  const touched = Object.keys(payload.data ?? {})
-  const blocked = await notWritableFields(ctx.companyId, ctx.userId, touched)
+  if (recordId!==null) {
+    const current=await readRecord(ctx,await scopeContext(ctx),{schemaCode:assetId,id:recordId},{client})
+    if (current===null) return fail('KVVI_NO_SUCH_RECORD',{recordId})
+  }
+  const blocked=await notWritableFields(ctx.companyId,ctx.userId,Object.keys(data??{}))
   if (blocked.length > 0) {
     await append({
       companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
       gateway: ctx.gateway, sessionId: ctx.sessionId,
-      action: 'record.update', resourceKind: 'record', resourceId: recordId,
+      action: `record.${action}`, resourceKind: 'record', resourceId: recordId,
       outcome: 'DENY', reason: `KVVI_FIELD_NOT_WRITABLE:${blocked.join(',')}`,
-      paramsDigest: digestOf(payload.data ?? {}),
+      paramsDigest: digestOf(data ?? {}),
     })
     return { status: 403, body: { error: 'KVVI_FIELD_NOT_WRITABLE', fields: blocked } }
   }
+  return null
+}
 
-  const updated = await updateRecord(ctx, scope,
-    { companyId: ctx.companyId, schemaCode: assetId, id: recordId },
-    { data: payload.data, rowVersion: payload.rowVersion })
-  // `updateRecord` 的 `WHERE` 带 `row_version = $n`；不匹配时**返回 null** ——
-  // 那就是并发冲突，不是「没找到」。两者必须分开报。
-  if (updated === null) {
-    const now = await readRecord(ctx, scope, {
-      companyId: ctx.companyId, schemaCode: assetId, id: recordId,
-    })
-    if (now === null) return fail('KVVI_NO_SUCH_RECORD', { recordId })
-    return { status: 409, body: { error: 'KVVI_ROW_VERSION_CONFLICT',
-      currentRowVersion: now.rowVersion } }
+async function recordUpdate(ctx, assetId, recordId, payload, key) {
+  recordId=recordId.toLowerCase()
+  if (typeof payload?.rowVersion !== 'number') {
+    return fail('KVVI_BAD_REQUEST', { detail: 'rowVersion 必填（乐观并发）' })
   }
-  // ★ S6 修复：产品 API 的写入也要留痕，不能只靠命令执行器那一条路。
-  await append({
-    companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
-    gateway: ctx.gateway, sessionId: ctx.sessionId,
-    action: 'record.update', resourceKind: 'record', resourceId: recordId,
-    outcome: 'ALLOW', paramsDigest: digestOf(payload.data ?? {}),
+  return writeOperation({ctx,endpoint:`PATCH /systems/${assetId}/records/${recordId}`,key,request:payload,
+    authorize:client=>authorizeRecordWrite(ctx,assetId,payload.data,'update',recordId,client),
+    run:async client=>{
+      const scope=await scopeContext(ctx)
+      const updated=await updateRecord(ctx,scope,{schemaCode:assetId,id:recordId},
+        {data:payload.data,rowVersion:payload.rowVersion},{client})
+      if (updated===null) {
+        const now=await readRecord(ctx,scope,{schemaCode:assetId,id:recordId},{client})
+        if (now===null) return fail('KVVI_NO_SUCH_RECORD',{recordId})
+        return {status:409,body:{error:'KVVI_ROW_VERSION_CONFLICT',currentRowVersion:now.rowVersion}}
+      }
+      return {status:200,body:updated,audit:{
+        companyId:ctx.companyId,actorKind:'USER',actorId:ctx.userId,gateway:ctx.gateway,sessionId:ctx.sessionId,
+        action:'record.update',resourceKind:'record',resourceId:recordId,outcome:'ALLOW',paramsDigest:digestOf(payload.data??{}),
+      }}
+    },
   })
-  return { status: 200, body: { recordId: updated.recordId, rowVersion: updated.rowVersion } }
 }
 
 /**
@@ -329,9 +313,9 @@ async function recordUpdate(ctx, assetId, recordId, payload) {
  * @param {string} assetId 业务系统代号
  * @returns {Promise<string>} 状态码
  */
-async function initialStateOf(ctx, assetId) {
+async function initialStateOf(ctx, assetId, client) {
   try {
-    const workflow = await workflowOf(ctx, assetId)
+    const workflow = await workflowOf(ctx, assetId, null, client)
     const initial = (workflow?.states ?? []).find((state) => state.initial === true)
     return initial?.state_code ?? 'draft'
   } catch (error) {
@@ -350,8 +334,8 @@ async function initialStateOf(ctx, assetId) {
  * @param {number|null} [workflowVersion] 记录钉住的那一版；`null`/省略 = 当前最新版
  * @returns {Promise<object>} 流程契约的 Spec（附派生查表）
  */
-async function workflowOf(ctx, assetId, workflowVersion = null) {
-  const projection = await runtimeProjection(ctx.companyId, assetId, { workflowVersion })
+async function workflowOf(ctx, assetId, workflowVersion = null, client) {
+  const projection = await runtimeProjection(ctx.companyId, assetId, { workflowVersion, client })
   return projection.workflows[assetId]
 }
 
@@ -363,9 +347,9 @@ async function workflowOf(ctx, assetId, workflowVersion = null) {
  * @param {string} assetId 业务系统代号
  * @returns {Promise<number|null>} 版本号
  */
-async function currentWorkflowVersion(ctx, assetId) {
+async function currentWorkflowVersion(ctx, assetId, client) {
   try {
-    const workflow = await workflowOf(ctx, assetId)
+    const workflow = await workflowOf(ctx, assetId, null, client)
     return (workflow?.states ?? []).length > 0 ? (workflow.workflowVersion ?? null) : null
   } catch (error) {
     return null
@@ -553,25 +537,11 @@ export async function systemRoutes({ method, path, payload, session, headers = {
         // 「重连不重放」靠的是客户端不自动重试 —— 一个约定，不是判据
         // （验收的第 ⑤ 条量出过：同一条请求打三次，建出三条不同的记录）。
         const key = idempotencyKeyOf(headers)
-        return await withIdempotency({
-          ctx, endpoint: `POST /systems/${assetId}/records`, key,
-          run: async () => {
-            // ★ S8 修复：创建也要逐字段判可写性（可写 ⟺ VISIBLE），
-            //    与更新路径、命令执行器同一份判据 —— 否则「只读字段创建时能塞值」。
+        return await writeOperation({
+          ctx, endpoint: `POST /systems/${assetId}/records`, key,request:payload,
+          authorize:client=>authorizeRecordWrite(ctx,assetId,payload?.data,'create',null,client),
+          run: async (client) => {
             const data = payload?.data ?? {}
-            const blocked = await notWritableFields(ctx.companyId, ctx.userId,
-              Object.keys(data))
-            if (blocked.length > 0) {
-              await append({
-                companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
-                gateway: ctx.gateway, sessionId: ctx.sessionId,
-                action: 'record.create', resourceKind: 'record', resourceId: null,
-                outcome: 'DENY', reason: `KVVI_FIELD_NOT_WRITABLE:${blocked.join(',')}`,
-                paramsDigest: digestOf(data),
-              })
-              return { status: 403,
-                body: { error: 'KVVI_FIELD_NOT_WRITABLE', fields: blocked } }
-            }
             const scope = await scopeContext(ctx)
             const created = await createRecord(ctx, scope, {
               schemaCode: assetId, data,
@@ -585,19 +555,17 @@ export async function systemRoutes({ method, path, payload, session, headers = {
               //
               // 「草稿」不是不能用：搭建者想要它就**在契约里声明一个 initial 的
               // 草稿态**。契约是唯一来源，运行时不替它发明一个。
-              state: await initialStateOf(ctx, assetId),
+              state: await initialStateOf(ctx, assetId, client),
               // ★ 同时把**这一版**流程钉进记录。之后发布的每一版都只影响新记录 ——
               //   氚云那条不变量（「流程修改仅对新提交数据生效」）就落在这里。
-              workflowVersion: await currentWorkflowVersion(ctx, assetId),
-            })
-            // ★ S6 修复：产品 API 的创建也留痕。
-            await append({
+              workflowVersion: await currentWorkflowVersion(ctx, assetId, client),
+            }, {client})
+            return { status: 201, body: created, audit:{
               companyId: ctx.companyId, actorKind: 'USER', actorId: ctx.userId,
               gateway: ctx.gateway, sessionId: ctx.sessionId,
               action: 'record.create', resourceKind: 'record', resourceId: created.recordId,
               outcome: 'ALLOW', paramsDigest: digestOf(data),
-            })
-            return { status: 201, body: created }
+            }}
           },
         })
       }
@@ -606,7 +574,7 @@ export async function systemRoutes({ method, path, payload, session, headers = {
     if (parts.length === 4 && parts[2] === 'records') {
       const recordId = decodeURIComponent(parts[3])
       if (method === 'GET') return recordGet(ctx, assetId, recordId)
-      if (method === 'PATCH') return recordUpdate(ctx, assetId, recordId, payload)
+      if (method === 'PATCH') return recordUpdate(ctx, assetId, recordId, payload,idempotencyKeyOf(headers))
     }
 
     // 流程：可执行的动作，以及执行一步。两条都是「记录级」的，

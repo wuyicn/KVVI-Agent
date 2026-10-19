@@ -38,6 +38,7 @@ import { verifyRuntimeContextHeaders } from './runtime-auth.mjs'
 import { FieldRuleError } from './field-rules.mjs'
 import { checkIdentifierSegments, INVALID_IDENTIFIER } from './request-refs.mjs'
 import { appendDenial, digestOf } from './audit.mjs'
+import { WriteOperationError } from './record-write-operations.mjs'
 
 /** 产品 API 的前缀。与运行时 RPC 的 `/api` 区分靠**更具体**的路径。 */
 const PREFIX = '/api/v1'
@@ -274,6 +275,10 @@ export async function handleApi({ method, path, query, body, headers, loadSessio
   try {
     return await dispatch(routes)
   } catch (error) {
+    if (error instanceof WriteOperationError) {
+      return {status:error.status,body:{error:error.code,
+        ...(error.code==='KVVI_OPERATION_OUTCOME_UNKNOWN'?{idempotencyKey:error.key,retryWithSameKey:true}:{})}}
+    }
     if (error instanceof FieldRuleError) {
       const message = {
         KVVI_FIELD_DUPLICATE: '填写的内容与已有记录重复，请检查不允许重复的项目后修改。',

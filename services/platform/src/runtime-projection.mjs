@@ -117,7 +117,7 @@ function statesOf(spec) {
  *   `message === 'KVVI_CONTRACT_CONTENT_TAMPERED'` 内容指纹不符
  */
 export async function runtimeProjection(companyId, assetId, options = {}) {
-  return withActiveForm(companyId,assetId,()=>buildRuntimeProjection(companyId,assetId,options))
+  return withActiveForm(companyId,assetId,()=>buildRuntimeProjection(companyId,assetId,options),{client:options.client})
 }
 async function buildRuntimeProjection(companyId, assetId, options) {
   // ① 系统本身要在。不在就与「契约不全」同一类结果：

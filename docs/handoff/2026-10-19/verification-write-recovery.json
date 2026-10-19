@@ -1,0 +1,72 @@
+{
+  "baseCommit": "fbfeec88647d5f1a4c6a5dafba473133b242c192",
+  "sourceFilesSHA256": {
+    "services/platform/src/api-router.mjs": "5f8ecaef1891f29b70f74dc407bd9f05a0492874cb4f67aa647cdc4a85573384",
+    "services/platform/src/audit.mjs": "ae521c58a61102f613b8e386d6543267e1eb94ce59ab903e6817cc2b8c301bcd",
+    "services/platform/src/business-lifecycle.mjs": "baa8f4a788f1ba6ba2f208230e8a7f72e4bae0dfd333ee0791c7b48b5dc39582",
+    "services/platform/src/db.mjs": "f84bf2efd246c22c66f1ae7dfd4dc6d8d8ddbf21e3b427432a431f4325b9d8dc",
+    "services/platform/src/migrate.mjs": "7859688ba0841c2b0cc3d80c10c90a7de879ad11dd8de3d63aae08235796440a",
+    "services/platform/src/refs.mjs": "3ceb600f05b987d5d4b68d45178f0cf8767a99d792420a2669cf3e722851fc2b",
+    "services/platform/src/runtime-projection.mjs": "ecf794c84330b29bf43644f476e88b72133817be61224f27f132f41e309b72a6",
+    "services/platform/src/server.mjs": "e2073b93a314d7666b36e81eebbc516bf728ff6cfe86469736c1a590308f1e4e",
+    "services/platform/src/sql-manifest.mjs": "be87e46f4dc1b997063876bfc66192676a46f5bb53c3f05e324958b2cd085984",
+    "services/platform/src/system-api.mjs": "efca593927eaf053ecdca49535a2709af3446a500c257f7970027f7428558e42",
+    "services/platform/tests/audit-idempotency.test.mjs": "37065987e15f0632523919e86ba300cbdc3bacd0ed0bc70e3052bcc2f7ca9cb4",
+    "services/platform/sql/36-record-write-operations.sql": "67f37bb9e6f7ad5b9ab71a7097cd86eebac887cdf48df96230638784b7382c89",
+    "services/platform/src/record-write-operations.mjs": "6ac953848b9f8223bcbd2a8db6045dbc01b91cb61a6538d9424ad84a8eb8a85c",
+    "services/platform/tests/record-write-recovery.test.mjs": "19917cc8f5d96e7b388515a04075c736bf23976cfe4b542cae06641a4f02de08"
+  },
+  "environment": {
+    "runnerNode": "24.20.0",
+    "finalFullTestNode": "24.20.0",
+    "postgres": "17.11",
+    "python": "3.9.6"
+  },
+  "verification": [
+    {
+      "command": "KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs npm test",
+      "cwd": "services/platform",
+      "nodePathFirst": "/Users/wuyi-macs/.local/opt/node-v24.20.0/bin",
+      "exitCode": 0,
+      "tests": 597,
+      "passed": 596,
+      "failed": 0,
+      "skipped": 1
+    },
+    {
+      "command": "python3 -m unittest discover -s distribution/tests",
+      "exitCode": 0,
+      "passed": 167
+    }
+  ],
+  "logs": {
+    "record-write-recovery-red.log": {
+      "sha256": "9818573362c2d76e330dc1165ce5855bcb8287ba2c806ea91d0571ba4cfba4f3",
+      "bytes": 4086
+    },
+    "record-write-recovery-final.log": {
+      "sha256": "0047622322686bf88edfc3ace28d574223ec67f707d864ea52baedc66fdbfc94",
+      "bytes": 2735
+    },
+    "platform-write-recovery-full.log": {
+      "sha256": "524792f5b2cbb54ed19e663a8787846ab7eafc802e0f5f7c36d4d83f32f94094",
+      "bytes": 63857
+    },
+    "platform-write-recovery-full2.log": {
+      "sha256": "362ff96b9ba9faa2bc5aa3ad7e8f5ba8152d29cc8ad1ccbbb7646be53abb8843",
+      "bytes": 61155
+    },
+    "distribution-write-recovery-regression.log": {
+      "sha256": "d9e19004f575aaa21cad5d3ddb46b5f7e7b5e30b77d262685e989444d296eae3",
+      "bytes": 267
+    }
+  },
+  "boundaries": [
+    "API create/PATCH only",
+    "commands/workflow/visitor still pending",
+    "UI/Agent durable key ownership still pending",
+    "No pilot deployment",
+    "No real DeepSeek acceptance",
+    "No offline signed audit buffer"
+  ]
+}
