@@ -49,3 +49,13 @@
 仅对.dsh-build这一目录放行遍历及精确client-build-environment.json，不附带其他元数据；G9源摘要加入新helper。自测与全部合成fixture生成自己的Git/source/client收据，不能借真实252产物假绿。不运行真实发行build/check/self-test。v4仍releaseApproved:false，完整host/native、构建因果、依赖、正式目录消费及产品旅程保持待办。
 
 批次50双Python121项通过；目录型别名反例先RED，修复后两位独立闭环。typed候选图中匹配遍历目录的链接拒绝，文档filelink保留；实际只读16048行中12196固定源/252客户端/收据完整绑定，入口缺失0。未生成真实发行包；下一步完整host/native清单与受控重建凭证，再做目录消费及实际发行旅程。
+
+## 全部声明输出清单（批次51完成，尚非构建凭证）
+
+为受控重建先提供完整输出快照接口。只从已经完整鉴定source的excludedUnqualified中取已声明输出边界，精确排除.git、各node_modules及已验证为空的native/system/.release；不泛扫任意lib/dist。递归记录所有正文（包括types/map/增量文件）及发行规范化mode（0644/0755）/bytes/SHA；不鉴定完整原始文件权限，匹配客户端集合同时满足现有clientQualification。边界根/祖先/内部link与特殊文件均拒，目录不可读或遍历期间集合/正文变化拒绝。
+
+两轮typed输出集合、完整source binding和clientQualification保持一致后，默认返回边界/count/完整typed digest及按路径划分的数量，私有全表仅显式请求。输出清单不是构建凭证；build causality、依赖和源码exec位等继续未鉴定。下一批在仅复制固定声明源的新自有工作区执行固定离线安装/完整构建，记录命令、工具身份及输入/输出清单，不在旧built树清理或重建。
+
+批次51输出边界策略补充：声明输出目录内部若出现node_modules或.git命名空间，完整输出接口固定拒绝，不能当普通产物纳入，也不静默剪枝。即使web dist/node_modules当前匹配上游客户端收据，此更严格的全输出资格仍拒绝；客户端收据接口本身继续原五模式语义。第二轮输出遍历之后再复核完整source/client资格，以捕获末轮期间新增边界或源码变化。
+
+批次51双Python55项通过，两位独立11项及APFS别名反例闭环；保留名按NFC+casefold拒绝。实际当前316边界9467文件完整typed digest04f8382c5ab5c4a8effc33441b003ee2c242b23eb851f1ea3848816bf5ab7f76。没有接入发行资格或运行新的构建；下一批先创建只含固定声明源的新工作区。

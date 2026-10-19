@@ -803,3 +803,20 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `package-client-gate-final312-2.log`：`98a8ffab6b52ff8d10f689571a50cfed3ba2b65425e14e6170d3369bd24e4e2d`。
 - `package-client-gate-final39-2.log`：`fcb251d0794fc04e46691a253996e23d705d4aa3ddd01509015e43c95bd587d4`。
 - `package-client-candidate-readonly-final.json`：`23a52ff989ac4c35778696382c76142d76e64b7a0ce1060efdf69184d835a26e`。
+
+
+## 批次51：完整当前声明输出清单
+
+- 新增package_build_inventory只读接口，从完整sourceQualification推导实际声明输出边界，排除Git、依赖及已验证为空的native .release；递归所有普通输出正文，含types/maps/增量/native/receipt。两轮完整typed集合/bytes/规范化mode/SHA相同，client私有表与收据同时绑定；末轮遍历之后再核相同完整source/client资格。默认只给边界/count/digest/路径类别数量，完整outputRows仅opt-in，失败无部分资格。
+- 初8组缺模块先RED；初次误将导入fixture测试类暴露给unittest导致25项含重复17，改为模块导入后正确8项RED，后续不把25当新增通过数。独立复核指出内层node_modules/.git被误收，补web dist匹配收据特例共3组先RED；另末轮期间改source/新增输出边界2反例先RED。全输出scope对任意嵌套依赖/Git命名空间固定拒绝而非静默漏收，独立client收据仍保持上游五模式；最终资格书检移到全部遍历后。
+- 两位复核又实证APFS上Node_Modules/.GIT与小写实际同inode却绕拒；新2个case子反例先RED，再以逐组件NFC+casefold共用边界过滤/递归拒绝。独立复核确认拒绝且不读其正文。mode明确沿发行规范化0644/0755，0600/0644并不区分；raw-filesystem-permissions与source exec位均继续未鉴定。
+- 最终11新组+client/provenance/source/raw既有44共55项，Python3.12/系统3.9.6以-W error::ResourceWarning全通过、exit0（6.257/6.901秒）；两位独立11/11及真实FS别名对照闭环，无新增阻断。CI加入同入口；clone行仍受控timeout预期。本批未改packager/平台，最近packager联合仍批次50的121项、平台仍批次40的810项，不混作此批新命令。
+- 实际raw-rebuild-kb2jqs9a最终只读通过：316输出边界、9467文件，digest04f8382c5ab5c4a8effc33441b003ee2c242b23eb851f1ea3848816bf5ab7f76；按路径规则252 client模式、1已声明native binary、326构建元数据、8888其他声明输出。这仅是当前文件完整清单，不证明预期输出齐全、先前构建因果或依赖可信。未build包、清理/改写原built树或试点、未部署/模型验收，12项不勾选。下一步只复制固定声明source到新自有空目录，再受控安装/全构建并记录因果凭证。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `package-build-inventory-red2.log`：`1e582d6e31d2d74974b09ad567933abe61793c14a1b7175bbf1669e1a87cc107`。
+- `package-build-inventory-boundary-red.log`：`9db1978f924a79fbee3fbdfefddf797a9588951749e7d0e2d643fca63e270cd8`。
+- `package-build-inventory-case-alias-red.log`：`600e6304529bffcbddb2ccd4c11ac388829ead0bd9c6059f332584942dea5cde`。
+- `package-build-inventory-final312-2.log`：`8a4b690fd8c46bef0ed2dd756c85e6964c7e8401eec1fc57c11e9f64dcf6008e`。
+- `package-build-inventory-final39-2.log`：`0dc49fea56a6d26c569757e30233a792dfe2a51c8474c62550ca7e1cf4bdce1b`。
+- `package-build-inventory-fresh-final2.json`：`a69571fb1dfb250d6db28a48878514990f7c5e75c6c13db330b93b1c4297d26f`。
