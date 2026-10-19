@@ -162,3 +162,7 @@ v5内外manifest增加完整buildQualification，必须严格结构并与同一s
 固定代码149d0413在新独立release-v5-149d0413-4c57a65f77目录，显式选择成功build树bf8d91810b031/source和registered-fork对象调用真实build。完整资格通过后收16056条，禁止内容扫描在services/platform/tests/business-lifecycle.test.mjs命中内嵌进程令牌，实际exit1；没有发布archive/manifest，也没有执行check。失败选择/结果/日志保留，既有发行目录和成功build树未改。
 
 事后只读全候选用原FORBIDDEN规则扫描、不输出匹配值，唯一两条命中均为platform/tests（另一条publish-runtime-e2e.test.mjs）。产品收录说明本就排除开发测试装置，但整树CONTENTS实际包括平台和安装器tests。下一批先按明确来源排除services/platform/tests和distribution/tests，保留源码及测试原文件，生产src、安装器lib/bin及DSH固定源规则不放宽；测试证明测试装置不入包、同令牌落生产路径仍拒绝，再用新独立输出目录重试，不重用本失败目录。
+
+## First-party测试装置明确排除（批次63完成）
+
+共享政策仅在source_rel精确为services/platform或distribution且相对路径是顶层tests及后代时排除；src/lib/bin中的tests、tests-extra、DSH固定源及第三方依赖原政策均不变。原仓库测试body/mtime保留，秘密扫描未改；相同fixture令牌落生产src仍拒绝且保留旧pair。两个反例先RED后GREEN，独立复核矩阵闭环，双Python各180项必要打包/资格回归exit0、无skip/ResourceWarning。未把批次62失败升级成成功，也未重用该失败目录；下一批新目录实际build/check。

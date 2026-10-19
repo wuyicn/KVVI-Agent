@@ -107,6 +107,25 @@ class ReleasePackageTests(unittest.TestCase):
         self.assertNotEqual(self.call(self.module.build), 0)
         self.assertEqual(self.pair(), self.old)
 
+    def test_first_party_test_fixture_trees_are_excluded_without_changing_sources(self):
+        targets=[]
+        for parent in ('services/platform','distribution'):
+            target=self.root/parent/'tests/owned-fixture.txt';target.parent.mkdir(parents=True,exist_ok=True)
+            body=b'KVVI_INTERNAL_TOKEN='+b'unit-fixture-only';target.write_bytes(body);targets.append((target,body,target.stat().st_mtime_ns))
+            neighbor=self.root/parent/'tests-extra/keep.txt';neighbor.parent.mkdir();neighbor.write_text('production path remains explicit')
+        self.assertEqual(self.call(self.module.build),0);self.assertEqual(self.call(self.module.check),0)
+        paths={relative for _,relative in self.module.collect()}
+        for target,body,mtime in targets:
+            self.assertNotIn(target.relative_to(self.root).as_posix(),paths)
+            self.assertEqual(target.read_bytes(),body);self.assertEqual(target.stat().st_mtime_ns,mtime)
+        self.assertIn('services/platform/tests-extra/keep.txt',paths)
+        self.assertIn('distribution/tests-extra/keep.txt',paths)
+
+    def test_same_fixture_token_in_production_source_is_still_rejected(self):
+        target=self.root/'services/platform/src/owned-rejected.mjs'
+        target.write_bytes(b'KVVI_INTERNAL_TOKEN='+b'unit-fixture-only')
+        self.assertNotEqual(self.call(self.module.build),0);self.assertEqual(self.pair(),self.old)
+
     def test_tar_failure_preserves_both_old_outputs(self):
         self.changed()
         with patch.object(self.module.tarfile.TarFile, 'addfile', side_effect=OSError('owned tar fault')):

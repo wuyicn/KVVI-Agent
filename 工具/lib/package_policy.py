@@ -9,6 +9,12 @@ SKIP_SUFFIX = ('.pyc', '.log', '.tsbuildinfo')
 
 
 def should_skip(source_rel, rel):
+    # First-party test fixtures contain deliberate fake credentials and are
+    # development inputs, never installed runtime content. Keep this scoped to
+    # these exact trees; production src/lib/bin and fixed DSH sources retain
+    # their existing policy and forbidden-content checks.
+    if source_rel in ('services/platform', 'distribution') and (rel.strip('/') == 'tests' or rel.startswith('tests/')):
+        return True
     if source_rel == 'vendor/dsh' and (rel.strip('/') == '.dsh-build' or rel.startswith('.dsh-build/')):
         return rel not in ('.dsh-build/', '.dsh-build/client-build-environment.json')
     probe = '/' + rel.strip('/') + '/'

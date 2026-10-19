@@ -999,3 +999,13 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - 该目录`build-result.json`：`09af567df8d649b1c291731f25b1145d0c914a36ef2319608d7772c16dff3d9b`。
 - `real-v5-149d0413-build-check.log`：`bcfdaaf55656824bb270a006493f35a6792ea8d3db3ea06e688a66af519dc08d`。
 - `real-v5-forbidden-paths-149d0413.json`：`3485c13dfedff4f2887790d5236f480607ef6701ac42b8448ef478fd29d44c2f`。
+
+## 批次63：明确排除first-party测试装置
+
+- package_policy仅对精确来源services/platform和distribution的顶层tests及后代排除；原文件保留，不改变测试源码、生产src/lib/bin或DSH固定源政策，FORBIDDEN完全未改。反例先RED再GREEN：测试fixture不入包且body/mtime未改、tests-extra仍收录；同token落生产src仍拒绝并保留旧pair。独立2项及政策矩阵确认src/tests、lib/tests、bin/tests、vendor/dsh、tools/meta-schema及相似来源均不受此排除影响。
+- 必要回归test_package_build_gate/build_binding/build_receipt、test_release_package/package_inventory/package_source_selection/package_source_gate/package_client_gate/package_build_inventory/package_client/package_provenance/runtime_source/raw_git_source/evidence_commands，均distribution.tests命名空间。Python3.12.13 180项105.276s、Python3.9.6 180项112.422s，`-W error::ResourceWarning -m unittest`实际exit0、无skip；独立复核无新增阻断、git diff --check通过。本批无进程/平台实现变化，不重复声称全286项为本批新测。批次62失败目录与原发行包保留，真实重试待下批新独立目录，releaseApproved:false。
+
+实际退出后非敏感证据SHA-256：
+- `package-test-fixture-policy-red.log`：`01529ac69075179158942536c8f53d3e4a2eb25265da68d87a9b67954667bd72`。
+- `package-test-fixture-policy-final312.log`：`7bb47f47f613860dcd28533269801aa7fc63d67a57218d2b9d3a214bca723e5e`。
+- `package-test-fixture-policy-final39.log`：`14f9b437ce705417d0bc4e635fe78dfba39a19a0526c3d2ad8b361d0146823c9`。
