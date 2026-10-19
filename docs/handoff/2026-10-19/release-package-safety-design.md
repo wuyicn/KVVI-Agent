@@ -156,3 +156,9 @@ v5内外manifest增加完整buildQualification，必须严格结构并与同一s
 独立复核先RED再关闭三组发布边界：最终main检查必须在最后build资格复验之前；候选发布前和check结束前必须重核外清单原bounded bytes、归档stream稳定SHA/size、全部实际tar成员，再复读SHA/外清单；首次清单snapshot仍必须按typed canonical全文等于正确internal+固定archive字段，不能把已错fileCount/entries/三资格/路径冻结当权威。归档流读取NOFOLLOW且fd/path初末身份相同；manifest上限16MiB，archive流chunk1MiB，link/FIFO/路径替换及读中改写拒绝。不是任意同UID写者下的文件树原子快照或签名认证。
 
 本批仅自有合成包，实际成功build树及旧包保持；下一批在新独立输出目录生成真实v5归档并完整check，不覆盖现有发行包，不部署试点。releaseApproved:false与12项待验边界保留。
+
+## 首次真实v5打包被测试装置拦截（批次62实跑失败）
+
+固定代码149d0413在新独立release-v5-149d0413-4c57a65f77目录，显式选择成功build树bf8d91810b031/source和registered-fork对象调用真实build。完整资格通过后收16056条，禁止内容扫描在services/platform/tests/business-lifecycle.test.mjs命中内嵌进程令牌，实际exit1；没有发布archive/manifest，也没有执行check。失败选择/结果/日志保留，既有发行目录和成功build树未改。
+
+事后只读全候选用原FORBIDDEN规则扫描、不输出匹配值，唯一两条命中均为platform/tests（另一条publish-runtime-e2e.test.mjs）。产品收录说明本就排除开发测试装置，但整树CONTENTS实际包括平台和安装器tests。下一批先按明确来源排除services/platform/tests和distribution/tests，保留源码及测试原文件，生产src、安装器lib/bin及DSH固定源规则不放宽；测试证明测试装置不入包、同令牌落生产路径仍拒绝，再用新独立输出目录重试，不重用本失败目录。

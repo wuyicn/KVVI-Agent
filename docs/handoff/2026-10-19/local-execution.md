@@ -987,3 +987,15 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `package-build-gate-first-manifest-red.log`：`34d3aa74c2d66555e345ac1567f89325d4fed67f8eb8bbf1150916b2780f1ac6`。
 - `package-build-gate-final312.log`：`c1707c40d15307497bcc2ab46b82a07d0d6f29af9f598e5d01280715d498af3e`。
 - `package-build-gate-final39.log`：`8b38a47aeb154e11adc652617721461eac7ccf426d32ff9eb513aa111ac4997b`。
+
+## 批次62：首次真实v5打包失败，保留原始结果
+
+- 代码149d0413ac9a417ffff23475cb047c5296355aa6已远端确认。新独立输出目录/Users/wuyi-macs/Documents/KVVI-Agent/.local-remediation-evidence/release-v5-149d0413-4c57a65f77，选择实际bf8d91810b031/source与registered-fork对象，API依次build→成功才check。实际build exit1/整体进程exit1，在16056候选扫描中services/platform/tests/business-lifecycle.test.mjs命中原FORBIDDEN内嵌令牌规则；archive/manifest均不存在，check-result不存在，故check未执行。没有覆盖原发行目录、没有部署/重启，实际build树只读。
+- 原失败目录保留selection.json、build-result.json及锁；候选临时stage由现有失败清理移除，没有成功发布。日志保留为real-v5-149d0413-build-check.log。没有把synthetic 286项通过或本次完整build来源资格升级为真实归档成功。
+- 只读全16056候选按同一FORBIDDEN扫描，仅另有services/platform/tests/publish-runtime-e2e.test.mjs同类命中；只记录路径/类别，不输出匹配正文或任何值。文件名级检查只有两个上游desktop .env.*.example，没有发现实际.env/key/pem路径；此为限定扫描，不是任意凭据认证。生产lib/bin/src未引用这两个first-party tests目录。下一批修正显式first-party测试目录收录范围，保留仓库所有测试及生产秘密扫描，在新独立目录重试。12项及真实归档/模型/用户旅程尚未验收。
+
+实际退出后非敏感证据SHA-256：
+- `release-v5-149d0413-4c57a65f77/selection.json`：`b8e329681b8ac2a9b38cfec987485f03fa4b2a903d54b11159e6e356b5296820`。
+- 该目录`build-result.json`：`09af567df8d649b1c291731f25b1145d0c914a36ef2319608d7772c16dff3d9b`。
+- `real-v5-149d0413-build-check.log`：`bcfdaaf55656824bb270a006493f35a6792ea8d3db3ea06e688a66af519dc08d`。
+- `real-v5-forbidden-paths-149d0413.json`：`3485c13dfedff4f2887790d5236f480607ef6701ac42b8448ef478fd29d44c2f`。
