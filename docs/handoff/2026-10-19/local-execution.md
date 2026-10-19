@@ -505,3 +505,18 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `visitor-http-boundaries-red.log`：`e31b6d39aecb661e1dfd921816b55a0e0abe91fee7b56805268ee4fdbe932ffd`。
 - `visitor-http-final-focused2.log`：`9c1677ca8b9e38c586edf60b6482ac949471e8081377987617ce46a830fbd309`。
 - `visitor-http-platform-full.log`：`cbace9ec0cb9b4fe241274a0f8f868c0a780b77a5b85d85cffa14e4cd9a7397f`。
+
+
+## 批次35：签发额度串行化与登记事件原子性
+
+- issueLink在同平台READ COMMITTED事务按company→issuer锁序取得咨询锁，再重读当前issuer、FORM/字段/资源scope与唯一membership，issuer/membership FOR SHARE；签名登记与ISSUED同事务，TTL和issued_at均用获得锁后的数据库clock_timestamp，ISSUED时间与登记相同。存摘要，不存可还原token。
+- scopeContext/effectivePolicies/canAct/fieldVisibility可借用同一个事务client；既有调用默认pool行为不变，借入不另checkout、不释放。该路径不再loadSession占第二个pool连接，避免32个请求占满等待锁的8连接后持锁者再等pool。原授权判据复用，不复制第二份权限SQL。
+- 5个受控反例先RED：同issuer32成功>20，公司窗口199后4并发都成功>1，ISSUED事件故障留下1登记，排队权限缺乏真实锁重验。修后通过；自查补issued_at默认now为锁前事务时间的第6个RED，改为锁后DB时间并与事件一致后通过。VisitorError的REJECTED在事务回滚释放后追加，成功事件故障整体回滚；没有将错误mask为已签发。
+- 最终59项定向全通过，完整平台752项：751通过、0失败、1既有跳过，exit0，runner确认自有PG停止；日志在最终退出后计算摘要。独立只读源码/借入client探针未发现本批新阻断，未代替实库回归。完整命令与批次31相同。
+- 本批仍是签发模块一致性，不是签发/分享产品UI或浏览器验收。签发回复丢失处置、存量可信切换/历史基线、跨库授权变更序列化与整体12项继续；现有试点未操作、private准入仍默认关闭。
+
+非敏感日志SHA-256：
+- `visitor-issuance-controlled-red.log`：`0403190715fa9353c844507ca36009ee0f775e705dcd58e4451b993ded6db042`。
+- `visitor-issuance-time-red.log`：`e8bce18c359d5fd2b74759acfd58d291b0d4b0198cc706831ef53c7bd5f47254`。
+- `visitor-issuance-final-focused.log`：`2cb9a3b1f3b693db1c80ad92016772be014df125444e82e784bf758f51663195`。
+- `visitor-issuance-platform-full.log`：`288413c91537e5dfb8d4bf9703bb67d3e5cc553f2269b821f3274917d7727102`。

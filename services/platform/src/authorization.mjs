@@ -105,8 +105,8 @@ export async function deptSubtree(client, companyId, deptId) {
  * @param {object} ctx 身份上下文（来自 verifyToken）
  * @returns {Promise<object>} 授权上下文
  */
-export async function scopeContext(ctx) {
-  const client = await pool('platform').connect()
+export async function scopeContext(ctx,{client:transactionClient}={}) {
+  const client = transactionClient??await pool('platform').connect()
   try {
     // ★ S2 修复：档位是「资源 × 档位」的二维事实，不能并成一维。
     // 按 `resource_code` 分组保留，RLS（见 34-scope-by-resource.sql）按行里的
@@ -155,7 +155,7 @@ export async function scopeContext(ctx) {
       scopesByResource,
     }
   } finally {
-    client.release()
+    if(!transactionClient)client.release()
   }
 }
 
@@ -195,8 +195,8 @@ function scopesByResourceJson(scope) {
 }
 
 /** 账号在某公司经角色得到的策略。 */
-export async function effectivePolicies(companyId, userId, dimension) {
-  const { rows } = await pool('platform').query(
+export async function effectivePolicies(companyId, userId, dimension,{client=pool('platform')}={}) {
+  const { rows } = await client.query(
     `SELECT p.dimension, p.resource_code, p.actions, p.data_scopes, p.field_visibility,
             p.state_code, p.field_required
        FROM policies p
@@ -240,7 +240,7 @@ export async function effectivePolicies(companyId, userId, dimension) {
  * @returns {Promise<boolean>} 是否允许
  */
 export async function canAct(companyId, userId, dimension, resourceCode, action, options = {}) {
-  const rows = await effectivePolicies(companyId, userId, dimension)
+  const rows = await effectivePolicies(companyId, userId, dimension,{client:options.client})
   const state = options.state ?? null
   return rows.some((r) => {
     if (r.resource_code !== resourceCode && r.resource_code !== '*') return false
@@ -290,8 +290,8 @@ export async function requiredFields(companyId, userId) {
  * @param {string[]} fields 字段 code 列表
  * @returns {Promise<Record<string, string>>} 字段 → 可见性
  */
-export async function fieldVisibility(companyId, userId, fields) {
-  const rows = await effectivePolicies(companyId, userId, 'FIELD')
+export async function fieldVisibility(companyId, userId, fields,options={}) {
+  const rows = await effectivePolicies(companyId, userId, 'FIELD',options)
   const rank = { VISIBLE: 0, READONLY: 1, MASKED: 2, HIDDEN: 3 }
   const out = {}
   for (const field of fields) {

@@ -30,7 +30,7 @@ import { createHash, createPrivateKey, createPublicKey, randomUUID, sign as edSi
 import { pool, withTransaction } from './db.mjs'
 import {isDeepStrictEqual} from 'node:util'
 import { TOKEN_TTL_MS, ISSUER, TOKEN_ALG } from './signing.mjs'
-import { signingKeys, loadSession } from './identity.mjs'
+import { signingKeys } from './identity.mjs'
 import { publicKeysOf, signToken } from './signing.mjs'
 import { fieldVisibility,scopeContext,notWritableFields } from './authorization.mjs'
 import {recordData} from './record-state.mjs'
@@ -99,87 +99,87 @@ export async function issueLink(input) {
   if(!Number.isSafeInteger(maxSubmissions)||maxSubmissions<1||maxSubmissions>2147483647)throw new VisitorError('KVVI_LINK_SUBMISSIONS_INVALID')
   if(!Array.isArray(actions)||actions.length!==1||actions[0]!=='create')throw new VisitorError('KVVI_VISITOR_ACTION_INVALID')
   if(!Array.isArray(fields)||fields.length===0||new Set(fields).size!==fields.length||!fields.every(field=>typeof field==='string'&&field!==''))throw new VisitorError('KVVI_VISITOR_FIELDS_INVALID')
-  const scope=await scopeContext(ctx)
+  try{return await withTransaction('platform',async client=>{
+    await client.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED')
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[JSON.stringify(['visitor-issue-company',ctx.companyId])])
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[JSON.stringify(['visitor-issue-issuer',ctx.companyId,ctx.userId])])
+    const issuer=(await client.query('SELECT status,authz_version FROM users WHERE user_id=$1 FOR SHARE',[ctx.userId])).rows[0]
+    if(!issuer||issuer.status!=='ACTIVE')throw new VisitorError('KVVI_ISSUER_DEACTIVATED')
+    const scope=await scopeContext({companyId:ctx.companyId,userId:ctx.userId,gateway:ctx.gateway},{client})
 
-  // ① **签发资格**：不是「已认证」就能签发（v2.15 终审阻断 2）。
-  const writable = await canAct(ctx.companyId, ctx.userId, 'FORM', formCode, 'create')
-  const schemaWritable=formCode===schemaCode?writable:await canAct(ctx.companyId,ctx.userId,'FORM',schemaCode,'create')
-  if (!writable||!schemaWritable) {
-    await events(null, ctx, 'REJECTED', { reason: 'KVVI_ISSUER_LACKS_WRITE_PERMISSION',
-                                          formCode }, input.sourceIp)
-    throw new VisitorError('KVVI_ISSUER_LACKS_WRITE_PERMISSION', { formCode })
-  }
-  // 仅有读取权限的员工**不得**生成提交链接 —— 单独判一次，因为
-  // 「有 read 但没 create」是最容易被 canAct('create') 漏掉的形态。
-  const readOnly = await canAct(ctx.companyId, ctx.userId, 'FORM', formCode, 'read')
-  if (readOnly && !writable) {
-    throw new VisitorError('KVVI_READ_ONLY_CANNOT_ISSUE', { formCode })
-  }
+    // ① **签发资格**：不是「已认证」就能签发（v2.15 终审阻断 2）。
+    const writable = await canAct(ctx.companyId, ctx.userId, 'FORM', formCode, 'create',{client})
+    const schemaWritable=formCode===schemaCode?writable:await canAct(ctx.companyId,ctx.userId,'FORM',schemaCode,'create',{client})
+    if (!writable||!schemaWritable) {
+      throw new VisitorError('KVVI_ISSUER_LACKS_WRITE_PERMISSION', { formCode })
+    }
+    // 仅有读取权限的员工**不得**生成提交链接 —— 单独判一次，因为
+    // 「有 read 但没 create」是最容易被 canAct('create') 漏掉的形态。
+    const readOnly = await canAct(ctx.companyId, ctx.userId, 'FORM', formCode, 'read',{client})
+    if (readOnly && !writable) {
+      throw new VisitorError('KVVI_READ_ONLY_CANNOT_ISSUE', { formCode })
+    }
 
-  // ② **绑定项越界即拒**：字段集必须在签发人可写范围内
-  const visibility = await fieldVisibility(ctx.companyId, ctx.userId, fields)
-  const notWritable = fields.filter((f) => visibility[f] !== 'VISIBLE')
-  if (notWritable.length > 0) {
-    throw new VisitorError('KVVI_BINDING_EXCEEDS_ISSUER', { fields: notWritable })
-  }
+    // ② **绑定项越界即拒**：字段集必须在签发人可写范围内
+    const visibility = await fieldVisibility(ctx.companyId, ctx.userId, fields,{client})
+    const notWritable = fields.filter((f) => visibility[f] !== 'VISIBLE')
+    if (notWritable.length > 0) {
+      throw new VisitorError('KVVI_BINDING_EXCEEDS_ISSUER', { fields: notWritable })
+    }
 
-  // ③ **行范围只能在签发人自己的可访问集合之内**（§3.5.1 v2.16）
-  const allowed=scopesFor(scope,schemaCode)
-  if(allowed.size===0)throw new VisitorError('KVVI_ISSUER_LACKS_WRITE_SCOPE')
-  const covers = (s) => allowed.has(s)
-  if (rowScope?.deptId && !(covers('DEPARTMENT') || covers('DEPARTMENT_AND_CHILDREN')
-      || covers('COMPANY'))) {
-    throw new VisitorError('KVVI_ROW_SCOPE_EXCEEDS_ISSUER', { rowScope })
-  }
-  if (rowScope?.shopId && !(covers('STORE') || covers('COMPANY'))) {
-    throw new VisitorError('KVVI_ROW_SCOPE_EXCEEDS_ISSUER', { rowScope })
-  }
-  // 绑定的组织单元必须真的是签发人可访问的（不只看档位名）
-  const member = await pool('platform').query(
-    'SELECT dept_id, shop_id FROM memberships WHERE company_id = $1 AND user_id = $2',
-    [ctx.companyId, ctx.userId])
-  const home = member.rows[0] ?? {}
-  if (rowScope?.deptId && rowScope.deptId !== home.dept_id && !covers('COMPANY')) {
-    throw new VisitorError('KVVI_ROW_SCOPE_EXCEEDS_ISSUER', { rowScope })
-  }
-  if (rowScope?.shopId && rowScope.shopId !== home.shop_id && !covers('COMPANY')) {
-    throw new VisitorError('KVVI_ROW_SCOPE_EXCEEDS_ISSUER', { rowScope })
-  }
+    // ③ **行范围只能在签发人自己的可访问集合之内**（§3.5.1 v2.16）
+    const allowed=scopesFor(scope,schemaCode)
+    if(allowed.size===0)throw new VisitorError('KVVI_ISSUER_LACKS_WRITE_SCOPE')
+    const covers = (s) => allowed.has(s)
+    if (rowScope?.deptId && !(covers('DEPARTMENT') || covers('DEPARTMENT_AND_CHILDREN')
+        || covers('COMPANY'))) {
+      throw new VisitorError('KVVI_ROW_SCOPE_EXCEEDS_ISSUER', { rowScope })
+    }
+    if (rowScope?.shopId && !(covers('STORE') || covers('COMPANY'))) {
+      throw new VisitorError('KVVI_ROW_SCOPE_EXCEEDS_ISSUER', { rowScope })
+    }
+    // 绑定的组织单元必须真的是签发人可访问的（不只看档位名）
+    const member = await client.query(
+      'SELECT dept_id, shop_id FROM memberships WHERE company_id = $1 AND user_id = $2 FOR SHARE',
+      [ctx.companyId, ctx.userId])
+    if(member.rows.length!==1)throw new VisitorError('KVVI_NO_LEGAL_OWNERSHIP')
+    const home = member.rows[0]
+    if(scope.deptId!==home.dept_id||scope.shopId!==home.shop_id)throw new VisitorError('KVVI_ROW_SCOPE_MISMATCH')
+    if (rowScope?.deptId && rowScope.deptId !== home.dept_id && !covers('COMPANY')) {
+      throw new VisitorError('KVVI_ROW_SCOPE_EXCEEDS_ISSUER', { rowScope })
+    }
+    if (rowScope?.shopId && rowScope.shopId !== home.shop_id && !covers('COMPANY')) {
+      throw new VisitorError('KVVI_ROW_SCOPE_EXCEEDS_ISSUER', { rowScope })
+    }
 
-  // ④ 限流：签发人维度与公司维度（§3.5.2）
-  await enforceLimits('ISSUE', { ctx, sourceIp: input.sourceIp })
+    // ④ 限流：签发人维度与公司维度（§3.5.2）
+    await enforceIssueLimits(ctx,client)
 
-  // ⑤ 签名：与令牌同一信任锚点体系（§3.5.1），**非对称**，
-  //    私钥由身份层持有，**不得**由生成链接的客户端持有。
-  const linkId = randomUUID()
-  const nonce = randomUUID()
-  const expiresAt = new Date(Date.now() + ttlMs)
-  const token = await signLink({ linkId, nonce, ctx, formCode, schemaCode,
-                                 fields, actions, rowScope, expiresAt, maxSubmissions })
+    // ⑤ 签名：与令牌同一信任锚点体系（§3.5.1），**非对称**，
+    //    私钥由身份层持有，**不得**由生成链接的客户端持有。
+    const linkId = randomUUID()
+    const nonce = randomUUID()
+    const issuedAt=(await client.query('SELECT clock_timestamp() AS at')).rows[0].at
+    const expiresAt = new Date(issuedAt.getTime() + ttlMs)
+    const token = await signLink({ linkId, nonce, ctx, formCode, schemaCode,
+                                   fields, actions, rowScope, expiresAt, maxSubmissions })
 
-  const session = await loadSession(ctx.sessionId)
-  // ⚠️ 记录**当前**授权版本，不是会话里冻结的那一个。
-  // 会话的 authz_version 是**签发令牌时**的快照；用它去登记链接，
-  // 会让「权限回收过、又新发一张链接」这件事直接被自己判成失效 ——
-  // 新链接一签发就是废的，而且失败理由是 KVVI_ISSUER_AUTHZ_CHANGED，
-  // 看起来像「签发人权限有问题」。
-  const { rows: issuer } = await pool('platform').query(
-    'SELECT authz_version FROM users WHERE user_id = $1', [ctx.userId])
-  const issuerAuthzVersion = issuer[0]?.authz_version ?? session?.authzVersion ?? 0
-  await withTransaction('platform', async (client) => {
     await client.query(
       `INSERT INTO visitor_links (link_id, token_digest, nonce, company_id,
          schema_code, form_code, allowed_fields, allowed_actions, row_scope,
          issuer_user_id, issuer_dept_id, issuer_shop_id, issuer_authz_version,
-         one_time, max_submissions, expires_at, submission_protocol)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+         one_time, max_submissions, expires_at, submission_protocol, issued_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
       [linkId, digestOf(token), nonce, ctx.companyId, schemaCode, formCode,
        fields, actions, JSON.stringify(rowScope ?? {}), ctx.userId,
-       session?.deptId ?? home.dept_id, session?.shopId ?? home.shop_id,
-       issuerAuthzVersion, maxSubmissions === 1, maxSubmissions, expiresAt, SUBMISSION_PROTOCOL])
-  })
-  await events(linkId, ctx, 'ISSUED', { formCode, fields, rowScope }, input.sourceIp)
-  return { linkId, token, expiresAt, formCode, fields, actions, rowScope }
+       home.dept_id, home.shop_id,
+       issuer.authz_version, maxSubmissions === 1, maxSubmissions, expiresAt, SUBMISSION_PROTOCOL,issuedAt])
+    await events(linkId, ctx, 'ISSUED', { formCode, fields, rowScope }, input.sourceIp,client,issuedAt)
+    return { linkId, token, expiresAt, formCode, fields, actions, rowScope }
+  })}catch(error){
+    if(error instanceof VisitorError)await events(null,ctx,'REJECTED',{error:error.code,formCode},input.sourceIp)
+    throw error
+  }
 }
 
 /** 用与令牌同一套非对称密钥对链接签名（§3.5.1：同一信任锚点体系）。 */
@@ -518,40 +518,22 @@ export async function checkRelatedRef(row, ref) {
 }
 
 /** 限流四维度（§3.5.2）。**超限即拒绝并记录，不排队、不降级放行。** */
-async function enforceLimits(kind, { ctx }) {
-  const since = new Date(Date.now() - RATE.windowMs)
-  const client = await pool('platform').connect()
-  try {
-    if (kind === 'ISSUE') {
-      const { rows } = await client.query(
-        `SELECT count(*)::int AS n FROM visitor_links
-          WHERE company_id = $1 AND issuer_user_id = $2
-            AND revoked_at IS NULL AND expires_at > now()`,
-        [ctx.companyId, ctx.userId])
-      if (rows[0].n >= RATE.perIssuerActiveLinks) {
-        throw new VisitorError('KVVI_RATE_LIMITED_ISSUER', { limit: RATE.perIssuerActiveLinks })
-      }
-      const { rows: c } = await client.query(
-        `SELECT count(*)::int AS n FROM visitor_links
-          WHERE company_id = $1 AND issued_at > $2`, [ctx.companyId, since])
-      if (c[0].n >= RATE.perCompanyLinks) {
-        throw new VisitorError('KVVI_RATE_LIMITED_COMPANY', { limit: RATE.perCompanyLinks })
-      }
-      return
-    }
-
-  } finally {
-    client.release()
-  }
+async function enforceIssueLimits(ctx,client) {
+  const {rows}=await client.query(`SELECT count(*)::int n FROM visitor_links
+    WHERE company_id=$1 AND issuer_user_id=$2 AND revoked_at IS NULL AND expires_at>clock_timestamp()`,[ctx.companyId,ctx.userId])
+  if(rows[0].n>=RATE.perIssuerActiveLinks)throw new VisitorError('KVVI_RATE_LIMITED_ISSUER',{limit:RATE.perIssuerActiveLinks})
+  const company=await client.query(`SELECT count(*)::int n FROM visitor_links
+    WHERE company_id=$1 AND issued_at>clock_timestamp()-($2::double precision*interval '1 millisecond')`,[ctx.companyId,RATE.windowMs])
+  if(company.rows[0].n>=RATE.perCompanyLinks)throw new VisitorError('KVVI_RATE_LIMITED_COMPANY',{limit:RATE.perCompanyLinks})
 }
 
-async function events(linkId, ctx, kind, detail = {}, sourceIp = null) {
-  await pool('platform').query(
+async function events(linkId, ctx, kind, detail = {}, sourceIp = null,client=pool('platform'),at=null) {
+  await client.query(
     `INSERT INTO visitor_link_events (link_id, company_id, issuer_user_id, kind,
-       source_ip, detail)
-     VALUES ($1,$2,$3,$4,$5,$6)`,
+       source_ip, detail,at)
+     VALUES ($1,$2,$3,$4,$5,$6,COALESCE($7::timestamptz,clock_timestamp()))`,
     [linkId ?? randomUUID(), ctx.companyId, ctx.userId, kind, sourceIp,
-     JSON.stringify(detail)])
+     JSON.stringify(detail),at])
 }
 
 /** 签发人停用/离职时，其名下未提交链接全部失效（§3.5.1）。 */

@@ -1,0 +1,17 @@
+# 访客签发并发一致性计划（批次35）
+
+访客业务提交已通过模块和HTTP反例，但签发仍先查额度、稍后INSERT，并将ISSUED事件放在注册事务外。此次只修这些真实签发模块窗口，产品签发UI、分享及浏览器另验。
+
+1. 平台同一READ COMMITTED事务先取company→issuer签发锁，再用同一个client重读当前资格/字段/行范围、签发人ACTIVE和authz_version、实际唯一membership及额度；TTL从获得锁后的签发时刻开始。全部新签发统一此锁序。
+2. authorization既有scopeContext/canAct/fieldVisibility增加可选事务client，复用原判据，不复制SQL授权规则。已有调用保持默认pool行为；借入client不释放。不能持有平台事务client后又借同一pool做权限读取，否则并发8个等待者可耗尽pool阻塞当前持锁者。
+3. 签名/登记/ISSUED事件同平台事务；存摘要不存可还原token。任何事件或登记失败都回滚链接注册，不留下未记录的活链接。拒绝仍可留下拒绝事件，但不得因此伪造已签发成功。
+4. 先RED：32次同issuer并发最多20成功；公司窗口预置199条已过期但本窗口签发记录，两个issuer并发只能用完剩余1格；ISSUED事件故障注册必须回滚；真实排队期间撤create或改READONLY必须按获得锁后的当前权限拒绝。
+5. 当前仅新writer模块保证；存量旧writer栅栏、历史切换、签发回复丢失的产品处置、真实UI/浏览器及跨库提交授权序列化仍未闭合，不据此勾选S9或整体12项。
+
+## 实施结果
+
+6项签发实库专测通过：同issuer 32次并发从旧版32成功变为20成功；公司窗口199预置记录后，经INSERT触发器实际控住4个请求，旧版4成功变为仅1成功；ISSUED事件故障从残留1链接改为0；真实排队期间撤FORM create/改FIELD READONLY后均拒绝；等待后的issued_at与ISSUED事件同一数据库时刻，不采用事务开始时now。
+
+平台事务显式READ COMMITTED，锁后用借入同client的既有授权函数；issuer与membership取FOR SHARE，实际membership与scope归属一致才签。此路径不再依赖旧session部门或额外loadSession checkout。成功登记与事件原子；VisitorError拒绝事件在事务回滚/释放后才另写，避免同pool自我等待。独立只读源码/借入client探针没有发现本批新阻断。
+
+定向59项全通过；完整平台752项：751通过、1既有跳过、0失败。没有将签发资格快照宣称为全平台权限变更线性化；跨库提交授权序列化、存量writer栅栏、签发回复丢失的产品处置、产品入口和浏览器仍未完成。
