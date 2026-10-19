@@ -33,6 +33,6 @@ jobs:
       - name: Test fixed-source inventory boundaries
         run: python -m unittest distribution.tests.test_runtime_source distribution.tests.test_raw_git_source
       - name: Test release output preservation in owned fixtures
-        run: python -W error::ResourceWarning -m unittest distribution.tests.test_release_package
+        run: python -W error::ResourceWarning -m unittest distribution.tests.test_release_package distribution.tests.test_package_inventory
       - name: Validate all 13 protocol machine files
         run: python tests/meta-schema-full/0a-full-r1/test_structure.py

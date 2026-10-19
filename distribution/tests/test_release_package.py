@@ -117,10 +117,11 @@ raise SystemExit(m.build())
         import builtins
         original = builtins.open; reads = []
         safe = b'scanned snapshot\n'
+        (self.root / 'README.md').write_bytes(safe)
         def snapshot(path, mode='r', *args, **kwargs):
             if Path(path) == self.root / 'README.md' and mode == 'rb':
                 reads.append(True)
-                return io.BytesIO(safe if len(reads) == 1 else b'-----BEGIN ' + b'PRIVATE KEY-----')
+                if len(reads) > 1: return io.BytesIO(b'-----BEGIN ' + b'PRIVATE KEY-----')
             return original(path, mode, *args, **kwargs)
         with patch('builtins.open', side_effect=snapshot):
             self.assertEqual(self.call(self.module.build), 0)

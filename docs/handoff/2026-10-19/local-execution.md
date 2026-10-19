@@ -687,3 +687,22 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `package-control-alias-red.log`：`42a6061a792c443fbca7dc25c84c2e35e3194628b1464078922c5e6fb4a8c206`。
 - `package-preservation-final312-2.log`：`5cee0b4a34dbbc6e05eb0ef87a512e8f2877b80007186f603738139ff6b19325`。
 - `package-preservation-final39-2.log`：`a2db70f82a49b999eb26ee8146c2311a92a706eafcc72fcc88d6096b90f148ab`。
+
+
+## 批次45：归档实际内容与当前源逐项一致
+
+- 新增package_inventory，格式升为kvvi-macos-pilot/v2（旧v1固定拒绝）：file以path/type/mode/bytes/SHA256，symlink以path/type/mode/原始target记录；内外清单同一canonical typed rows摘要。check实际读tar每一成员，唯一/安全路径、精确全集、正规文件/链接类型、模式/固定owner/mtime/device字段、实际body或linktext必须等于清单，再与当前collect快照逐行一致。清单摘要不是签名，当前源一致性也不证明固定Git来源/完整构建。
+- build通过lstat+NOFOLLOW/NONBLOCK+前后fstat/lstat稳定读源，扫描与归档body一次读取；手工TarInfo避免hardlink隐式折叠；目录symlink纳入而不跟随，链接必须在包内有真实可达目标，循环/断链/外逃拒绝。docs/操作手册.md升为必需regular文件；全部candidate完成后自检实际归档才publish。原包保护/隔离self-test继续保留。
+- 10组新反例先RED（16失败/2错误）；类型/正文/危险路径/重复/内外清单/模式/链接变化修复后26组通过。追加PAX扩展属性、第一零头之后隐藏第二tar、gzip缺尾均真实RED；现在只允许与最终字段一致的path/linkpath扩展，检查规范tar零padding并将gzip读至CRC/footer。mtime改写再RED后固定0。畸形/深嵌套/重复键JSON均固定错误，UTF8和16MiB上限。
+- 两位独立复核同报先normpath后link导致外逃；先RED后改为deque按原始路径组件展开link再处理后续..，每步根/存在/类型检查，最多64次展开。安全alias/../data用系统/usr/bin/tar在自有目录实解通过。另chmod000实证os.walk静默丢源先RED，onerror改为抛出、build失败保留旧pair。一次新增测试插入位置错误导致NameError，已纠正并重新完整运行，不计为实现通过证据。
+- 最终包30组+源/原字节导出19组，合计49项，在Python3.12/系统3.9.6均全通过exit0（8.068/8.270秒），-W error::ResourceWarning；日志末KVVI_FORK_CLONE_FAILED为已有受控超时反例。独立30/30闭环；CI加入inventory套件。冻结7文件摘要全部通过。平台未改，最近全平台仍批次40的810项。
+- 全部在自有合成仓库/包测试，未生成、覆盖或验收真实发行包，未动试点；显式runtime-source与固定完整源/host/native/client/目录/generated收据接线继续下一批。整体12项不勾选。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `package-inventory-red.log`：`bc727ba1939c058cb22b1d981f9eed46d37098477eae5410641d0db087771318`。
+- `package-tail-pax-red.log`：`af6c0b00cbd262dfb6d0d31838a923d1b19ec87241f84dc7327fa2386d754f41`。
+- `package-symlink-components-red.log`：`cbf4a2ba65f39a0fcf2354386343a50dd131d2681c31a9e8a36e281456ef7706`。
+- `package-unreadable-red.log`：`dea897bfa4c3f5be83c3b4f0a6aa441f25328a1f967738904cc417d89ace5b51`。
+- `package-metadata-red.log`：`0e7196c2b982b22e157a6d52552d9bdb0a6b34e5de23251747afb1ac0d6b9ce9`。
+- `package-inventory-final312.log`：`c1a3b4595dc85760d07e310afd7571f4cf9b4114b65601965cd9d63eac8e525d`。
+- `package-inventory-final39.log`：`c39862a50438f84e7bc90ba496747c5ff7eae7d8ec8869895cfb75042bc3868c`。

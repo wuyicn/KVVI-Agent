@@ -56,6 +56,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 from 工具.lib.package_outputs import PublicationError, output_guard, publish_pair
+from 工具.lib.package_inventory import (InventoryError, VERSION, INTERNAL, MAX_MANIFEST_BYTES,
+    snapshot, validate_rows, internal_manifest, verify_archive, load_json)
 OUT_DIR = os.path.join(ROOT, '交付', '发行')
 ARCHIVE = os.path.join(OUT_DIR, 'kvvi-macos-pilot.tar.gz')
 MANIFEST = os.path.join(OUT_DIR, '发行包清单.json')
@@ -161,6 +163,7 @@ REQUIRED = [
     'vendor/dsh/package.json',
     'contracts/meta-schemas/0a-full-r1/business-schema.v1.schema.json',
     '安装手册.md',
+    'docs/操作手册.md',
     'README.md',
 ]
 
@@ -210,13 +213,28 @@ def collect() -> list:
     @returns `[(绝对路径, 包内相对路径)]`
     """
     entries = []
+    def direct_parents(relative, include_last):
+        parts = relative.split('/') if include_last else relative.split('/')[:-1]
+        parent = ROOT
+        for part in parts:
+            parent = os.path.join(parent, part)
+            if os.path.islink(parent) or not os.path.isdir(parent):
+                raise InventoryError('PACKAGE_SOURCE_PARENT_INVALID')
     for source_rel, into_rel in CONTENTS:
+        direct_parents(source_rel, True)
         source = os.path.join(ROOT, source_rel)
         if not os.path.isdir(source):
-            raise SystemExit(f'{C_BAD}✗ 缺目录：{source_rel}{C_OFF}')
-        for base, dirs, files in os.walk(source):
+            raise InventoryError('PACKAGE_SOURCE_DIRECTORY_MISSING')
+        def walk_error(error):
+            raise error
+        for base, dirs, files in os.walk(source, onerror=walk_error):
             dirs[:] = [d for d in dirs if not should_skip(
                 source_rel, os.path.relpath(os.path.join(base, d), source) + '/')]
+            for name in list(dirs):
+                absolute = os.path.join(base, name)
+                if os.path.islink(absolute):
+                    entries.append((absolute, os.path.join(into_rel, os.path.relpath(absolute, source))))
+                    dirs.remove(name)
             for name in files:
                 absolute = os.path.join(base, name)
                 rel = os.path.relpath(absolute, source)
@@ -224,8 +242,9 @@ def collect() -> list:
                     continue
                 entries.append((absolute, os.path.join(into_rel, rel)))
     for extra in EXTRA_FILES:
+        direct_parents(extra, False)
         absolute = os.path.join(ROOT, extra)
-        if os.path.isfile(absolute):
+        if os.path.lexists(absolute):
             entries.append((absolute, extra))
     return sorted(entries, key=lambda pair: pair[1])
 
@@ -244,46 +263,48 @@ def build() -> int:
                 for path in missing:
                     print(f'{C_BAD}✗ 缺必需文件：{path}{C_OFF}')
                 return 1
-            digest = hashlib.sha256()
+            rows = []
             with tempfile.TemporaryDirectory(prefix='kvvi-package-candidate-', dir=OUT_DIR) as candidate:
                 pending_archive = os.path.join(candidate, 'candidate.tar.gz')
                 pending_manifest = os.path.join(candidate, 'candidate-manifest.json')
                 with tarfile.open(pending_archive, 'w:gz') as tar:
                     for absolute, rel in entries:
-                        with open(absolute, 'rb') as handle:
-                            body = handle.read()
+                        row, body = snapshot(absolute, rel)
                         for pattern, what in FORBIDDEN:
-                            if pattern.search(body):
+                            if body is not None and pattern.search(body):
                                 print(f'{C_BAD}✗ 包中禁止内容：{rel} —— {what}{C_OFF}')
                                 return 1
-                        digest.update(rel.encode('utf-8')); digest.update(b'\0')
-                        digest.update(hashlib.sha256(body).hexdigest().encode('ascii')); digest.update(b'\0')
-                        info = tar.gettarinfo(absolute, arcname=TOP + '/' + rel)
+                        rows.append(row)
+                        info = tarfile.TarInfo(TOP + '/' + rel)
                         info.uid = info.gid = 0; info.uname = info.gname = 'root'
-                        info.mode = 0o755 if rel.endswith('kvvi-admin') else 0o644
-                        if info.isfile():
-                            info.size = len(body)
+                        info.mode = row['mode']
+                        if row['type'] == 'file': info.size = len(body)
+                        else: info.type = tarfile.SYMTYPE; info.linkname = row['target']
                         # The scanned snapshot is exactly the body supplied to tar.
-                        tar.addfile(info, io.BytesIO(body))
-                    payload = json.dumps({'bundleVersion': 'kvvi-macos-pilot/v1', 'fileCount': len(entries),
-                        'files': [rel for _absolute, rel in entries]}, ensure_ascii=False, indent=2).encode('utf-8')
-                    info = tarfile.TarInfo(TOP + '/发行包清单.json'); info.size = len(payload); info.mode = 0o644
+                        tar.addfile(info, io.BytesIO(body) if body is not None else None)
+                    internal = internal_manifest(rows)
+                    if any(row['type'] != 'file' for row in rows if row['path'] in REQUIRED):
+                        raise InventoryError('PACKAGE_REQUIRED_FILE_INVALID')
+                    payload = json.dumps(internal, ensure_ascii=False, indent=2).encode('utf-8')
+                    info = tarfile.TarInfo(TOP + '/' + INTERNAL); info.size = len(payload); info.mode = 0o644
+                    info.uname = info.gname = 'root'
                     tar.addfile(info, io.BytesIO(payload))
+                with tarfile.open(pending_archive, 'r:gz') as tar:
+                    verify_archive(tar, TOP, rows, internal)
                 size = os.path.getsize(pending_archive) / (1024 ** 2)
                 with open(pending_manifest, 'w', encoding='utf-8') as handle:
-                    json.dump({'bundleVersion': 'kvvi-macos-pilot/v1', 'archive': os.path.relpath(ARCHIVE, ROOT),
-                        'fileCount': len(entries), 'contentDigest': 'sha256:' + digest.hexdigest(),
-                        'archiveSha256': sha256_of(pending_archive), 'archiveBytes': os.path.getsize(pending_archive)},
+                    json.dump(dict(internal, archive=os.path.relpath(ARCHIVE, ROOT),
+                        archiveSha256=sha256_of(pending_archive), archiveBytes=os.path.getsize(pending_archive)),
                         handle, ensure_ascii=False, indent=2)
                     handle.write('\n')
                 publish_pair(pending_archive, pending_manifest, ARCHIVE, MANIFEST)
-    except (PublicationError, OSError, ValueError, tarfile.TarError) as error:
-        code = str(error) if isinstance(error, PublicationError) else 'PACKAGE_BUILD_FAILED'
+    except (PublicationError, InventoryError, OSError, ValueError, tarfile.TarError) as error:
+        code = str(error) if isinstance(error, (PublicationError, InventoryError)) else 'PACKAGE_BUILD_FAILED'
         print(f'{C_BAD}✗ {code}{C_OFF}')
         return 1
     print(f'{C_OK}✓ {os.path.relpath(ARCHIVE, ROOT)}（{size:.1f} MB，'
           f'{len(entries)} 个文件）{C_OFF}')
-    print(f'  内容指纹 sha256:{digest.hexdigest()[:24]}')
+    print(f"  内容指纹 {internal['contentDigest'][:32]}")
     return 0
 
 
@@ -378,7 +399,7 @@ def check() -> int:
     try:
         with output_guard(ARCHIVE, MANIFEST):
             return _check_existing()
-    except (PublicationError, OSError):
+    except (PublicationError, InventoryError, OSError, ValueError, TypeError, KeyError, RecursionError, tarfile.TarError, EOFError):
         print(f'{C_BAD}✗ PACKAGE_OUTPUT_UNAVAILABLE_OR_RECOVERY_REQUIRED{C_OFF}')
         return 1
 
@@ -391,76 +412,43 @@ def _check_existing() -> int:
     if not os.path.isfile(ARCHIVE) or not os.path.isfile(MANIFEST):
         print(f'{C_BAD}✗ 发行包不存在（先跑 --build）{C_OFF}')
         return 2
-    with open(MANIFEST, encoding='utf-8') as handle:
-        manifest = json.load(handle)
-    problems = []
-
-    actual = sha256_of(ARCHIVE)
-    if actual != manifest['archiveSha256']:
-        problems.append('压缩包本身与清单记录的摘要不符（包被改过）')
-
+    with open(MANIFEST, 'rb') as handle:
+        manifest = load_json(handle.read(MAX_MANIFEST_BYTES + 1))
+    fields = {'bundleVersion','archive','fileCount','contentDigest','entries','archiveSha256','archiveBytes'}
+    if not isinstance(manifest, dict) or set(manifest) != fields or manifest['bundleVersion'] != VERSION:
+        raise InventoryError('PACKAGE_MANIFEST_VERSION_OR_SHAPE_INVALID')
+    validate_rows(manifest['entries'])
+    if type(manifest['fileCount']) is not int or manifest['fileCount'] != len(manifest['entries']):
+        raise InventoryError('PACKAGE_MANIFEST_COUNT_INVALID')
+    if type(manifest['archiveBytes']) is not int or manifest['archiveBytes'] != os.path.getsize(ARCHIVE) or manifest['archive'] != os.path.relpath(ARCHIVE, ROOT):
+        raise InventoryError('PACKAGE_MANIFEST_ARCHIVE_INVALID')
+    if manifest['archiveSha256'] != sha256_of(ARCHIVE):
+        raise InventoryError('PACKAGE_ARCHIVE_DIGEST_MISMATCH')
+    internal = internal_manifest(manifest['entries'])
+    if internal['contentDigest'] != manifest['contentDigest']:
+        raise InventoryError('PACKAGE_INVENTORY_DIGEST_MISMATCH')
     with tarfile.open(ARCHIVE, 'r:gz') as tar:
-        names = [name[len(TOP) + 1:] for name in tar.getnames()
-                 if name.startswith(TOP + '/') and not tar.getmember(name).isdir()]
-    for path in REQUIRED:
-        if path not in names:
-            problems.append(f'缺必需文件：{path}')
-    # ⚠️ **每个包的 `main` 都要真的存在。** 见 `packages_missing_main()`：
-    #    新加的包没跑构建，症状是「整个 preset 解析不到」，而报错只说
-    #    「could not be resolved: @deepseek-ai/…」，看不出缺的是构建产物。
-    for broken in packages_missing_main():
-        problems.append(f'包声明了 main 但文件不存在（多半是没跑构建）：{broken}')
-
-    for name in names:
-        # ⚠️ 判据从 `PORTABLE_DEPENDENCIES` **取**，不在这里另写一份名单。
-        #    第一版把 `services/platform/` 写死在条件里，于是第二个可移植依赖
-        #    （`tools/meta-schema`）加上去时，规则立刻把它判成违规 ——
-        #    而这其实是规则自己没跟上，不是包错了。名单写两处，就会漂移一处。
-        if '/node_modules/' in '/' + name + '/':
-            if not any(name.startswith(keep + '/') for keep in PORTABLE_DEPENDENCIES):
-                problems.append(f'运行时依赖不该进包：{name}')
-
-    # ⚠️ **整类文件的数量对齐。** 见 `should_skip` 里 `lib/types` 那一段：
-    #    整整一类运行时 `.js` 曾经被静默甩掉，而逐个 `REQUIRED` 抓不住「少了一类」。
-    expected = source_runtime_js_count()
-    if expected > 0:
-        packed = sum(1 for name in names
-                     if name.startswith('vendor/dsh/') and '/lib/types/' in '/' + name
-                     and name.endswith('.js'))
-        if packed != expected:
-            problems.append(f'运行时代码不齐：vendor/dsh 下 lib/types 的 .js '
-                            f'源树有 {expected} 个，包里只有 {packed} 个')
-
-    # ⚠️ **包里的字节必须还是当前源树的字节。**
-    #
-    # `archiveSha256` 只说「包自己没被改过」—— 源树改了、包没重打，它一声不响。
-    # 第一版的 check 只拿 `vendor/dsh` 下 `lib/types` 的**文件数**比一比，于是：
-    # 修完 `services/platform/src/server.mjs`（关停硬期限）与
-    # `distribution/lib/supervisor.py`（SIGKILL 升级）之后，`--check` 依然全绿，
-    # 而 tar 里是**旧字节** —— 拿它去部署，测的是修复前的行为（踩过一次）。
-    #
-    # 这里用**打包时自己那套算法**重算内容指纹：一致 = 包里每一个字节都还是
-    # 当前源树的字节。名单也在 `collect()` 里，不另写一份。
-    fresh = hashlib.sha256()
+        verify_archive(tar, TOP, manifest['entries'], internal)
+    rows = []
     for absolute, rel in collect():
-        with open(absolute, 'rb') as handle:
-            body = handle.read()
-        fresh.update(rel.encode('utf-8'))
-        fresh.update(b'\0')
-        fresh.update(hashlib.sha256(body).hexdigest().encode('ascii'))
-        fresh.update(b'\0')
-    if 'sha256:' + fresh.hexdigest() != manifest['contentDigest']:
-        problems.append('包的内容与当前源树不一致 —— 源树改过而包没重打（跑 --build）')
-
+        row, body = snapshot(absolute, rel)
+        if body is not None and any(pattern.search(body) for pattern, _ in FORBIDDEN):
+            raise InventoryError('PACKAGE_SOURCE_FORBIDDEN')
+        rows.append(row)
+    validate_rows(rows)
+    if rows != manifest['entries']:
+        raise InventoryError('PACKAGE_SOURCE_INVENTORY_MISMATCH')
+    regular = {row['path'] for row in rows if row['type'] == 'file'}
+    if any(path not in regular for path in REQUIRED) or packages_missing_main():
+        raise InventoryError('PACKAGE_REQUIRED_FILE_OR_MAIN_MISSING')
+    for row in rows:
+        name = row['path']
+        if '/node_modules/' in '/' + name + '/' and not any(name.startswith(keep + '/') for keep in PORTABLE_DEPENDENCIES):
+            raise InventoryError('PACKAGE_RUNTIME_DEPENDENCY_FORBIDDEN')
     print(f'{C_OK}=== 发行包复核 ==={C_OFF}')
-    print(f'  {os.path.relpath(ARCHIVE, ROOT)}：{len(names)} 个文件，'
-          f"{manifest['archiveBytes'] / (1024 ** 2):.1f} MB")
-    print(f"  内容指纹 {manifest['contentDigest'][:32]}")
-    if problems:
-        for problem in problems[:10]:
-            print(f'  {C_BAD}✗ {problem}{C_OFF}')
-        return 1
-    print(f'  {C_OK}✓ 内容、摘要与必需文件齐备{C_OFF}')
+    print(f'  {os.path.relpath(ARCHIVE, ROOT)}：{len(rows)} 个源条目')
+    print(f"  内容指纹 {internal['contentDigest'][:32]}")
+    print(f'  {C_OK}✓ 归档实际成员、内外清单与当前源条目一致{C_OFF}')
     return 0
 
 
