@@ -40,7 +40,14 @@ from typing import Dict, List, Optional, Sequence
 DATABASES_TO_DUMP = ('kvvi_platform', 'kvvi_business', 'kvvi_audit')
 
 #: 打包时排除的内容。密钥与运行时产物都不进备份包。
-EXCLUDES = ('secrets', 'run', 'log', '.credentials.yaml', 'pgdata', 'initdb.pw')
+EXCLUDES = ('secrets', 'run', 'log', '.credentials.yaml', 'pgdata', 'initdb.pw',
+            'kvvi.env', 'backups', '.kvvi-recovery', '.env')
+
+
+def _protected_path(name: str) -> bool:
+    parts = name.replace('\\', '/').split('/')
+    return any(part in EXCLUDES or part.startswith('.env.') or
+               part.endswith(('.key', '.pem', '.p12', '.pfx')) for part in parts)
 
 MANIFEST_NAME = 'backup-manifest.json'
 ARCHIVE_NAME = 'kvvi-backup.tar.gz'
@@ -132,10 +139,7 @@ class BackupPlan:
         """
         pg_bin = Path(pg_bin)
         self.out_dir.mkdir(parents=True, exist_ok=True)
-        staging = self.out_dir / '.staging'
-        if staging.exists():
-            shutil.rmtree(staging)
-        staging.mkdir(parents=True)
+        staging = Path(tempfile.mkdtemp(prefix='.kvvi-backup-', dir=self.out_dir))
         env = dict(os.environ, PGPASSWORD=self.superpass, LC_ALL='en_US.UTF-8')
         done: List[str] = []
 
@@ -160,10 +164,23 @@ class BackupPlan:
         # 「整个实例的状态」，而漏了某一项的表现是恢复后少一块东西。
         state = staging / 'home.tar'
         with tarfile.open(state, 'w') as tar:
+            def include(info):
+                source = self.home / info.name
+                resolved = source.resolve()
+                output = self.out_dir.resolve()
+                nested_output = self.home.resolve() in output.parents
+                if (_protected_path(info.name) or info.issym() or info.islnk() or
+                        not (info.isfile() or info.isdir()) or
+                        (nested_output and (resolved == output or output in resolved.parents)) or
+                        resolved == staging or staging in resolved.parents or
+                        resolved in (self.archive.resolve(), self.archive.with_suffix('.partial').resolve(),
+                                     self.archive.with_suffix(self.archive.suffix + '.sha256').resolve())):
+                    return None
+                return info
             for entry in sorted(self.home.iterdir()):
                 if entry.name in self.excludes:
                     continue
-                tar.add(entry, arcname=entry.name, recursive=True)
+                tar.add(entry, arcname=entry.name, recursive=True, filter=include)
         files['home.tar'] = {'sha256': sha256_file(state), 'bytes': state.stat().st_size}
         done.append('archive-home')
 
@@ -194,7 +211,7 @@ class BackupPlan:
                 'archive': str(self.archive), 'manifest': manifest}
 
 
-def safe_extract(tar: tarfile.TarFile, target: Path) -> None:
+def _safe_members(tar: tarfile.TarFile, target: Path, preserve_credentials=False):
     """
     安全解包：拒绝绝对路径、`..` 与符号链接逃逸。
 
@@ -213,17 +230,37 @@ def safe_extract(tar: tarfile.TarFile, target: Path) -> None:
     @throws ValueError 有成员越出目标目录时
     """
     target = Path(target).resolve()
+    selected = []
+    seen = set()
     for member in tar.getmembers():
         name = member.name.replace('\\', '/')
-        if name.startswith('/') or name.split('/')[0] == '..' or '/../' in name:
+        if name.startswith('/') or '..' in name.split('/'):
             raise ValueError(f'KVVI_BACKUP_UNSAFE_MEMBER: {member.name}')
         if member.issym() or member.islnk():
             # 链接指向哪里由链接内容决定，而内容同样是归档说了算。
             raise ValueError(f'KVVI_BACKUP_UNSAFE_MEMBER: {member.name}')
+        if not (member.isfile() or member.isdir()):
+            raise ValueError(f'KVVI_BACKUP_UNSAFE_MEMBER: {member.name}')
         destination = (target / name).resolve()
         if destination != target and target not in destination.parents:
             raise ValueError(f'KVVI_BACKUP_UNSAFE_MEMBER: {member.name}')
-    tar.extractall(target)
+        if destination in seen:
+            raise ValueError(f'KVVI_BACKUP_DUPLICATE_MEMBER: {member.name}')
+        seen.add(destination)
+        if preserve_credentials and _protected_path(name):
+            continue
+        current = target / name
+        while current != target:
+            if current.is_symlink():
+                raise ValueError(f'KVVI_BACKUP_UNSAFE_TARGET: {member.name}')
+            current = current.parent
+        selected.append(member)
+    return selected
+
+
+def safe_extract(tar: tarfile.TarFile, target: Path, preserve_credentials=False) -> None:
+    """Validate the entire archive before extracting regular files and directories."""
+    tar.extractall(target, members=_safe_members(tar, target, preserve_credentials))
 
 
 def _now() -> str:
@@ -378,6 +415,17 @@ class RestorePlan:
                                 'problems': verdict['problems'][:5]}]}
         done.append('verify')
 
+        # Validate the outer and nested home archive before stopping or importing any DB.
+        try:
+            with tarfile.open(self.archive, 'r:gz') as tar:
+                _safe_members(tar, Path(tempfile.gettempdir()) / 'kvvi-restore-validation')
+                if 'home.tar' in tar.getnames():
+                    with tarfile.open(fileobj=tar.extractfile('home.tar'), mode='r:') as state:
+                        _safe_members(state, self.home, preserve_credentials=True)
+        except (OSError, ValueError, KeyError, tarfile.TarError):
+            return {'ok': False, 'steps': done, 'errors': [{
+                'kind': 'verify', 'code': 'KVVI_BACKUP_UNSAFE_MEMBER'}]}
+
         # ★ D1 修复：核过摘要、确认要动库之前，先停掉在跑的进程。
         error = _stop_error(stop_services)
         if error is not None:
@@ -445,7 +493,7 @@ class RestorePlan:
             home_tar = staging / 'home.tar'
             if home_tar.is_file():
                 with tarfile.open(home_tar, 'r') as tar:
-                    safe_extract(tar, self.home)
+                    safe_extract(tar, self.home, preserve_credentials=True)
                 done.append('restore-home')
         except (OSError, ValueError, tarfile.TarError):
             return failed({'kind': 'restore', 'code': 'KVVI_RESTORE_STATE_FAILED'})
