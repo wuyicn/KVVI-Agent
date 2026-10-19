@@ -80,8 +80,14 @@
 
 已确认为None的非root中间父不再扩展其旧候选边，身份变更/不可读/root退出仍失败。更快的原生枚举暴露了组已空但根子进程退出通知尚未到达的时窗；supervisor需同时确认根退出，不能只凭空组提前返回。6组新增测试连原身份/supervisor共52项双Python通过；真实自有进程及未知errno/扩容/截断边界验证，不是试点验收。
 
-## 受控构建命令生命周期（批次55计划）
+## 受控构建命令生命周期（批次55完成）
 
 构建器先增加自有命令会话：父进程以结构化argv、显式cwd/env和新日志启动短小worker，worker创建独立session并在go握手前不启动命令。父进程先记录并核对worker内核起始身份；命令结束后worker保留session leader直到父进程确认组及已观测逃逸子进程退出，避免拿已回收PID做组信号。
 
 超时/非零/遗留子进程不能变成构建通过。只在worker身份仍匹配时向该自有组发TERM/KILL；已观测到且换session的子进程逐个复核起始身份再发信号。身份不可读/变化时固定失败，不能凭端口或整数PID扩大清理。日志新建而非覆盖，命令不经shell，env无隐式继承；后续runner只提供最小公开构建环境。此为受控命令组及已观测后代的清理，不声称任意恶意进程逃逸/完整OS沙箱；未观测的脱离会话后代仍是显式限制。
+
+父查询/身份故障或KeyboardInterrupt时，在control目录与leader仍存活期间请求worker协作停止。worker持续收集自身组/后代，可按当前内在session停止自己的组；父未知身份不授权数字组信号。worker提前退出时，父仍逐起始身份清理已在受核root下采纳的known children，禁止对旧组发信号，范围未知保持未确认；中断清理后重新抛出。控制父进程起始身份也被worker绑定，父死亡/变化/不可读触发worker自清。
+
+正常result也携worker完整已观测身份表，父在root前后核对下合并；worker收到ack须再核自身known无活后代，有遗留转stop/失败。最终无存活组/已观测身份且discovery可确认，才给cleanupConfirmed；命令exit0和worker正常ack退出同时满足才valid。控制故障永不升级成valid，即使已清理。合作取消有界，超限只结束自有直接Popen worker并保持未知，不能声称已清空任意不受控后代。
+
+14项新真实自有进程测试连既有membership/identity/supervisor共66项双Python通过；初缺模块、异常遗留、中断/worker crash、controller死亡、worker观测未合并及ack放行均有RED记录。独立14项及带worker观察日志的父漏报/延迟/误报空三场景均闭环，无存活后代；不执行安装/build或赋予发行资格。

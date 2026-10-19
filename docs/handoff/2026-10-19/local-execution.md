@@ -866,3 +866,21 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `process-kernel-root-notification-red.log`：`cd5ad6ce01a9b7f56557fe1b5037f7dfd9fa750117427f7c601d6d9719b91139`。
 - `process-kernel-enumeration-final312-2.log`：`fb52b9449758756e595df03ea16cd5c20cea75710e111a3a3b2f304933bd98fd`。
 - `process-kernel-enumeration-final39-2.log`：`ebcf379880bb5be21c2469dcb34472484537280888844da0640b050c6b0eccb4`。
+
+
+## 批次55：持有leader的自有构建命令执行器
+
+- 新增owned_build_command，结构化绝对argv、显式cwd/env、新日志独占创建；独立session worker在ready/go前握手，父先核内核start/uid/pgid。命令结束后worker保留leader到ack，父记录actual exitCode、timeout及TERM/KILL升级，清理组和已观测改session后代；非零/超时/遗留/未知均不valid。声明范围是自有组和已观测后代，不是OS沙箱，不覆盖任意未观测daemon escape。
+- 初7组缺模块先RED。独立复核陆续发现异常只杀worker、中断跳过cancel、worker自查失败先退而父known未清、正常result未合并worker后代造成valid:true假绿。补真实组+setsid故障/中断/crash/观测遗漏/ack反例，各先RED再修：control仍在时worker协作自停，父未知不发组信号；已在root夹验下取得的known后代在root退后仍可逐start身份清理。KeyboardInterrupt先清理再重抛，scope未知保持未确认。控制父进程死亡也有真实Popen.kill反例先RED，worker绑定controller起始身份持续检测并自清。
+- 正常result携worker观测表，父在saved root前后夹验下合并；worker ack前再核自身known，遗留转stop并worker失败；父正常wait也采纳stopped全表及discovery状态，不能靠父瞬时集合放行。合作取消最长45秒，超限仅结束自有直接worker且保持cleanup未确认，禁止凭旧组或未知PID扩大清理。初正常用例偶发EPERM的共用枚举根因和根退出通知已另在批次54提交，不混入此批完成声明。
+- 最终14新组+membership/identity/supervisor52共66项，Python3.12/系统3.9.6 -W error::ResourceWarning全通过、exit0（6.632/7.885秒），无skip。独立14项exit0（6.678秒）；另用worker真实观察日志重放父漏报、实际查询延迟、父remaining误报空3场景，均worker_observed_detached:true、valid:false/cleanupConfirmed:true/0存活且父采纳两子身份；此前3种query/interrupt/worker自查退出场景亦闭环，无限定范围新增阻断。CI加入本入口但未跑云CI；冻结7文件摘要通过。
+- 此模块尚未接入受控完整构建runner，不把旧build历史/当前产物清单变成因果凭证。未安装、build、打包、部署/重启或真实模型验收，12项仍未勾选。下一步将新声明源、明确工具/最小环境、固定offline install+full build argv及完整输出资格串成构建凭证。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `owned-build-command-red.log`：`ad1e117ecaef1fa49d4b463128b2555c5887b36a823ea8074ab952693d695877`。
+- `owned-build-command-exception-red.log`：`6dd0c366afe5bfbbe82b23f37c300c8bb81013971da0b2dbf4d94237d4aaf4f9`。
+- `owned-build-command-interrupt-crash-red.log`：`12ce7a34d6b7462f72ad245f21f2aef68be4f281f6b42fe759be521adcc2dea1`。
+- `owned-build-command-controller-death-red.log`：`4daaf83c910bf4d1abb7380e3c796c03bf8d19e5ee7788781cc52b034942c1d1`。
+- `owned-build-command-observation-merge-red.log`：`32d8a3833a4b329986da5f56998fdea7742ceaf6283712aa7bbd146f5d268fff`。
+- `owned-build-command-final312.log`：`df6b78624d87280e1c6d0464eae4fef91745b04b471aad1250e142deffc12e98`。
+- `owned-build-command-final39.log`：`8cbba15f5346eebf6c50474e82f5702ae77b3dd49e5dde4bb764a16cd00ceb24`。
