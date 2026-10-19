@@ -37,7 +37,7 @@ import {recordData} from './record-state.mjs'
 import {applyScopeGucs} from './authorization.mjs'
 import {deliverVisitorProjection} from './visitor-projection.mjs'
 import {runtimeProjection} from './runtime-projection.mjs'
-import {writeOperation,WriteOperationError} from './record-write-operations.mjs'
+import {writeOperation,readWriteOperation,WriteOperationError} from './record-write-operations.mjs'
 import { createRecord } from './refs.mjs'
 import { canAct } from './authorization.mjs'
 
@@ -291,7 +291,7 @@ export async function revokeLink({ linkId, ctx, reason = 'ISSUER_REVOKED' }) {
  * @param {object} input 入参
  * @returns {Promise<object>} 结果
  */
-async function authorizeSubmission(input) {
+async function authorizeSubmission(input,{recordRejections=true}={}) {
   const { token, data, sourceIp, reachable = true } = input
   const nowMs=Math.max(input.nowMs??Date.now(),Date.now())
 
@@ -314,7 +314,7 @@ async function authorizeSubmission(input) {
 
   const status = await verifyLinkStatus(row, { nowMs, reachable })
   if (!status.ok) {
-    await events(row.link_id, { companyId: row.company_id,
+    if(recordRejections)await events(row.link_id, { companyId: row.company_id,
                                 userId: row.issuer_user_id }, 'REJECTED',
                  { error: status.error }, sourceIp)
     throw new VisitorError(status.error, { offline: status.offline ?? false })
@@ -325,7 +325,7 @@ async function authorizeSubmission(input) {
   const fields = Object.keys(data ?? {})
   const outside = fields.filter((f) => !row.allowed_fields.includes(f))
   if (outside.length > 0) {
-    await events(row.link_id, { companyId: row.company_id,
+    if(recordRejections)await events(row.link_id, { companyId: row.company_id,
                                 userId: row.issuer_user_id }, 'REJECTED',
                  { error: 'KVVI_FIELD_OUTSIDE_BINDING', fields: outside }, sourceIp)
     throw new VisitorError('KVVI_FIELD_OUTSIDE_BINDING', { fields: outside })
@@ -335,7 +335,7 @@ async function authorizeSubmission(input) {
                      'company_id', 'issuer', 'issuer_user_id', 'role', 'roles']
   const attempted = fields.filter((f) => FORBIDDEN.includes(f))
   if (attempted.length > 0) {
-    await events(row.link_id, { companyId: row.company_id,
+    if(recordRejections)await events(row.link_id, { companyId: row.company_id,
                                 userId: row.issuer_user_id }, 'REJECTED',
                  { error: 'KVVI_VISITOR_OWNERSHIP_OVERRIDE', fields: attempted }, sourceIp)
     throw new VisitorError('KVVI_VISITOR_OWNERSHIP_OVERRIDE', { fields: attempted })
@@ -368,11 +368,13 @@ async function authorizeSubmission(input) {
 }
 
 /** The caller must retain this random key before sending; the server never invents a retry identity. */
+function originalKey(supplied){
+  if(typeof supplied!=='string'||!(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i).test(supplied))throw new VisitorError('KVVI_OPERATION_KEY_INVALID')
+  return supplied.toLowerCase()
+}
 export async function submitAsVisitor(input) {
   recordData(input.data)
-  const supplied=input.idempotencyKey
-  if(typeof supplied!=='string'||!(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i).test(supplied))throw new VisitorError('KVVI_OPERATION_KEY_INVALID')
-  const key=supplied.toLowerCase()
+  const key=originalKey(input.idempotencyKey)
   if(input.sourceIp!=null&&(typeof input.sourceIp!=='string'||!input.sourceIp||Buffer.byteLength(input.sourceIp)>128))throw new VisitorError('KVVI_VISITOR_SOURCE_INVALID')
   // Copy the JSON body once: an in-process caller cannot change the request after its digest is taken.
   const request={data:JSON.parse(JSON.stringify(input.data??{}))},submission={...input,...request}
@@ -386,7 +388,7 @@ export async function submitAsVisitor(input) {
         await applyScopeGucs(client,authorized.currentScope)
         const existing=(await client.query(`SELECT response FROM record_write_operations
           WHERE company_id=$1 AND actor_id=$2 AND endpoint=$3 AND idempotency_key=$4`,[ctx.companyId,ctx.userId,endpoint,`visitor.v1.${key}`])).rows[0]
-        if(existing&&!(await client.query('SELECT 1 FROM business_records WHERE company_id=$1 AND record_id=$2',[ctx.companyId,existing.response.recordId])).rows.length)throw new VisitorError('KVVI_NOT_ALLOWED')
+        if(existing&&!(await client.query('SELECT 1 FROM business_records WHERE company_id=$1 AND record_id=$2 AND schema_code=$3',[ctx.companyId,existing.response.recordId,authorized.row.schema_code])).rows.length)throw new VisitorError('KVVI_NOT_ALLOWED')
         return null
       },
       run:async(client,{operationId})=>{
@@ -424,6 +426,42 @@ export async function submitAsVisitor(input) {
   }catch(error){
     if(error instanceof WriteOperationError){error.key=key;throw error}
     if(error.code==='P0001'&&/^KVVI_[A-Z_]+$/.test(error.message))throw new VisitorError(error.message)
+    throw error
+  }
+}
+
+/** Read only the original operation's metadata; never accepts or replays business values. */
+export async function lookupVisitorSubmission(input){
+  const key=originalKey(input.idempotencyKey),submission={token:input.token,data:{}}
+  const initial=await authorizeSubmission(submission,{recordRejections:false})
+  const ctx={companyId:initial.row.company_id,userId:initial.row.issuer_user_id,gateway:'VISITOR',sessionId:null}
+  let projectionPending=true
+  try{
+    const receipt=await readWriteOperation({ctx,endpoint:`VISITOR /links/${initial.row.link_id}`,key:`visitor.v1.${key}`,
+      authorize:async(fields,client,row)=>{
+        try{
+          const authorized=await authorizeSubmission({...submission,data:Object.fromEntries(fields.map(field=>[field,null]))},{recordRejections:false})
+          await applyScopeGucs(client,authorized.currentScope)
+          if(row){
+            if(!(await client.query('SELECT 1 FROM business_records WHERE company_id=$1 AND record_id=$2 AND schema_code=$3',[ctx.companyId,row.response.recordId,authorized.row.schema_code])).rows.length)return {status:403,body:{error:'KVVI_NOT_ALLOWED'}}
+            const journal=(await client.query('SELECT projected_at FROM visitor_submissions WHERE company_id=$1 AND operation_id=$2',[ctx.companyId,row.operation_id])).rows[0]
+            projectionPending=!journal?.projected_at
+          }
+          return null
+        }catch(error){
+          if(error instanceof VisitorError)return {status:403,body:{error:'KVVI_NOT_ALLOWED'}}
+          throw error
+        }
+      }})
+    if(receipt.status!==200){
+      if(receipt.body.state==='UNKNOWN')return {status:202,body:{state:'UNKNOWN',idempotencyKey:key,retryWithSameKey:true}}
+      return receipt
+    }
+    const result=receipt.body.result
+    return {status:200,body:{state:'COMMITTED',idempotencyKey:key,operationId:receipt.body.operationId,
+      recordId:result.recordId,recordNo:result.recordNo,rowVersion:result.rowVersion,auditPending:receipt.body.auditPending,projectionPending}}
+  }catch(error){
+    if(error instanceof WriteOperationError)error.key=key
     throw error
   }
 }

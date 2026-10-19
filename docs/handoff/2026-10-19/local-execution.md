@@ -474,3 +474,17 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `visitor-projection-progress-red.log`：`3de9aa6da2bdbe5b38666e2db0758b40368d792346bf7f0873cc556cafa15cb2`。
 - `visitor-projection-final-focused2.log`：`596fb9206d71472e404ff2c01218ce2c8d75a8a0438ef1fa2007b4903cc60fef`。
 - `visitor-projection-platform-full.log`：`fee44218877825f4e667412459fc3dc5c620bef058eb8a823fe0d600a07bc0e9`。
+
+
+## 批次33：访客原key只读结果恢复
+
+- 新增lookupVisitorSubmission，不要求保留或重发业务data。公司/issuer/endpoint从已验签且登记一致的链接派生，原UUID规范化；调用既有readWriteOperation，原错误key改回外部UUID，未知/不同链接原key只给UNKNOWN同key提示。COMMITTED返回元数据白名单，剔除正文、ownership、traceability与字段名。
+- 读取回执前重新校验stored request_fields的当前权限、当前记录RLS与schema，隐藏字段拒绝统一403不带字段code；提交重放的记录可见检查也补同schema谓词。recordRejections作为内部helper选项让lookup完全无events追加；写路径仍正常记录拒绝。lookup不调用writeOperation、审计追加或投影补投。
+- 初始6项恢复用例因缺函数先RED，随后23项恢复+原子定向通过；最终9项恢复专测含正常已提交/未知/跨链接、隐藏字段不泄露、转出行范围、吊销、准入关闭且投影pending、撤掉提交/投影表INSERT UPDATE权限仍可读、拒绝查询不追加事件、实际同key事务锁约5秒超时后仅保留外部原key且释放锁后恢复。该预算证据仅是回执读取/锁等待，未把授权平台读取总旅程虚称5秒。只读源码复核未发现本批确定阻断。
+- 最终完整平台731项：730通过、0失败、1既有跳过，exit0，runner确认自有PG停止；最终进程退出后计算以下摘要。完整命令与批次31相同。
+- 此为模块恢复能力，尚无访客HTTP/UI/真实浏览器旅程；存量切换、跨库撤权序列化、真实DeepSeek与其他12项仍需继续，已有试点未部署或启用准入。
+
+非敏感日志SHA-256：
+- `visitor-recovery-red.log`：`8bd0b0f189331e02dd415111b4afccce28c8438e2baa77b31aa32bbe9070ec3a`。
+- `visitor-recovery-final-focused.log`：`80cf6054f4ef1c5d481cce8eb563901723b502ce1ddea5a3465961d80ccc0cd7`。
+- `visitor-recovery-platform-full.log`：`690f3db83fd23db6990a31b618c520b464dcdf92342b3140bf7a6674dd731e85`。

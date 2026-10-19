@@ -40,3 +40,9 @@ SQL41平台visitor_projection_receipts按company+operationId去重并保存规�
 独立复核发现先全公司扫描会因后公司超时丢弃前公司任务，反例先RED再修复：平台保存轮转cursor，先持久推进再进入公司业务查询，取得due行后立即投递；公司失败不回退cursor，全量统计与投递解耦。单轮投递budget最多5秒，末尾统计另有最多5秒，不能把整轮声称为5秒。
 
 14项投影专测包含平台receipt/事件故障回滚、实际platform COMMIT成功丢确认、business marker失败、并发补投、跨公司RLS、payload冲突、连接池耗尽时不持有业务连接、实际平台row lock超时、持久backoff、新平台进程自动补投、后公司统计故障不阻挡前公司。与现有访客共69项定向通过；完整平台722项中721通过、1既有跳过。存量可信切换/历史窗口、访客HTTP/UI/浏览器、跨库权限变更序列化仍待验收，不据此勾选S9或整体12项。
+
+## 原key只读恢复批次33
+
+lookupVisitorSubmission只收签名链接与调用者原UUID，按company/issuer/link endpoint隔离，未知key仅返回UNKNOWN与同key提示；不接受recordId任意查记录、不提供业务列表或候选。COMMITTED白名单仅state/key/operationId/recordId/recordNo/rowVersion/auditPending/projectionPending，不返回正文、字段名、ownership或traceability。当前字段写权限和记录当前RLS/schema重验；旧receipt缺恢复元数据仍沿既有manual-review错误，不新建效果。原错误key统一为外部原UUID。
+
+lookup不补投、追加事件/审计、计数或消耗额度；recordRejections=false仅为内部helper选项，写路径仍保留拒绝事件，调用方不能用input参数关掉它。平台计数满额、投影pending、private新准入关闭不阻挡已提交原key读；链接过期、吊销或issuer失效仍拒绝恢复。9项PG专测含实际撤掉提交/投影表写权限仍能读、隐藏字段不泄露、转出scope拒绝、跨链接UNKNOWN、pending不触发补投、吊销查询不追加拒绝事件、真实原key锁等待约5秒后保留外部原key且放锁后可读。该5秒证据只覆盖既有回执读取/锁等待预算，不等于所有平台授权读取的总旅程预算。HTTP/UI入口与浏览器仍未接线。
