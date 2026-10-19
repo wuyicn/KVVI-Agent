@@ -354,20 +354,28 @@ def cmd_restore(args):
     stopped = {'done': False}
 
     def _stop():
-        stopped['done'] = True
-        return stop_plan(home=Path(config['home']), release_root=HERE).apply()
+        outcome = stop_plan(home=Path(config['home']), release_root=HERE).apply()
+        stopped['done'] = outcome.get('ok') is True
+        return outcome
 
     result = plan.apply(pg_bin_dir(), stop_services=_stop)
-    if stopped['done']:
-        # 恢复完（无论成败）把服务重新起起来，别把实例留在「停着」的状态。
-        start_plan(home=Path(config['home']), release_root=HERE,
-                   platform_port=config['platform_port']).apply()
     if not result['ok']:
         for error in result['errors']:
             print(f'  ✗ {error}', file=sys.stderr)
         if result['errors'][0].get('kind') == 'verify':
             print('  **数据库一个字节都没动。**', file=sys.stderr)
+        elif stopped['done']:
+            print('  恢复未完成，服务保持停止。核对已完成步骤后重试恢复。', file=sys.stderr)
         return EXIT_APPLY_FAILED
+    if stopped['done']:
+        restarted = start_plan(home=Path(config['home']), release_root=HERE,
+                               platform_port=config['platform_port'],
+                               runtime_port=config['runtime_port'], pg_port=config['pg_port']).apply()
+        if restarted.get('ok') is not True:
+            print('✗ 数据恢复完成，但服务启动失败；请检查状态后重试启动。', file=sys.stderr)
+            for error in restarted.get('errors', []):
+                print(f'  ✗ {error}', file=sys.stderr)
+            return EXIT_APPLY_FAILED
     for line in result['steps']:
         print(f'  ✓ {line}')
     print('✓ 恢复完成')
@@ -390,12 +398,20 @@ def cmd_uninstall(args):
         return EXIT_OK
     # ★ D3 修复：删文件之前先停进程 —— 否则删了 PID 文件进程还活着，
     #   `status` 再也看不见它们。
-    stop_plan(home=Path(config['home']), release_root=HERE).apply()
+    stopped = stop_plan(home=Path(config['home']), release_root=HERE).apply()
+    if stopped.get('ok') is not True:
+        print('✗ 服务未确认停止，拒绝卸载。', file=sys.stderr)
+        return EXIT_APPLY_FAILED
     if plan.purge_data:
         # `--purge-data` 要删 `pgdata`：先停数据库集群，别删一个还在跑的
         # 数据目录（那等于在数据库开着的时候把它的文件抽走）。
-        stop_cluster(Path(config['home']), pg_bin_dir())
-    result = plan.apply()
+        if not stop_cluster(Path(config['home']), pg_bin_dir()):
+            print('✗ 数据库未确认停止，拒绝删除数据目录。', file=sys.stderr)
+            return EXIT_APPLY_FAILED
+    result = plan.apply(stop_services=lambda: stopped)
+    if result.get('ok') is not True:
+        print('✗ 卸载未完成；保留现有文件以便处理。', file=sys.stderr)
+        return EXIT_APPLY_FAILED
     for line in result['steps']:
         print(f'  ✓ 已删除 {line}')
     for line in result['kept']:

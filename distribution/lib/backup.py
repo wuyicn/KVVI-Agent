@@ -30,6 +30,7 @@ import secrets
 import shutil
 import subprocess
 import tarfile
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
@@ -47,22 +48,31 @@ ARCHIVE_NAME = 'kvvi-backup.tar.gz'
 
 def _restore_failed(result) -> bool:
     """
-    `pg_restore` 的非零返回码里，哪些算**真失败**。
+    `pg_restore` 任意非零返回码都表示失败，与输出语言无关。
 
     ⚠️ **不能只匹配英文 `error:`。** 连接类错误由 libpq/服务器报出，其 locale
     不由客户端 `LC_ALL` 决定 —— 中文环境是「错误: 连接失败」，只匹配英文
     会把它当成「跳过不存在对象」，恢复**误报成功**（验收 D2）。
 
     `--clean --if-exists` 已经把「对象不存在」消化成 `DROP ... IF EXISTS`，
-    所以剩下的非零返回码几乎都是真错误；再叠加一段跨语言的错误标记双保险。
+    所以不能用stderr关键字为非零返回码开例外；空stderr与信号退出也失败。
     @param result `subprocess.CompletedProcess`
     @returns 该不该判为恢复失败
     """
-    if result.returncode == 0:
-        return False
-    stderr = (result.stderr or '').lower()
-    markers = ('error', 'fatal', 'panic', '错误', '致命', '严重', '连接', 'connection')
-    return any(marker in stderr for marker in markers)
+    return result.returncode != 0
+
+
+def _stop_error(stop_services):
+    """A supplied stop callback must explicitly confirm success before mutation."""
+    if stop_services is None:
+        return {'kind': 'stop-services', 'code': 'KVVI_STOP_CONFIRMATION_REQUIRED'}
+    try:
+        result = stop_services()
+    except Exception:
+        return {'kind': 'stop-services', 'code': 'KVVI_STOP_FAILED'}
+    if result is not True and not (isinstance(result, dict) and result.get('ok') is True):
+        return {'kind': 'stop-services', 'code': 'KVVI_STOP_FAILED'}
+    return None
 
 
 def sha256_file(path: Path) -> str:
@@ -369,14 +379,39 @@ class RestorePlan:
         done.append('verify')
 
         # ★ D1 修复：核过摘要、确认要动库之前，先停掉在跑的进程。
-        if stop_services is not None:
-            stopped = stop_services()
-            done.append('stop-services' + (f': {stopped}' if stopped else ''))
+        error = _stop_error(stop_services)
+        if error is not None:
+            return {'ok': False, 'steps': done, 'errors': [error]}
+        done.append('stop-services')
 
-        staging = self.archive.parent / '.restore'
-        if staging.exists():
-            shutil.rmtree(staging)
-        staging.mkdir(parents=True)
+        receipt_dir = self.home / '.kvvi-recovery'
+        receipt_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        receipt = receipt_dir / f'restore-{secrets.token_hex(12)}.json'
+        current_database = None
+
+        def checkpoint(state, errors=()):
+            body = {'state': state, 'archiveSha256': sha256_file(self.archive),
+                    'currentDatabase': current_database, 'steps': list(done),
+                    'errors': list(errors), 'updatedAt': _now()}
+            temporary = receipt.with_suffix('.partial')
+            with open(temporary, 'w', encoding='utf-8') as handle:
+                os.chmod(temporary, 0o600)
+                json.dump(body, handle, ensure_ascii=False)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, receipt)
+            directory = os.open(receipt_dir, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+
+        def failed(error):
+            checkpoint('FAILED', [error])
+            return {'ok': False, 'steps': done, 'errors': [error], 'journalPath': str(receipt)}
+
+        checkpoint('RUNNING')
+        staging = Path(tempfile.mkdtemp(prefix='.kvvi-restore-'))
         try:
             with tarfile.open(self.archive, 'r:gz') as tar:
                 safe_extract(tar, staging)
@@ -384,29 +419,40 @@ class RestorePlan:
 
             env = dict(os.environ, PGPASSWORD=self.superpass, LC_ALL='en_US.UTF-8')
             for database in verdict['manifest']['databases']:
+                current_database = database
+                checkpoint('RUNNING')
                 dump = staging / f'{database}.dump'
-                result = subprocess.run(
-                    [str(pg_bin / 'pg_restore'), '-h', '127.0.0.1', '-p', str(self.pg_port),
-                     '-U', self.superuser, '-d', database, '--clean', '--if-exists',
-                     str(dump)],
-                    capture_output=True, text=True, env=env, timeout=1800)
+                try:
+                    result = subprocess.run(
+                        [str(pg_bin / 'pg_restore'), '-h', '127.0.0.1', '-p', str(self.pg_port),
+                         '-U', self.superuser, '-d', database, '--clean', '--if-exists',
+                         '--single-transaction', '--exit-on-error', str(dump)],
+                        capture_output=True, text=True, env=env, timeout=1800)
+                except (subprocess.TimeoutExpired, OSError) as error:
+                    return failed({
+                        'kind': 'restore', 'database': database,
+                        'code': 'KVVI_RESTORE_TIMEOUT' if isinstance(error, subprocess.TimeoutExpired)
+                        else 'KVVI_RESTORE_EXEC_FAILED'})
                 # `pg_restore` 的非零返回码要区分「真错误」与「可忽略的跳过」。
                 # `--clean --if-exists` 已消化「对象不存在」，剩下的非零基本是真错。
                 # 判据跨语言（英文 error / 中文「错误」），见 `_restore_failed`。
                 if _restore_failed(result):
-                    return {'ok': False, 'steps': done,
-                            'errors': [{'kind': 'restore', 'database': database,
-                                        'stderr': result.stderr.strip()[:500]}]}
+                    return failed({'kind': 'restore', 'database': database,
+                                   'code': 'KVVI_RESTORE_FAILED', 'returncode': result.returncode})
                 done.append(f'restore {database}')
+                checkpoint('RUNNING')
 
             home_tar = staging / 'home.tar'
             if home_tar.is_file():
                 with tarfile.open(home_tar, 'r') as tar:
                     safe_extract(tar, self.home)
                 done.append('restore-home')
+        except (OSError, ValueError, tarfile.TarError):
+            return failed({'kind': 'restore', 'code': 'KVVI_RESTORE_STATE_FAILED'})
         finally:
             shutil.rmtree(staging, ignore_errors=True)
-        return {'ok': True, 'steps': done, 'errors': []}
+        checkpoint('COMPLETE')
+        return {'ok': True, 'steps': done, 'errors': [], 'journalPath': str(receipt)}
 
 
 def restore_plan(archive: Path, home: Path, pg_port: int, superuser: str,
@@ -451,8 +497,9 @@ class UninstallPlan:
         @returns `{ok, steps, errors}`
         """
         # ★ D3 修复：先停进程，再删文件。否则「卸载成功」却留着活进程。
-        if stop_services is not None:
-            stop_services()
+        error = _stop_error(stop_services)
+        if error is not None:
+            return {'ok': False, 'steps': [], 'errors': [error], 'kept': self.keeps}
         removed = []
         for item in self.removes:
             target = self.home / item

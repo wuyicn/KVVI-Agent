@@ -346,7 +346,8 @@ class RealBackupRestoreTest(unittest.TestCase):
 
         plan = restore_plan(archive=archive, home=self.home, pg_port=self.port,
                             superuser='kvvi_admin', superpass=self.superpass)
-        result = plan.apply(self.pg_bin)
+        # This disposable cluster has no application services to stop.
+        result = plan.apply(self.pg_bin, stop_services=lambda: {'ok': True})
         self.assertTrue(result['ok'], result)
         restored = self._psql('kvvi_business',
                               'SELECT note FROM backup_probe WHERE id=1').stdout.strip()
