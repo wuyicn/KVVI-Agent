@@ -24,7 +24,7 @@
 
 | 模式 | 怎么进 | 能证到什么 |
 |---|---|---|
-| `clean-user` | 先由管理员建好用户，再 `KVVI_G9_USER=<名> python3 工具/check_stage11.py` | 在一个从未跑过 KVVI 的**用户**下成立 |
+| `clean-user` | 先由管理员建好用户，再 `KVVI_G9_USER=<名> python3 工具/check_stage11.py --runtime-source /absolute/qualified-dsh` | 在一个从未跑过 KVVI 的**用户**下成立 |
 | `clean-dir` | 默认 | 在一个从未跑过 KVVI 的**目录**下成立 |
 
 **两者都不是另一台机器。** 报告里那句必须原样保留 —— 它不是免责声明，
@@ -32,6 +32,8 @@
 """
 
 import json
+import shlex
+import argparse
 import os
 import re
 import shutil
@@ -97,14 +99,14 @@ def host_facts() -> dict:
     }
 
 
-def ensure_archive() -> Path:
+def ensure_archive(runtime_source) -> Path:
     """发行包不在就先打一份。"""
     if not ARCHIVE.is_file():
-        build = run(['python3', '工具/发行包.py', '--build'], cwd=ROOT)
+        build = run(['python3', '工具/发行包.py', '--build', '--runtime-source', str(runtime_source)], cwd=ROOT)
         print_result('build', build.args, build)
         if build.returncode != 0:
             raise RuntimeError('发行包构建失败')
-    check = run(['python3', '工具/发行包.py', '--check'], cwd=ROOT)
+    check = run(['python3', '工具/发行包.py', '--check', '--runtime-source', str(runtime_source)], cwd=ROOT)
     print_result('archive-check', check.args, check)
     if check.returncode != 0:
         raise RuntimeError('发行包校验未通过')
@@ -522,7 +524,12 @@ def require_stage11_evidence():
     entry = entries[0]
     if not entry.get('ok') or entry.get('exitCode') != 0:
         raise RuntimeError('G9_EVIDENCE_FAILED: 阶段十一证据不是成功记录')
-    if 'check_stage11.py --run-only' not in entry.get('command', ''):
+    try:
+        command = entry.get('command')
+        arguments = shlex.split(command) if isinstance(command, str) else []
+    except ValueError:
+        arguments = []
+    if len(arguments) != 5 or arguments[:3] != ['python3', '工具/check_stage11.py', '--run-only'] or arguments[3] != '--runtime-source' or not os.path.isabs(arguments[4]):
         raise RuntimeError('G9_EVIDENCE_COMMAND_INVALID')
     if entry.get('acceptanceHost') != 'clean-dir' and entry.get('acceptanceHost') != 'clean-user':
         raise RuntimeError('G9_EVIDENCE_HOST_UNLABELLED: 证据没写明验收主机是哪一种')
@@ -533,7 +540,11 @@ def main() -> int:
     分派。
     @returns 退出码
     """
-    run_only = '--run-only' in sys.argv or '--harness-only' in sys.argv
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--runtime-source', required=True)
+    parser.add_argument('--run-only', '--harness-only', action='store_true')
+    args = parser.parse_args()
+    run_only = args.run_only
     if not run_only:
         try:
             require_stage11_evidence()
@@ -557,7 +568,7 @@ def main() -> int:
     print()
 
     try:
-        ensure_archive()
+        ensure_archive(args.runtime_source)
         root = prepare_scratch()
     except Exception as error:                          # noqa: BLE001
         print(f'{C_BAD}✗ 准备失败：{error}{C_OFF}')
@@ -592,7 +603,7 @@ def main() -> int:
     print()
     print(f'{C_DIM}要按业主选定的验收主机复跑（需要管理员先建用户）：{C_OFF}')
     print('  sudo sysadminctl -addUser kvvi-g9 -password - -fullName "KVVI G9"')
-    print('  sudo -u kvvi-g9 KVVI_G9_USER=kvvi-g9 python3 工具/check_stage11.py --run-only')
+    print('  sudo -u kvvi-g9 KVVI_G9_USER=kvvi-g9 python3 工具/check_stage11.py --run-only --runtime-source /absolute/qualified-dsh')
     print('  # 之后记得删掉它：sudo sysadminctl -deleteUser kvvi-g9')
     return 0
 

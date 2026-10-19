@@ -25,12 +25,16 @@ class ReleasePackageTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix='kvvi-package-test-'); self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name); self.module = load_package()
         self.module.ROOT = str(self.root); self.module.OUT_DIR = str(self.root / 'out')
+        self.module.RUNTIME_SOURCE = str(self.root / 'vendor/dsh')
         self.module.ARCHIVE = str(self.root / 'out/pilot.tar.gz'); self.module.MANIFEST = str(self.root / 'out/manifest.json')
         for source, _ in self.module.CONTENTS:
             (self.root / source).mkdir(parents=True, exist_ok=True)
         for rel in self.module.REQUIRED + self.module.EXTRA_FILES + ['vendor/dsh/packages/fixture/build/lib/types/probe.js']:
             path = self.root / rel; path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text('{}\n' if path.suffix == '.json' else 'fixture source\n')
+        workspaces = ['vendor/*','packages/*/*','native/system','native/system/packages/*','apps/*','benchmarks','website','python/sdk-runtime']
+        (self.root / 'vendor/dsh/package.json').write_text(json.dumps({'workspaces':workspaces}))
+        (self.root / 'vendor/dsh/pnpm-workspace.yaml').write_text('packages:\n' + ''.join('  - ' + path + '\n' for path in workspaces))
         self.assertEqual(self.call(self.module.build), 0)
         self.old = self.pair()
 
@@ -85,6 +89,7 @@ import importlib.util,os,sys
 from pathlib import Path
 spec=importlib.util.spec_from_file_location('interrupted_package',sys.argv[1]);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 m.ROOT=sys.argv[2];m.OUT_DIR=str(Path(sys.argv[3]).parent);m.ARCHIVE=sys.argv[3];m.MANIFEST=sys.argv[4]
+m.RUNTIME_SOURCE=str(Path(sys.argv[2])/'vendor/dsh')
 original=os.replace
 def interrupt(source,target):
  result=original(source,target)

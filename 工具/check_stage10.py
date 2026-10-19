@@ -26,6 +26,7 @@
 
 import hashlib
 import json
+import shlex
 import os
 from pathlib import Path
 import re
@@ -277,7 +278,12 @@ def require_stage10_evidence():
     entry = entries[0]
     if not entry.get('ok') or entry.get('exitCode') != 0:
         raise RuntimeError('G8_EVIDENCE_FAILED: 阶段十证据不是成功记录')
-    if 'check_stage10.py --run-only' not in entry.get('command', ''):
+    try:
+        command = entry.get('command')
+        arguments = shlex.split(command) if isinstance(command, str) else []
+    except ValueError:
+        arguments = []
+    if arguments != ['python3', '工具/check_stage10.py', '--run-only']:
         raise RuntimeError('G8_EVIDENCE_COMMAND_INVALID')
     evidence = ROOT / entry.get('evidence', '')
     if not evidence.is_file():

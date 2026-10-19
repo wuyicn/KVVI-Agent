@@ -13,3 +13,12 @@
 
 - [x] v2逐tar成员核路径、唯一性、类型、链接与实际字节摘要/全集，内外typed rows与当前source一致，旧v1拒绝；必需文件严格regular，操作手册必须。正文/路径/链接/重复/缺多项/PAX/尾部/元数据反例闭环。复杂link先逐组件展开再处理..，真实系统tar安全正例通过；不可读目录拒绝而非漏源。此为当前源一致性，不是签名认证或完整来源/构建资格。
 - [ ] 所有collect/count/main/check/self-test统一显式runtime-source，无vendor回退；固定完整源、完整host/native/client产物及目录/generated收据分别绑定，元数据只给实际资格。UI未消费正式目录、真实浏览器/模型/macOS等继续保留待办。
+
+
+## 显式来源选择接线（尚不包含来源/构建资格）
+
+- [x] build/check/API/CLI/collect/count/main统一RUNTIME_SOURCE显式绝对根；拒缺失、相对、末级link（含尾斜线）、bytes与不存在根，包内仍映射vendor/dsh，无旧树回退。self-test仅显式自有合成树；G9与证据collector全部传同一选择，不能隐式取仓库vendor。
+- [x] workspace选包取根package.json.workspaces与pnpm当前顶层plain packages列表并集。仅支持当前固定源的简单路径/单段*，其他YAML/排除/递归/歧义模式固定拒绝；#仅空白引导才作注释。不实现通用YAML。所有已声明main后缀须为已入包相对路径，拒absolute/父级/排除node_modules realpath别名；不声称完整exports或依赖闭包。
+- [x] 元数据必须已收录regular；源package.json顶层重复字段/深JSON拒绝，未使用的nested dependency映射沿Node语义（固定上游llm-retry有同值重复依赖）。这不放宽发行内外manifest的全层重复拒绝。目录含空格、node_modules字样、glob metachar均不可绕过。
+- [x] G6-G9证据命令由shlex解析精确argv，仅解析不执行；新quote记录和G6-G8旧无quote记录均支持，G9新记录必须显式source。无真实collector执行、历史刷新或发行旅程。
+- [ ] 下一批把固定Git完整source资格与完整host/native/client输出、目录/generated收据绑定到candidate和检查，source选择或入口存在本身不够。

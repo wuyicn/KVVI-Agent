@@ -706,3 +706,27 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `package-metadata-red.log`：`0e7196c2b982b22e157a6d52552d9bdb0a6b34e5de23251747afb1ac0d6b9ce9`。
 - `package-inventory-final312.log`：`c1a3b4595dc85760d07e310afd7571f4cf9b4114b65601965cd9d63eac8e525d`。
 - `package-inventory-final39.log`：`c39862a50438f84e7bc90ba496747c5ff7eae7d8ec8869895cfb75042bc3868c`。
+
+
+## 批次46：显式runtime-source与所有调用路径接线
+
+- build/check/collect/count/packages_missing_main/CLI统一显式绝对RUNTIME_SOURCE，vendor/dsh只作包内目标名。缺选择/相对/不存在/末级link含尾斜线/bytes值拒绝并保留旧pair；argparse互斥build/check/self-test，不再子串选动作。self-test构造独立显式source，不读调用方runtime。G9、完整采集及append/refresh-stage11均显式传相同source，其他证据verify/阶段8–10调用保持功能；没有执行任何真实采集、旅程或历史替换。
+- 初7组先RED（11失败/1错误），后逐步补metadata/main边界。pjson元数据只能是collect已收regular，深JSON/顶层重复/畸形固定失败；source包的nested dependencies按Node标准语义处理，与严格发行清单区分（只读实证固定上游llm-retry的同值重复依赖项，不改源）。入口声明路径必须实际随包，拒本机absolute、父级、未收node_modules经realpath指向已收文件。所有main后缀参与，根JSON workspaces与pnpm packages plain列表并集包括vendor/native/benchmarks；新语法不猜，固定失败，尚不验证完整exports/依赖闭包。
+- 独立复核补absolute已收入口、excluded依赖别名、vendor/.cjs/.mjs覆盖缺口；均有自有fixture和反例，修正后闭环。另root含node_modules字样或glob字符不可绕扫，受限YAML只认空白引导#，extras#hidden先RED后不再截成另一目录。
+- 带空格source需要shlex.join记录；复核发现中文脚本quote与旧G6-G9子串判命令冲突。4读端自有证据先RED，再shlex.split精确argv：G6–8精确3项，G9精确5项含绝对runtime-source；echo前缀、额外参数、破引号、None均拒，不执行记录字符串。G6–8旧无quote记录仍通过；历史证据未改。新helper依赖纳入未来G9源摘要名单。
+- 最终包/选择/证据命令49组+源/原字节导出19组共68项，在Python3.12/系统3.9.6均全通过exit0（8.953/9.451秒），-W error::ResourceWarning；CI加入同入口。末尾clone错误仍是受控故障反例。两位独立最终19项及49项分别确认当前修正；平台未改，最近全平台仍批次40的810项。
+- 实际raw-rebuild-kb2jqs9a仅只读collect/main/count，16042条、2091 runtime JS、main缺失0。最初误将所有pjson nested重复也按发行清单拒而报PACKAGE_INVENTORY_INVALID，已按source/manifest不同语义修正并复查；不改变固定源字节。未在真实目录build/check/self-test，不生成发行包，不迁移/重启/部署试点。完整固定来源/构建/目录绑定仍下一批，12项不勾选。
+
+最终非敏感日志SHA-256（实际退出后计算）：
+- `package-selection-red.log`：`a1b5859e3c9e8cc55c944aa7192d640eab7c97aed0ddf49eb051713979b52069`。
+- `package-selection-boundaries-red.log`：`00cc6cd1079070368d59b3879eafe6b17255f75e2916a60b538fe1c09195dae2`。
+- `package-selection-metadata-red.log`：`61bada9190f9fbe4cc4660444d4186349596eec30beac449249c5a1dad4e8569`。
+- `package-portable-main-red.log`：`dbdd152597f0d6a2569519945d482d3aa3a814f3ac6b00f456a170a096668472`。
+- `package-workspace-main-red.log`：`a8d753dfc5bf12e1d92563a05acdffd29eccc25554d4460186a0deec9c7bc984`。
+- `package-source-metadata-semantics-red.log`：`cc7cff5fd2aa38dc73fd0302be144acf4d156b9f448862d9826eb260069a1968`。
+- `package-evidence-selection-red.log`：`b993efb3b61f30660d9c887a1cd881caa07fd37140e89b54f665007c8851c446`。
+- `package-workspace-hash-red.log`：`702f4e87b1989412860eb0d9de6a9802b8573760586b95df455629d5969b190c`。
+- `package-evidence-argv-red.log`：`435e7c397a1bfd2a90c3fe6d653e19447fffb3cd7aca039b6c842fc19025a398`。
+- `package-selection-final312-2.log`：`a5574c293d56c23f31b7c4d648323faccd034a55ee4e16ec65c51e09f392e27f`。
+- `package-selection-final39-2.log`：`db0a46017391105f7a14303b1adffbd7da2ada3d6dba21abc1152b31520f903b`。
+- `package-selection-readonly-fresh.json`：`168c2caf762f78de5bd0f72d31046f8b60483c85351db6d1c7af9def21a2580b`。

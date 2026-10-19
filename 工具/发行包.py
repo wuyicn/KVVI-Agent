@@ -36,12 +36,13 @@
 
 用法：
 
-    python3 工具/发行包.py --build            # 生成 交付/发行/kvvi-macos-pilot.tar.gz
-    python3 工具/发行包.py --check            # 校验已有包的内容与摘要
+    python3 工具/发行包.py --build --runtime-source /absolute/qualified-dsh
+    python3 工具/发行包.py --check --runtime-source /absolute/qualified-dsh
     python3 工具/发行包.py --self-test        # 反向测试：逐项破坏，必须变红
 """
 
 import hashlib
+import argparse
 import importlib.util
 import io
 import json
@@ -61,6 +62,7 @@ from 工具.lib.package_inventory import (InventoryError, VERSION, INTERNAL, MAX
 OUT_DIR = os.path.join(ROOT, '交付', '发行')
 ARCHIVE = os.path.join(OUT_DIR, 'kvvi-macos-pilot.tar.gz')
 MANIFEST = os.path.join(OUT_DIR, '发行包清单.json')
+RUNTIME_SOURCE = None  # Always explicitly selected; vendor/dsh is only the archive destination.
 
 C_OK, C_BAD, C_WARN, C_DIM, C_OFF = '\033[32m', '\033[31m', '\033[33m', '\033[90m', '\033[0m'
 
@@ -207,6 +209,19 @@ def should_skip(source_rel: str, rel: str) -> bool:
     return False
 
 
+def runtime_source_root():
+    try:
+        selected = os.fspath(RUNTIME_SOURCE)
+        if not isinstance(selected, str) or not selected or not os.path.isabs(selected) or '..' in selected.split(os.sep):
+            raise InventoryError('PACKAGE_RUNTIME_SOURCE_REQUIRED_OR_INVALID')
+        selected = os.path.normpath(selected)
+        if os.path.islink(selected) or not os.path.isdir(selected):
+            raise InventoryError('PACKAGE_RUNTIME_SOURCE_REQUIRED_OR_INVALID')
+        return selected
+    except TypeError:
+        raise InventoryError('PACKAGE_RUNTIME_SOURCE_REQUIRED_OR_INVALID') from None
+
+
 def collect() -> list:
     """
     收集要进包的文件。
@@ -221,8 +236,11 @@ def collect() -> list:
             if os.path.islink(parent) or not os.path.isdir(parent):
                 raise InventoryError('PACKAGE_SOURCE_PARENT_INVALID')
     for source_rel, into_rel in CONTENTS:
-        direct_parents(source_rel, True)
-        source = os.path.join(ROOT, source_rel)
+        if source_rel == 'vendor/dsh':
+            source = runtime_source_root()
+        else:
+            direct_parents(source_rel, True)
+            source = os.path.join(ROOT, source_rel)
         if not os.path.isdir(source):
             raise InventoryError('PACKAGE_SOURCE_DIRECTORY_MISSING')
         def walk_error(error):
@@ -252,9 +270,12 @@ def collect() -> list:
 def build() -> int:
     """Build a candidate without truncating the previous published pair."""
     try:
+        runtime_source_root()
         with output_guard(ARCHIVE, MANIFEST):
             if os.path.abspath(OUT_DIR) != os.path.dirname(os.path.abspath(ARCHIVE)):
                 raise PublicationError('PACKAGE_OUTPUT_INVALID')
+            if packages_missing_main():
+                raise InventoryError('PACKAGE_RUNTIME_MAIN_MISSING')
             entries = collect()
             print(f'{C_OK}=== 打包 ==={C_OFF}')
             print(f'  收进 {len(entries)} 个文件')
@@ -324,32 +345,19 @@ def scan_required(entries) -> list:
 
 
 def source_runtime_js_count() -> int:
-    """
-    源树里 `vendor/dsh/**/lib/types/**` 下的 `.js` 文件数（**任意深度**）。
-
-    **这是发行包 `lib/types` 那一类文件的数量判据。** 逐个列 `REQUIRED` 只能钉住
-    被点到的那几个；而这一类缺陷的形态是「整类少掉」。数量对齐是能同时抓住
-    「漏了一类」与「多了一坨」的判据。
-
-    ⚠️ 深度必须算全：`lib/types` 下还有子目录，只数直接落在 `lib/types/` 里那一层
-    会漏掉四成（实测 1107 : 1946）—— 而**漏掉的那部分恰好在 `find` 的判据之外**。
-
-    @returns 文件数；`vendor/dsh` 不在时返回 `0`（此时这一项不参与判定）
-    """
-    root = os.path.join(ROOT, 'vendor', 'dsh')
-    if not os.path.isdir(root):
-        return 0
-    count = 0
-    for base, dirs, files in os.walk(root):
+    """Count nested lib/types JavaScript only in the explicitly selected runtime."""
+    root = runtime_source_root(); count = 0
+    def walk_error(error):
+        raise error
+    for base, dirs, files in os.walk(root, onerror=walk_error):
         dirs[:] = [d for d in dirs if d not in ('node_modules', '.git')]
         rel = '/' + os.path.relpath(base, root).replace(os.sep, '/') + '/'
-        if '/lib/types/' not in rel:
-            continue
-        count += sum(1 for name in files if name.endswith('.js'))
+        if '/lib/types/' in rel:
+            count += sum(1 for name in files if name.endswith('.js'))
     return count
 
 
-def packages_missing_main(root_rel: str = 'vendor/dsh') -> list:
+def packages_missing_main() -> list:
     """
     源树里 `main` 指向的文件**不存在**的 workspace 包。
 
@@ -366,37 +374,97 @@ def packages_missing_main(root_rel: str = 'vendor/dsh') -> list:
 
     逐个 `REQUIRED` 抓不住它：名单是人手写的，而这是「新增了一个包」这件事本身。
 
-    @param root_rel 要扫的子树（相对仓库根）
     @returns `['dsh-xxx → path/lib/index.js', …]`
     """
-    import json
-    root = os.path.join(ROOT, root_rel)
+    root = runtime_source_root()
+    selected_entries = {os.path.abspath(absolute):rel for absolute, rel in collect() if rel.startswith('vendor/dsh/')}
+    available = {absolute for absolute in selected_entries if os.path.isfile(absolute)}
+    def metadata(path):
+        relative = selected_entries.get(os.path.abspath(path))
+        if relative is None:
+            raise InventoryError('PACKAGE_RUNTIME_MANIFEST_NOT_COLLECTED')
+        row, body = snapshot(path, relative)
+        if row['type'] != 'file':
+            raise InventoryError('PACKAGE_RUNTIME_MANIFEST_NOT_REGULAR')
+        return body
+    def source_manifest(body):
+        # Source package.json is interpreted by Node. Only top-level selection
+        # fields are used here; nested dependency maps retain Node's semantics.
+        # Artifact manifests still use load_json's strict duplicate rejection.
+        class Object(dict):
+            pass
+        def pairs(items):
+            result = Object(); result.duplicate = False
+            for key, value in items:
+                if key in result: result.duplicate = True
+                result[key] = value
+            return result
+        def invalid_constant(_):
+            raise ValueError()
+        try:
+            if len(body) > MAX_MANIFEST_BYTES: raise ValueError()
+            value = json.loads(body.decode('utf-8'), object_pairs_hook=pairs, parse_constant=invalid_constant)
+            if not isinstance(value, Object) or value.duplicate: raise ValueError()
+            return value
+        except (ValueError, UnicodeError, RecursionError):
+            raise InventoryError('PACKAGE_RUNTIME_MANIFEST_INVALID') from None
+    root_manifest = source_manifest(metadata(os.path.join(root, 'package.json')))
+    if not isinstance(root_manifest, dict) or not isinstance(root_manifest.get('workspaces'), list):
+        raise InventoryError('PACKAGE_WORKSPACE_LAYOUT_UNSUPPORTED')
+    patterns = root_manifest['workspaces'][:]
+    # This fixed source uses a top-level plain packages list. Reject other YAML
+    # selection syntax rather than silently interpreting a partial workspace set.
+    raw = metadata(os.path.join(root, 'pnpm-workspace.yaml')).decode('utf-8')
+    active = False; found = False
+    for line in raw.splitlines():
+        if line.lstrip().startswith('#'): continue
+        text = re.split(r'\s+#', line, maxsplit=1)[0].rstrip()
+        if not text.strip(): continue
+        if '\t' in text: raise InventoryError('PACKAGE_WORKSPACE_LAYOUT_UNSUPPORTED')
+        if not text.startswith(' '):
+            if not re.fullmatch(r'[A-Za-z][A-Za-z0-9]*:', text):
+                raise InventoryError('PACKAGE_WORKSPACE_LAYOUT_UNSUPPORTED')
+            active = text == 'packages:'
+            if active:
+                if found: raise InventoryError('PACKAGE_WORKSPACE_LAYOUT_UNSUPPORTED')
+                found = True
+        elif active:
+            match = re.fullmatch(r'  - ([A-Za-z0-9_./*?-]+)', text)
+            if not match: raise InventoryError('PACKAGE_WORKSPACE_LAYOUT_UNSUPPORTED')
+            patterns.append(match[1])
+    if not found or not patterns:
+        raise InventoryError('PACKAGE_WORKSPACE_LAYOUT_UNSUPPORTED')
+    for pattern in patterns:
+        if not isinstance(pattern, str) or not all(re.fullmatch(r'[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*|\*', part) for part in pattern.split('/')):
+            raise InventoryError('PACKAGE_WORKSPACE_LAYOUT_UNSUPPORTED')
+    import glob
+    manifests = {os.path.join(root, 'package.json')}
+    for pattern in patterns:
+        manifests.update(glob.glob(os.path.join(glob.escape(root), pattern, 'package.json')))
     out = []
-    for pattern in ('packages/*/*/package.json', 'apps/*/package.json'):
-        import glob
-        for manifest in glob.glob(os.path.join(root, pattern)):
-            if 'node_modules' in manifest:
-                continue
-            try:
-                with open(manifest, encoding='utf-8') as handle:
-                    payload = json.load(handle)
-            except (OSError, ValueError):
-                continue
-            main = payload.get('main')
-            if not isinstance(main, str) or not main.endswith('.js'):
-                continue
-            package_dir = os.path.dirname(manifest)
-            if not os.path.isfile(os.path.join(package_dir, main)):
-                rel = os.path.relpath(package_dir, ROOT)
-                out.append(f"{payload.get('name')} → {rel}/{main}")
+    for manifest in sorted(manifests):
+        payload = source_manifest(metadata(manifest))
+        if not isinstance(payload, dict): raise InventoryError('PACKAGE_RUNTIME_MANIFEST_INVALID')
+        if 'main' not in payload: continue
+        main = payload['main']
+        if not isinstance(main, str) or not main:
+            raise InventoryError('PACKAGE_RUNTIME_MAIN_INVALID')
+        package_dir = os.path.dirname(manifest)
+        portable = main[2:] if main.startswith('./') else main
+        safe = not portable.startswith('/') and '\\' not in portable and all(part not in ('', '.', '..') for part in portable.split('/'))
+        entry = os.path.join(package_dir, portable)
+        if not safe or not os.path.isfile(entry) or os.path.abspath(entry) not in available:
+            rel = 'vendor/dsh/' + os.path.relpath(package_dir, root)
+            out.append(f"{payload.get('name')} → {rel}/{main}")
     return sorted(out)
 
 
 def check() -> int:
-    if not os.path.isdir(OUT_DIR):
-        print(f'{C_BAD}✗ 发行包不存在（先跑 --build）{C_OFF}')
-        return 2
     try:
+        runtime_source_root()
+        if not os.path.isdir(OUT_DIR):
+            print(f'{C_BAD}✗ 发行包不存在（先跑 --build）{C_OFF}')
+            return 2
         with output_guard(ARCHIVE, MANIFEST):
             return _check_existing()
     except (PublicationError, InventoryError, OSError, ValueError, TypeError, KeyError, RecursionError, tarfile.TarError, EOFError):
@@ -562,6 +630,7 @@ def self_test() -> int:
         spec = importlib.util.spec_from_file_location('_owned_package_self_test', __file__)
         fixture = importlib.util.module_from_spec(spec); spec.loader.exec_module(fixture)
         fixture.ROOT = str(root); fixture.OUT_DIR = str(root / 'out')
+        fixture.RUNTIME_SOURCE = str(root / 'vendor/dsh')
         fixture.ARCHIVE = str(root / 'out/pilot.tar.gz'); fixture.MANIFEST = str(root / 'out/manifest.json')
         for source, _ in fixture.CONTENTS:
             (root / source).mkdir(parents=True, exist_ok=True)
@@ -570,6 +639,9 @@ def self_test() -> int:
                 return 1
             path = root / rel; path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text('{}\n' if path.suffix == '.json' else 'fixture source\n', encoding='utf-8')
+        workspaces = ['vendor/*','packages/*/*','native/system','native/system/packages/*','apps/*','benchmarks','website','python/sdk-runtime']
+        (root / 'vendor/dsh/package.json').write_text(json.dumps({'workspaces':workspaces}))
+        (root / 'vendor/dsh/pnpm-workspace.yaml').write_text('packages:\n' + ''.join('  - ' + path + '\n' for path in workspaces))
         if fixture.build() != 0:
             return 1
         return fixture._self_test_fixture()
@@ -580,14 +652,23 @@ def main() -> int:
     分派。
     @returns 退出码
     """
-    if '--build' in sys.argv:
-        return build()
-    if '--check' in sys.argv:
-        return check()
-    if '--self-test' in sys.argv:
+    parser = argparse.ArgumentParser(description='构建或核验发行包；runtime-source 必须显式指定绝对路径。')
+    actions = parser.add_mutually_exclusive_group(required=True)
+    actions.add_argument('--build', action='store_true')
+    actions.add_argument('--check', action='store_true')
+    actions.add_argument('--self-test', action='store_true')
+    parser.add_argument('--runtime-source')
+    args = parser.parse_args()
+    if args.self_test:
+        if args.runtime_source is not None:
+            parser.error('--self-test 使用独立合成源码，不接受 runtime-source')
         return self_test()
-    print(__doc__)
-    return 1
+    if args.runtime_source is None:
+        parser.error('--build/--check 必须显式指定 --runtime-source')
+    global RUNTIME_SOURCE
+    RUNTIME_SOURCE = args.runtime_source
+    return build() if args.build else check()
+
 
 
 if __name__ == '__main__':

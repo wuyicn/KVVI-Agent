@@ -28,7 +28,7 @@
 
 用法：
 
-    python3 工具/验收证据包.py            # 跑全部判据并生成证据包
+    python3 工具/验收证据包.py --runtime-source /absolute/qualified-dsh
     python3 工具/验收证据包.py --verify          # 只复核证据包与指纹
     python3 工具/验收证据包.py --append-stage8   # 保留旧条目，只追加 G6
     python3 工具/验收证据包.py --refresh-stage8  # 仅复验并替换尚未交付的 G6
@@ -36,12 +36,14 @@
     python3 工具/验收证据包.py --refresh-stage9  # 仅复验并替换尚未交付的 G7
     python3 工具/验收证据包.py --append-stage10  # 保留旧条目，只追加 G8
     python3 工具/验收证据包.py --refresh-stage10 # 仅复验并替换尚未交付的 G8
-    python3 工具/验收证据包.py --append-stage11  # 保留旧条目，只追加 G9
-    python3 工具/验收证据包.py --refresh-stage11 # 仅复验并替换尚未交付的 G9
+    python3 工具/验收证据包.py --append-stage11 --runtime-source /absolute/qualified-dsh
+    python3 工具/验收证据包.py --refresh-stage11 --runtime-source /absolute/qualified-dsh
 """
 
 import hashlib
 import json
+import argparse
+import shlex
 import os
 import subprocess
 import sys
@@ -133,6 +135,17 @@ STAGE11 = ('阶段十一', '私有化发行版闭环', [
     ('G9 macOS 试点发行版', ['python3', '工具/check_stage11.py', '--run-only']),
 ])
 
+
+def selected_stage11(runtime_source):
+    """Construct the G9 invocation only from an explicit administrator selection."""
+    if not isinstance(runtime_source, str) or not os.path.isabs(runtime_source) or '..' in runtime_source.split(os.sep):
+        raise ValueError('G9_RUNTIME_SOURCE_REQUIRED_OR_INVALID')
+    runtime_source = os.path.normpath(runtime_source)
+    if os.path.islink(runtime_source) or not os.path.isdir(runtime_source):
+        raise ValueError('G9_RUNTIME_SOURCE_REQUIRED_OR_INVALID')
+    stage, title, checks = STAGE11
+    return stage, title, [(name, [*command, '--runtime-source', runtime_source]) for name, command in checks]
+
 STAGE11_SOURCES = [
     'distribution/bin/kvvi-admin',
     'distribution/lib/preflight.py',
@@ -151,6 +164,8 @@ STAGE11_SOURCES = [
     'services/platform/src/bootstrap.mjs',
     'services/platform/sql/19-instance-bootstrap.sql',
     '工具/发行包.py',
+    '工具/lib/package_outputs.py',
+    '工具/lib/package_inventory.py',
     '工具/check_stage11.py',
     '安装手册.md',
 ]
@@ -218,7 +233,8 @@ def run(cmd, timeout=3600):
     return subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=timeout)
 
 
-def collect() -> int:
+def collect(runtime_source) -> int:
+    all_stages = STAGES + [STAGE8, STAGE9, STAGE10, selected_stage11(runtime_source)]
     os.makedirs(EVID, exist_ok=True)
     entries = []
     failed = []
@@ -227,7 +243,6 @@ def collect() -> int:
     print('判据：阶段一至六的**全部**测试记录与指纹（PRD §7.1 阶段七）')
     print()
 
-    all_stages = STAGES + [STAGE8, STAGE9, STAGE10, STAGE11]
     for stage, title, checks in all_stages:
         print('%s%s · %s%s' % (C_OK, stage, title, C_OFF))
         for name, cmd in checks:
@@ -240,9 +255,9 @@ def collect() -> int:
             slug = '%s-%s' % (stage, name.replace(' ', '-').replace('/', '_'))
             path = os.path.join(EVID, slug + '.txt')
             with open(path, 'w', encoding='utf-8') as fh:
-                fh.write('$ %s\n\n%s' % (' '.join(cmd), out))
+                fh.write('$ %s\n\n%s' % (shlex.join(cmd), out))
             entry = {
-                'stage': stage, 'name': name, 'command': ' '.join(cmd),
+                'stage': stage, 'name': name, 'command': shlex.join(cmd),
                 'exitCode': r.returncode if 'r' in dir() else 1,
                 'ok': ok, 'evidence': os.path.relpath(path, ROOT),
                 'digest': digest_of(out),
@@ -348,11 +363,11 @@ def _write_stage(stage, title, checks, sources, classes, replace: bool) -> int:
         out = canonical_output(result.stdout + (('\n[stderr]\n' + result.stderr) if result.stderr else ''))
         path = os.path.join(EVID, '%s-%s.txt' % (stage, name.replace(' ', '-').replace('/', '_')))
         with open(path, 'w', encoding='utf-8') as fh:
-            fh.write('$ %s\n\n%s' % (' '.join(cmd), out))
+            fh.write('$ %s\n\n%s' % (shlex.join(cmd), out))
         entry = {
             'stage': stage,
             'name': name,
-            'command': ' '.join(cmd),
+            'command': shlex.join(cmd),
             'exitCode': result.returncode,
             'ok': result.returncode == 0,
             'evidence': os.path.relpath(path, ROOT),
@@ -405,18 +420,18 @@ def append_stage10() -> int:
     return _write_stage(*STAGE10, STAGE10_SOURCES, classes, replace=False)
 
 
-def append_stage11() -> int:
+def append_stage11(runtime_source) -> int:
     """只追加阶段十一；既有阶段、条目与证据文件不重跑、不改写。"""
     classes = ['preflight', 'install', 'runtime', 'bootstrap', 'user_journey',
                'backup_restore', 'uninstall', 'no_repo_leak']
-    return _write_stage(*STAGE11, STAGE11_SOURCES, classes, replace=False)
+    return _write_stage(*selected_stage11(runtime_source), STAGE11_SOURCES, classes, replace=False)
 
 
-def refresh_stage11() -> int:
+def refresh_stage11(runtime_source) -> int:
     """只复验阶段十一；历史阶段的记录与证据文件保持逐字节不变。"""
     classes = ['preflight', 'install', 'runtime', 'bootstrap', 'user_journey',
                'backup_restore', 'uninstall', 'no_repo_leak']
-    return _write_stage(*STAGE11, STAGE11_SOURCES, classes, replace=True)
+    return _write_stage(*selected_stage11(runtime_source), STAGE11_SOURCES, classes, replace=True)
 
 
 def refresh_stage10() -> int:
@@ -472,25 +487,22 @@ def verify() -> int:
 
 
 def main() -> int:
-    if '--refresh-stage11' in sys.argv:
-        return refresh_stage11()
-    if '--append-stage11' in sys.argv:
-        return append_stage11()
-    if '--refresh-stage10' in sys.argv:
-        return refresh_stage10()
-    if '--append-stage10' in sys.argv:
-        return append_stage10()
-    if '--refresh-stage9' in sys.argv:
-        return refresh_stage9()
-    if '--append-stage9' in sys.argv:
-        return append_stage9()
-    if '--refresh-stage8' in sys.argv:
-        return refresh_stage8()
-    if '--append-stage8' in sys.argv:
-        return append_stage8()
-    if '--verify' in sys.argv:
-        return verify()
-    return collect()
+    parser = argparse.ArgumentParser(description=__doc__)
+    actions = parser.add_mutually_exclusive_group()
+    for action in ('refresh-stage11','append-stage11','refresh-stage10','append-stage10','refresh-stage9','append-stage9','refresh-stage8','append-stage8','verify'):
+        actions.add_argument('--' + action, action='store_true')
+    parser.add_argument('--runtime-source')
+    args = parser.parse_args()
+    if args.refresh_stage11 or args.append_stage11:
+        if args.runtime_source is None: parser.error('阶段十一必须显式指定 --runtime-source')
+        return refresh_stage11(args.runtime_source) if args.refresh_stage11 else append_stage11(args.runtime_source)
+    for stage in (10,9,8):
+        if getattr(args, 'refresh_stage' + str(stage)): return globals()['refresh_stage' + str(stage)]()
+        if getattr(args, 'append_stage' + str(stage)): return globals()['append_stage' + str(stage)]()
+    if args.verify: return verify()
+    if args.runtime_source is None: parser.error('完整采集必须显式指定 --runtime-source')
+    return collect(args.runtime_source)
+
 
 
 if __name__ == '__main__':
