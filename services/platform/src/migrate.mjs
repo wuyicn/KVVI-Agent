@@ -177,7 +177,7 @@ async function grantBusiness() {
     await client.query(`GRANT SELECT, INSERT, UPDATE ON business_records TO kvvi_business`)
     await client.query(`GRANT SELECT, INSERT, UPDATE ON sequences TO kvvi_business`)
     await client.query(`GRANT SELECT, INSERT, UPDATE ON business_groups,
-      business_form_directory, business_directory_operations, record_write_operations, record_write_intents TO kvvi_business`)
+      business_form_directory, business_directory_operations, record_write_operations, record_write_intents, visitor_submissions TO kvvi_business`)
     await client.query(`GRANT DELETE ON business_groups TO kvvi_business`)
     // 函数默认对 PUBLIC 可执行，但 SECURITY INVOKER 意味着仍受 RLS 与表权限约束。
     await client.query(`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO kvvi_business`)

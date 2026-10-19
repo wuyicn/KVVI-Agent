@@ -425,3 +425,18 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - `visitor-prerequisites-platform-final.log`：`59fc990592dab715fb83f092b708f2f9712fba03c268c5288f52d76c197bd4ba`。
 
 批次29证据补正：047c1030保存账本时完整进程仍在运行，原日志摘要取自未结束文件。现已实际收到exit0，核对最终670项（669通过、0失败、1既有跳过）及PG停止，再以最终日志字节重算以上SHA-256；源码未变。本补正不沿用提前写入时的证据判断。
+
+
+## 批次30：访客业务侧额度与投影账本基础
+
+- SQL39新增公司FORCE RLS的visitor_submissions，以及专用private schema内的全局admissions/config。私有owner无LOGIN/SUPERUSER/BYPASSRLS，不授runtime表读写、CREATE或成员身份；仅USAGE+指定admit函数EXECUTE。public blanket grant不跨入私有schema，schema owner也明确固定。
+- admit固定安全search_path，VOLATILE/PARALLEL UNSAFE，拒绝非READ COMMITTED与公司/issuer GUC错配。source→company→link统一锁序，锁后独立查询和clock_timestamp，保持跨公司source计数；永久link用量和滚动link/source/company额度分开检查，固定issuer/max/binding/expiry不可被后续请求扩大。原始token及业务字段值不入全局表。
+- 延迟复合外键绑定admission/公司journal与同公司、issuer、operation回执，journal关联记录也绑定同公司。writeOperation显式BEGIN READ COMMITTED，并给run传稳定operationId；额度、创建、journal、原回执与audit payload可在同一个client事务落地。默认准入关闭，本批只由自有新PG夹具管理员明确启用验证。
+- 新增13项真实PG基础测试：同key恢复不二次消费、不同key并发容量、跨公司source实际等锁后提交拒绝/回滚放行、排队到期、缺回执不能COMMIT、根权限/隔离级别拒绝、元数据不可扩大、projection存储故障使记录/receipt/额度/序号全部回滚、公司journal RLS、关闭新准入仍可找回已知原回执、重跑provision/migrate不扩权限或重置admissions。两名独立只读复核未发现本批确定阻断。
+- 最终完整平台683项：682通过、0失败、1既有跳过，exit0，runner确认PG停止。12项定向为最终第13项迁移重跑加入前的中间证据；完整回归包含第13项。最终日志在进程退出后才计算摘要。
+- 本批未接入submitAsVisitor，旧访客提交仍未获得原子额度保护，不能声称S9关闭；跨库投影补投、原key外部协议、存量可信切换、HTTP/UI与真实浏览器后续继续。private准入默认关闭，不把普通布尔开关当旧writer栅栏，也未操作已有试点。设计及官方PG17语义来源见visitor-submission-design.md。
+
+非敏感日志SHA-256：
+- `visitor-admission-red.log`：`0fb3c60491591f1002a160ae74a590c6e92bab48b801cf2087eb63fc4e840676`。
+- `visitor-admission-green3.log`：`e98cf0503bdd114d68e965428b1a01b78e3b7cffbe8578c84b40f4a610c3bbc0`。
+- `visitor-admission-platform-full.log`：`90c3f81f988862762593350c7d826eb22ef24cbf100f1977f323fa72f9f67628`。

@@ -27,7 +27,7 @@ export async function writeOperation({ ctx, endpoint, key=randomUUID(), request,
   const client=await pool('business').connect()
   let committing=false, broken=false, row
   try {
-    await client.query('BEGIN')
+    await client.query('BEGIN ISOLATION LEVEL READ COMMITTED')
     await companyScope(client,ctx.companyId)
     await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [JSON.stringify(['record-write-intent',ctx.companyId,ctx.userId,endpoint])])
     await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [JSON.stringify(['record-write',...args])])
@@ -60,7 +60,7 @@ export async function writeOperation({ ctx, endpoint, key=randomUUID(), request,
         WHERE company_id=$1 AND user_id=$2 AND endpoint=$3 AND idem_key=$4`,args)
       if (legacy.rows.length) throw new WriteOperationError('KVVI_OPERATION_LEGACY_RECEIPT',409,key)
       const operationId=randomUUID()
-      const result=await run(client)
+      const result=await run(client,{operationId})
       if (result.status<200 || result.status>=300) { await client.query('ROLLBACK'); return result }
       if (!result.audit || result.audit.companyId!==ctx.companyId || result.audit.actorId!==ctx.userId) {
         throw new Error('KVVI_OPERATION_AUDIT_REQUIRED')
