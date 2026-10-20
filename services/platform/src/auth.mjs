@@ -34,6 +34,7 @@ import {
 import { BROWSER_CREDENTIAL_GRACE_MS, publicKeysOf, CLAIM_FIELDS } from './signing.mjs'
 import { SESSION_COOKIE } from './gate.mjs'
 import { pool } from './db.mjs'
+import { withManagementTransaction, ManagementError } from './management-transaction.mjs'
 import {
   TOOL_GATEWAY, toolsForGateway, isPlatformAdmin, checkSelfGrant,
 } from './authorization.mjs'
@@ -362,7 +363,8 @@ export async function handleAuth({ method, path, body, headers }) {
       login, companyName,
       tools: toolsForGateway(ctx.gateway, enabled),
     }
-    return { status: 200, body: payload }
+    // Keep credential authority in process; HTTP only serializes body.
+    return { status: 200, body: payload, authorityContext: ctx }
   }
 
   // ── 签名接口（§9.4.1 ② 授权规则）───────────────────────────────
@@ -453,12 +455,24 @@ export async function handleAuth({ method, path, body, headers }) {
     return null
   }
 
+  async function manage(action, options, apply) {
+    try { return { value: await withManagementTransaction(adminCtx, options, apply) } }
+    catch (error) {
+      if (!(error instanceof ManagementError)) throw error
+      const status = { KVVI_MANAGEMENT_BUSY: 503, KVVI_NO_SUCH_ROLE: 404, KVVI_BAD_USER_ID: 400 }[error.code] ?? 403
+      return { refusal: await denyAdmin(action, error.code, {}, status) }
+    }
+  }
+
   // ── ④ 账号停用 ──────────────────────────────────────────────────
   const suspend = /^\/auth\/accounts\/([0-9a-fA-F-]{36})\/suspend$/u.exec(path)
   if (suspend && method === 'POST') {
     const refused = await requireAdmin('auth.suspendAccount', { userId: suspend[1] })
     if (refused) return refused
-    const ended = await suspendAccount(suspend[1], { companyId: adminCtx.companyId })
+    const managed = await manage('auth.suspendAccount', { userIds: [suspend[1]] }, client =>
+      suspendAccount(suspend[1], { companyId: adminCtx.companyId, client }))
+    if (managed.refusal) return managed.refusal
+    const ended = managed.value
     if (ended === null) {
       return denyAdmin('auth.suspendAccount', 'KVVI_NO_SUCH_MEMBER', { userId: suspend[1] }, 404)
     }
@@ -484,7 +498,10 @@ export async function handleAuth({ method, path, body, headers }) {
     if (!session || session.companyId !== adminCtx.companyId) {
       return denyAdmin('auth.revokeSession', 'KVVI_NO_SUCH_SESSION', { sessionId: revoke[1] }, 404)
     }
-    const ok = await revokeSession(revoke[1], { companyId: adminCtx.companyId })
+    const managed = await manage('auth.revokeSession', { userIds: [session.userId], authority: self ? 'member' : 'admin' }, client =>
+      revokeSession(revoke[1], { companyId: adminCtx.companyId, client }))
+    if (managed.refusal) return managed.refusal
+    const ok = managed.value
     if (session) {
       await append({
         companyId: session.companyId, actorKind: 'USER',
@@ -535,23 +552,32 @@ export async function handleAuth({ method, path, body, headers }) {
       return { status: 403, body: { error: 'KVVI_PLATFORM_ROLE_RESERVED', roleCode } }
     }
 
-    const { pool: p } = await import('./db.mjs')
-    const { rows } = await p('platform').query(
-      `SELECT role_id FROM roles WHERE company_id = $1 AND role_code = $2`,
-      [adminCtx.companyId, roleCode])
-    if (rows.length !== 1) return { status: 404, body: { error: 'KVVI_NO_SUCH_ROLE' } }
-    const roleId = rows[0].role_id
+    const managed = await manage('auth.grantRole', { userIds: targetUserIds }, async client => {
+      const { rows } = await client.query(
+        `SELECT role_id FROM roles WHERE company_id = $1 AND role_code = $2`,
+        [adminCtx.companyId, roleCode])
+      if (rows.length !== 1) throw new ManagementError('KVVI_NO_SUCH_ROLE')
+      const roleId = rows[0].role_id
 
-    const granted = []
-    for (const userId of targetUserIds) {
-      const member = await p('platform').query(
-        `SELECT 1 FROM memberships WHERE company_id = $1 AND user_id = $2`,
-        [adminCtx.companyId, userId])
-      if (member.rows.length !== 1) continue          // 非本公司成员：跳过，不报错
-      await p('platform').query(
-        `INSERT INTO role_members (company_id, role_id, user_id)
-         VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, [adminCtx.companyId, roleId, userId])
-      granted.push(userId)
+      const granted = []
+      for (const userId of targetUserIds) {
+        const member = await client.query(
+          `SELECT 1 FROM memberships WHERE company_id = $1 AND user_id = $2 FOR SHARE`,
+          [adminCtx.companyId, userId])
+        if (member.rows.length !== 1) continue          // 非本公司成员：跳过，不报错
+        const inserted = await client.query(
+          `INSERT INTO role_members (company_id, role_id, user_id)
+           VALUES ($1,$2,$3) ON CONFLICT DO NOTHING RETURNING user_id`, [adminCtx.companyId, roleId, userId])
+        if (inserted.rowCount === 1) {
+          await client.query('UPDATE users SET authz_version=authz_version+1 WHERE user_id=$1', [userId])
+        }
+        granted.push(userId)
+      }
+      return granted
+    })
+    if (managed.refusal) return managed.refusal
+    const granted = managed.value
+    for (const userId of granted) {
       await append({
         companyId: adminCtx.companyId, actorKind: 'USER', actorId: adminCtx.userId,
         gateway: adminCtx.gateway, sessionId: adminCtx.sessionId,

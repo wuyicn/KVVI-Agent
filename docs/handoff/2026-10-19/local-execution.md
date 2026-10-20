@@ -1066,3 +1066,27 @@ KVVI_TEST_PG_BIN=/opt/homebrew/opt/postgresql@17/bin node tests/run-isolated.mjs
 - 初版`platform-role-revocation-red.log`：`60d85880312aa53d5908cdb855273adfa8dd8861618a83475115813009d4e939`。
 - 最终`platform-role-revocation-red2.log`：`ff4012366b60db03cb4ea37e13cedd0244d83e65e3c2e3a8516b9f8a820437cb`。
 - `platform-role-revocation-final.log`：`4445dc9d94b151d03ff4519b10d9edc67b94fff0d318a5dc896e4a6e86b8f8bd`。
+
+## 批次68：管理事务持锁复查当前权限与凭据
+
+- 新管理事务helper在READ COMMITTED中先公司NO KEY UPDATE，锁后确定受影响账号并按UUID排序users FOR UPDATE，再锁actor session/member，复核ACTIVE/AV/当前owner-admin/Builder资格及原token状态/期限；锁超时5s、statement15s，事务错误回滚。admin所有写、mode授回、旧auth授予/停用/吊销接入同client；旧多用户grant不再逐条提交，实际新增成员递增AV。自授权拒绝审计移到回滚后，避免持公司锁等待跨库审计。
+- 三条原反例实际RED 3/3：撤权后200扩COMPANY、并发成为目标成员后200自扩权、旧auth撤权后200仍插成员。首次相关45项通过、扩为七文件65通过。独立审阅进一步发现真实API丢原tokenId/expiry与UUID大小写自授权，两类均真实PG复现；主代理分别留下API两例RED及UUID两入口RED，再修内部authorityContext穿透和canonical UUID比较。HTTP只序列化body，不增加公开token元信息；runtime保留原签名issuedAt并锁后重验60秒时限。没有把非UUID字符串改为忽略大小写。
+- owner双请求的初次扩展测试因只数直接等待者漏传递阻塞链而失败，并非产品死锁；修递归pg_blocking_pids与统计快照。最终两请求真实排队后仅一条移除成功，一个有效owner token保留。增加Builder/owner撤权、会话仍活跃但原token撤销、真实runtime自然过期、故障触发器下多用户grant全体回滚及无ALLOW，负向策略均恰一DENY。两个旧无session fixture改为真实owner session，不为测试放松管理鉴权。
+- 最终八文件75/75、exit0（16316.41025ms），包括真实auth HTTP展示不带内部metadata。独立原两token反例2/2 exit0（1119.08075ms）；另五文件关键46/46 exit0（13847.370583ms），含同一批当前新增反例。最终完整平台834项、833通过、0失败、1既有skip，exit0（209362.891459ms）；skip仍为响应已开始后错误尚无稳定装置，所有自有PG由runner确认停止。git diff --check通过。没有部署/重启试点。
+- check_publish_channel本批实际exit1，仍报admin直接策略SQL，保留任务1/2主体和发布语义待办；publish/branding尚未接入此协议，跨公司共享账号并发/受保护owner/细粒度委托与持久审计等未验收，12项仍未完成。用户新建的外部DeepSeek.env只验键非空/mode600，官方models目录200仅作凭据/目录观察，尚未执行DSH真实回合。
+
+实际退出后非敏感证据SHA-256：
+- `admin-authority-concurrency-red.log`：`49033d905d9bdfa7cd833461089edf0bec7bbfb5721565d6d3c81eb683ecb3be`。
+- `admin-authority-concurrency-green.log`：`5c65eb65ef09a447d2926e7132929fef12b4c72c45702c53fffd66f88b524efc`。
+- `admin-authority-regression.log`：`7f0f9abc7505e261f475c58aea454c86cb0a0554c3038d5a5fb93d18123f8633`。
+- 初次owner观测夹具失败`admin-authority-concurrency-expanded.log`：`921d0ccfd0f94209a3dbc8b4eebe63542a5f09cb93998b953cf3e51b6919c7b3`。
+- `admin-authority-api-metadata-red.log`：`8a192f689b080595a0d235c0c4d78afcd3c5aa62584a8ac6c84ff8ab56ca01c3`。
+- `management-self-grant-identity-red.log`：`9a1e68f7b141bfc6be751cd1ccb8f3a175b43d4d40f67791f61af2293003691a`。
+- `admin-authority-metadata-identity-green.log`：`1e785bd84fc99eef30823146b9846b6a91679ea1fdbec5804888bdd362571b9c`。
+- `admin-authority-final.log`：`67a9e596796aa9defd8ba8e2c95fc2582bdcd7cd61905ae97e3da118915f870e`。
+- `admin-authority-platform-full.log`：`2c85c31301b894356a69928b9f3b36c27395e6b2b9b2dc541db2b5665188e9c9`。
+- `admin-authority-channel-check.log`：`82538d4ed577aa624d96f64499e6f7da93522e20abcbe23dd2cfb30e5fe49357`。
+- 独立`baseline-review68-uuid-jdbWRn5c/actual-pg.log`：`8d7adcba0a77a508708ab996bda07e2a823c7047e01ea2a24e1ef6879f81dc0a`。
+- 独立`batch68-independent-th02zynt/independent-authority.log`：`041567acb1793fd132270eda4beb5ac1a26574a6c5e89643ca08940de009aada`。
+- 独立原例重放`batch68-original-replay-0te5fuzy/original-two-token-cases.log`：`cfff37d6e5a2ef4fccdc5c430837528b77b246cb0f5706f9c745cb81710b6762`。
+- 独立`batch68-closure-1n34acax/key-regressions.log`：`84528458feb854db6eae550891c59b102cc56274a59ae7a180cddb5237537d5e`。

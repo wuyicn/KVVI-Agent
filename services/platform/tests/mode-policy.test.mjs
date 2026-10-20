@@ -5,16 +5,12 @@ import {
   allowedGateways, grantBuilderAccess, revokeBuilderAccess,
 } from '../src/mode-policy.mjs'
 
-const ownerCtx = {
-  companyId: A.company,
-  userId: A.alice,
-  gateway: 'BUILDER',
-  sessionId: null,
-}
+let ownerCtx
 
 before(async () => {
   await resetDatabase()
   await grantPlatformRole(A.alice, 'owner')
+  ownerCtx = (await makeSession(A.alice, A.company, 'BUILDER')).ctx
 })
 
 after(async () => { await closeAll() })

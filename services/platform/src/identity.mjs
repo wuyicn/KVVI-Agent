@@ -225,8 +225,8 @@ export async function reapIdleSessions(now = new Date()) {
  * @param {object} [options] companyId限定当前公司成员，在事务内核验并锁至提交
  * @returns {Promise<number|null>} 被结束的会话数；指定公司但无成员时null
  */
-export async function suspendAccount(userId, { companyId } = {}) {
-  return withTransaction('platform', async (client) => {
+export async function suspendAccount(userId, { companyId, client: transactionClient } = {}) {
+  const apply = async (client) => {
     // Lock the account before sessions, matching createSession's lock order.
     const user = await client.query('SELECT user_id FROM users WHERE user_id=$1 FOR UPDATE', [userId])
     if (user.rowCount !== 1) return companyId === undefined ? 0 : null
@@ -243,7 +243,8 @@ export async function suspendAccount(userId, { companyId } = {}) {
       if (await endSession(row.session_id, 'ACCOUNT_SUSPENDED', { client })) n += 1
     }
     return n
-  })
+  }
+  return transactionClient ? apply(transactionClient) : withTransaction('platform', apply)
 }
 
 /**
@@ -251,8 +252,8 @@ export async function suspendAccount(userId, { companyId } = {}) {
  * @param {string} sessionId 会话
  * @returns {Promise<boolean>} 是否结束成功
  */
-export async function revokeSession(sessionId, { companyId } = {}) {
-  return endSession(sessionId, 'ADMIN_REVOKED', { companyId })
+export async function revokeSession(sessionId, { companyId, client } = {}) {
+  return endSession(sessionId, 'ADMIN_REVOKED', { companyId, client })
 }
 
 /**

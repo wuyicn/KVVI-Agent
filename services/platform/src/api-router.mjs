@@ -84,6 +84,7 @@ async function sessionFromRuntimeContext(headers) {
     return {
       sessionId: live.sessionId, userId: live.userId, companyId: live.companyId,
       gateway: live.gateway, state: live.state,
+      runtimeIssuedAt: context.issuedAt,
     }
   } catch {
     return null
@@ -197,7 +198,7 @@ export async function handleApi({ method, path, query, body, headers, loadSessio
         // 会话端点自己的拒绝原样带出（401 / 403 / 503 各有含义）
         return out
       }
-      session = out.body
+      session = { ...out.body, ...out.authorityContext }
     } catch (error) {
       return { status: 503, body: {
         error: 'KVVI_IDENTITY_UNAVAILABLE',

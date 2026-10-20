@@ -434,7 +434,11 @@ function gwIsBuildOnly(gateway) {
  * @returns {{allowed: boolean, reason?: string}}
  */
 export function checkSelfGrant(actorUserId, targetUserIds) {
-  if ((targetUserIds ?? []).includes(actorUserId)) {
+  // PostgreSQL uuid equality ignores hex case; aliases are the same account.
+  const canonical = value => typeof value === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+    ? value.toLowerCase() : value
+  if ((targetUserIds ?? []).some(id => canonical(id) === canonical(actorUserId))) {
     return { allowed: false, reason: 'KVVI_SELF_GRANT_FORBIDDEN',
              detail: { actor: actorUserId } }
   }
@@ -506,8 +510,8 @@ export async function holdsPlatformRole(companyId, userId, roleCode, client = po
  * @param {string} userId 账号
  * @returns {Promise<{allowed: boolean, reason?: string}>} 结论
  */
-export async function isPlatformAdmin(companyId, userId) {
-  if (await holdsPlatformRole(companyId, userId, 'owner')) return { allowed: true, role: 'owner' }
-  if (await holdsPlatformRole(companyId, userId, 'admin')) return { allowed: true, role: 'admin' }
+export async function isPlatformAdmin(companyId, userId, client = pool('platform')) {
+  if (await holdsPlatformRole(companyId, userId, 'owner', client)) return { allowed: true, role: 'owner' }
+  if (await holdsPlatformRole(companyId, userId, 'admin', client)) return { allowed: true, role: 'admin' }
   return { allowed: false, reason: 'KVVI_NOT_A_PLATFORM_ADMIN' }
 }

@@ -2,9 +2,10 @@
  * 平台双模式资格：成员天然拥有 USER；BUILDER 只能由所有者身份或显式授权产生。
  * 调用方提交的 gateway 只是意图，不能作为资格来源。
  */
-import { pool, withTransaction } from './db.mjs'
+import { pool } from './db.mjs'
 import { append } from './audit.mjs'
 import { holdsPlatformRole } from './authorization.mjs'
+import { withManagementTransaction } from './management-transaction.mjs'
 
 const BUILDER = 'BUILDER'
 
@@ -35,9 +36,9 @@ async function requireOwner(actor) {
 /** 所有者向本公司成员授予搭建模式。 */
 export async function grantBuilderAccess(actor, userId) {
   await requireOwner(actor)
-  const changed = await withTransaction('platform', async (client) => {
+  const changed = await withManagementTransaction(actor, { userIds: [userId], authority: 'owner' }, async (client) => {
     const member = await client.query(
-      'SELECT 1 FROM memberships WHERE company_id = $1 AND user_id = $2',
+      'SELECT 1 FROM memberships WHERE company_id = $1 AND user_id = $2 FOR SHARE',
       [actor.companyId, userId])
     if (member.rows.length !== 1) throw new Error('KVVI_NOT_A_MEMBER')
     const inserted = await client.query(
@@ -66,7 +67,7 @@ export async function grantBuilderAccess(actor, userId) {
 /** 所有者收回搭建模式，并立即终止该公司内该账号的 Builder 会话。 */
 export async function revokeBuilderAccess(actor, userId) {
   await requireOwner(actor)
-  const result = await withTransaction('platform', async (client) => {
+  const result = await withManagementTransaction(actor, { userIds: [userId], authority: 'owner' }, async (client) => {
     const removed = await client.query(
       `DELETE FROM platform_mode_grants
         WHERE company_id = $1 AND user_id = $2 AND gateway = 'BUILDER'

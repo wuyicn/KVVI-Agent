@@ -1,0 +1,21 @@
+# 管理写入与撤权的同事务边界
+
+requireAdmin/requireOwner与replacePolicies的自成员检查在写事务之外。请求等待策略行锁时，当前admin/owner可被移除、Builder可被回收，或操作者可被加入目标角色；恢复后原允许结果仍会写入。这一批先用自有PG的真实阻塞关系复现，不靠sleep猜交错，也不伪造查询结果。
+
+采用公司稳定行锁，解决不存在role_members行的phantom：每个管理写事务READ COMMITTED、有界锁等待，先companies FOR NO KEY UPDATE；在此锁后确定受影响用户，按UUID排序锁users FOR UPDATE，然后actor sessions FOR SHARE、当前memberships FOR SHARE。用同一client重读ACTIVE账号/会话、身份/公司/网关、授权版本、当前owner/admin；Builder还调用当前allowedGateways。旧auth委派token须锁定并复核原tokenId未撤销/未过期，浏览器凭据保留到期时间供锁后核验。缺会话不能作为公开管理权限。
+
+将admin-api成员/角色/策略写、平台角色变更、mode-policy搭建授权/回收、旧auth角色授予及停用/吊销接入共同协议。事务内再查当前角色成员、自授权、目标成员、最后owner保护；写策略/角色、授权版本、会话撤销和事件时持锁直到commit。旧逐条auth角色授予合为一事务，实际新增角色成员须递增授权版本。身份停用/吊销借用当前事务连接，不再嵌套独立提交。两名owner及跨公司共用账号需遵守相同用户排序，避免反向锁。
+
+审计仍按各接口现有语义记录，不把独立audit调用称跨库原子性；拒绝不记录ALLOW。现有合法owner管理操作保持正向对照，委托admin直接激活四维策略的发布旁路另行闭环。本批不靠移动SQL修静态门禁。发布通道和branding等其它owner写入必须后续接入协议，之前不宣称全产品撤权并发完成。多公司账号的全局停用、关联账号及细粒度委托范围仍待产品/实现验收。
+
+反例顺序：维护事务锁公司与目标策略/角色行，同时写未提交撤权或成员变更；发起真实管理路由请求，以pg_blocking_pids确认等待，提交撤权后请求必须拒绝且策略/目标成员不变。原实现会因策略/外键等待而延迟，新实现应在公司锁等待后重新鉴权。分别验证admin撤权、加入目标角色、自有旧auth角色授予；再补Builder/owner撤权、并发owner移除和合法管理对照。所有库由隔离runner安全marker约束，不连接试点。
+
+## 实际闭环
+
+三个原始交错均真实RED：撤权后旧策略写仍200并扩为COMPANY，操作者并发加入目标角色后旧写仍200扩权，旧auth授予撤权后仍200并插入目标成员。管理写现统一公司锁与同client资格复验；新增管理异常回滚后留DENY。两个旧无会话测试夹具改真实owner Session，不允许公开管理以无会话actor运行。
+
+独立复核补出并先RED后修两项：真实handleApi链路原丢tokenId/expiry，现auth会话结果顶层authorityContext仅供进程内适配，HTTP仍只序列化展示body，api-router保留内部权威元数据；两项原token撤销/数据库expiry反例独立重放关闭。runtime签名上下文亦保留原issuedAt并用同源60秒期限锁后复验，真实自然过期等待拒绝。checkSelfGrant对UUID按PG身份规则忽略大小写，非UUID保留原字符串比较；两路uppercase自加角色均先真实200/成员0→1，再修为403/无效果。
+
+owner双请求装置原只数直接blocking pid，漏掉传递等待链而误失败；改递归阻塞关系并刷新统计快照，确认两请求确实排队后放锁。最终仅一名owner被移除，保留一个有效owner token，无死锁。真实多目标grant插入触发器故障使全部成员/版本回滚且无ALLOW；所有负向策略用例仅DENY。
+
+最终八文件75项全通过、独立关键46项/原2token重放通过；完整平台834项/833通过/1既有skip，exit0，所有自有集群确认停止。静态发布通道检查仍exit1（admin人工直配路径未完成主体/发布语义闭环）；发布、branding、跨公司共享账号排序实测及细粒度委托等仍未验收，不将此批扩大为任务1或12项完成。

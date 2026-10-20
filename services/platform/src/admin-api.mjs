@@ -40,13 +40,14 @@
  * 而报错指向的是下一步（加成员）而不是「账号已存在」。所以两步同事务。
  */
 
-import { withTransaction, pool } from './db.mjs'
+import { pool } from './db.mjs'
 import { append, appendDenial, digestOf } from './audit.mjs'
 import { hashPassword } from './identity.mjs'
 import { suspendAccount } from './identity.mjs'
 import { isPlatformAdmin, holdsPlatformRole, checkSelfGrant,
          PLATFORM_ROLE_CODES, DATA_SCOPES } from './authorization.mjs'
 import { grantBuilderAccess, revokeBuilderAccess } from './mode-policy.mjs'
+import { withManagementTransaction, ManagementError } from './management-transaction.mjs'
 
 const DIMENSIONS = Object.freeze(['FORM', 'FIELD', 'FLOW', 'DATA'])
 const FIELD_VISIBILITY = Object.freeze(['VISIBLE', 'MASKED', 'HIDDEN', 'READONLY'])
@@ -65,6 +66,8 @@ const STATUS_OF = Object.freeze({
   KVVI_NOT_A_PLATFORM_ROLE: 403,
   KVVI_LAST_OWNER: 409,
   KVVI_MEMBER_SUSPENDED: 409,
+  KVVI_MANAGEMENT_AUTHORITY_CHANGED: 403,
+  KVVI_MANAGEMENT_BUSY: 503,
 })
 
 /**
@@ -98,6 +101,9 @@ function actorOf(session) {
     userId: session.userId,
     gateway: session.gateway,
     sessionId: session.sessionId ?? null,
+    ...(session.tokenId === undefined ? {} : { tokenId: session.tokenId }),
+    ...(session.expiresAt === undefined ? {} : { expiresAt: session.expiresAt }),
+    ...(session.runtimeIssuedAt === undefined ? {} : { runtimeIssuedAt: session.runtimeIssuedAt }),
   }
 }
 
@@ -235,7 +241,7 @@ async function createMember(actor, input) {
   if (login === '') throw new AdminError('KVVI_LOGIN_REQUIRED')
   if (password.length < 8) throw new AdminError('KVVI_PASSWORD_TOO_SHORT')
 
-  const created = await withTransaction('platform', async (client) => {
+  const created = await withManagementTransaction(actor, {}, async (client) => {
     // 唯一约束兜底：并发建同名账号时先到者成功，后到者在这里拿到 23505 而不是
     // 插出一个孤儿。**不先 SELECT 再 INSERT** —— 那中间有一个竞态窗口。
     let userId
@@ -261,7 +267,7 @@ async function createMember(actor, input) {
 
 /** 改一个成员的归属部门/店铺。 */
 async function updateMember(actor, userId, input) {
-  const changed = await withTransaction('platform', async (client) => {
+  const changed = await withManagementTransaction(actor, { userIds: [userId] }, async (client) => {
     const { rows } = await client.query(
       `UPDATE memberships SET dept_id = $3, shop_id = $4
         WHERE company_id = $1 AND user_id = $2
@@ -284,22 +290,25 @@ async function updateMember(actor, userId, input) {
  * @returns 结束的会话数
  */
 async function suspendMember(actor, userId) {
-  await assertManageable(actor, userId)
-  const { rows } = await pool('platform').query(
-    'SELECT status FROM users WHERE user_id = $1', [userId])
-  if (rows.length !== 1) throw new AdminError('KVVI_NO_SUCH_MEMBER', { userId })
-  if (rows[0].status === 'SUSPENDED') throw new AdminError('KVVI_MEMBER_SUSPENDED', { userId })
-  const ended = await suspendAccount(userId, { companyId: actor.companyId })
-  if (ended === null) throw new AdminError('KVVI_NO_SUCH_MEMBER', { userId })
+  const ended = await withManagementTransaction(actor, { userIds: [userId] }, async client => {
+    await assertManageable(actor, userId, client)
+    const { rows } = await client.query(
+      'SELECT status FROM users WHERE user_id = $1', [userId])
+    if (rows.length !== 1) throw new AdminError('KVVI_NO_SUCH_MEMBER', { userId })
+    if (rows[0].status === 'SUSPENDED') throw new AdminError('KVVI_MEMBER_SUSPENDED', { userId })
+    const ended = await suspendAccount(userId, { companyId: actor.companyId, client })
+    if (ended === null) throw new AdminError('KVVI_NO_SUCH_MEMBER', { userId })
+    return ended
+  })
   await record(actor, 'admin.suspendMember', 'USER', userId, { ended })
   return { userId, endedSessions: ended }
 }
 
 /** 恢复账号。会话不恢复 —— 恢复后要重新登录，这是有意的。 */
 async function reactivateMember(actor, userId) {
-  const changed = await withTransaction('platform', async (client) => {
+  const changed = await withManagementTransaction(actor, { userIds: [userId] }, async (client) => {
     const member = await client.query(
-      'SELECT 1 FROM memberships WHERE company_id = $1 AND user_id = $2',
+      'SELECT 1 FROM memberships WHERE company_id = $1 AND user_id = $2 FOR SHARE',
       [actor.companyId, userId])
     if (member.rows.length !== 1) return false
     await client.query(
@@ -319,19 +328,15 @@ async function reactivateMember(actor, userId) {
  * @param actor 操作人
  * @param userId 目标账号
  */
-async function assertManageable(actor, userId) {
+async function assertManageable(actor, userId, client = pool('platform')) {
   const self = checkSelfGrant(actor.userId, [userId])
   if (!self.allowed) {
-    await appendDenial({
-      companyId: actor.companyId, actorKind: 'USER', actorId: actor.userId,
-      gateway: actor.gateway, sessionId: actor.sessionId,
-      action: 'admin.selfTarget', outcome: 'DENY',
-      reason: 'KVVI_SELF_GRANT_FORBIDDEN', paramsDigest: digestOf({ userId }),
-    })
-    throw new AdminError('KVVI_SELF_GRANT_FORBIDDEN')
+    const error = new AdminError('KVVI_SELF_GRANT_FORBIDDEN', { userId })
+    error.action = 'admin.selfTarget'
+    throw error
   }
-  const { rows } = await pool('platform').query(
-    'SELECT 1 FROM memberships WHERE company_id = $1 AND user_id = $2',
+  const { rows } = await client.query(
+    'SELECT 1 FROM memberships WHERE company_id = $1 AND user_id = $2 FOR SHARE',
     [actor.companyId, userId])
   if (rows.length !== 1) throw new AdminError('KVVI_NOT_A_MEMBER', { userId })
 }
@@ -345,7 +350,7 @@ async function createRole(actor, input) {
   if (PLATFORM_ROLE_CODES.includes(roleCode)) {
     throw new AdminError('KVVI_PLATFORM_ROLE_RESERVED', { roleCode })
   }
-  const created = await withTransaction('platform', async (client) => {
+  const created = await withManagementTransaction(actor, {}, async (client) => {
     const { rows } = await client.query(
       `INSERT INTO roles (role_id, company_id, role_code, name)
        VALUES (gen_random_uuid(), $1, $2, $3)
@@ -389,34 +394,35 @@ async function replacePolicies(actor, roleCode, policies) {
     }
   }
 
-  const role = await pool('platform').query(
-    `SELECT role_id FROM roles WHERE company_id = $1 AND role_code = $2`,
-    [actor.companyId, roleCode])
-  if (role.rows.length !== 1) throw new AdminError('KVVI_NO_SUCH_ROLE', { roleCode })
-  const roleId = role.rows[0].role_id
+  const applied = await withManagementTransaction(actor, { userIds: async client => {
+    const members = await client.query(
+      `SELECT rm.user_id FROM role_members rm JOIN roles r ON r.role_id=rm.role_id
+        WHERE r.company_id=$1 AND r.role_code=$2`, [actor.companyId, roleCode])
+    return members.rows.map(row => row.user_id)
+  } }, async client => {
+    const role = await client.query(
+      `SELECT role_id FROM roles WHERE company_id = $1 AND role_code = $2`,
+      [actor.companyId, roleCode])
+    if (role.rows.length !== 1) throw new AdminError('KVVI_NO_SUCH_ROLE', { roleCode })
+    const roleId = role.rows[0].role_id
 
-  // ★ S5 修复：改自己**所在角色**的策略 = 自授权（§9.6.7）。
-  //
-  // 此前 `assignRoleMembers` 有 `checkSelfGrant` 这道闸（自加角色 → 403），
-  // 但「改自己已经加入的角色的策略」没有 —— 一个有配置权的被委托者可以把
-  // 自己所在角色的 DATA 档位改宽，立即获得别人记录的读权，且不经发布草案。
-  // 判据是「操作者是不是这个角色的成员」，与「他有没有配置权」无关 ——
-  // 这与 `checkSelfGrant` 对 `assignRoleMembers` 的口径一致。
-  const selfMember = await pool('platform').query(
-    'SELECT 1 FROM role_members WHERE role_id = $1 AND user_id = $2',
-    [roleId, actor.userId])
-  if (selfMember.rows.length === 1) {
-    await appendDenial({
-      companyId: actor.companyId, actorKind: 'USER', actorId: actor.userId,
-      gateway: actor.gateway, sessionId: actor.sessionId,
-      action: 'admin.replacePolicies', outcome: 'DENY',
-      reason: 'KVVI_SELF_GRANT_FORBIDDEN', paramsDigest: digestOf({ roleCode }),
-    })
-    throw new AdminError('KVVI_SELF_GRANT_FORBIDDEN', { roleCode })
-  }
+    // ★ S5 修复：改自己**所在角色**的策略 = 自授权（§9.6.7）。
+    //
+    // 此前 `assignRoleMembers` 有 `checkSelfGrant` 这道闸（自加角色 → 403），
+    // 但「改自己已经加入的角色的策略」没有 —— 一个有配置权的被委托者可以把
+    // 自己所在角色的 DATA 档位改宽，立即获得别人记录的读权，且不经发布草案。
+    // 判据是「操作者是不是这个角色的成员」，与「他有没有配置权」无关 ——
+    // 这与 `checkSelfGrant` 对 `assignRoleMembers` 的口径一致。
+    const selfMember = await client.query(
+      'SELECT 1 FROM role_members WHERE role_id = $1 AND user_id = $2',
+      [roleId, actor.userId])
+    if (selfMember.rows.length === 1) {
+      const error = new AdminError('KVVI_SELF_GRANT_FORBIDDEN', { roleCode })
+      error.action = 'admin.replacePolicies'
+      throw error
+    }
 
-  // 替换与成员清点同事务：清点用于「不能把最后一个所有者降级」。
-  const applied = await withTransaction('platform', async (client) => {
+    // 公司锁使成员判定与策略替换处于同一管理事务。
     await client.query(
       'DELETE FROM policies WHERE company_id = $1 AND role_id = $2',
       [actor.companyId, roleId])
@@ -456,17 +462,17 @@ async function assignRoleMembers(actor, roleCode, userIds, mode) {
     })
     throw new AdminError('KVVI_SELF_GRANT_FORBIDDEN')
   }
-  const role = await pool('platform').query(
-    `SELECT role_id FROM roles WHERE company_id = $1 AND role_code = $2`,
-    [actor.companyId, roleCode])
-  if (role.rows.length !== 1) throw new AdminError('KVVI_NO_SUCH_ROLE', { roleCode })
-  const roleId = role.rows[0].role_id
+  const done = await withManagementTransaction(actor, { userIds: targets }, async client => {
+    const role = await client.query(
+      `SELECT role_id FROM roles WHERE company_id = $1 AND role_code = $2`,
+      [actor.companyId, roleCode])
+    if (role.rows.length !== 1) throw new AdminError('KVVI_NO_SUCH_ROLE', { roleCode })
+    const roleId = role.rows[0].role_id
 
-  const done = await withTransaction('platform', async (client) => {
     const out = []
     for (const userId of targets) {
       const member = await client.query(
-        'SELECT 1 FROM memberships WHERE company_id = $1 AND user_id = $2',
+        'SELECT 1 FROM memberships WHERE company_id = $1 AND user_id = $2 FOR SHARE',
         [actor.companyId, userId])
       if (member.rows.length !== 1) continue      // 非本公司成员：跳过，不报错
       if (mode === 'add') {
@@ -503,15 +509,15 @@ async function setPlatformRole(actor, userId, roleCode, grant) {
   if (!PLATFORM_ROLE_CODES.includes(roleCode)) {
     throw new AdminError('KVVI_NOT_A_PLATFORM_ROLE', { roleCode })
   }
-  const role = await pool('platform').query(
-    `SELECT role_id FROM roles WHERE company_id = $1 AND role_code = $2`,
-    [actor.companyId, roleCode])
-  if (role.rows.length !== 1) throw new AdminError('KVVI_NO_SUCH_ROLE', { roleCode })
-  const roleId = role.rows[0].role_id
+  const done = await withManagementTransaction(actor, { userIds: [userId], authority: 'owner' }, async client => {
+    const role = await client.query(
+      `SELECT role_id FROM roles WHERE company_id = $1 AND role_code = $2`,
+      [actor.companyId, roleCode])
+    if (role.rows.length !== 1) throw new AdminError('KVVI_NO_SUCH_ROLE', { roleCode })
+    const roleId = role.rows[0].role_id
 
-  const done = await withTransaction('platform', async (client) => {
     const member = await client.query(
-      'SELECT 1 FROM memberships WHERE company_id = $1 AND user_id = $2',
+      'SELECT 1 FROM memberships WHERE company_id = $1 AND user_id = $2 FOR SHARE',
       [actor.companyId, userId])
     if (member.rows.length !== 1) throw new AdminError('KVVI_NOT_A_MEMBER', { userId })
 
@@ -673,11 +679,11 @@ export async function adminRoutes({ method, path, payload, session }) {
 
     return { status: 404, body: { error: 'KVVI_UNKNOWN_ROUTE', route: path, method } }
   } catch (error) {
-    if (error instanceof AdminError) {
+    if (error instanceof AdminError || error instanceof ManagementError) {
       await appendDenial({
         companyId: actor.companyId, actorKind: 'USER', actorId: actor.userId,
         gateway: actor.gateway, sessionId: actor.sessionId,
-        action: `admin.${head ?? 'unknown'}`, outcome: 'DENY',
+        action: error.action ?? `admin.${head ?? 'unknown'}`, outcome: 'DENY',
         reason: error.code, paramsDigest: digestOf({ path, method, ...error.detail }),
       }).catch(() => {})
       return failure(error.code, error.detail)

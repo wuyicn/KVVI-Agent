@@ -12,7 +12,7 @@ import { spawn } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pool, closeAll } from '../src/db.mjs'
-import { A, B, PASSWORD, resetDatabase, grantBaseline, grantPlatformRole } from './harness.mjs'
+import { A, B, PASSWORD, resetDatabase, grantBaseline, grantPlatformRole, makeSession } from './harness.mjs'
 import { TOOL_GATEWAY, toolsForGateway, checkGateway } from '../src/authorization.mjs'
 import { appendDenial, verifyChain } from '../src/audit.mjs'
 import { grantBuilderAccess } from '../src/mode-policy.mjs'
@@ -276,11 +276,14 @@ describe('锚点① 员工看不到搭建引擎（§9.6.5）', () => {
     }
   })
   test('有搭建资格的账号在USER模式能发现搭建入口，工具仍只有USER能力', async () => {
-    await grantBuilderAccess({ companyId: A.company, userId: A.alice, gateway: 'BUILDER' }, A.bob)
+    const currentOwner = await makeSession(A.alice, A.company, 'BUILDER')
+    await grantBuilderAccess(currentOwner.ctx, A.bob)
     const login = await post('/auth/login', { login: 'bob', password: PASSWORD, companyId: A.company, gateway: 'USER' })
     const { token } = await login.json()
     const session = await (await fetch(`${BASE}/auth/session`, { headers: { authorization: `Bearer ${token}` } })).json()
     assert.equal(session.gateway, 'USER')
+    assert.equal(Object.hasOwn(session, 'tokenId'), false)
+    assert.equal(Object.hasOwn(session, 'authorityContext'), false)
     assert.deepEqual(session.allowedGateways, ['USER', 'BUILDER'])
     for (const tool of session.tools) assert.equal(TOOL_GATEWAY[tool], 'USER')
   })

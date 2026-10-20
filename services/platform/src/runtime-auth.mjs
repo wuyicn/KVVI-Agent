@@ -120,7 +120,7 @@ export function runtimeCredentialAvailable() {
 }
 
 const RUNTIME_CONTEXT_VERSION = 'v1'
-const RUNTIME_CONTEXT_MAX_AGE_MS = 60_000
+export const RUNTIME_CONTEXT_MAX_AGE_MS = 60_000
 
 function contextPayload({ sessionId, userId, companyId, gateway, issuedAt }) {
   return [RUNTIME_CONTEXT_VERSION, sessionId, userId, companyId, gateway,
